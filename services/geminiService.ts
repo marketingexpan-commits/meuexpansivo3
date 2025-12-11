@@ -22,9 +22,10 @@ export const getStudyTips = async (subject: Subject, difficultyTopic: string, gr
     const data = await response.json();
     return data.text ?? "Não foi possível gerar dicas no momento. Tente novamente mais tarde.";
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Erro ao consultar o Gemini via Backend:", error);
-    return "Ocorreu um erro ao tentar obter as dicas de estudo. Verifique sua conexão e tente novamente.";
+    // DEBUG: Retornar o erro real para o usuário ver
+    return `Erro técnico: ${error.message || error}`;
   }
 };
 
