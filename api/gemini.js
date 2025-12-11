@@ -1,16 +1,13 @@
-import { GoogleGenAI } from "@google/genai";
-
 export default async function handler(request, response) {
-    // Configuração de CORS para permitir chamadas do seu front-end
+    // Configuração de CORS
     response.setHeader('Access-Control-Allow-Credentials', true);
-    response.setHeader('Access-Control-Allow-Origin', '*'); // Em produção, substitua '*' pelo seu domínio real se quiser mais segurança
+    response.setHeader('Access-Control-Allow-Origin', '*');
     response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
     response.setHeader(
         'Access-Control-Allow-Headers',
         'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
     );
 
-    // Trata requisição OPTIONS (pre-flight do CORS)
     if (request.method === 'OPTIONS') {
         response.status(200).end();
         return;
@@ -22,16 +19,14 @@ export default async function handler(request, response) {
 
     try {
         const { subject, difficultyTopic, gradeLevel } = request.body;
-
         const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 
         if (!apiKey) {
-            throw new Error('GEMINI_API_KEY (ou VITE_GEMINI_API_KEY) não configurada no servidor.');
+            throw new Error('GEMINI_API_KEY não configurada no servidor.');
         }
 
-        const genAI = new GoogleGenAI({ apiKey: apiKey });
-        // MUDANÇA: Usando modelo estável e específico para evitar erro 404 em v1beta
-        const model = 'gemini-1.5-flash-001';
+        const model = 'gemini-1.5-flash';
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
         const prompt = `
       Atue como um tutor escolar especializado e motivador.
@@ -47,38 +42,52 @@ export default async function handler(request, response) {
       Use formatação Markdown simples (negrito, listas). Seja direto e encorajador.
     `;
 
-        const client = genAI.models;
+        const requestBody = {
+            contents: [{
+                parts: [{ text: prompt }]
+            }]
+        };
 
-        // Função de retry robusta
         const generateWithRetry = async (retries = 3, initialDelay = 1000) => {
             let delay = initialDelay;
             for (let i = 0; i < retries; i++) {
                 try {
-                    return await client.generateContent({
-                        model: model,
-                        contents: prompt,
+                    const fetchResponse = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(requestBody)
                     });
+
+                    if (!fetchResponse.ok) {
+                        // Se for erro de servidor ou rate limit, lança para o catch tratar o retry
+                        if (fetchResponse.status === 429 || fetchResponse.status >= 500) {
+                            const errorText = await fetchResponse.text();
+                            throw new Error(`API Error ${fetchResponse.status}: ${errorText}`);
+                        }
+                        // Se for erro 4xx (exceto 429), não retenta
+                        const errorData = await fetchResponse.json();
+                        throw new Error(errorData.error?.message || 'Erro na requisição ao Gemini');
+                    }
+
+                    return await fetchResponse.json();
+
                 } catch (err) {
                     const errorMessage = err.message || '';
                     const isRateLimit = errorMessage.includes('429') ||
-                        errorMessage.includes('limit') ||
-                        errorMessage.includes('quota') ||
+                        errorMessage.includes('Too Many Requests') ||
                         errorMessage.includes('RESOURCE_EXHAUSTED');
 
                     const isOverloaded = errorMessage.includes('503') ||
                         errorMessage.includes('overloaded');
 
-                    // Se for a última tentativa, lança o erro independente do tipo
                     if (i === retries - 1) throw err;
 
                     if (isRateLimit || isOverloaded) {
-                        console.warn(`Tentativa ${i + 1} falhou (${isRateLimit ? 'Rate Limit' : 'Overloaded'}). Tentando novamente em ${delay}ms...`);
+                        console.warn(`Tentativa ${i + 1} falhou. Retentando em ${delay}ms...`);
                         await new Promise(resolve => setTimeout(resolve, delay));
-                        delay *= 2; // Backoff exponencial
+                        delay *= 2;
                         continue;
                     }
-
-                    // Se for outro tipo de erro (ex: 400 Bad Request), não adianta retentar
                     throw err;
                 }
             }
@@ -86,14 +95,15 @@ export default async function handler(request, response) {
 
         const result = await generateWithRetry();
 
-        const responseText = result.text;
+        // Extrair texto da resposta do formato REST do Gemini
+        const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text ||
+            "Não foi possível processar a resposta da IA.";
 
         return response.status(200).json({ text: responseText });
 
     } catch (error) {
-        console.error("Erro na Serverless Function:", error);
+        console.error("Erro na Serverless Function (Fetch):", error);
 
-        // Verifica se o erro original foi por rate limit e retorna status apropriado
         const errorMessage = error.message || '';
         if (errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED')) {
             return response.status(429).json({
