@@ -184,15 +184,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
             <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-lg p-6">
 
                 {/* HEADER */}
-                <div className="flex flex-col md:flex-row justify-between items-center mb-6 border-b pb-4 gap-4">
-                    <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="flex flex-col md:flex-row justify-between items-center mb-6 border-b pb-4 gap-4 relative">
+                    <div className="flex items-center gap-3 w-full md:w-auto pr-16 md:pr-0"> {/* Added padding right to avoid overlap on very small screens if text is long */}
                         <SchoolLogo variant="header" />
                         <div>
                             <h1 className="text-xl font-bold text-gray-800">Painel do Professor(a) {teacher.name.split(' ')[0]}</h1>
                             <p className="text-sm text-gray-500 font-medium mt-1">Unidade: <span className="text-blue-950 bg-blue-50 px-2 py-0.5 rounded-full">{activeUnit}</span></p>
                         </div>
                     </div>
-                    <Button variant="secondary" onClick={onLogout}>Sair</Button>
+                    <div className="absolute top-0 right-0 md:static">
+                        <Button variant="secondary" onClick={onLogout}>Sair</Button>
+                    </div>
                 </div>
 
                 {/* TABS */}
@@ -547,8 +549,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                         <button
                                                             onClick={() => handleStatusChange(student.id, AttendanceStatus.PRESENT)}
                                                             className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all duration-200 border ${status === AttendanceStatus.PRESENT
-                                                                    ? 'bg-green-500 text-white border-green-600 shadow-md transform scale-105'
-                                                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                                                ? 'bg-green-500 text-white border-green-600 shadow-md transform scale-105'
+                                                                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                                                                 }`}
                                                         >
                                                             Presente
@@ -556,8 +558,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                         <button
                                                             onClick={() => handleStatusChange(student.id, AttendanceStatus.ABSENT)}
                                                             className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all duration-200 border ${status === AttendanceStatus.ABSENT
-                                                                    ? 'bg-red-500 text-white border-red-600 shadow-md transform scale-105'
-                                                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                                                ? 'bg-red-500 text-white border-red-600 shadow-md transform scale-105'
+                                                                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                                                                 }`}
                                                         >
                                                             Faltou

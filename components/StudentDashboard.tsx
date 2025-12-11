@@ -219,13 +219,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-lg p-6 print:shadow-none print:w-full">
 
                 {/* HEADER */}
-                <div className="flex flex-col md:flex-row justify-between items-center mb-6 border-b pb-4 print:hidden gap-4">
-                    <div className="flex items-center gap-3">
+                <div className="flex flex-col md:flex-row justify-between items-center mb-6 border-b pb-4 print:hidden gap-4 relative">
+                    <div className="flex items-center gap-3 w-full md:w-auto">
                         <SchoolLogo variant="header" />
                         <h1 className="text-2xl font-bold text-gray-800">Meu Expansivo</h1>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="absolute top-0 right-0 md:static flex items-center gap-4">
                         <Button variant="secondary" onClick={onLogout}>Sair</Button>
                     </div>
                 </div>
