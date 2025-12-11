@@ -364,10 +364,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             <h3 className="text-center font-bold text-xl text-blue-950 mb-2 uppercase">Relatório - {selectedReportSemester}º Semestre</h3>
 
                             {/* LEGENDA */}
-                            <div className="flex justify-center gap-6 my-6 text-xs">
-                                <div className="flex items-center gap-2"><span className="w-3 h-3 bg-green-100 border border-green-300 rounded-sm"></span> <span><strong>D</strong> - Desenvolvido</span></div>
-                                <div className="flex items-center gap-2"><span className="w-3 h-3 bg-yellow-100 border border-yellow-300 rounded-sm"></span> <span><strong>EP</strong> - Em Processo</span></div>
-                                <div className="flex items-center gap-2"><span className="w-3 h-3 bg-red-100 border border-red-300 rounded-sm"></span> <span><strong>NO</strong> - Não Observado</span></div>
+                            {/* LEGENDA */}
+                            <div className="flex flex-wrap justify-center gap-4 my-6 text-xs">
+                                <div className="flex items-center gap-2"><span className="w-3 h-3 bg-green-100 border border-green-300 rounded-sm flex-shrink-0"></span> <span className="whitespace-nowrap"><strong>D</strong> - Desenvolvido</span></div>
+                                <div className="flex items-center gap-2"><span className="w-3 h-3 bg-yellow-100 border border-yellow-300 rounded-sm flex-shrink-0"></span> <span className="whitespace-nowrap"><strong>EP</strong> - Em Processo</span></div>
+                                <div className="flex items-center gap-2"><span className="w-3 h-3 bg-red-100 border border-red-300 rounded-sm flex-shrink-0"></span> <span className="whitespace-nowrap"><strong>NO</strong> - Não Observado</span></div>
                             </div>
 
                             {/* CORREÇÃO: Verificar se currentReport existe antes de acessar fields */}
