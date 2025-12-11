@@ -369,8 +369,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                 <div className="space-y-6 animate-fade-in-up">
                                                     {selectedStage !== 'recuperacaoFinal' && (
                                                         <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-6">
-                                                            <div className="flex justify-between items-center mb-3 pb-2 border-b border-blue-200">
-                                                                <h3 className="font-bold text-lg text-blue-950">{getStageDisplay(selectedStage).replace('Recuperação ', '')}</h3>
+                                                            <div className="flex flex-col items-center mb-3 pb-2 border-b border-blue-200 gap-2">
+                                                                <h3 className="font-bold text-lg text-blue-950 whitespace-nowrap">{getStageDisplay(selectedStage).replace('Recuperação ', '')}</h3>
                                                                 <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${isAnnualMediaPassing ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
                                                                     {currentGradeData ? (isAnnualMediaPassing ? 'NA MÉDIA' : 'ABAIXO DA MÉDIA') : 'SEM REGISTRO'}
                                                                 </span>
