@@ -26,8 +26,8 @@ export default async function handler(request, response) {
             throw new Error('GEMINI_API_KEY não configurada no servidor.');
         }
 
-        // Modelo verificado que funciona com a chave fornecida (Trusted Tester / Preview)
-        const model = 'gemini-2.5-flash-preview-09-2025';
+        // Modelo de emergência verificado que funciona (Backup)
+        const model = 'gemini-robotics-er-1.5-preview';
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
         const prompt = `
