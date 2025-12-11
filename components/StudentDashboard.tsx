@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Student, GradeEntry, Teacher, Subject, SchoolMessage, AttendanceRecord, AttendanceStatus, BimesterData, UnitContact, EarlyChildhoodReport, CompetencyStatus } from '../types'; 
+// FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
+import { Student, GradeEntry, Teacher, Subject, SchoolMessage, MessageRecipient, MessageType, AttendanceRecord, AttendanceStatus, BimesterData, UnitContact, EarlyChildhoodReport, CompetencyStatus } from '../types'; 
 import { getStudyTips } from '../services/geminiService';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 import { MessageBox } from './MessageBox';
+
 // --- DADOS DAS UNIDADES (Definidos localmente) ---
 const UNITS_DATA: Record<string, { address: string; cep: string; phone: string; email: string; cnpj: string }> = {
   'Zona Norte': {
@@ -35,6 +37,7 @@ const UNITS_DATA: Record<string, { address: string; cep: string; phone: string; 
     cnpj: '08.693.673/0004-38'
   }
 };
+
 const DEFAULT_UNIT_DATA = {
   address: 'Expansivo Rede de Ensino - Matriz',
   cep: '59000-000',
@@ -42,6 +45,7 @@ const DEFAULT_UNIT_DATA = {
   email: 'contato@expansivo.com.br',
   cnpj: '00.000.000/0001-00'
 };
+
 interface StudentDashboardProps {
   student: Student;
   grades: GradeEntry[];
@@ -52,6 +56,7 @@ interface StudentDashboardProps {
   onLogout: () => void;
   onSendMessage: (message: Omit<SchoolMessage, 'id'>) => Promise<void>;
 }
+
 export const StudentDashboard: React.FC<StudentDashboardProps> = ({ 
     student, 
     grades, 
@@ -68,10 +73,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   
   // Estado para controle do semestre do relatório infantil
   const [selectedReportSemester, setSelectedReportSemester] = useState<1 | 2>(1);
+
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1; 
   const semester = currentMonth >= 7 ? 2 : 1;
   const headerText = `Boletim Escolar ${currentYear}.${semester}`;
+
   const studentGrades = (grades || []).filter(g => g.studentId === student.id);
   const currentUnitInfo = UNITS_DATA[student.unit] || DEFAULT_UNIT_DATA;
   
@@ -80,6 +87,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       const grade = student.gradeLevel.toLowerCase();
       return grade.includes('nível') || grade.includes('infantil') || grade.includes('edu. infantil');
   }, [student.gradeLevel]);
+
   // Busca o relatório correspondente (apenas se for Ed. Infantil)
   const currentReport = useMemo(() => {
       if (!isEarlyChildhood) return null;
@@ -89,6 +97,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           r.semester === selectedReportSemester
       );
   }, [isEarlyChildhood, earlyChildhoodReports, student.id, currentYear, selectedReportSemester]);
+
   const studentAttendance = useMemo(() => {
     return attendanceRecords
       .map(record => {
@@ -103,12 +112,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       .filter((record): record is { date: string; status: AttendanceStatus } => record !== null)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [attendanceRecords, student.id]);
+
   const recentAttendance = studentAttendance.slice(0, 7);
+
   // CORREÇÃO: Melhor tratamento de datas
   const absencesThisMonth = useMemo(() => {
       const now = new Date();
       const currentMonthLocal = now.getMonth();
       const currentYearLocal = now.getFullYear();
+
       return studentAttendance.filter(record => {
           const recordDate = new Date(record.date + 'T00:00:00'); // Força interpretação local
           return recordDate.getFullYear() === currentYearLocal &&
@@ -116,6 +128,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                  record.status === AttendanceStatus.ABSENT;
       }).length;
   }, [studentAttendance]);
+
+
   const formatGrade = (grade: number | null | undefined) => (grade !== null && grade !== undefined && grade !== 0) ? grade.toFixed(1) : '-';
   
   const getTeacherPhone = (subjectName: string) => {
@@ -124,18 +138,24 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         t.subjects.includes(subjectName as any) &&
         t.unit === student.unit
       );
+      
       const fallbackTeacher = teachers.find(t => t.subjects && t.subjects.includes(subjectName as any));
+      
       return teacher ? teacher.phoneNumber : fallbackTeacher?.phoneNumber;
   };
+
   const getTeacherName = (subjectName: string) => {
       const teacher = teachers.find(t => 
         t.subjects && 
         t.subjects.includes(subjectName as any) &&
         t.unit === student.unit 
       );
+      
       const fallbackTeacher = teachers.find(t => t.subjects && t.subjects.includes(subjectName as any));
+      
       return teacher ? teacher.name : (fallbackTeacher ? fallbackTeacher.name : 'Professor não atribuído');
   };
+
   const handleGetHelp = async (subject: Subject, difficultyTopic: string) => {
     if (!difficultyTopic) return;
     setModalContent({ title: `Tutor IA: ${subject}`, tip: '' });
@@ -150,11 +170,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         setIsLoadingAI(false);
     }
   };
+
   const handleDownloadPDF = () => {
     setTimeout(() => {
         window.print();
     }, 100);
   };
+
   // CORREÇÃO: Adicionar verificação de segurança para bimesters
   const supportNeededGrades = studentGrades.filter(g => {
       if (!g.bimesters) return false; // Verificação de segurança
@@ -163,11 +185,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       const isLowGrade = media < 7.0 && g.situacaoFinal !== 'Aprovado';
       const isWarningGrade = media >= 7.0 && media <= 8.5;
       const isHighGrade = media > 8.5;
+      // FIX: Explicitly type 'b' to resolve 'unknown' type from Object.values
       const hasDifficulty = Object.values(g.bimesters).some((b: BimesterData) => 
           b && b.difficultyTopic && b.difficultyTopic.trim().length > 5
       );
+
       return isLowGrade || isWarningGrade || isHighGrade || hasDifficulty;
   });
+
   const getStatusBadge = (status: CompetencyStatus | null) => {
       switch (status) {
           case CompetencyStatus.DEVELOPED:
@@ -180,6 +205,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
               return <span className="px-2 py-1 rounded bg-gray-100 text-gray-500 text-xs border border-gray-200">-</span>;
       }
   };
+
   // CORREÇÃO: Função auxiliar para sanitizar HTML
   const sanitizeAndFormatTip = (tip: string) => {
       if (!tip) return '';
@@ -187,6 +213,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
           .replace(/\n/g, '<br/>');
   };
+
   return (
     <div className="p-6 bg-gray-100 min-h-screen print:p-0 print:bg-white"> 
       <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-lg p-6 print:shadow-none print:w-full">
@@ -195,19 +222,21 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         <div className="flex justify-between items-center mb-6 border-b pb-4 print:hidden">
           <div className="flex items-center gap-3">
              <SchoolLogo variant="header" />
-             <h1 className="text-2xl font-bold text-gray-800">Portal da Família</h1>
+             <h1 className="text-2xl font-bold text-gray-800">Meu Expansivo</h1>
           </div>
           
           <div className="flex items-center gap-4">
               <Button variant="secondary" onClick={onLogout}>Sair</Button>
           </div>
         </div>
+
         {/* --- BOAS VINDAS PAIS --- */}
         <div className="bg-blue-50 border-l-4 border-blue-950 p-4 mb-6 rounded-r-lg print:hidden">
           <p className="text-sm text-blue-900">
-            Bem-vindo ao Portal da Família! Acompanhe aqui o desenvolvimento escolar de <strong>{student.name}</strong>.
+            Bem-vindo ao Meu Expansivo! Acompanhe aqui o desenvolvimento escolar de <strong>{student.name}</strong>.
           </p>
         </div>
+
         {/* --- MURAL DE AVISOS --- */}
         <div className="mb-8 print:hidden">
             <div className="bg-gradient-to-r from-blue-950 to-slate-900 rounded-lg shadow-md p-6 text-white">
@@ -255,6 +284,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 )}
             </div>
         </div>
+
+
         {/* --- CABEÇALHO DO BOLETIM (COMUM A TODOS) --- */}
         <div className="mb-8 border-b-2 border-blue-950 pb-4">
             <div className="flex justify-between items-start">
@@ -278,6 +309,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     <p className="text-xs text-gray-500 mt-1">Emissão: {new Date().toLocaleDateString('pt-BR')}</p>
                 </div>
             </div>
+
             <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200 grid grid-cols-2 gap-y-2 gap-x-8 text-sm">
                 <div>
                     <span className="font-bold text-gray-600 uppercase text-xs block">Aluno</span>
@@ -337,6 +369,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         <div className="flex items-center gap-2"><span className="w-3 h-3 bg-yellow-100 border border-yellow-300 rounded-sm"></span> <span><strong>EP</strong> - Em Processo</span></div>
                         <div className="flex items-center gap-2"><span className="w-3 h-3 bg-red-100 border border-red-300 rounded-sm"></span> <span><strong>NO</strong> - Não Observado</span></div>
                     </div>
+
                     {/* CORREÇÃO: Verificar se currentReport existe antes de acessar fields */}
                     {currentReport && currentReport.fields ? (
                         <>
@@ -359,6 +392,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     </div>
                                 ))}
                             </div>
+
                             {/* OBSERVAÇÕES DO PROFESSOR */}
                             <div className="mt-8 border border-gray-200 rounded-lg p-6 bg-blue-50/30">
                                 <h4 className="font-bold text-blue-950 mb-3 flex items-center gap-2">
@@ -446,6 +480,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         </tbody>
                     </table>
                 </div>
+
                 {/* --- SUPORTE AO ALUNO --- */}
                 {supportNeededGrades.length > 0 && (
                     <div className="mt-8 print:hidden">
@@ -476,6 +511,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     message: '',
                                     showContactButton: false
                                 };
+
                                 if (isLowGrade) {
                                     statusConfig = { color: 'border-l-red-500', badge: 'Atenção', badgeColor: 'bg-red-100 text-red-800', message: 'Nota abaixo da média. Recomendamos reforço.', showContactButton: true };
                                 } else if (media >= 7.0 && media <= 8.5) {
@@ -485,7 +521,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 } else if (media > 9.5) {
                                     statusConfig = { color: 'border-l-purple-500', badge: 'Excelente', badgeColor: 'bg-purple-100 text-purple-800', message: 'Uau! Resultado extraordinário! Sua dedicação está fazendo toda a diferença. 🏆', showContactButton: false };
                                 }
+
                                 const waPhone = teacherPhone ? teacherPhone.replace(/\D/g, '') : '';
+
                                 return (
                                     <div key={grade.id} className={`p-5 border-l-4 rounded-lg bg-white shadow-md transition-shadow hover:shadow-lg ${statusConfig.color} flex flex-col`}>
                                         <div className="flex justify-between items-start mb-3">
@@ -510,8 +548,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                     </div>
                                                 </div>
                                             ))}
+
                                             {statusConfig.message && <p className="text-sm text-gray-500 italic font-medium pt-2">{statusConfig.message}</p>}
                                         </div>
+
                                         <div className="mt-auto border-t border-gray-100 pt-4">
                                             {statusConfig.showContactButton && teacherPhone && (
                                                 <a 
@@ -533,6 +573,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 )}
             </>
         )}
+
         <div className="hidden print:flex mt-16 pt-8 border-t border-gray-400 justify-between items-end">
             <div className="text-center w-64">
                 <div className="border-b border-black mb-2"></div>
@@ -543,7 +584,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 <p className="text-xs uppercase font-bold">Responsável do Aluno</p>
             </div>
         </div>
+        
         <MessageBox student={student} onSendMessage={onSendMessage} unitContacts={unitContacts || []} />
+
         {/* CORREÇÃO: Modal com melhor tratamento de conteúdo */}
         {isModalOpen && (
           <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 print:hidden p-4">

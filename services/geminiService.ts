@@ -3,7 +3,7 @@ import { Subject } from "../types";
 
 // FIX: Initialize the GoogleGenAI client directly using the API key from environment variables
 // as per the coding guidelines. This avoids complex and conditional key retrieval.
-const ai = new GoogleGenAI({ apiKey: "AIzaSyD-vPAZZ4F8CRuVds5det4d4CGp6DwnTug" });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 
 
 export const getStudyTips = async (subject: Subject, difficultyTopic: string, gradeLevel: string): Promise<string> => {
