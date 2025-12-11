@@ -375,18 +375,18 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                     {currentGradeData ? (isAnnualMediaPassing ? 'NA MÉDIA' : 'ABAIXO DA MÉDIA') : 'SEM REGISTRO'}
                                                                 </span>
                                                             </div>
-                                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center divide-y sm:divide-y-0 sm:divide-x divide-blue-200">
-                                                                <div>
-                                                                    <span className="block text-xs text-blue-950 font-semibold uppercase tracking-wider mb-1">Nota Lançada</span>
-                                                                    <span className="block text-xl font-bold text-gray-700">{getBimesterDataDisplay()?.nota ?? '-'}</span>
+                                                            <div className="grid grid-cols-3 gap-2 md:gap-4 text-center divide-x divide-blue-200">
+                                                                <div className="px-1">
+                                                                    <span className="block text-[10px] md:text-xs text-blue-950 font-semibold uppercase tracking-wider mb-1">Nota</span>
+                                                                    <span className="block text-lg md:text-xl font-bold text-gray-700">{formatGrade(getBimesterDataDisplay()?.nota)}</span>
                                                                 </div>
-                                                                <div>
-                                                                    <span className="block text-xs text-blue-950 font-semibold uppercase tracking-wider mb-1">Recuperação</span>
-                                                                    <span className="block text-xl font-bold text-gray-700">{getBimesterDataDisplay()?.recuperacao ?? '-'}</span>
+                                                                <div className="px-1">
+                                                                    <span className="block text-[10px] md:text-xs text-blue-950 font-semibold uppercase tracking-wider mb-1">Rec.</span>
+                                                                    <span className="block text-lg md:text-xl font-bold text-gray-700">{formatGrade(getBimesterDataDisplay()?.recuperacao)}</span>
                                                                 </div>
-                                                                <div>
-                                                                    <span className="block text-xs text-blue-950 font-semibold uppercase tracking-wider mb-1">Média Anual</span>
-                                                                    <span className="block text-2xl font-extrabold text-blue-950">{getAnnualMediaDisplay()}</span>
+                                                                <div className="px-1">
+                                                                    <span className="block text-[10px] md:text-xs text-blue-950 font-semibold uppercase tracking-wider mb-1">Média</span>
+                                                                    <span className="block text-lg md:text-2xl font-extrabold text-blue-950">{getAnnualMediaDisplay()}</span>
                                                                 </div>
                                                             </div>
                                                         </div>
