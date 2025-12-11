@@ -24,6 +24,10 @@ interface TeacherDashboardProps {
     onLogout: () => void;
 }
 
+const formatGrade = (value: number | undefined | null) => {
+    return value !== undefined && value !== null ? value.toFixed(1) : '-';
+};
+
 export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, students, grades, attendanceRecords, earlyChildhoodReports, onSaveGrade, onSaveAttendance, onSaveEarlyChildhoodReport, onLogout }) => {
     const [activeTab, setActiveTab] = useState<'grades' | 'attendance'>('grades');
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -389,17 +393,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                     )}
 
                                                     {selectedStage !== 'recuperacaoFinal' && (
-                                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                        <div className="grid grid-cols-3 gap-2 md:gap-4">
                                                             <div className={isRecoveryMode ? "opacity-60" : ""}>
-                                                                <label className="block text-sm font-medium text-gray-700 mb-1">Nota (0-10) {isRecoveryMode && <span className="text-xs text-gray-500">(Leitura)</span>}</label>
+                                                                <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Nota {isRecoveryMode && <span className="text-[10px] text-gray-500 hidden md:inline">(Leitura)</span>}</label>
                                                                 <input type="number" step="0.1" min="0" max="10" value={nota} onChange={handleInputChange(setNota)} disabled={isRecoveryMode} className={`w-full p-2 border border-gray-300 rounded text-center font-bold text-lg ${isRecoveryMode ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`} placeholder="-" />
                                                             </div>
                                                             <div className={!isRecoveryMode ? "opacity-60" : ""}>
-                                                                <label className="block text-sm font-medium text-gray-700 mb-1">Recuperação {!isRecoveryMode && <span className="text-xs text-gray-500">(Leitura)</span>}</label>
+                                                                <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Rec. {!isRecoveryMode && <span className="text-[10px] text-gray-500 hidden md:inline">(Leitura)</span>}</label>
                                                                 <input type="number" step="0.1" min="0" max="10" value={recuperacao} onChange={handleInputChange(setRecuperacao)} disabled={!isRecoveryMode} className={`w-full p-2 border border-gray-300 rounded text-center text-gray-600 ${!isRecoveryMode ? 'bg-gray-100 cursor-not-allowed' : 'bg-white font-bold'}`} placeholder="-" />
                                                             </div>
                                                             <div className={isRecoveryMode ? "opacity-60" : ""}>
-                                                                <label className="block text-sm font-medium text-gray-700 mb-1">Faltas</label>
+                                                                <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Faltas</label>
                                                                 <input type="number" min="0" value={faltas} onChange={handleInputChange(setFaltas)} disabled={isRecoveryMode} className={`w-full p-2 border border-gray-300 rounded text-center ${isRecoveryMode ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`} placeholder="0" />
                                                             </div>
                                                         </div>
@@ -440,41 +444,52 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         {selectedStudent && (
                                             <div className="mt-8">
                                                 <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center"><span className="mr-2">📊</span> Boletim Geral do Aluno</h3>
-                                                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
-                                                    <table className="min-w-full divide-y divide-gray-200 border border-gray-200">
-                                                        <thead className="bg-gray-50">
+                                                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto pb-4">
+                                                    <table className="min-w-[1000px] divide-y divide-gray-200 border border-gray-200 text-sm">
+                                                        <thead className="bg-blue-50">
                                                             <tr>
-                                                                <th rowSpan={2} className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Disciplina</th>
-                                                                {[1, 2, 3, 4].map(num => (<th key={num} colSpan={3} className="px-1 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-l">{num}º BIM</th>))}
-                                                                <th rowSpan={2} className="px-2 py-3 text-center text-xs font-bold text-red-500 uppercase tracking-wider border-l">Prova<br />Final</th>
-                                                                <th rowSpan={2} className="px-2 py-3 text-center text-xs font-bold text-blue-950 uppercase tracking-wider border-l">Média<br />Final</th>
+                                                                <th rowSpan={2} className="px-2 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-24 md:w-40 sticky left-0 bg-blue-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[10px] md:text-sm">Disciplina</th>
+                                                                {[1, 2, 3, 4].map(num => (<th key={num} colSpan={3} className="px-1 py-2 text-center font-bold text-gray-700 uppercase tracking-wider border-l border-r border-gray-300">{num}º BIM</th>))}
+                                                                <th rowSpan={2} className="px-2 py-3 text-center font-bold text-red-700 uppercase tracking-wider border-r border-gray-300 bg-red-50 w-16 text-[10px] leading-tight">Prova<br />Final</th>
+                                                                <th rowSpan={2} className="px-2 py-3 text-center font-bold text-blue-950 uppercase tracking-wider border-r border-gray-300 bg-blue-100 w-16 text-[10px] leading-tight">Média<br />Final</th>
+                                                                <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase w-20 text-[10px]">Situação</th>
                                                             </tr>
-                                                            <tr className="text-xs text-gray-500">
+                                                            <tr className="bg-blue-50 text-[10px]">
                                                                 {[1, 2, 3, 4].map(num => (
                                                                     <React.Fragment key={num}>
-                                                                        <th className="px-1 py-1 text-center font-semibold border-l" title={`Nota ${num}º Bimestre`}>N{num}</th>
-                                                                        <th className="px-1 py-1 text-center font-semibold" title={`Recuperação ${num}º Bimestre`}>R{num}</th>
-                                                                        <th className="px-1 py-1 text-center font-bold text-blue-950 bg-blue-50" title={`Média ${num}º Bimestre`}>M{num}</th>
+                                                                        <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300" title="Nota">N</th>
+                                                                        <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300" title="Recuperação">R</th>
+                                                                        <th className="px-1 py-1 text-center font-bold text-blue-950 bg-blue-50 border-r border-gray-300" title="Faltas">F</th>
                                                                     </React.Fragment>
                                                                 ))}
                                                             </tr>
                                                         </thead>
                                                         <tbody className="bg-white divide-y divide-gray-200">
-                                                            {grades.filter(g => g.studentId === selectedStudent.id).map((g) => (
-                                                                <tr key={g.id} className="hover:bg-gray-50 transition">
-                                                                    <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{g.subject}</td>
-                                                                    {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map(key => {
-                                                                        const bData = g.bimesters[key as keyof typeof g.bimesters];
+                                                            {(grades.filter(g => g.studentId === selectedStudent.id) || []).map((grade) => (
+                                                                <tr key={grade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-200">
+                                                                    <td className="px-2 py-2 font-bold text-gray-900 border-r border-gray-300 text-[10px] md:text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] align-top">
+                                                                        <span className="uppercase block leading-tight mb-1">{grade.subject}</span>
+                                                                    </td>
+                                                                    {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
+                                                                        const bData = grade.bimesters[key as keyof typeof grade.bimesters];
                                                                         return (
                                                                             <React.Fragment key={key}>
-                                                                                <td className="px-2 py-3 text-center text-sm text-gray-500 border-l">{bData.nota?.toFixed(1) ?? '-'}</td>
-                                                                                <td className="px-2 py-3 text-center text-sm text-gray-500">{bData.recuperacao?.toFixed(1) ?? '-'}</td>
-                                                                                <td className="px-2 py-3 text-center text-sm font-bold text-black bg-gray-50">{bData.media.toFixed(1)}</td>
+                                                                                <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-300">{formatGrade(bData.nota)}</td>
+                                                                                <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-300">{formatGrade(bData.recuperacao)}</td>
+                                                                                <td className="px-1 py-2 text-center text-gray-500 text-xs border-r border-gray-300">{bData.faltas || ''}</td>
                                                                             </React.Fragment>
                                                                         );
                                                                     })}
-                                                                    <td className="px-2 py-3 text-center text-sm font-bold text-red-600 border-l">{g.recuperacaoFinal ? g.recuperacaoFinal.toFixed(1) : '-'}</td>
-                                                                    <td className="px-2 py-3 text-center text-sm font-bold text-blue-950">{g.mediaFinal.toFixed(1)}</td>
+                                                                    <td className="px-1 py-2 text-center font-bold text-red-600 bg-red-50 text-sm border-r border-gray-300">{formatGrade(grade.recuperacaoFinal)}</td>
+                                                                    <td className="px-1 py-2 text-center font-extrabold text-blue-950 bg-blue-50 text-sm border-r border-gray-300">{formatGrade(grade.mediaFinal)}</td>
+                                                                    <td className="px-1 py-2 text-center align-middle">
+                                                                        <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                                            grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                                                                'bg-red-50 text-red-700 border-red-200'
+                                                                            }`}>
+                                                                            {grade.situacaoFinal}
+                                                                        </span>
+                                                                    </td>
                                                                 </tr>
                                                             ))}
                                                         </tbody>
