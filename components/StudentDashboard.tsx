@@ -419,7 +419,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             <table className="min-w-[1000px] divide-y divide-gray-200 border border-gray-300 text-sm">
                                 <thead className="bg-blue-50 print:bg-gray-100">
                                     <tr>
-                                        <th rowSpan={2} className="px-3 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-40 sticky left-0 bg-blue-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Disciplina</th>
+                                        <th rowSpan={2} className="px-2 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-24 md:w-40 sticky left-0 bg-blue-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[10px] md:text-sm">Disciplina</th>
                                         {[1, 2, 3, 4].map(num => (
                                             <th key={num} colSpan={4} className="px-1 py-2 text-center font-bold text-gray-700 uppercase border-r border-gray-300">
                                                 {num}º Bim
@@ -444,9 +444,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {studentGrades.map((grade) => (
                                         <tr key={grade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-300">
-                                            <td className="px-3 py-2 font-bold text-gray-900 border-r border-gray-300 text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                                                <span className="uppercase block">{grade.subject}</span>
-                                                <span className="text-[10px] text-gray-500 font-normal mt-0.5 block italic truncate max-w-[150px]">
+                                            <td className="px-2 py-2 font-bold text-gray-900 border-r border-gray-300 text-[10px] md:text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] align-top">
+                                                <span className="uppercase block leading-tight mb-1">{grade.subject}</span>
+                                                <span className="text-[9px] text-gray-500 font-normal block italic whitespace-normal leading-tight break-words">
                                                     Prof. {getTeacherName(grade.subject)}
                                                 </span>
                                             </td>
