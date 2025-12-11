@@ -30,7 +30,8 @@ export default async function handler(request, response) {
         }
 
         const genAI = new GoogleGenAI({ apiKey: apiKey });
-        const model = 'gemini-2.5-flash';
+        // MUDANÇA: Usando modelo estável para garantir suporte a plano pago e evitar limites de free tier incorretos
+        const model = 'gemini-1.5-flash';
 
         const prompt = `
       Atue como um tutor escolar especializado e motivador.
@@ -46,16 +47,44 @@ export default async function handler(request, response) {
       Use formatação Markdown simples (negrito, listas). Seja direto e encorajador.
     `;
 
-        // Instancia o cliente especificando o modelo corretamente
-        // Nota: A SDK mudou recentemente, vamos usar a forma mais compatível
-        // Se a versão do @google/genai for a mais recente, usamos assim:
         const client = genAI.models;
 
-        // Mas para garantir compatibilidade com o código anterior que usava generateContent direto:
-        const result = await client.generateContent({
-            model: model,
-            contents: prompt,
-        });
+        // Função de retry robusta
+        const generateWithRetry = async (retries = 3, initialDelay = 1000) => {
+            let delay = initialDelay;
+            for (let i = 0; i < retries; i++) {
+                try {
+                    return await client.generateContent({
+                        model: model,
+                        contents: prompt,
+                    });
+                } catch (err) {
+                    const errorMessage = err.message || '';
+                    const isRateLimit = errorMessage.includes('429') ||
+                        errorMessage.includes('limit') ||
+                        errorMessage.includes('quota') ||
+                        errorMessage.includes('RESOURCE_EXHAUSTED');
+
+                    const isOverloaded = errorMessage.includes('503') ||
+                        errorMessage.includes('overloaded');
+
+                    // Se for a última tentativa, lança o erro independente do tipo
+                    if (i === retries - 1) throw err;
+
+                    if (isRateLimit || isOverloaded) {
+                        console.warn(`Tentativa ${i + 1} falhou (${isRateLimit ? 'Rate Limit' : 'Overloaded'}). Tentando novamente em ${delay}ms...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2; // Backoff exponencial
+                        continue;
+                    }
+
+                    // Se for outro tipo de erro (ex: 400 Bad Request), não adianta retentar
+                    throw err;
+                }
+            }
+        };
+
+        const result = await generateWithRetry();
 
         const responseText = result.text;
 
@@ -63,9 +92,19 @@ export default async function handler(request, response) {
 
     } catch (error) {
         console.error("Erro na Serverless Function:", error);
+
+        // Verifica se o erro original foi por rate limit e retorna status apropriado
+        const errorMessage = error.message || '';
+        if (errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED')) {
+            return response.status(429).json({
+                error: 'O sistema de IA está com alta demanda. Por favor, aguarde alguns segundos e tente novamente.',
+                details: errorMessage
+            });
+        }
+
         return response.status(500).json({
             error: 'Erro interno ao processar a solicitação de IA.',
-            details: error.message
+            details: errorMessage
         });
     }
 }
