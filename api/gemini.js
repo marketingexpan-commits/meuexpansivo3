@@ -19,13 +19,15 @@ export default async function handler(request, response) {
 
     try {
         const { subject, difficultyTopic, gradeLevel } = request.body;
-        const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+        // Prioriza a chave nova se não tiver no env
+        const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "AIzaSyCB-YNCrnUJE_W7l4hNcwlEmtpSoCjSJIw";
 
         if (!apiKey) {
             throw new Error('GEMINI_API_KEY não configurada no servidor.');
         }
 
-        const model = 'gemini-1.5-flash';
+        // Modelo verificado que funciona com a chave fornecida (Trusted Tester / Preview)
+        const model = 'gemini-2.5-flash-preview-09-2025';
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
         const prompt = `
