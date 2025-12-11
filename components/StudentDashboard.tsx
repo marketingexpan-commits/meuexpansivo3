@@ -414,13 +414,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 ) : (
                     // --- VIEW FUNDAMENTAL E MÉDIO (Notas Numéricas) ---
                     <>
-                        {/* --- VIEW GRADES: TABLE (DESKTOP) vs CARDS (MOBILE) --- */}
-                        {/* DESKTOP TABLE VIEW */}
-                        <div className="hidden md:block overflow-x-auto pb-4">
-                            <table className="min-w-full divide-y divide-gray-200 border border-gray-300 text-sm">
+                        {/* --- VIEW GRADES: RESPONSIVE TABLE (ALL SCREENS) --- */}
+                        <div className="overflow-x-auto pb-4 w-full">
+                            <table className="min-w-[1000px] divide-y divide-gray-200 border border-gray-300 text-sm">
                                 <thead className="bg-blue-50 print:bg-gray-100">
                                     <tr>
-                                        <th rowSpan={2} className="px-3 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-40">Disciplina</th>
+                                        <th rowSpan={2} className="px-3 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-40 sticky left-0 bg-blue-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Disciplina</th>
                                         {[1, 2, 3, 4].map(num => (
                                             <th key={num} colSpan={4} className="px-1 py-2 text-center font-bold text-gray-700 uppercase border-r border-gray-300">
                                                 {num}º Bim
@@ -445,7 +444,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {studentGrades.map((grade) => (
                                         <tr key={grade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-300">
-                                            <td className="px-3 py-2 font-bold text-gray-900 border-r border-gray-300 text-xs">
+                                            <td className="px-3 py-2 font-bold text-gray-900 border-r border-gray-300 text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                                                 <span className="uppercase block">{grade.subject}</span>
                                                 <span className="text-[10px] text-gray-500 font-normal mt-0.5 block italic truncate max-w-[150px]">
                                                     Prof. {getTeacherName(grade.subject)}
@@ -480,84 +479,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     )}
                                 </tbody>
                             </table>
-                        </div>
-
-                        {/* MOBILE CARD VIEW */}
-                        <div className="md:hidden space-y-4">
-                            {studentGrades.map((grade) => (
-                                <div key={grade.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div>
-                                            <h4 className="font-bold text-blue-950 text-xl">{grade.subject}</h4>
-                                            <p className="text-xs text-gray-500 italic">Prof. {getTeacherName(grade.subject)}</p>
-                                        </div>
-                                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-100 text-green-700' :
-                                                grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-100 text-yellow-700' :
-                                                    'bg-red-100 text-red-700'
-                                            }`}>
-                                            {grade.situacaoFinal}
-                                        </span>
-                                    </div>
-
-                                    {/* Scrollable Container for Bimesters */}
-                                    <div className="overflow-x-auto -mx-4 px-4 pb-2 mb-4 scrollbar-hide">
-                                        <div className="flex gap-3 min-w-max">
-                                            {['1º', '2º', '3º', '4º'].map((bim, idx) => {
-                                                const key = `bimester${idx + 1}` as keyof typeof grade.bimesters;
-                                                const bData = grade.bimesters[key];
-                                                return (
-                                                    <div key={key} className="bg-gray-50 rounded-lg p-3 w-28 border border-gray-100 flex-shrink-0">
-                                                        <div className="text-xs font-bold text-gray-500 mb-2 border-b border-gray-200 pb-1 text-center">{bim} Bimestre</div>
-                                                        <div className="space-y-1">
-                                                            <div className="flex justify-between text-xs">
-                                                                <span className="text-gray-400">Nota:</span>
-                                                                <span className="font-bold text-gray-800">{formatGrade(bData.nota)}</span>
-                                                            </div>
-                                                            <div className="flex justify-between text-xs">
-                                                                <span className="text-gray-400">Rec:</span>
-                                                                <span className="font-medium text-gray-600">{formatGrade(bData.recuperacao)}</span>
-                                                            </div>
-                                                            <div className="flex justify-between text-xs bg-white rounded px-1 py-0.5">
-                                                                <span className="text-blue-900 font-bold">Média:</span>
-                                                                <span className="font-bold text-blue-950">{formatGrade(bData.media)}</span>
-                                                            </div>
-                                                            <div className="flex justify-between text-xs">
-                                                                <span className="text-gray-400">Faltas:</span>
-                                                                <span className="font-medium text-red-500">{bData.faltas}</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                        <p className="text-[9px] text-gray-400 text-center mt-2 flex items-center justify-center gap-1">
-                                            <span>↔️</span> Deslize para ver todos os bimestres
-                                        </p>
-                                    </div>
-
-                                    <div className="flex divide-x divide-gray-100 bg-blue-50 rounded-lg border border-blue-100 overflow-hidden">
-                                        <div className="flex-1 p-3 text-center">
-                                            <span className="text-[9px] text-blue-900 uppercase font-black block tracking-tight">Média Anual</span>
-                                            <span className="text-base font-bold text-gray-700">{formatGrade(grade.mediaAnual)}</span>
-                                        </div>
-                                        {grade.recuperacaoFinal !== null && (
-                                            <div className="flex-1 p-3 text-center bg-red-50">
-                                                <span className="text-[9px] text-red-900 uppercase font-black block tracking-tight">Rec. Final</span>
-                                                <span className="text-base font-bold text-red-600">{formatGrade(grade.recuperacaoFinal)}</span>
-                                            </div>
-                                        )}
-                                        <div className="flex-1 p-3 text-center bg-blue-100">
-                                            <span className="text-[9px] text-blue-950 uppercase font-black block tracking-tight">Média Final</span>
-                                            <span className="text-xl font-extrabold text-blue-950">{formatGrade(grade.mediaFinal)}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                            {studentGrades.length === 0 && (
-                                <div className="text-center py-8 text-gray-500 italic bg-gray-50 rounded-lg border border-gray-200">
-                                    Nenhuma nota lançada para este período letivo.
-                                </div>
-                            )}
                         </div>
 
                         {/* --- SUPORTE AO ALUNO --- */}
