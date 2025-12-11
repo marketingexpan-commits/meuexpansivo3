@@ -23,11 +23,13 @@ export default async function handler(request, response) {
     try {
         const { subject, difficultyTopic, gradeLevel } = request.body;
 
-        if (!process.env.GEMINI_API_KEY) {
-            throw new Error('GEMINI_API_KEY não configurada no servidor.');
+        const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+
+        if (!apiKey) {
+            throw new Error('GEMINI_API_KEY (ou VITE_GEMINI_API_KEY) não configurada no servidor.');
         }
 
-        const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const genAI = new GoogleGenAI({ apiKey: apiKey });
         const model = 'gemini-2.5-flash';
 
         const prompt = `
