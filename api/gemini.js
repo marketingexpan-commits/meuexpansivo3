@@ -50,7 +50,7 @@ export default async function handler(request, response) {
             }]
         };
 
-        const generateWithRetry = async (retries = 3, initialDelay = 1000) => {
+        const generateWithRetry = async (retries = 5, initialDelay = 800) => {
             let delay = initialDelay;
             for (let i = 0; i < retries; i++) {
                 try {
