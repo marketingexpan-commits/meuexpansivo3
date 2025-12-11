@@ -521,34 +521,44 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                     <div className="lg:hidden space-y-4">
                                         {attendanceStudents.map(student => {
                                             const absences = absenceData[student.id] || { bimester: 0, year: 0 };
+                                            const status = studentStatuses[student.id]; // Assuming studentStatuses holds the current status
+                                            const bimesterAbsences = absences.bimester; // Assuming absences.bimester is available
+                                            const totalAbsences = absences.year; // Assuming absences.year is available
                                             return (
-                                                <div key={student.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                                                    <div className="flex justify-between items-start mb-3">
+                                                <div key={student.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col gap-3">
+                                                    <div className="flex justify-between items-start">
                                                         <div>
-                                                            <p className="font-bold text-gray-900 text-lg">{student.name}</p>
-                                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border mt-1 inline-block ${student.shift === 'Matutino' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
-                                                                {student.shift}
-                                                            </span>
+                                                            <h4 className="font-bold text-gray-800">{student.name}</h4>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${student.shift === 'Matutino' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                                    {student.shift}
+                                                                </span>
+                                                                {status === AttendanceStatus.PRESENT && <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">PRESENTE</span>}
+                                                                {status === AttendanceStatus.ABSENT && <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">FALTOU</span>}
+                                                            </div>
+                                                            <div className="mt-1 text-xs text-gray-500 space-y-0.5">
+                                                                <p>{currentBimester}º Bimestre: <span className="font-bold text-red-600">{bimesterAbsences} falta(s)</span></p>
+                                                                <p>Total no Ano: <span className="font-bold text-gray-800">{totalAbsences} falta(s)</span></p>
+                                                            </div>
                                                         </div>
                                                     </div>
 
-                                                    <div className="flex gap-4 text-xs text-gray-500 mb-4 bg-gray-50 p-2 rounded">
-                                                        <span>{currentBimester}º Bimestre: <strong className="text-red-600">{absences.bimester} falta(s)</strong></span>
-                                                        <span>Ano: <strong className="text-gray-700">{absences.year}</strong></span>
-                                                    </div>
-
-                                                    <div className="grid grid-cols-2 gap-3">
+                                                    <div className="flex gap-2 w-full mt-2">
                                                         <button
-                                                            type="button"
                                                             onClick={() => handleStatusChange(student.id, AttendanceStatus.PRESENT)}
-                                                            className={`py-3 text-sm font-bold rounded-lg transition-all shadow-sm ${studentStatuses[student.id] === AttendanceStatus.PRESENT ? 'bg-green-500 text-white shadow-green-200 ring-2 ring-green-500 ring-offset-2' : 'bg-white text-gray-700 border border-gray-300 hover:bg-green-50'}`}
+                                                            className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all duration-200 border ${status === AttendanceStatus.PRESENT
+                                                                    ? 'bg-green-500 text-white border-green-600 shadow-md transform scale-105'
+                                                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                                                }`}
                                                         >
                                                             Presente
                                                         </button>
                                                         <button
-                                                            type="button"
                                                             onClick={() => handleStatusChange(student.id, AttendanceStatus.ABSENT)}
-                                                            className={`py-3 text-sm font-bold rounded-lg transition-all shadow-sm ${studentStatuses[student.id] === AttendanceStatus.ABSENT ? 'bg-red-600 text-white shadow-red-200 ring-2 ring-red-600 ring-offset-2' : 'bg-white text-gray-700 border border-gray-300 hover:bg-red-50'}`}
+                                                            className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all duration-200 border ${status === AttendanceStatus.ABSENT
+                                                                    ? 'bg-red-500 text-white border-red-600 shadow-md transform scale-105'
+                                                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                                                }`}
                                                         >
                                                             Faltou
                                                         </button>
