@@ -30,8 +30,8 @@ export default async function handler(request, response) {
         }
 
         const genAI = new GoogleGenAI({ apiKey: apiKey });
-        // MUDANÇA: Usando modelo estável para garantir suporte a plano pago e evitar limites de free tier incorretos
-        const model = 'gemini-1.5-flash';
+        // MUDANÇA: Usando modelo estável e específico para evitar erro 404 em v1beta
+        const model = 'gemini-1.5-flash-001';
 
         const prompt = `
       Atue como um tutor escolar especializado e motivador.
