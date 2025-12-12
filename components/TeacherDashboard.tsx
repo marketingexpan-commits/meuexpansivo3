@@ -191,9 +191,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                 <div className="bg-gradient-to-br from-blue-950 to-slate-900 p-6 pb-6 shadow-md relative shrink-0">
                     <div className="flex flex-row justify-between items-center relative z-10">
                         <div className="flex items-center gap-4 text-white">
-                            <div className="bg-white/10 p-2 rounded-lg backdrop-blur-sm shadow-inner border border-white/10">
-                                <SchoolLogo variant="header" /> {/* Assuming SchoolLogo can take size/variant or fits well */}
-                            </div>
+                            <SchoolLogo variant="header" /> {/* Assuming SchoolLogo can take size/variant or fits well */}
                             <div>
                                 <h1 className="text-2xl font-bold tracking-tight text-white mb-0.5 shadow-black drop-shadow-sm">
                                     Painel do Professor
