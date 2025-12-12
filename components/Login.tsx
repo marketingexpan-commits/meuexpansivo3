@@ -175,19 +175,27 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                     : 'top-1/2 left-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2'
                   }`}
               >
-                <div className={`relative w-full h-full`}>
-                  {/* Logo Branca (Inicial) */}
-                  <img
-                    src={SCHOOL_LOGO_WHITE_URL}
-                    alt="Logo Branca"
-                    className={`absolute inset-0 w-full h-full object-contain object-left transition-opacity duration-[1500ms] ${animateLogo ? 'opacity-0' : 'opacity-100'}`}
-                  />
-                  {/* Logo Laranja (Final) */}
-                  <img
-                    src={SCHOOL_LOGO_URL}
-                    alt="Logo Oficial"
-                    className={`absolute inset-0 w-full h-full object-contain object-left transition-opacity duration-[1500ms] ${animateLogo ? 'opacity-100' : 'opacity-0'}`}
-                  />
+                {/* 3D Flip Container */}
+                <div
+                  className={`relative w-full h-full transition-transform duration-[1500ms] [transform-style:preserve-3d] ${animateLogo ? '[transform:rotateY(180deg)]' : ''}`}
+                >
+                  {/* Logo Branca (FRENTE) */}
+                  <div className="absolute inset-0 [backface-visibility:hidden]">
+                    <img
+                      src={SCHOOL_LOGO_WHITE_URL}
+                      alt="Logo Branca"
+                      className="w-full h-full object-contain object-left"
+                    />
+                  </div>
+
+                  {/* Logo Laranja (VERSO) */}
+                  <div className="absolute inset-0 [transform:rotateY(180deg)] [backface-visibility:hidden]">
+                    <img
+                      src={SCHOOL_LOGO_URL}
+                      alt="Logo Oficial"
+                      className="w-full h-full object-contain object-left"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
