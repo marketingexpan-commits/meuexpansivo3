@@ -152,7 +152,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
           {/* --- SPLASH SCREEN (ABSOLUTE INSIDE CARD) --- */}
           {showSplash && (
             <div
-              className={`absolute inset-0 z-50 bg-gradient-to-br from-blue-950 to-slate-900 flex flex-col items-center justify-center transition-opacity duration-1000 ${splashFading ? 'opacity-0' : 'opacity-100'}`}
+              className={`fixed md:absolute inset-0 z-[60] md:z-50 bg-gradient-to-br from-blue-950 to-slate-900 flex flex-col items-center justify-center transition-opacity duration-1000 ${splashFading ? 'opacity-0' : 'opacity-100'}`}
             >
               <div className={`relative w-32 h-32 transition-opacity duration-1000 ${logoVisible ? 'opacity-100' : 'opacity-0'}`}>
                 {/* Logo Branca (Inicial) */}
