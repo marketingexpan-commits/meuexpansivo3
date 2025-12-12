@@ -432,28 +432,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     <p className="text-center text-gray-500 italic py-4">Nenhum registro de frequência encontrado.</p>
                                 )}
 
-                                {/* --- HISTÓRICO DE FALTAS --- */}
-                                <div className="mt-2 border-t border-gray-100 pt-4">
-                                    <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-                                        <span className="text-red-500">⚠️</span> Histórico de Faltas
-                                    </h4>
-                                    {studentAttendance.filter(a => a.status !== 'Presente').length > 0 ? (
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
-                                            {studentAttendance.filter(a => a.status !== 'Presente').map((att, index) => (
-                                                <div key={index} className="p-3 border border-red-100 bg-red-50 rounded-lg flex flex-col items-center justify-center hover:shadow-sm transition-shadow">
-                                                    <p className="text-xs text-gray-700 font-bold">
-                                                        {new Date(att.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
-                                                    </p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="bg-green-50 border border-green-100 rounded-lg p-4 flex items-center justify-center gap-3">
-                                            <span className="text-xl">🎉</span>
-                                            <p className="text-sm text-green-700 font-medium">Parabéns! Nenhuma falta registrada até o momento.</p>
-                                        </div>
-                                    )}
-                                </div>
+
                             </div>
                         </div>
                     )}
