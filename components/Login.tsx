@@ -203,14 +203,15 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
           {/* CABEÇALHO (COM GRADIENTE AZUL MARINHO - Igual ao Mural de Avisos) */}
           <div
-            className="bg-gradient-to-br from-blue-950 to-slate-900 p-6 sm:p-8 cursor-pointer select-none shadow-md overflow-hidden"
+            className="bg-gradient-to-br from-blue-950 to-slate-900 p-6 sm:p-8 cursor-pointer select-none shadow-md overflow-hidden relative"
             onClick={handleSecretClick}
           >
-            <div className="flex flex-row justify-between items-center">
-              {/* LOGO ESTÁTICO - Só aparece quando o splash termina (troca mágica) */}
-              <div className={`transition-opacity duration-0 ${showStaticLogo ? 'opacity-100' : 'opacity-0'}`}>
-                <SchoolLogo variant="login" />
-              </div>
+            {/* LOGO ESTÁTICO - Posicionado ABSOLUTAMENTE para coincidir exatamente com a animação */}
+            <div className={`absolute top-6 left-6 sm:top-8 sm:left-8 transition-opacity duration-0 ${showStaticLogo ? 'opacity-100' : 'opacity-0'}`}>
+              <SchoolLogo variant="login" />
+            </div>
+
+            <div className="flex w-full justify-end items-center">
               <div className="text-right">
                 <p className="text-white/80 text-xs sm:text-sm font-medium mb-1">Olá, bem-vindo(a) ao</p>
                 <h2 className="text-xl sm:text-3xl font-extrabold text-white tracking-tight">Meu Expansivo</h2>
