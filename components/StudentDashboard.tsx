@@ -337,7 +337,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         </div>
                                         <div>
                                             <h2 className="text-xl font-extrabold text-blue-950 tracking-tight leading-tight">Meu Expansivo</h2>
-                                            <p className="text-gray-500 text-[10px] uppercase tracking-widest font-semibold">PORTAL DO ALUNO</p>
                                         </div>
                                     </div>
                                 </div>
@@ -393,15 +392,28 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             </div>
 
                             {/* Mural Digital Button (Bottom - Like Login) */}
-                            <button
-                                onClick={() => alert("O Mural de Avisos será integrado aqui em breve!")}
-                                className="w-full bg-blue-950 hover:bg-blue-900 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 group mt-8 mb-2"
-                            >
-                                <div className="bg-white/10 p-1.5 rounded-lg group-hover:bg-white/20 transition-colors">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
+                            {/* --- MURAL DE AVISOS (RESTORED) --- */}
+                            <div className="mt-8 mb-4">
+                                <div className="bg-gradient-to-r from-blue-950 to-slate-900 rounded-xl shadow-md p-5 text-white relative overflow-hidden group">
+                                    {/* Decorative elem */}
+                                    <div className="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 bg-white/10 rounded-full blur-xl group-hover:bg-white/15 transition-all"></div>
+
+                                    <div className="flex items-start gap-4 relative z-10">
+                                        <div className="bg-white/20 p-2.5 rounded-lg backdrop-blur-sm shrink-0">
+                                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-base font-bold mb-1 flex items-center gap-2">
+                                                Matrículas Abertas 2026
+                                                <span className="bg-green-500 text-[9px] px-1.5 py-0.5 rounded text-white font-extrabold uppercase tracking-wide">Novo</span>
+                                            </h3>
+                                            <p className="text-blue-100 text-xs leading-relaxed opacity-90">
+                                                Garanta sua vaga com condições especiais até o final do mês. Procure a secretaria!
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <span className="text-sm uppercase tracking-wide">Mural Digital</span>
-                            </button>
+                            </div>
 
                         </div>
                     )}
