@@ -21,7 +21,7 @@ export const SchoolLogo: React.FC<SchoolLogoProps> = ({ variant, className = '' 
             sizeClass = 'h-6 w-auto';
             break;
         case 'login':
-            sizeClass = 'h-16 w-auto'; // Maior para a tela de login
+            sizeClass = 'h-12 sm:h-16 w-auto'; // Maior para a tela de login
             logoSrc = SCHOOL_LOGO_URL; // Usa a logo laranja (original) na tela de login
             break;
         case 'print':

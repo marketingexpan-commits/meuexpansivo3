@@ -116,15 +116,15 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
           {/* CABEÇALHO (COM GRADIENTE AZUL MARINHO - Igual ao Mural de Avisos) */}
           <div
-            className="bg-gradient-to-br from-blue-950 to-slate-900 p-6 cursor-pointer select-none shadow-md"
+            className="bg-gradient-to-br from-blue-950 to-slate-900 p-4 sm:p-6 cursor-pointer select-none shadow-md"
             onClick={handleSecretClick}
           >
             <div className="flex flex-row justify-between items-center">
               <SchoolLogo variant="login" />
               <div className="text-right">
-                <p className="text-white/80 text-sm font-medium mb-1">Olá, bem-vindo(a) ao</p>
-                <h2 className="text-3xl font-extrabold text-white tracking-tight">Meu Expansivo</h2>
-                <p className="text-white/60 mt-1 text-xs uppercase tracking-widest font-semibold">PORTAL DA FAMÍLIA</p>
+                <p className="text-white/80 text-xs sm:text-sm font-medium mb-1">Olá, bem-vindo(a) ao</p>
+                <h2 className="text-xl sm:text-3xl font-extrabold text-white tracking-tight">Meu Expansivo</h2>
+                <p className="text-white/60 mt-1 text-[10px] sm:text-xs uppercase tracking-widest font-semibold">PORTAL DA FAMÍLIA</p>
               </div>
             </div>
           </div>
