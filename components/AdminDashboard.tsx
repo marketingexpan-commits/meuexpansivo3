@@ -483,6 +483,80 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
                     )}
 
+                    {activeTab === 'admins' && isGeneralAdmin && (
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            {/* FORMULÁRIO DE ADMIN */}
+                            <div className="lg:col-span-1">
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                                    <h2 className="text-lg font-bold text-gray-800 mb-4">{editingAdminId ? 'Editar Admin' : 'Novo Admin'}</h2>
+                                    <form onSubmit={handleAdminSubmit} className="space-y-4">
+                                        <div>
+                                            <label className="text-sm font-medium">Nome</label>
+                                            <input type="text" value={aName} onChange={e => setAName(e.target.value)} required className="w-full p-2 border rounded" />
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium">Usuário (Login)</label>
+                                            <input type="text" value={aUser} onChange={e => setAUser(e.target.value)} required className="w-full p-2 border rounded" />
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium">Unidade</label>
+                                            <select value={aUnit} onChange={e => setAUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">
+                                                {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium">Senha</label>
+                                            <div className="flex gap-2 relative">
+                                                <input type={showAdminPassword ? "text" : "password"} value={aPass} onChange={e => setAPass(e.target.value)} className="w-full p-2 border rounded" required={!editingAdminId} />
+                                                <button type="button" onClick={() => setShowAdminPassword(!showAdminPassword)} className="absolute right-16 top-2 text-gray-500">
+                                                    {showAdminPassword ? <EyeOffIcon /> : <EyeIcon />}
+                                                </button>
+                                                <button type="button" onClick={handleGenerateAdminPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button>
+                                            </div>
+                                        </div>
+                                        <Button type="submit" className="w-full">{editingAdminId ? 'Salvar' : 'Cadastrar'}</Button>
+                                    </form>
+                                </div>
+                            </div>
+
+                            {/* LISTA DE ADMINS */}
+                            <div className="lg:col-span-2 space-y-6">
+                                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                    <div className="p-4 bg-gray-50 border-b flex justify-between items-center">
+                                        <h3 className="font-bold text-gray-700">Administradores Cadastrados</h3>
+                                        <span className="text-xs font-semibold bg-gray-200 text-gray-700 px-2 py-1 rounded-full">{filteredAdmins.length} admins</span>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="min-w-full text-sm text-left">
+                                            <thead className="bg-gray-50 text-gray-500">
+                                                <tr>
+                                                    <th className="p-3">Nome</th>
+                                                    <th className="p-3">Usuário</th>
+                                                    <th className="p-3">Unidade</th>
+                                                    <th className="p-3 text-right">Ação</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {filteredAdmins.map(adm => (
+                                                    <tr key={adm.id} className="border-b last:border-0 hover:bg-gray-50">
+                                                        <td className="p-3 font-medium">{adm.name}</td>
+                                                        <td className="p-3 text-gray-500">{adm.username}</td>
+                                                        <td className="p-3"><span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs border border-blue-100">{adm.unit}</span></td>
+                                                        <td className="p-3 text-right">
+                                                            <button onClick={() => startEditingAdmin(adm)} className="text-blue-600 hover:underline mr-3">Editar</button>
+                                                            <button onClick={() => initiateDeleteAdmin(adm.id)} className="text-red-600 hover:underline">Excluir</button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        {filteredAdmins.length === 0 && <div className="p-8 text-center text-gray-400 italic">Nenhum outro administrador cadastrado.</div>}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                 </div>
             </div>
         </div>
