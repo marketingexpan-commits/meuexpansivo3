@@ -205,7 +205,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                         </div>
 
                         <div className="flex items-center gap-3">
-                            <Button variant="secondary" onClick={onLogout} className="bg-transparent border-none text-white font-medium hover:text-white/90 hover:bg-transparent shadow-none !px-0">
+                            <Button variant="secondary" onClick={onLogout} className="!bg-transparent border-none !text-white font-medium hover:!text-gray-200 shadow-none !px-0">
                                 Sair
                             </Button>
                         </div>
