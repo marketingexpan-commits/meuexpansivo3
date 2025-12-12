@@ -206,7 +206,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
             className="bg-gradient-to-br from-blue-950 to-slate-900 p-4 sm:p-6 pb-8 sm:pb-10 cursor-pointer select-none shadow-md overflow-hidden"
             onClick={handleSecretClick}
           >
-            <div className="flex flex-row justify-between items-center">
+            <div className="flex flex-row justify-between items-start">
               {/* LOGO ESTÁTICO - Só aparece quando o splash termina (troca mágica) */}
               <div className={`transition-opacity duration-0 ${showStaticLogo ? 'opacity-100' : 'opacity-0'}`}>
                 <SchoolLogo variant="login" />
