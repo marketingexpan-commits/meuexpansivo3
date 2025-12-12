@@ -330,7 +330,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 </div>
 
                 {/* --- CONTEÚDO (SHEET BODY) --- */}
-                <div className="p-8 pb-6 bg-white min-h-[500px]">
+                <div className="p-6 pt-4 bg-white min-h-[500px]">
 
                     {/* --- MENU VIEW --- */}
                     {/* --- MENU VIEW --- */}
@@ -338,10 +338,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         <div className="animate-fade-in-up flex flex-col h-full justify-between">
 
                             {/* Content Wrapper */}
-                            <div className="space-y-6">
+                            <div className="space-y-5">
 
                                 {/* BRANDING (Moved from Header) */}
-                                <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center justify-between mb-1">
                                     <div className="flex items-center gap-3">
                                         <div className="w-12">
                                             <SchoolLogo variant="login" />
@@ -354,7 +354,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                 {/* Welcome Context */}
                                 <div className="text-left mb-2">
-                                    <h3 className="text-gray-800 font-bold text-lg">Acompanhamento</h3>
                                     <p className="text-gray-500 text-sm">Selecione uma opção para visualizar.</p>
                                 </div>
 
