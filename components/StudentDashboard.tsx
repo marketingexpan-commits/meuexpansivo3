@@ -223,52 +223,54 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     };
 
     return (
-        <div className="min-h-screen bg-gray-100 flex justify-center items-start pt-4 sm:pt-8 px-4 pb-8">
-            <div className="w-full max-w-7xl bg-white rounded-2xl shadow-xl overflow-hidden relative min-h-[600px]">
+        <div className="min-h-screen bg-gray-100 flex justify-center items-center py-8 px-4 font-sans">
+            <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden relative min-h-[600px] flex flex-col">
 
                 {/* CABEÇALHO (GRADIENTE AZUL MARINHO - Igual ao Login) */}
-                <div className="bg-gradient-to-br from-blue-950 to-slate-900 p-4 sm:p-6 pb-8 sm:pb-10 shadow-md relative">
+                {/* CABEÇALHO (GRADIENTE AZUL MARINHO - Igual ao Login) */}
+                <div className="bg-gradient-to-br from-blue-950 to-slate-900 p-6 pb-12 shadow-md relative shrink-0">
                     <div className="flex flex-row justify-between items-center relative">
                         {/* LEFT: Logo + Back Button */}
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
                             {currentView !== 'menu' && (
                                 <button
                                     onClick={() => setCurrentView('menu')}
                                     className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors backdrop-blur-sm text-white border border-white/20"
                                 >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                                 </button>
                             )}
                             <SchoolLogo variant="login" />
                         </div>
 
-                        {/* RIGHT: Text & Controls (Aligned Right like Login) */}
+                        {/* RIGHT: Text & Controls */}
                         <div className="flex flex-col items-end text-right">
-                            {/* Controls Row (Bell & Logout) - Positioned at top right relative to this block or absolute */}
-                            <div className="flex items-center gap-3 mb-2">
+                            {/* Controls Row (Bell, Logout) */}
+                            <div className="flex items-center gap-2 mb-1">
                                 {/* Notification Bell */}
                                 <div className="relative">
                                     <button
                                         onClick={() => setShowNotifications(!showNotifications)}
-                                        className="p-1.5 text-white/80 hover:text-white transition-colors relative hover:bg-white/10 rounded-full"
+                                        className="p-1 text-white/80 hover:text-white transition-colors relative hover:bg-white/10 rounded-full"
                                     >
                                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
                                         {unreadNotifications > 0 && (
-                                            <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border border-blue-900 animate-pulse">
+                                            <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold w-3.5 h-3.5 flex items-center justify-center rounded-full border border-blue-900 animate-pulse">
                                                 {unreadNotifications}
                                             </span>
                                         )}
                                     </button>
 
+                                    {/* Notifications Dropdown (Mobile Optimized) */}
                                     {showNotifications && (
-                                        <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden ring-1 ring-black ring-opacity-5 text-left">
+                                        <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden ring-1 ring-black ring-opacity-5 text-left">
                                             <div className="p-3 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
                                                 <h4 className="font-bold text-blue-900 text-sm">Notificações</h4>
                                                 <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-gray-600">
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                                 </button>
                                             </div>
-                                            <div className="max-h-64 overflow-y-auto">
+                                            <div className="max-h-60 overflow-y-auto">
                                                 {notifications.length > 0 ? (
                                                     notifications.map(n => (
                                                         <div
@@ -294,112 +296,104 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         </div>
                                     )}
                                 </div>
-                                <Button variant="secondary" onClick={onLogout} className="bg-white/10 text-white border-white/20 hover:bg-white hover:text-blue-950 text-xs py-1.5 px-3 shadow-none h-auto min-h-0">Sair</Button>
+                                <Button variant="secondary" onClick={onLogout} className="bg-white/10 text-white border-white/20 hover:bg-white hover:text-blue-950 text-xs py-1 px-2 shadow-none h-auto min-h-0">Sair</Button>
                             </div>
 
-                            {/* Text Block matching Login */}
-                            <p className="text-white/80 text-xs sm:text-sm font-medium mb-0 leading-tight">Olá, {student.name.split(' ')[0]}</p>
-                            <h2 className="text-xl sm:text-3xl font-extrabold text-white tracking-tight leading-tight">Meu Expansivo</h2>
-                            <p className="text-white/60 mt-1 text-[10px] sm:text-xs uppercase tracking-widest font-semibold">PAINEL DO ALUNO</p>
+                            {/* Text Block - Mural Info and Title */}
+                            <p className="text-white/80 text-xs font-medium mb-0 leading-tight flex items-center gap-1">
+                                <svg className="w-3 h-3 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
+                                Mural de Avisos
+                            </p>
+                            <h2 className="text-xl font-extrabold text-white tracking-tight leading-tight">Meu Expansivo</h2>
+                            <p className="text-white/60 mt-0.5 text-[10px] uppercase tracking-widest font-semibold">PORTAL DO ALUNO</p>
                         </div>
                     </div>
                 </div>
 
-                {/* --- GHOST TAB BAR (Visual Continuity) --- */}
-                <div className="flex border-b border-gray-200 bg-gray-50 rounded-t-2xl -mt-6 relative z-10 overflow-hidden box-border">
-                    <button
-                        className="flex-1 py-3 text-xs sm:text-sm font-medium text-center border-b-2 text-blue-900 border-blue-900 bg-white cursor-default"
-                        style={{ WebkitTapHighlightColor: 'transparent' }}
-                    >
-                        Família / Aluno
-                    </button>
-                    {/* Placeholder for visual balance, or just empty space? The Login has 3 tabs. 
-                        If we want clear "Exclusive" feel, maybe just ONE tab spanning full width, or imitating the layout.
-                        Let's do two invisible/disabled slots to match the grid?
-                        Actually, USER said "Teacher option DISAPPEARS". So maybe just the one active tab is best.
-                    */}
+                {/* --- STUDENT INFO BAR (Replacing Tabs) --- */}
+                <div className="flex flex-col border-b border-gray-100 bg-white rounded-t-3xl -mt-6 relative z-10 overflow-hidden shrink-0 shadow-sm mx-0">
+                    <div className="bg-blue-50/50 py-3 px-6 flex items-center justify-between border-b-2 border-blue-900">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Aluno(a)</span>
+                            <span className="text-sm font-bold text-blue-900 truncate max-w-[180px] leading-tight">{student.name}</span>
+                        </div>
+                        <div className="flex flex-col items-end">
+                            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Turma</span>
+                            <span className="text-xs font-bold text-gray-700 bg-white px-2 py-0.5 rounded border border-gray-200">{student.gradeLevel || 'N/A'}</span>
+                        </div>
+                    </div>
                 </div>
 
                 {/* --- CONTEÚDO (SHEET BODY) --- */}
                 <div className="p-8 pb-6 bg-white min-h-[500px]">
 
                     {/* --- MENU VIEW --- */}
+                    {/* --- MENU VIEW --- */}
                     {currentView === 'menu' && (
-                        <div className="animate-fade-in-up">
-                            {/* --- BOAS VINDAS PAIS --- */}
-                            <div className="bg-blue-50 border-l-4 border-blue-950 p-4 mb-6 rounded-r-lg print:hidden">
-                                <p className="text-sm text-blue-900">
-                                    Bem-vindo ao Meu Expansivo! Acompanhe aqui o desenvolvimento escolar de <strong>{student.name}</strong>.
-                                </p>
-                            </div>
+                        <div className="animate-fade-in-up flex flex-col h-full justify-between">
 
-                            {/* --- MURAL DE AVISOS --- */}
-                            <div className="mb-8 print:hidden">
-                                <div className="bg-gradient-to-r from-blue-950 to-slate-900 rounded-lg shadow-md p-6 text-white">
-                                    <div className="flex items-start gap-4">
-                                        <div className="hidden sm:flex items-center justify-center bg-white/20 rounded-full p-3 backdrop-blur-sm">
-                                            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-                                            </svg>
+                            {/* Content Wrapper */}
+                            <div className="space-y-6">
+                                {/* Welcome Context (Replacing Banners) */}
+                                <div className="text-left mb-2">
+                                    <h3 className="text-gray-800 font-bold text-lg">Acompanhamento</h3>
+                                    <p className="text-gray-500 text-sm">Selecione uma opção para visualizar.</p>
+                                </div>
+
+                                {/* Grid de Opções (2 Colunas - Style Login Grid) */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button
+                                        onClick={() => setCurrentView(isEarlyChildhood ? 'early_childhood' : 'grades')}
+                                        className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-500 hover:shadow-md transition-all group aspect-square"
+                                    >
+                                        <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
+                                            <span className="text-xl">📊</span>
                                         </div>
-                                        <div>
-                                            <h3 className="text-lg font-bold mb-2">Mural de Avisos</h3>
-                                            <p className="text-blue-100 text-sm leading-relaxed">
-                                                📢 <strong>Matrículas Abertas para 2026!</strong> Garanta sua vaga com condições especiais até o final do mês.
-                                                Não deixe para a última hora! Procure a secretaria da sua unidade.
-                                            </p>
+                                        <h3 className="font-bold text-gray-800 text-sm">Boletim</h3>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setCurrentView('attendance')}
+                                        className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-green-500 hover:shadow-md transition-all group aspect-square"
+                                    >
+                                        <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-green-100 transition-colors">
+                                            <span className="text-xl">📅</span>
                                         </div>
-                                    </div>
+                                        <h3 className="font-bold text-gray-800 text-sm">Frequência</h3>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setCurrentView('support')}
+                                        className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-purple-500 hover:shadow-md transition-all group aspect-square"
+                                    >
+                                        <div className="w-10 h-10 bg-purple-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-purple-100 transition-colors">
+                                            <span className="text-xl">🆘</span>
+                                        </div>
+                                        <h3 className="font-bold text-gray-800 text-sm">Suporte</h3>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setCurrentView('messages')}
+                                        className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-orange-500 hover:shadow-md transition-all group aspect-square"
+                                    >
+                                        <div className="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-orange-100 transition-colors">
+                                            <span className="text-xl">💬</span>
+                                        </div>
+                                        <h3 className="font-bold text-gray-800 text-sm">Fale Conosco</h3>
+                                    </button>
                                 </div>
                             </div>
 
-                            {/* --- MENU GRID --- */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                                <button
-                                    onClick={() => setCurrentView(isEarlyChildhood ? 'early_childhood' : 'grades')}
-                                    className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all group"
-                                >
-                                    <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-100 transition-colors">
-                                        <span className="text-3xl">📊</span>
-                                    </div>
-                                    <h3 className="font-bold text-gray-800 text-lg mb-1">Boletim</h3>
-                                    <p className="text-xs text-gray-500 text-center">Notas e desempenho</p>
-                                </button>
-
-                                <button
-                                    onClick={() => setCurrentView('attendance')}
-                                    className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all group"
-                                >
-                                    <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-green-100 transition-colors">
-                                        <span className="text-3xl">📅</span>
-                                    </div>
-                                    <h3 className="font-bold text-gray-800 text-lg mb-1">Frequência</h3>
-                                    <p className="text-xs text-gray-500 text-center">Registro de presença</p>
-                                </button>
-
-                                <button
-                                    onClick={() => setCurrentView('support')}
-                                    className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all group"
-                                >
-                                    <div className="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-purple-100 transition-colors">
-                                        <span className="text-3xl">🆘</span>
-                                    </div>
-                                    <h3 className="font-bold text-gray-800 text-lg mb-1">Suporte ao Aluno</h3>
-                                    <p className="text-xs text-gray-500 text-center">Ajuda com matérias</p>
-                                </button>
-
-                                <button
-                                    onClick={() => setCurrentView('messages')}
-                                    className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all group"
-                                >
-                                    <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-orange-100 transition-colors">
-                                        <span className="text-3xl">💬</span>
-                                    </div>
-                                    <h3 className="font-bold text-gray-800 text-lg mb-1">Fale com a Escola</h3>
-                                    <p className="text-xs text-gray-500 text-center">Mensagens diretas</p>
-                                </button>
-                            </div>
-
+                            {/* Mural Digital Button (Bottom - Like Login) */}
+                            <button
+                                onClick={() => alert("O Mural de Avisos será integrado aqui em breve!")}
+                                className="w-full bg-blue-950 hover:bg-blue-900 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 group mt-8 mb-2"
+                            >
+                                <div className="bg-white/10 p-1.5 rounded-lg group-hover:bg-white/20 transition-colors">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
+                                </div>
+                                <span className="text-sm uppercase tracking-wide">Mural Digital</span>
+                            </button>
 
                         </div>
                     )}
