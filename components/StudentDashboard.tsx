@@ -570,8 +570,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 <>
                                     {/* --- VIEW GRADES: RESPONSIVE TABLE (ALL SCREENS) --- */}
                                     <div className="overflow-x-auto pb-4 w-full print:overflow-visible print:w-full print:pb-0">
-                                        {/* Print Adjustment: Scale down and remove min-width */}
-                                        <table className="min-w-[1000px] print:min-w-full divide-y divide-gray-200 border border-gray-300 text-sm print:text-[9px] print:w-full">
+                                        {/* Print Adjustment: Remove fixed min-width to allow shrinking, reduce text size further */}
+                                        <table className="min-w-[1000px] print:min-w-0 print:w-full divide-y divide-gray-200 border border-gray-300 text-sm print:text-[8px] print:leading-tight">
                                             <thead className="bg-blue-50 print:bg-gray-100">
                                                 <tr>
                                                     <th rowSpan={2} className="px-2 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-24 md:w-40 sticky left-0 bg-blue-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[10px] md:text-sm">Disciplina</th>
