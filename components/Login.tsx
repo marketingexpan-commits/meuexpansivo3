@@ -169,7 +169,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
               {/* LOGO QUE VIAJA - Sai do centro e vai para a posição do header */}
               <div
-                className={`absolute z-[70] transition-all duration-1000 ease-in-out
+                className={`absolute z-[70] transition-all duration-1000 ease-in-out perspective-[1000px]
                   ${splashFading
                     ? 'top-6 left-6 sm:top-8 sm:left-8 h-12 sm:h-16 w-32 sm:w-48 -translate-x-0 -translate-y-0 origin-top-left'
                     : 'top-1/2 left-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2'
