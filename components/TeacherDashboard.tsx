@@ -199,13 +199,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                 <div className="flex items-center gap-2 text-blue-200 text-sm font-medium">
                                     <span>{teacher.name}</span>
                                     <span className="w-1 h-1 rounded-full bg-blue-400"></span>
-                                    <span className="bg-blue-900/50 px-2 py-0.5 rounded text-xs border border-blue-800/50 shadow-sm">{activeUnit}</span>
+                                    <span className="text-blue-200">{activeUnit}</span>
                                 </div>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-3">
-                            <Button variant="secondary" onClick={onLogout} className="bg-transparent border-none text-white hover:text-blue-200 hover:bg-transparent shadow-none">
+                            <Button variant="secondary" onClick={onLogout} className="bg-transparent border-none text-white font-medium hover:text-white/90 hover:bg-transparent shadow-none !px-0">
                                 Sair
                             </Button>
                         </div>
