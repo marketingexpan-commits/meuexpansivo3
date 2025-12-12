@@ -314,22 +314,24 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     </div>
                 </div>
 
-                {/* --- STUDENT INFO BAR (Replacing Tabs) --- */}
-                <div className="flex flex-col border-b border-gray-100 bg-white rounded-t-3xl -mt-6 relative z-10 overflow-hidden shrink-0 shadow-sm mx-0">
-                    <div className="bg-blue-50/50 py-3 px-6 flex items-center justify-between border-b-2 border-blue-900">
-                        <div className="flex flex-col">
-                            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Aluno(a)</span>
-                            <span className="text-sm font-bold text-blue-900 truncate max-w-[180px] leading-tight">{student.name}</span>
-                        </div>
-                        <div className="flex flex-col items-end">
-                            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Turma</span>
-                            <span className="text-xs font-bold text-gray-700 bg-white px-2 py-0.5 rounded border border-gray-200">{student.gradeLevel || 'N/A'}</span>
+                {/* --- STUDENT INFO BAR (Replacing Tabs - Hidden on Bulletin) --- */}
+                {currentView !== 'grades' && currentView !== 'early_childhood' && (
+                    <div className="flex flex-col border-b border-gray-100 bg-white rounded-t-3xl -mt-6 relative z-10 overflow-hidden shrink-0 shadow-sm mx-0">
+                        <div className="bg-blue-50/50 py-3 px-6 flex items-center justify-between border-b-2 border-blue-900">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Aluno(a)</span>
+                                <span className="text-sm font-bold text-blue-900 truncate max-w-[180px] leading-tight">{student.name}</span>
+                            </div>
+                            <div className="flex flex-col items-end">
+                                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Turma</span>
+                                <span className="text-xs font-bold text-gray-700 bg-white px-2 py-0.5 rounded border border-gray-200">{student.gradeLevel || 'N/A'}</span>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
 
                 {/* --- CONTEÚDO (SHEET BODY) --- */}
-                <div className="p-6 pt-2 bg-white min-h-[500px]">
+                <div className={`p-6 pt-2 bg-white min-h-[500px] ${(currentView === 'grades' || currentView === 'early_childhood') ? 'rounded-t-3xl -mt-6 relative z-10' : ''}`}>
 
                     {/* --- MENU VIEW --- */}
                     {/* --- MENU VIEW --- */}
