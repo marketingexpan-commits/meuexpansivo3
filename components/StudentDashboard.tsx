@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
-import { Student, GradeEntry, Teacher, Subject, SchoolMessage, MessageRecipient, MessageType, AttendanceRecord, AttendanceStatus, BimesterData, UnitContact, EarlyChildhoodReport, CompetencyStatus } from '../types';
+import { Student, GradeEntry, Teacher, Subject, SchoolMessage, MessageRecipient, MessageType, AttendanceRecord, AttendanceStatus, BimesterData, UnitContact, EarlyChildhoodReport, CompetencyStatus, AppNotification } from '../types';
 import { getStudyTips } from '../services/geminiService';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
@@ -55,6 +55,8 @@ interface StudentDashboardProps {
     unitContacts?: UnitContact[];
     onLogout: () => void;
     onSendMessage: (message: Omit<SchoolMessage, 'id'>) => Promise<void>;
+    notifications?: AppNotification[];
+    onMarkNotificationAsRead?: (id: string) => Promise<void>;
 }
 
 export const StudentDashboard: React.FC<StudentDashboardProps> = ({
@@ -65,11 +67,17 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     earlyChildhoodReports = [],
     unitContacts = [],
     onLogout,
-    onSendMessage
+    onSendMessage,
+    notifications = [],
+    onMarkNotificationAsRead
 }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState({ title: '', tip: '' });
     const [isLoadingAI, setIsLoadingAI] = useState(false);
+    const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood'>('menu');
+    const [showNotifications, setShowNotifications] = useState(false);
+
+    const unreadNotifications = notifications.filter(n => !n.read).length;
 
     // Estado para controle do semestre do relatório infantil
     const [selectedReportSemester, setSelectedReportSemester] = useState<1 | 2>(1);
@@ -221,372 +229,524 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 {/* HEADER */}
                 <div className="flex flex-col md:flex-row justify-between items-center mb-6 border-b pb-4 print:hidden gap-4 relative">
                     <div className="flex items-center gap-3 w-full md:w-auto">
+                        {currentView !== 'menu' && (
+                            <button
+                                onClick={() => setCurrentView('menu')}
+                                className="mr-2 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                                <svg className="w-6 h-6 text-blue-900" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                            </button>
+                        )}
                         <SchoolLogo variant="header" />
                         <h1 className="text-2xl font-bold text-gray-800">Meu Expansivo</h1>
                     </div>
 
                     <div className="absolute top-0 right-0 md:static flex items-center gap-4">
+                        {/* Notification Bell */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowNotifications(!showNotifications)}
+                                className="p-2 text-gray-600 hover:text-blue-900 transition-colors relative"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                                {unreadNotifications > 0 && (
+                                    <span className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-white animate-pulse">
+                                        {unreadNotifications}
+                                    </span>
+                                )}
+                            </button>
+
+                            {showNotifications && (
+                                <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden">
+                                    <div className="p-3 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
+                                        <h4 className="font-bold text-blue-900 text-sm">Notificações</h4>
+                                        <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-gray-600">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                        </button>
+                                    </div>
+                                    <div className="max-h-64 overflow-y-auto">
+                                        {notifications.length > 0 ? (
+                                            notifications.map(n => (
+                                                <div
+                                                    key={n.id}
+                                                    className={`p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer ${!n.read ? 'bg-blue-50/30' : ''}`}
+                                                    onClick={() => {
+                                                        if (!n.read && onMarkNotificationAsRead) onMarkNotificationAsRead(n.id);
+                                                    }}
+                                                >
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <span className="font-bold text-xs text-gray-800">{n.title}</span>
+                                                        <span className="text-[10px] text-gray-400">{new Date(n.timestamp).toLocaleDateString()}</span>
+                                                    </div>
+                                                    <p className="text-xs text-gray-600 line-clamp-2">{n.message}</p>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="p-4 text-center text-gray-500 text-xs italic">
+                                                Nenhuma notificação.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                         <Button variant="secondary" onClick={onLogout}>Sair</Button>
                     </div>
                 </div>
 
-                {/* --- BOAS VINDAS PAIS --- */}
-                <div className="bg-blue-50 border-l-4 border-blue-950 p-4 mb-6 rounded-r-lg print:hidden">
-                    <p className="text-sm text-blue-900">
-                        Bem-vindo ao Meu Expansivo! Acompanhe aqui o desenvolvimento escolar de <strong>{student.name}</strong>.
-                    </p>
-                </div>
+                {/* --- MENU VIEW --- */}
+                {currentView === 'menu' && (
+                    <div className="animate-fade-in-up">
+                        {/* --- BOAS VINDAS PAIS --- */}
+                        <div className="bg-blue-50 border-l-4 border-blue-950 p-4 mb-6 rounded-r-lg print:hidden">
+                            <p className="text-sm text-blue-900">
+                                Bem-vindo ao Meu Expansivo! Acompanhe aqui o desenvolvimento escolar de <strong>{student.name}</strong>.
+                            </p>
+                        </div>
 
-                {/* --- MURAL DE AVISOS --- */}
-                <div className="mb-8 print:hidden">
-                    <div className="bg-gradient-to-r from-blue-950 to-slate-900 rounded-lg shadow-md p-6 text-white">
-                        <div className="flex items-start gap-4">
-                            <div className="hidden sm:flex items-center justify-center bg-white/20 rounded-full p-3 backdrop-blur-sm">
-                                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-bold mb-2">Mural de Avisos</h3>
-                                <p className="text-blue-100 text-sm leading-relaxed">
-                                    📢 <strong>Matrículas Abertas para 2026!</strong> Garanta sua vaga com condições especiais até o final do mês.
-                                    Não deixe para a última hora! Procure a secretaria da sua unidade.
-                                </p>
+                        {/* --- MURAL DE AVISOS --- */}
+                        <div className="mb-8 print:hidden">
+                            <div className="bg-gradient-to-r from-blue-950 to-slate-900 rounded-lg shadow-md p-6 text-white">
+                                <div className="flex items-start gap-4">
+                                    <div className="hidden sm:flex items-center justify-center bg-white/20 rounded-full p-3 backdrop-blur-sm">
+                                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold mb-2">Mural de Avisos</h3>
+                                        <p className="text-blue-100 text-sm leading-relaxed">
+                                            📢 <strong>Matrículas Abertas para 2026!</strong> Garanta sua vaga com condições especiais até o final do mês.
+                                            Não deixe para a última hora! Procure a secretaria da sua unidade.
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+
+                        {/* --- MENU GRID --- */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                            <button
+                                onClick={() => setCurrentView(isEarlyChildhood ? 'early_childhood' : 'grades')}
+                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all group"
+                            >
+                                <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-100 transition-colors">
+                                    <span className="text-3xl">📊</span>
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-lg mb-1">Boletim</h3>
+                                <p className="text-xs text-gray-500 text-center">Notas e desempenho</p>
+                            </button>
+
+                            <button
+                                onClick={() => setCurrentView('attendance')}
+                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all group"
+                            >
+                                <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-green-100 transition-colors">
+                                    <span className="text-3xl">📅</span>
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-lg mb-1">Frequência</h3>
+                                <p className="text-xs text-gray-500 text-center">Registro de presença</p>
+                            </button>
+
+                            <button
+                                onClick={() => setCurrentView('support')}
+                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all group"
+                            >
+                                <div className="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-purple-100 transition-colors">
+                                    <span className="text-3xl">🆘</span>
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-lg mb-1">Suporte ao Aluno</h3>
+                                <p className="text-xs text-gray-500 text-center">Ajuda com matérias</p>
+                            </button>
+
+                            <button
+                                onClick={() => setCurrentView('messages')}
+                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all group"
+                            >
+                                <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-orange-100 transition-colors">
+                                    <span className="text-3xl">💬</span>
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-lg mb-1">Fale com a Escola</h3>
+                                <p className="text-xs text-gray-500 text-center">Mensagens diretas</p>
+                            </button>
+                        </div>
+
+                        {/* --- EXTRA LINKS --- */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <a
+                                href="#"
+                                className="flex items-center justify-center p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors gap-3"
+                                onClick={(e) => { e.preventDefault(); /* Handle Fale Conosco link */ }}
+                            >
+                                <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.017-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" /></svg>
+                                <span className="font-bold text-gray-700">Fale Conosco (WhatsApp)</span>
+                            </a>
+                            <a
+                                href="https://instagram.com"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-center p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors gap-3"
+                            >
+                                <svg className="w-6 h-6 text-pink-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /></svg>
+                                <span className="font-bold text-gray-700">Instagram</span>
+                            </a>
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* --- FREQUÊNCIA --- */}
-                <div className="mb-8 print:hidden">
-                    <h3 className="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2">
-                        <span className="text-2xl">📅</span> Registro de Frequência
-                    </h3>
-                    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-100">
-                        <p className="text-gray-600 text-sm mb-4">
-                            Resumo mensal: <span className={`font-bold ${absencesThisMonth > 0 ? 'text-red-600' : 'text-green-600'}`}>{absencesThisMonth} falta(s)</span> este mês.
-                        </p>
-                        {recentAttendance.length > 0 ? (
-                            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3 text-center">
-                                {recentAttendance.map((att, index) => (
-                                    <div key={index} className="p-3 border rounded-lg flex flex-col items-center justify-center bg-gray-50">
-                                        <p className="text-xs text-gray-500 font-bold mb-2">
-                                            {new Date(att.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                                        </p>
-                                        <span className={`px-3 py-1 text-xs font-bold rounded-full text-white ${att.status === 'Presente' ? 'bg-green-500' : 'bg-red-600'}`}>
-                                            {att.status}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-center text-gray-500 italic py-4">Nenhum registro de frequência encontrado.</p>
-                        )}
-                    </div>
-                </div>
-
-
-                {/* --- CABEÇALHO DO BOLETIM (COMUM A TODOS) --- */}
-                <div className="mb-8 border-b-2 border-blue-950 pb-4">
-                    <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                        <div className="flex items-center gap-4">
-                            <div className="print:block hidden w-20">
-                                <SchoolLogo variant="login" />
-                            </div>
-                            <div>
-                                <h2 className="text-2xl font-extrabold text-blue-950 uppercase tracking-wide">EXPANSIVO REDE DE ENSINO</h2>
-                                <h3 className="text-lg font-bold text-gray-700 uppercase">UNIDADE: {student.unit}</h3>
-
-                                <div className="mt-2 text-xs text-gray-500 space-y-0.5 font-medium">
-                                    <p>{currentUnitInfo.address} - CEP: {currentUnitInfo.cep}</p>
-                                    <p>CNPJ: {currentUnitInfo.cnpj}</p>
-                                    <p>Tel: {currentUnitInfo.phone} | E-mail: {currentUnitInfo.email}</p>
+                {currentView === 'attendance' && (
+                    <div className="mb-8 print:hidden">
+                        <h3 className="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2">
+                            <span className="text-2xl">📅</span> Registro de Frequência
+                        </h3>
+                        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-100">
+                            <p className="text-gray-600 text-sm mb-4">
+                                Resumo mensal: <span className={`font-bold ${absencesThisMonth > 0 ? 'text-red-600' : 'text-green-600'}`}>{absencesThisMonth} falta(s)</span> este mês.
+                            </p>
+                            {recentAttendance.length > 0 ? (
+                                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3 text-center">
+                                    {recentAttendance.map((att, index) => (
+                                        <div key={index} className="p-3 border rounded-lg flex flex-col items-center justify-center bg-gray-50">
+                                            <p className="text-xs text-gray-500 font-bold mb-2">
+                                                {new Date(att.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                                            </p>
+                                            <span className={`px-3 py-1 text-xs font-bold rounded-full text-white ${att.status === 'Presente' ? 'bg-green-500' : 'bg-red-600'}`}>
+                                                {att.status}
+                                            </span>
+                                        </div>
+                                    ))}
                                 </div>
-                            </div>
-                        </div>
-                        <div className="text-left md:text-right w-full md:w-auto">
-                            <h4 className="text-xl font-bold text-gray-800 uppercase">{isEarlyChildhood ? 'Relatório de Desenvolvimento' : headerText}</h4>
-                            <p className="text-xs text-gray-500 mt-1">Emissão: {new Date().toLocaleDateString('pt-BR')}</p>
-                        </div>
-                    </div>
-
-                    <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-8 text-sm">
-                        <div>
-                            <span className="font-bold text-gray-600 uppercase text-xs block">Aluno</span>
-                            <span className="font-bold text-gray-900 text-lg">{student.name}</span>
-                        </div>
-                        <div>
-                            <span className="font-bold text-gray-600 uppercase text-xs block">Matrícula</span>
-                            <span className="font-mono text-gray-900">{student.code}</span>
-                        </div>
-                        <div>
-                            <span className="font-bold text-gray-600 uppercase text-xs block">Série/Ano</span>
-                            <span className="text-gray-900">{student.gradeLevel}</span>
-                        </div>
-                        <div>
-                            <span className="font-bold text-gray-600 uppercase text-xs block">Turma/Turno</span>
-                            <span className="text-gray-900">{student.schoolClass} - {student.shift}</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* --- BOTÃO DOWNLOAD --- */}
-                <div className="mb-6 flex justify-end print:hidden">
-                    <Button
-                        type="button"
-                        onClick={handleDownloadPDF}
-                        className="flex items-center gap-2"
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                        {isEarlyChildhood ? 'Baixar Relatório (PDF)' : 'Baixar Boletim (PDF)'}
-                    </Button>
-                </div>
-
-                {/* --- RENDERIZAÇÃO CONDICIONAL: EDUCAÇÃO INFANTIL vs FUNDAMENTAL/MÉDIO --- */}
-                {isEarlyChildhood ? (
-                    // --- VIEW EDUCAÇÃO INFANTIL ---
-                    <div className="space-y-6">
-                        <div className="flex gap-4 mb-4 print:hidden">
-                            <button
-                                onClick={() => setSelectedReportSemester(1)}
-                                className={`flex-1 md:flex-none px-4 py-2 rounded font-bold text-sm transition-colors ${selectedReportSemester === 1 ? 'bg-blue-950 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                            >
-                                1º Semestre
-                            </button>
-                            <button
-                                onClick={() => setSelectedReportSemester(2)}
-                                className={`flex-1 md:flex-none px-4 py-2 rounded font-bold text-sm transition-colors ${selectedReportSemester === 2 ? 'bg-blue-950 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                            >
-                                2º Semestre
-                            </button>
-                        </div>
-                        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                            <h3 className="text-center font-bold text-xl text-blue-950 mb-2 uppercase">Relatório - {selectedReportSemester}º Semestre</h3>
-
-                            {/* LEGENDA */}
-                            {/* LEGENDA */}
-                            <div className="flex flex-wrap justify-center gap-4 my-6 text-xs">
-                                <div className="flex items-center gap-2"><span className="w-3 h-3 bg-green-100 border border-green-300 rounded-sm flex-shrink-0"></span> <span className="whitespace-nowrap"><strong>D</strong> - Desenvolvido</span></div>
-                                <div className="flex items-center gap-2"><span className="w-3 h-3 bg-yellow-100 border border-yellow-300 rounded-sm flex-shrink-0"></span> <span className="whitespace-nowrap"><strong>EP</strong> - Em Processo</span></div>
-                                <div className="flex items-center gap-2"><span className="w-3 h-3 bg-red-100 border border-red-300 rounded-sm flex-shrink-0"></span> <span className="whitespace-nowrap"><strong>NO</strong> - Não Observado</span></div>
-                            </div>
-
-                            {/* CORREÇÃO: Verificar se currentReport existe antes de acessar fields */}
-                            {currentReport && currentReport.fields ? (
-                                <>
-                                    <div className="space-y-6">
-                                        {currentReport.fields.map(field => (
-                                            <div key={field.id} className="border border-gray-200 rounded-lg overflow-hidden">
-                                                <div className="bg-gray-100 px-4 py-2 font-bold text-gray-800 text-sm uppercase border-b border-gray-200">
-                                                    {field.name}
-                                                </div>
-                                                <div className="divide-y divide-gray-100">
-                                                    {field.competencies && field.competencies.map(comp => (
-                                                        <div key={comp.id} className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white">
-                                                            <p className="text-sm text-gray-700">{comp.description}</p>
-                                                            <div className="flex-shrink-0">
-                                                                {getStatusBadge(comp.status)}
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {/* OBSERVAÇÕES DO PROFESSOR */}
-                                    <div className="mt-8 border border-gray-200 rounded-lg p-6 bg-blue-50/30">
-                                        <h4 className="font-bold text-blue-950 mb-3 flex items-center gap-2">
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path></svg>
-                                            Observações do Professor(a)
-                                        </h4>
-                                        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap italic">
-                                            {currentReport.teacherObservations || "Nenhuma observação registrada."}
-                                        </p>
-                                    </div>
-                                </>
                             ) : (
-                                <div className="py-12 text-center text-gray-500 italic">
-                                    <p>O relatório deste semestre ainda não foi disponibilizado pelos professores.</p>
-                                </div>
+                                <p className="text-center text-gray-500 italic py-4">Nenhum registro de frequência encontrado.</p>
                             )}
                         </div>
                     </div>
-                ) : (
-                    // --- VIEW FUNDAMENTAL E MÉDIO (Notas Numéricas) ---
-                    <>
-                        {/* --- VIEW GRADES: RESPONSIVE TABLE (ALL SCREENS) --- */}
-                        <div className="overflow-x-auto pb-4 w-full">
-                            <table className="min-w-[1000px] divide-y divide-gray-200 border border-gray-300 text-sm">
-                                <thead className="bg-blue-50 print:bg-gray-100">
-                                    <tr>
-                                        <th rowSpan={2} className="px-2 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-24 md:w-40 sticky left-0 bg-blue-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[10px] md:text-sm">Disciplina</th>
-                                        {[1, 2, 3, 4].map(num => (
-                                            <th key={num} colSpan={4} className="px-1 py-2 text-center font-bold text-gray-700 uppercase border-r border-gray-300">
-                                                {num}º Bim
-                                            </th>
-                                        ))}
-                                        <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-16 text-[10px] leading-tight">Média<br />Anual</th>
-                                        <th rowSpan={2} className="px-2 py-3 text-center font-bold text-red-700 uppercase border-r border-gray-300 bg-red-50 w-16 text-[10px] leading-tight">Rec.<br />Final</th>
-                                        <th rowSpan={2} className="px-2 py-3 text-center font-bold text-blue-950 uppercase border-r border-gray-300 bg-blue-100 w-16 text-[10px] leading-tight">Média<br />Final</th>
-                                        <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase w-20 text-[10px]">Situação</th>
-                                    </tr>
-                                    <tr className="bg-blue-50 print:bg-gray-100 text-[10px]">
-                                        {[1, 2, 3, 4].map(num => (
-                                            <React.Fragment key={num}>
-                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600" title="Nota">N{num}</th>
-                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600" title="Recuperação">R{num}</th>
-                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-bold text-blue-950 bg-blue-50" title="Média">M{num}</th>
-                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600" title="Faltas">F{num}</th>
-                                            </React.Fragment>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {studentGrades.map((grade) => (
-                                        <tr key={grade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-300">
-                                            <td className="px-2 py-2 font-bold text-gray-900 border-r border-gray-300 text-[10px] md:text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] align-top">
-                                                <span className="uppercase block leading-tight mb-1">{grade.subject}</span>
-                                                <span className="text-[9px] text-gray-500 font-normal block italic whitespace-normal leading-tight break-words">
-                                                    Prof. {getTeacherName(grade.subject)}
-                                                </span>
-                                            </td>
-                                            {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
-                                                const bData = grade.bimesters[key as keyof typeof grade.bimesters];
-                                                return (
-                                                    <React.Fragment key={key}>
-                                                        <td className="px-1 py-2 text-center text-gray-600 border-r border-gray-300 text-xs">{formatGrade(bData.nota)}</td>
-                                                        <td className="px-1 py-2 text-center text-gray-600 border-r border-gray-300 text-xs">{formatGrade(bData.recuperacao)}</td>
-                                                        <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs">{formatGrade(bData.media)}</td>
-                                                        <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300 text-xs">{bData.faltas || ''}</td>
-                                                    </React.Fragment>
-                                                );
-                                            })}
-                                            <td className="px-1 py-2 text-center font-bold text-gray-700 border-r border-gray-300 bg-gray-50 text-sm">{formatGrade(grade.mediaAnual)}</td>
-                                            <td className="px-1 py-2 text-center font-bold text-red-600 border-r border-gray-300 bg-red-50 text-sm">{formatGrade(grade.recuperacaoFinal)}</td>
-                                            <td className="px-1 py-2 text-center font-extrabold text-blue-950 border-r border-gray-300 bg-blue-50 text-sm">{formatGrade(grade.mediaFinal)}</td>
-                                            <td className="px-1 py-2 text-center align-middle">
-                                                <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
-                                                    grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                                        'bg-red-50 text-red-700 border-red-200'
-                                                    }`}>
-                                                    {grade.situacaoFinal}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {studentGrades.length === 0 && (
-                                        <tr><td colSpan={21} className="px-6 py-8 text-center text-gray-500 italic">Nenhuma nota lançada para este período letivo.</td></tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {/* --- SUPORTE AO ALUNO --- */}
-                        {supportNeededGrades.length > 0 && (
-                            <div className="mt-8 print:hidden">
-                                <h3 className="text-xl font-bold mb-4 text-gray-800 border-b border-gray-200 pb-2">
-                                    <span className="mr-2">🆘</span> Centro de Suporte ao Aluno
-                                </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {supportNeededGrades.map((grade) => {
-                                        const teacherPhone = getTeacherPhone(grade.subject);
-                                        const media = grade.mediaAnual || 0;
-                                        const isLowGrade = media < 7.0 && grade.situacaoFinal !== 'Aprovado';
-
-                                        // CORREÇÃO: Verificação de segurança para bimesters
-                                        const difficulties = grade.bimesters ? Object.entries(grade.bimesters)
-                                            .map(([key, data]) => {
-                                                const bimesterNumber = key.replace('bimester', '');
-                                                return {
-                                                    bimester: `${bimesterNumber}º Bimestre`,
-                                                    topic: (data as BimesterData).difficultyTopic,
-                                                }
-                                            })
-                                            .filter(d => d.topic && d.topic.trim().length > 5) : [];
-
-                                        let statusConfig = {
-                                            color: 'border-l-gray-300',
-                                            badge: '',
-                                            badgeColor: '',
-                                            message: '',
-                                            showContactButton: false
-                                        };
-
-                                        if (isLowGrade) {
-                                            statusConfig = { color: 'border-l-red-500', badge: 'Atenção', badgeColor: 'bg-red-100 text-red-800', message: 'Nota abaixo da média. Recomendamos reforço.', showContactButton: true };
-                                        } else if (media >= 7.0 && media <= 8.5) {
-                                            statusConfig = { color: 'border-l-slate-400', badge: 'Bom', badgeColor: 'bg-slate-100 text-slate-800', message: 'Bom trabalho! Você atingiu a média e pode evoluir ainda mais. 🚀', showContactButton: false };
-                                        } else if (media >= 8.6 && media <= 9.5) {
-                                            statusConfig = { color: 'border-l-green-500', badge: 'Ótimo', badgeColor: 'bg-green-100 text-green-800', message: 'Ótimo trabalho! Sua nota mostra que você está no caminho certo. Continue brilhando! ⭐', showContactButton: false };
-                                        } else if (media > 9.5) {
-                                            statusConfig = { color: 'border-l-purple-500', badge: 'Excelente', badgeColor: 'bg-purple-100 text-purple-800', message: 'Uau! Resultado extraordinário! Sua dedicação está fazendo toda a diferença. 🏆', showContactButton: false };
-                                        }
-
-                                        const waPhone = teacherPhone ? teacherPhone.replace(/\D/g, '') : '';
-
-                                        return (
-                                            <div key={grade.id} className={`p-5 border-l-4 rounded-lg bg-white shadow-md transition-shadow hover:shadow-lg ${statusConfig.color} flex flex-col`}>
-                                                <div className="flex justify-between items-start mb-3">
-                                                    <h4 className="text-lg font-bold text-gray-800">{grade.subject}</h4>
-                                                    {statusConfig.badge && <span className={`${statusConfig.badgeColor} text-xs font-bold px-2 py-1 rounded`}>{statusConfig.badge}</span>}
-                                                </div>
-
-                                                <div className="mb-4 space-y-3 flex-grow">
-                                                    {difficulties.map(d => (
-                                                        <div key={d.bimester} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                                                            <p className="font-bold text-gray-700 block mb-2 text-sm">
-                                                                🔍 Dificuldade Identificada ({d.bimester}):
-                                                            </p>
-                                                            <p className="text-sm text-gray-600 italic pl-2 border-l-2 border-gray-300">"{d.topic}"</p>
-                                                            <div className="mt-3">
-                                                                <button
-                                                                    onClick={() => handleGetHelp(grade.subject as Subject, d.topic!)}
-                                                                    className="w-full bg-gradient-to-r from-blue-950 to-slate-900 text-white hover:from-blue-900 hover:to-slate-800 py-2 rounded-lg text-xs font-bold flex items-center justify-center transition-all shadow-sm hover:shadow-md transform active:scale-95"
-                                                                >
-                                                                    <span className="mr-2 text-md">🤖</span> Ajuda da IA
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-
-                                                    {statusConfig.message && <p className="text-sm text-gray-500 italic font-medium pt-2">{statusConfig.message}</p>}
-                                                </div>
-
-                                                <div className="mt-auto border-t border-gray-100 pt-4">
-                                                    {statusConfig.showContactButton && teacherPhone && (
-                                                        <a
-                                                            href={`https://wa.me/${waPhone}?text=Olá, sou o aluno(a) ${student.name}. Estou com dificuldades em ${grade.subject} e gostaria de tirar dúvidas.`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="w-full bg-green-500 text-white hover:bg-green-600 py-2.5 rounded-md text-sm font-bold flex items-center justify-center transition-colors shadow-sm"
-                                                        >
-                                                            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.017-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" /></svg>
-                                                            Falar com Professor
-                                                        </a>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-                    </>
                 )}
 
-                <div className="hidden print:flex mt-16 pt-8 border-t border-gray-400 justify-between items-end">
-                    <div className="text-center w-64">
-                        <div className="border-b border-black mb-2"></div>
-                        <p className="text-xs uppercase font-bold">Secretaria Escolar</p>
-                    </div>
-                    <div className="text-center w-64">
-                        <div className="border-b border-black mb-2"></div>
-                        <p className="text-xs uppercase font-bold">Responsável do Aluno</p>
-                    </div>
-                </div>
 
-                <MessageBox student={student} onSendMessage={onSendMessage} unitContacts={unitContacts || []} />
+                {/* --- BOLETIM / RELATÓRIO --- */}
+                {(currentView === 'grades' || currentView === 'early_childhood') && (
+                    <div className="animate-fade-in-up">
+                        {/* --- CABEÇALHO DO BOLETIM (COMUM A TODOS) --- */}
+                        <div className="mb-8 border-b-2 border-blue-950 pb-4">
+                            <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="print:block hidden w-20">
+                                        <SchoolLogo variant="login" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-2xl font-extrabold text-blue-950 uppercase tracking-wide">EXPANSIVO REDE DE ENSINO</h2>
+                                        <h3 className="text-lg font-bold text-gray-700 uppercase">UNIDADE: {student.unit}</h3>
+
+                                        <div className="mt-2 text-xs text-gray-500 space-y-0.5 font-medium">
+                                            <p>{currentUnitInfo.address} - CEP: {currentUnitInfo.cep}</p>
+                                            <p>CNPJ: {currentUnitInfo.cnpj}</p>
+                                            <p>Tel: {currentUnitInfo.phone} | E-mail: {currentUnitInfo.email}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="text-left md:text-right w-full md:w-auto">
+                                    <h4 className="text-xl font-bold text-gray-800 uppercase">{isEarlyChildhood ? 'Relatório de Desenvolvimento' : headerText}</h4>
+                                    <p className="text-xs text-gray-500 mt-1">Emissão: {new Date().toLocaleDateString('pt-BR')}</p>
+                                </div>
+                            </div>
+
+                            <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-8 text-sm">
+                                <div>
+                                    <span className="font-bold text-gray-600 uppercase text-xs block">Aluno</span>
+                                    <span className="font-bold text-gray-900 text-lg">{student.name}</span>
+                                </div>
+                                <div>
+                                    <span className="font-bold text-gray-600 uppercase text-xs block">Matrícula</span>
+                                    <span className="font-mono text-gray-900">{student.code}</span>
+                                </div>
+                                <div>
+                                    <span className="font-bold text-gray-600 uppercase text-xs block">Série/Ano</span>
+                                    <span className="text-gray-900">{student.gradeLevel}</span>
+                                </div>
+                                <div>
+                                    <span className="font-bold text-gray-600 uppercase text-xs block">Turma/Turno</span>
+                                    <span className="text-gray-900">{student.schoolClass} - {student.shift}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* --- BOTÃO DOWNLOAD --- */}
+                        <div className="mb-6 flex justify-end print:hidden">
+                            <Button
+                                type="button"
+                                onClick={handleDownloadPDF}
+                                className="flex items-center gap-2"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                {isEarlyChildhood ? 'Baixar Relatório (PDF)' : 'Baixar Boletim (PDF)'}
+                            </Button>
+                        </div>
+
+                        {/* --- RENDERIZAÇÃO CONDICIONAL: EDUCAÇÃO INFANTIL vs FUNDAMENTAL/MÉDIO --- */}
+                        {isEarlyChildhood ? (
+                            // --- VIEW EDUCAÇÃO INFANTIL ---
+                            <div className="space-y-6">
+                                <div className="flex gap-4 mb-4 print:hidden">
+                                    <button
+                                        onClick={() => setSelectedReportSemester(1)}
+                                        className={`flex-1 md:flex-none px-4 py-2 rounded font-bold text-sm transition-colors ${selectedReportSemester === 1 ? 'bg-blue-950 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                    >
+                                        1º Semestre
+                                    </button>
+                                    <button
+                                        onClick={() => setSelectedReportSemester(2)}
+                                        className={`flex-1 md:flex-none px-4 py-2 rounded font-bold text-sm transition-colors ${selectedReportSemester === 2 ? 'bg-blue-950 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                    >
+                                        2º Semestre
+                                    </button>
+                                </div>
+                                <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                                    <h3 className="text-center font-bold text-xl text-blue-950 mb-2 uppercase">Relatório - {selectedReportSemester}º Semestre</h3>
+
+                                    {/* LEGENDA */}
+                                    {/* LEGENDA */}
+                                    <div className="flex flex-wrap justify-center gap-4 my-6 text-xs">
+                                        <div className="flex items-center gap-2"><span className="w-3 h-3 bg-green-100 border border-green-300 rounded-sm flex-shrink-0"></span> <span className="whitespace-nowrap"><strong>D</strong> - Desenvolvido</span></div>
+                                        <div className="flex items-center gap-2"><span className="w-3 h-3 bg-yellow-100 border border-yellow-300 rounded-sm flex-shrink-0"></span> <span className="whitespace-nowrap"><strong>EP</strong> - Em Processo</span></div>
+                                        <div className="flex items-center gap-2"><span className="w-3 h-3 bg-red-100 border border-red-300 rounded-sm flex-shrink-0"></span> <span className="whitespace-nowrap"><strong>NO</strong> - Não Observado</span></div>
+                                    </div>
+
+                                    {/* CORREÇÃO: Verificar se currentReport existe antes de acessar fields */}
+                                    {currentReport && currentReport.fields ? (
+                                        <>
+                                            <div className="space-y-6">
+                                                {currentReport.fields.map(field => (
+                                                    <div key={field.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                                                        <div className="bg-gray-100 px-4 py-2 font-bold text-gray-800 text-sm uppercase border-b border-gray-200">
+                                                            {field.name}
+                                                        </div>
+                                                        <div className="divide-y divide-gray-100">
+                                                            {field.competencies && field.competencies.map(comp => (
+                                                                <div key={comp.id} className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white">
+                                                                    <p className="text-sm text-gray-700">{comp.description}</p>
+                                                                    <div className="flex-shrink-0">
+                                                                        {getStatusBadge(comp.status)}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {/* OBSERVAÇÕES DO PROFESSOR */}
+                                            <div className="mt-8 border border-gray-200 rounded-lg p-6 bg-blue-50/30">
+                                                <h4 className="font-bold text-blue-950 mb-3 flex items-center gap-2">
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path></svg>
+                                                    Observações do Professor(a)
+                                                </h4>
+                                                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap italic">
+                                                    {currentReport.teacherObservations || "Nenhuma observação registrada."}
+                                                </p>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="py-12 text-center text-gray-500 italic">
+                                            <p>O relatório deste semestre ainda não foi disponibilizado pelos professores.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            // --- VIEW FUNDAMENTAL E MÉDIO (Notas Numéricas) ---
+                            <>
+                                {/* --- VIEW GRADES: RESPONSIVE TABLE (ALL SCREENS) --- */}
+                                <div className="overflow-x-auto pb-4 w-full">
+                                    <table className="min-w-[1000px] divide-y divide-gray-200 border border-gray-300 text-sm">
+                                        <thead className="bg-blue-50 print:bg-gray-100">
+                                            <tr>
+                                                <th rowSpan={2} className="px-2 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-24 md:w-40 sticky left-0 bg-blue-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[10px] md:text-sm">Disciplina</th>
+                                                {[1, 2, 3, 4].map(num => (
+                                                    <th key={num} colSpan={4} className="px-1 py-2 text-center font-bold text-gray-700 uppercase border-r border-gray-300">
+                                                        {num}º Bim
+                                                    </th>
+                                                ))}
+                                                <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-16 text-[10px] leading-tight">Média<br />Anual</th>
+                                                <th rowSpan={2} className="px-2 py-3 text-center font-bold text-red-700 uppercase border-r border-gray-300 bg-red-50 w-16 text-[10px] leading-tight">Rec.<br />Final</th>
+                                                <th rowSpan={2} className="px-2 py-3 text-center font-bold text-blue-950 uppercase border-r border-gray-300 bg-blue-100 w-16 text-[10px] leading-tight">Média<br />Final</th>
+                                                <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase w-20 text-[10px]">Situação</th>
+                                            </tr>
+                                            <tr className="bg-blue-50 print:bg-gray-100 text-[10px]">
+                                                {[1, 2, 3, 4].map(num => (
+                                                    <React.Fragment key={num}>
+                                                        <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600" title="Nota">N{num}</th>
+                                                        <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600" title="Recuperação">R{num}</th>
+                                                        <th className="px-1 py-1 text-center border-r border-gray-300 font-bold text-blue-950 bg-blue-50" title="Média">M{num}</th>
+                                                        <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600" title="Faltas">F{num}</th>
+                                                    </React.Fragment>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {studentGrades.map((grade) => (
+                                                <tr key={grade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-300">
+                                                    <td className="px-2 py-2 font-bold text-gray-900 border-r border-gray-300 text-[10px] md:text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] align-top">
+                                                        <span className="uppercase block leading-tight mb-1">{grade.subject}</span>
+                                                        <span className="text-[9px] text-gray-500 font-normal block italic whitespace-normal leading-tight break-words">
+                                                            Prof. {getTeacherName(grade.subject)}
+                                                        </span>
+                                                    </td>
+                                                    {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
+                                                        const bData = grade.bimesters[key as keyof typeof grade.bimesters];
+                                                        return (
+                                                            <React.Fragment key={key}>
+                                                                <td className="px-1 py-2 text-center text-gray-600 border-r border-gray-300 text-xs">{formatGrade(bData.nota)}</td>
+                                                                <td className="px-1 py-2 text-center text-gray-600 border-r border-gray-300 text-xs">{formatGrade(bData.recuperacao)}</td>
+                                                                <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs">{formatGrade(bData.media)}</td>
+                                                                <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300 text-xs">{bData.faltas || ''}</td>
+                                                            </React.Fragment>
+                                                        );
+                                                    })}
+                                                    <td className="px-1 py-2 text-center font-bold text-gray-700 border-r border-gray-300 bg-gray-50 text-sm">{formatGrade(grade.mediaAnual)}</td>
+                                                    <td className="px-1 py-2 text-center font-bold text-red-600 border-r border-gray-300 bg-red-50 text-sm">{formatGrade(grade.recuperacaoFinal)}</td>
+                                                    <td className="px-1 py-2 text-center font-extrabold text-blue-950 border-r border-gray-300 bg-blue-50 text-sm">{formatGrade(grade.mediaFinal)}</td>
+                                                    <td className="px-1 py-2 text-center align-middle">
+                                                        <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                            grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                                                'bg-red-50 text-red-700 border-red-200'
+                                                            }`}>
+                                                            {grade.situacaoFinal}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {studentGrades.length === 0 && (
+                                                <tr><td colSpan={21} className="px-6 py-8 text-center text-gray-500 italic">Nenhuma nota lançada para este período letivo.</td></tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                )}
+                {/* --- SUPORTE AO ALUNO --- */}
+                {currentView === 'support' && supportNeededGrades.length > 0 && (
+                    <div className="mt-8 print:hidden animate-fade-in-up">
+                        <h3 className="text-xl font-bold mb-4 text-gray-800 border-b border-gray-200 pb-2">
+                            <span className="mr-2">🆘</span> Centro de Suporte ao Aluno
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {supportNeededGrades.map((grade) => {
+                                const teacherPhone = getTeacherPhone(grade.subject);
+                                const media = grade.mediaAnual || 0;
+                                const isLowGrade = media < 7.0 && grade.situacaoFinal !== 'Aprovado';
+
+                                // CORREÇÃO: Verificação de segurança para bimesters
+                                const difficulties = grade.bimesters ? Object.entries(grade.bimesters)
+                                    .map(([key, data]) => {
+                                        const bimesterNumber = key.replace('bimester', '');
+                                        return {
+                                            bimester: `${bimesterNumber}º Bimestre`,
+                                            topic: (data as BimesterData).difficultyTopic,
+                                        }
+                                    })
+                                    .filter(d => d.topic && d.topic.trim().length > 5) : [];
+
+                                let statusConfig = {
+                                    color: 'border-l-gray-300',
+                                    badge: '',
+                                    badgeColor: '',
+                                    message: '',
+                                    showContactButton: false
+                                };
+
+                                if (isLowGrade) {
+                                    statusConfig = { color: 'border-l-red-500', badge: 'Atenção', badgeColor: 'bg-red-100 text-red-800', message: 'Nota abaixo da média. Recomendamos reforço.', showContactButton: true };
+                                } else if (media >= 7.0 && media <= 8.5) {
+                                    statusConfig = { color: 'border-l-slate-400', badge: 'Bom', badgeColor: 'bg-slate-100 text-slate-800', message: 'Bom trabalho! Você atingiu a média e pode evoluir ainda mais. 🚀', showContactButton: false };
+                                } else if (media >= 8.6 && media <= 9.5) {
+                                    statusConfig = { color: 'border-l-green-500', badge: 'Ótimo', badgeColor: 'bg-green-100 text-green-800', message: 'Ótimo trabalho! Sua nota mostra que você está no caminho certo. Continue brilhando! ⭐', showContactButton: false };
+                                } else if (media > 9.5) {
+                                    statusConfig = { color: 'border-l-purple-500', badge: 'Excelente', badgeColor: 'bg-purple-100 text-purple-800', message: 'Uau! Resultado extraordinário! Sua dedicação está fazendo toda a diferença. 🏆', showContactButton: false };
+                                }
+
+                                const waPhone = teacherPhone ? teacherPhone.replace(/\D/g, '') : '';
+
+                                return (
+                                    <div key={grade.id} className={`p-5 border-l-4 rounded-lg bg-white shadow-md transition-shadow hover:shadow-lg ${statusConfig.color} flex flex-col`}>
+                                        <div className="flex justify-between items-start mb-3">
+                                            <h4 className="text-lg font-bold text-gray-800">{grade.subject}</h4>
+                                            {statusConfig.badge && <span className={`${statusConfig.badgeColor} text-xs font-bold px-2 py-1 rounded`}>{statusConfig.badge}</span>}
+                                        </div>
+
+                                        <div className="mb-4 space-y-3 flex-grow">
+                                            {difficulties.map(d => (
+                                                <div key={d.bimester} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                                    <p className="font-bold text-gray-700 block mb-2 text-sm">
+                                                        🔍 Dificuldade Identificada ({d.bimester}):
+                                                    </p>
+                                                    <p className="text-sm text-gray-600 italic pl-2 border-l-2 border-gray-300">"{d.topic}"</p>
+                                                    <div className="mt-3">
+                                                        <button
+                                                            onClick={() => handleGetHelp(grade.subject as Subject, d.topic!)}
+                                                            className="w-full bg-gradient-to-r from-blue-950 to-slate-900 text-white hover:from-blue-900 hover:to-slate-800 py-2 rounded-lg text-xs font-bold flex items-center justify-center transition-all shadow-sm hover:shadow-md transform active:scale-95"
+                                                        >
+                                                            <span className="mr-2 text-md">🤖</span> Ajuda da IA
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+
+                                            {statusConfig.message && <p className="text-sm text-gray-500 italic font-medium pt-2">{statusConfig.message}</p>}
+                                        </div>
+
+                                        <div className="mt-auto border-t border-gray-100 pt-4">
+                                            {statusConfig.showContactButton && teacherPhone && (
+                                                <a
+                                                    href={`https://wa.me/${waPhone}?text=Olá, sou o aluno(a) ${student.name}. Estou com dificuldades em ${grade.subject} e gostaria de tirar dúvidas.`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="w-full bg-green-500 text-white hover:bg-green-600 py-2.5 rounded-md text-sm font-bold flex items-center justify-center transition-colors shadow-sm"
+                                                >
+                                                    <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.017-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" /></svg>
+                                                    Falar com Professor
+                                                </a>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* --- RENDERIZAÇÃO CONDICIONAL PARA SUPORTE (EMPTY STATE) --- */}
+                {currentView === 'support' && supportNeededGrades.length === 0 && (
+                    <div className="mt-8 p-12 text-center bg-white rounded-lg shadow-sm animate-fade-in-up">
+                        <span className="text-4xl">🎉</span>
+                        <h3 className="mt-4 text-xl font-bold text-gray-800">Tudo ótimo por aqui!</h3>
+                        <p className="text-gray-500 mt-2">Você não possui notas que exigem atenção imediata. Continue assim!</p>
+                        <Button variant="secondary" onClick={() => setCurrentView('menu')} className="mt-6">Voltar ao Menu</Button>
+                    </div>
+                )}
+
+                {/* --- ASSINATURAS (Apenas no Boletim) --- */}
+                {currentView === 'grades' && (
+                    <div className="hidden print:flex mt-16 pt-8 border-t border-gray-400 justify-between items-end">
+                        <div className="text-center w-64">
+                            <div className="border-b border-black mb-2"></div>
+                            <p className="text-xs uppercase font-bold">Secretaria Escolar</p>
+                        </div>
+                        <div className="text-center w-64">
+                            <div className="border-b border-black mb-2"></div>
+                            <p className="text-xs uppercase font-bold">Responsável do Aluno</p>
+                        </div>
+                    </div>
+                )}
+
+                {currentView === 'messages' && (
+                    <div className="animate-fade-in-up">
+                        <MessageBox student={student} onSendMessage={onSendMessage} unitContacts={unitContacts || []} />
+                    </div>
+                )}
 
                 {/* CORREÇÃO: Modal com melhor tratamento de conteúdo */}
                 {isModalOpen && (
@@ -626,6 +786,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 )}
 
             </div>
-        </div>
+        </div >
     );
 };
