@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
-import { SCHOOL_UNITS_LIST, ALLOW_MOCK_LOGIN, UNITS_CONTACT_INFO } from '../constants';
+import { SCHOOL_UNITS_LIST, ALLOW_MOCK_LOGIN, UNITS_CONTACT_INFO, SCHOOL_LOGO_URL, SCHOOL_LOGO_WHITE_URL } from '../constants';
 import { Admin, SchoolUnit } from '../types';
 
 interface LoginProps {
@@ -14,6 +14,34 @@ interface LoginProps {
 }
 
 export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, onLoginAdmin, onResetSystem, error, adminsList }) => {
+  // --- SPLASH SCREEN STATE ---
+  const [showSplash, setShowSplash] = useState(true);
+  const [splashFading, setSplashFading] = useState(false);
+  const [animateLogo, setAnimateLogo] = useState(false);
+
+  React.useEffect(() => {
+    // 1. Iniciar troca de cor da logo (1s)
+    const timer1 = setTimeout(() => {
+      setAnimateLogo(true);
+    }, 1000);
+
+    // 2. Iniciar fade out da tela (2.5s)
+    const timer2 = setTimeout(() => {
+      setSplashFading(true);
+    }, 2500);
+
+    // 3. Remover splash da DOM (3.2s)
+    const timer3 = setTimeout(() => {
+      setShowSplash(false);
+    }, 3200);
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
+    };
+  }, []);
+
   const [activeTab, setActiveTab] = useState<'student' | 'teacher' | 'admin'>('student');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -112,7 +140,36 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
     <>
       <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 py-8">
 
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden relative">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden relative min-h-[500px]">
+
+          {/* --- SPLASH SCREEN (ABSOLUTE INSIDE CARD) --- */}
+          {showSplash && (
+            <div
+              className={`absolute inset-0 z-50 bg-gradient-to-br from-blue-950 to-slate-900 flex flex-col items-center justify-center transition-opacity duration-700 ${splashFading ? 'opacity-0' : 'opacity-100'}`}
+            >
+              <div className="relative w-32 h-32 mb-8">
+                {/* Logo Branca (Inicial) */}
+                <img
+                  src={SCHOOL_LOGO_WHITE_URL}
+                  alt="Logo Branca"
+                  className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-1000 ${animateLogo ? 'opacity-0' : 'opacity-100'}`}
+                />
+                {/* Logo Laranja (Final) */}
+                <img
+                  src={SCHOOL_LOGO_URL}
+                  alt="Logo Oficial"
+                  className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-1000 ${animateLogo ? 'opacity-100' : 'opacity-0'}`}
+                />
+              </div>
+
+              {/* Loader Sutil */}
+              <div className="flex gap-2">
+                <div className="w-2 h-2 bg-white/50 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+                <div className="w-2 h-2 bg-white/50 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                <div className="w-2 h-2 bg-white/50 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+              </div>
+            </div>
+          )}
 
           {/* CABEÇALHO (COM GRADIENTE AZUL MARINHO - Igual ao Mural de Avisos) */}
           <div
