@@ -151,7 +151,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
           {/* --- SPLASH SCREEN (ABSOLUTE INSIDE CARD) --- */}
           {showSplash && (
-            <div className="fixed md:absolute inset-0 z-[60] md:z-50 pointer-events-none">
+            <div className="absolute inset-0 z-[60] pointer-events-none rounded-2xl overflow-hidden">
 
               {/* CAMADA DE FUNDO BRANCA - Desaparece revelando o login atrás */}
               <div
@@ -165,7 +165,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
               {/* LOGO QUE VIAJA - Sai do centro e vai para a posição do header */}
               <div
-                className={`fixed z-[70] transition-all duration-1000 ease-in-out
+                className={`absolute z-[70] transition-all duration-1000 ease-in-out
                   ${splashFading
                     ? 'top-4 left-4 sm:top-6 sm:left-6 h-12 sm:h-16 w-32 sm:w-48 -translate-x-0 -translate-y-0 origin-top-left'
                     : 'top-1/2 left-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2'
