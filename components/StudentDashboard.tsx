@@ -324,7 +324,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             </div>
                             <div className="flex flex-col items-end">
                                 <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Turma</span>
-                                <span className="text-xs font-bold text-gray-700 bg-white px-2 py-0.5 rounded border border-gray-200">{student.gradeLevel || 'N/A'}</span>
+                                <div className="text-right">
+                                    <span className="text-xs font-bold text-gray-700 bg-white px-2 py-0.5 rounded border border-gray-200 block">{student.gradeLevel || 'N/A'}</span>
+                                    <span className="text-[10px] font-semibold text-gray-500 mt-0.5 block">{student.unit}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
