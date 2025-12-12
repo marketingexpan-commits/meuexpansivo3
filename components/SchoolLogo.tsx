@@ -12,7 +12,7 @@ export const SchoolLogo: React.FC<SchoolLogoProps> = ({ variant, className = '' 
     // Definindo tamanhos baseados na variante
     let sizeClass = '';
     let logoSrc = SCHOOL_LOGO_URL;
-    
+
     switch (variant) {
         case 'header':
             sizeClass = 'h-10 w-auto'; // Ajuste para caber no header sem distorcer
@@ -21,7 +21,7 @@ export const SchoolLogo: React.FC<SchoolLogoProps> = ({ variant, className = '' 
             sizeClass = 'h-6 w-auto';
             break;
         case 'login':
-            sizeClass = 'h-24 w-auto mb-4'; // Maior para a tela de login
+            sizeClass = 'h-24 w-auto'; // Maior para a tela de login
             logoSrc = SCHOOL_LOGO_URL; // Usa a logo laranja (original) na tela de login
             break;
         case 'print':
@@ -32,9 +32,9 @@ export const SchoolLogo: React.FC<SchoolLogoProps> = ({ variant, className = '' 
 
     return (
         <div className={`flex justify-center items-center ${className}`}>
-            <img 
-                src={logoSrc} 
-                alt="Logo da Escola" 
+            <img
+                src={logoSrc}
+                alt="Logo da Escola"
                 className={`${sizeClass} object-contain`}
                 onError={(e) => {
                     // Fallback visual caso a imagem não carregue

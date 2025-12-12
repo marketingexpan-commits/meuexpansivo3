@@ -1,0 +1,58 @@
+📘 Manual do Professor - Sistema MeuExpansivo
+Bem-vindo ao portal do professor. Este guia rápido ajudará você a utilizar todas as funcionalidades do sistema diário.
+________________________________________
+🔐 1. Como Acessar (Login)
+1.	Abra o aplicativo ou site do sistema.
+2.	No topo da tela de login, clique na aba "Professores".
+3.	Selecione sua Unidade (ex: Zona Norte, Extremoz, etc).
+4.	Digite seu CPF (apenas números).
+5.	Digite sua Senha.
+6.	Clique em ACESSAR.
+Dica: Caso tenha esquecido a senha, entre em contato com a secretaria da sua unidade.
+________________________________________
+📝 2. Lançamento de Notas (Fundamental e Médio)
+Ao entrar, você verá a aba "Lançar Notas".
+🔍 Filtros de Turma
+Para facilitar a busca, use os filtros no topo da lista de alunos:
+•	Série: Selecione apenas a série desejada (ex: 1º Ano).
+•	Turno: Filtre por Matutino ou Vespertino.
+✍️ Como Lançar
+1.	No menu lateral esquerdo, clique no nome do aluno.
+2.	Preencha os formulários:
+•	Nota e Recuperação: O sistema calcula a Média automaticamente.
+•	Status: Um indicador mostrará se a média está Verde (Na Média) ou Amarelo (Abaixo da Média).
+•	Faltas: Insira o número de faltas do bimestre.
+•	Observação: Campo opcional para registrar dificuldades específicas daquele bimestre.
+3.	Clique em "SALVAR LANÇAMENTO".
+Recuperação Final: O sistema exibe o cálculo exato necessário: 
+(Média Anual + Prova Final) / 2.
+________________________________________
+🌿 3. Relatórios Descritivos (Educação Infantil)
+Se você selecionou um aluno da Educação Infantil:
+1.	O sistema mudará automaticamente para a tela de Relatório de Desenvolvimento.
+2.	Escolha o Semestre (1º ou 2º).
+3.	Para cada competência, clique no botão correspondente:
+•	NO (Não Observado - Vermelho)
+•	EP (Em Processo - Amarelo)
+•	D (Desenvolvido - Verde)
+4.	No final da página, escreva as Observações Gerais na caixa de texto.
+5.	Clique em "SALVAR RELATÓRIO".
+________________________________________
+✅ 4. Chamada Diária
+Para registrar a presença:
+1.	Clique na aba "CHAMADA DIÁRIA".
+2.	Selecione a Série, Turma e a Data.
+3.	Clique em "BUSCAR TURMA".
+Métricas em Tempo Real
+Ao fazer a chamada, você verá abaixo do nome de cada aluno:
+•	🔴 Faltas do Bimestre: Quantas faltas ele já tem nesta etapa.
+•	⚫ Total Anual: Acumulado do ano todo.
+Dica: No celular, a chamada aparece em formato de cartões grandes para facilitar o toque. No computador, aparece como uma lista.
+________________________________________
+📞 5. Funcionalidades Extras (Tela de Login)
+Antes de logar, no rodapé da página inicial, você encontra:
+•	Mural Digital: Avisos importantes e calendário escolar.
+•	Instagram: Acesso ao perfil oficial com novidades, fotos e eventos da Rede Expansivo.
+•	Fale Conosco: Lista de contatos de WhatsApp de todas as secretarias.
+________________________________________
+Equipe de TI - Expansivo
