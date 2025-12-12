@@ -214,10 +214,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const EyeOffIcon = () => (<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>);
 
     return (
-        <div className="min-h-screen bg-gray-100 flex justify-center items-center py-8 px-4 font-sans">
+        <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans">
             {(studentToDelete || teacherToDelete || adminToDelete) && (<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900 bg-opacity-50 backdrop-blur-sm"><div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6 animate-fade-in-up"><h3 className="text-lg font-bold text-center text-gray-900 mb-2">Confirmar Exclusão</h3><p className="text-sm text-center text-gray-500 mb-6">Tem certeza? Essa ação não pode ser desfeita.</p><div className="flex gap-3 justify-center"><Button variant="secondary" onClick={() => { setStudentToDelete(null); setTeacherToDelete(null); setAdminToDelete(null); }} className="w-full">Cancelar</Button><Button variant="danger" onClick={() => { if (studentToDelete) { onDeleteStudent(studentToDelete); setStudentToDelete(null); } if (teacherToDelete) { onDeleteTeacher(teacherToDelete); setTeacherToDelete(null); } if (adminToDelete && onDeleteAdmin) { onDeleteAdmin(adminToDelete); setAdminToDelete(null); } }} className="w-full">Sim, Excluir</Button></div></div></div>)}
 
-            <div className="w-full max-w-7xl bg-white rounded-3xl shadow-2xl overflow-hidden relative min-h-[600px] flex flex-col">
+            <div className="w-full max-w-7xl bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col">
                 {/* HEADER */}
                 <div className="bg-gradient-to-br from-blue-950 to-slate-900 p-6 pb-6 shadow-md relative shrink-0">
                     <div className="flex flex-row justify-between items-center relative z-10">

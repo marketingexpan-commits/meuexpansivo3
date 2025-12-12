@@ -184,8 +184,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     const isAnnualMediaPassing = getAnnualMediaValue() >= 7;
 
     return (
-        <div className="min-h-screen bg-gray-100 flex justify-center items-center py-8 px-4 font-sans">
-            <div className="w-full max-w-7xl bg-white rounded-3xl shadow-2xl overflow-hidden relative min-h-[600px] flex flex-col">
+        <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans">
+            <div className="w-full max-w-7xl bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col">
 
                 {/* HEADER */}
                 <div className="bg-gradient-to-br from-blue-950 to-slate-900 p-6 pb-6 shadow-md relative shrink-0">
