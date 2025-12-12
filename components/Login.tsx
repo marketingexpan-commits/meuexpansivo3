@@ -173,7 +173,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
           {/* CABEÇALHO (COM GRADIENTE AZUL MARINHO - Igual ao Mural de Avisos) */}
           <div
-            className="bg-gradient-to-br from-blue-950 to-slate-900 p-4 sm:p-6 pb-10 sm:pb-12 cursor-pointer select-none shadow-md"
+            className="bg-gradient-to-br from-blue-950 to-slate-900 p-4 sm:p-6 pb-8 sm:pb-10 cursor-pointer select-none shadow-md"
             onClick={handleSecretClick}
           >
             <div className="flex flex-row justify-between items-center">
@@ -187,7 +187,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
           </div>
 
           {/* --- MENU DE ABAS --- */}
-          <div className="flex border-b border-gray-200 bg-gray-50 rounded-t-3xl -mt-8 relative z-10 overflow-hidden box-border">
+          <div className="flex border-b border-gray-200 bg-gray-50 rounded-t-2xl -mt-6 relative z-10 overflow-hidden box-border">
             <button
               className={`flex-1 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 ${activeTab === 'student' ? 'text-blue-900 border-blue-900 bg-white' : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-100'
                 }`}
