@@ -151,34 +151,47 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
           {/* --- SPLASH SCREEN (ABSOLUTE INSIDE CARD) --- */}
           {showSplash && (
-            <div
-              className={`fixed md:absolute inset-0 z-[60] md:z-50 bg-white flex flex-col items-center justify-center transition-opacity duration-1000 ${splashFading ? 'opacity-0' : 'opacity-100'}`}
-            >
-              {/* CAMADA DE FUNDO (GRADIENTE AZUL) - Desaparece quando anima a logo */}
-              <div 
-                className={`absolute inset-0 bg-gradient-to-br from-blue-950 to-slate-900 transition-opacity duration-[1500ms] ${animateLogo ? 'opacity-0' : 'opacity-100'}`}
-              />
+            <div className="fixed md:absolute inset-0 z-[60] md:z-50 pointer-events-none">
 
-              <div className={`relative z-10 w-32 h-32 transition-opacity duration-1000 ${logoVisible ? 'opacity-100' : 'opacity-0'}`}>
-                {/* Logo Branca (Inicial) */}
-                <img
-                  src={SCHOOL_LOGO_WHITE_URL}
-                  alt="Logo Branca"
-                  className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-[1500ms] ${animateLogo ? 'opacity-0' : 'opacity-100'}`}
+              {/* CAMADA DE FUNDO BRANCA - Desaparece revelando o login atrás */}
+              <div
+                className={`absolute inset-0 bg-white transition-opacity duration-1000 ${splashFading ? 'opacity-0' : 'opacity-100'}`}
+              >
+                {/* CAMADA DE FUNDO (GRADIENTE AZUL) - Desaparece quando anima a logo */}
+                <div
+                  className={`absolute inset-0 bg-gradient-to-br from-blue-950 to-slate-900 transition-opacity duration-[1500ms] ${animateLogo ? 'opacity-0' : 'opacity-100'}`}
                 />
-                {/* Logo Laranja (Final) */}
-                <img
-                  src={SCHOOL_LOGO_URL}
-                  alt="Logo Oficial"
-                  className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-[1500ms] ${animateLogo ? 'opacity-100' : 'opacity-0'}`}
-                />
+              </div>
+
+              {/* LOGO QUE VIAJA - Sai do centro e vai para a posição do header */}
+              <div
+                className={`fixed z-[70] transition-all duration-1000 ease-in-out
+                  ${splashFading
+                    ? 'top-4 left-4 sm:top-6 sm:left-6 h-12 sm:h-16 w-32 sm:w-48 -translate-x-0 -translate-y-0 origin-top-left'
+                    : 'top-1/2 left-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2'
+                  }`}
+              >
+                <div className={`relative w-full h-full`}>
+                  {/* Logo Branca (Inicial) */}
+                  <img
+                    src={SCHOOL_LOGO_WHITE_URL}
+                    alt="Logo Branca"
+                    className={`absolute inset-0 w-full h-full object-contain object-left transition-opacity duration-[1500ms] ${animateLogo ? 'opacity-0' : 'opacity-100'}`}
+                  />
+                  {/* Logo Laranja (Final) */}
+                  <img
+                    src={SCHOOL_LOGO_URL}
+                    alt="Logo Oficial"
+                    className={`absolute inset-0 w-full h-full object-contain object-left transition-opacity duration-[1500ms] ${animateLogo ? 'opacity-100' : 'opacity-0'}`}
+                  />
+                </div>
               </div>
             </div>
           )}
 
           {/* CABEÇALHO (COM GRADIENTE AZUL MARINHO - Igual ao Mural de Avisos) */}
           <div
-            className="bg-gradient-to-br from-blue-950 to-slate-900 p-4 sm:p-6 pb-8 sm:pb-10 cursor-pointer select-none shadow-md"
+            className="bg-gradient-to-br from-blue-950 to-slate-900 p-4 sm:p-6 pb-8 sm:pb-10 cursor-pointer select-none shadow-md overflow-hidden"
             onClick={handleSecretClick}
           >
             <div className="flex flex-row justify-between items-center">
