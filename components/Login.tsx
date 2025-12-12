@@ -203,7 +203,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
           {/* CABEÇALHO (COM GRADIENTE AZUL MARINHO - Igual ao Mural de Avisos) */}
           <div
-            className="bg-gradient-to-br from-blue-950 to-slate-900 p-5 sm:p-8 cursor-pointer select-none shadow-md overflow-hidden relative"
+            className="bg-gradient-to-br from-blue-950 to-slate-900 p-6 sm:p-8 cursor-pointer select-none shadow-md overflow-hidden relative"
             onClick={handleSecretClick}
           >
             {/* LOGO ESTÁTICO - Posicionado ABSOLUTAMENTE para coincidir exatamente com a animação */}
