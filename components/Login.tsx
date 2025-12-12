@@ -15,10 +15,13 @@ interface LoginProps {
 
 export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, onLoginAdmin, onResetSystem, error, adminsList }) => {
   // --- SPLASH SCREEN STATE ---
+  // --- SPLASH SCREEN STATE ---
   const [showSplash, setShowSplash] = useState(true);
   const [splashFading, setSplashFading] = useState(false);
   const [logoVisible, setLogoVisible] = useState(false);
   const [animateLogo, setAnimateLogo] = useState(false);
+  // Controla a visibilidade do logo estático no header para fazer a troca "mágica"
+  const [showStaticLogo, setShowStaticLogo] = useState(false);
 
   React.useEffect(() => {
     // 0. Iniciar com logo invisível (fade-in suave)
@@ -36,9 +39,10 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
       setSplashFading(true);
     }, 4500);
 
-    // 3. Remover splash da DOM (5.5s)
+    // 3. Remover splash da DOM e mostrar logo estático (5.5s)
     const timer3 = setTimeout(() => {
       setShowSplash(false);
+      setShowStaticLogo(true);
     }, 5500);
 
     return () => {
@@ -195,7 +199,10 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
             onClick={handleSecretClick}
           >
             <div className="flex flex-row justify-between items-center">
-              <SchoolLogo variant="login" />
+              {/* LOGO ESTÁTICO - Só aparece quando o splash termina (troca mágica) */}
+              <div className={`transition-opacity duration-0 ${showStaticLogo ? 'opacity-100' : 'opacity-0'}`}>
+                <SchoolLogo variant="login" />
+              </div>
               <div className="text-right">
                 <p className="text-white/80 text-xs sm:text-sm font-medium mb-1">Olá, bem-vindo(a) ao</p>
                 <h2 className="text-xl sm:text-3xl font-extrabold text-white tracking-tight">Meu Expansivo</h2>
