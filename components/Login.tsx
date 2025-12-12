@@ -120,12 +120,12 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
             onClick={handleSecretClick}
           >
             <div className="flex flex-row justify-between items-center">
-              <div className="text-left">
+              <SchoolLogo variant="login" />
+              <div className="text-right">
                 <p className="text-white/80 text-sm font-medium mb-1">Olá, bem-vindo(a) ao</p>
                 <h2 className="text-3xl font-extrabold text-white tracking-tight">Meu Expansivo</h2>
                 <p className="text-white/60 mt-1 text-xs uppercase tracking-widest font-semibold">PORTAL DA FAMÍLIA</p>
               </div>
-              <SchoolLogo variant="login" />
             </div>
           </div>
 
