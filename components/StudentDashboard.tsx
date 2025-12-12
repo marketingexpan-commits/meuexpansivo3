@@ -223,7 +223,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     };
 
     return (
-        <div className="min-h-screen bg-gray-100 flex justify-center items-center py-8 px-4 font-sans transition-all duration-500 ease-in-out print:min-h-0 print:h-auto print:bg-white print:p-0 print:block">
+        <div className="min-h-screen bg-gray-100 flex justify-center items-center py-8 px-4 font-sans transition-all duration-500 ease-in-out print:min-h-0 print:h-auto print:bg-white print:p-0 print:block print:overflow-visible">
             <div className={`w-full bg-white rounded-3xl shadow-2xl overflow-hidden relative min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${currentView === 'menu' ? 'max-w-md' : 'max-w-5xl'} print:min-h-0 print:h-auto print:shadow-none print:rounded-none`}>
 
                 {/* CABEÇALHO (GRADIENTE AZUL MARINHO - Igual ao Login) */}
@@ -569,8 +569,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 // --- VIEW FUNDAMENTAL E MÉDIO (Notas Numéricas) ---
                                 <>
                                     {/* --- VIEW GRADES: RESPONSIVE TABLE (ALL SCREENS) --- */}
-                                    <div className="overflow-x-auto pb-4 w-full">
-                                        <table className="min-w-[1000px] divide-y divide-gray-200 border border-gray-300 text-sm">
+                                    <div className="overflow-x-auto pb-4 w-full print:overflow-visible print:w-full print:pb-0">
+                                        {/* Print Adjustment: Scale down and remove min-width */}
+                                        <table className="min-w-[1000px] print:min-w-full divide-y divide-gray-200 border border-gray-300 text-sm print:text-[9px] print:w-full">
                                             <thead className="bg-blue-50 print:bg-gray-100">
                                                 <tr>
                                                     <th rowSpan={2} className="px-2 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-24 md:w-40 sticky left-0 bg-blue-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[10px] md:text-sm">Disciplina</th>
