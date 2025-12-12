@@ -309,7 +309,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     </div>
                                 )}
                             </div>
-                            <Button variant="secondary" onClick={onLogout} className="bg-white/10 text-white border-white/20 hover:bg-white hover:text-blue-950 text-xs py-1 px-2 shadow-none h-auto min-h-0">Sair</Button>
+                            <Button variant="secondary" onClick={onLogout} className="!bg-transparent border-none !text-white font-medium hover:!text-gray-200 shadow-none !px-0 text-xs py-1 px-2 h-auto min-h-0">Sair</Button>
                         </div>
                     </div>
                 </div>
