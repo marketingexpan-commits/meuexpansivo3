@@ -171,7 +171,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
               <div
                 className={`absolute z-[70] transition-all duration-1000 ease-in-out perspective-[1000px]
                   ${splashFading
-                    ? 'top-4 left-4 sm:top-8 sm:left-8 h-12 sm:h-16 w-32 sm:w-48 -translate-x-0 -translate-y-0 origin-top-left'
+                    ? 'top-5 left-5 sm:top-8 sm:left-8 h-12 sm:h-16 w-32 sm:w-48 -translate-x-0 -translate-y-0 origin-top-left'
                     : 'top-1/2 left-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2'
                   }`}
               >
@@ -203,11 +203,11 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
           {/* CABEÇALHO (COM GRADIENTE AZUL MARINHO - Igual ao Mural de Avisos) */}
           <div
-            className="bg-gradient-to-br from-blue-950 to-slate-900 p-4 sm:p-8 cursor-pointer select-none shadow-md overflow-hidden relative"
+            className="bg-gradient-to-br from-blue-950 to-slate-900 p-5 sm:p-8 cursor-pointer select-none shadow-md overflow-hidden relative"
             onClick={handleSecretClick}
           >
             {/* LOGO ESTÁTICO - Posicionado ABSOLUTAMENTE para coincidir exatamente com a animação */}
-            <div className={`absolute top-4 left-4 sm:top-8 sm:left-8 transition-opacity duration-0 ${showStaticLogo ? 'opacity-100' : 'opacity-0'}`}>
+            <div className={`absolute top-5 left-5 sm:top-8 sm:left-8 transition-opacity duration-0 ${showStaticLogo ? 'opacity-100' : 'opacity-0'}`}>
               <SchoolLogo variant="login" />
             </div>
 
