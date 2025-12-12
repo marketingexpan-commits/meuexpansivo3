@@ -367,7 +367,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
                                             <span className="text-xl">📊</span>
                                         </div>
-                                        <h3 className="font-bold text-gray-800 text-sm">Boletim</h3>
+                                        <h3 className="font-bold text-gray-800 text-sm">Boletim Escolar</h3>
                                     </button>
 
                                     <button
@@ -377,7 +377,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-green-100 transition-colors">
                                             <span className="text-xl">📅</span>
                                         </div>
-                                        <h3 className="font-bold text-gray-800 text-sm">Frequência</h3>
+                                        <h3 className="font-bold text-gray-800 text-sm text-center">Registro de frequência</h3>
                                     </button>
 
                                     <button
@@ -387,7 +387,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         <div className="w-10 h-10 bg-purple-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-purple-100 transition-colors">
                                             <span className="text-xl">🆘</span>
                                         </div>
-                                        <h3 className="font-bold text-gray-800 text-sm">Suporte</h3>
+                                        <h3 className="font-bold text-gray-800 text-sm text-center leading-tight">Centro de Suporte ao Aluno</h3>
                                     </button>
 
                                     <button
@@ -409,7 +409,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     {currentView === 'attendance' && (
                         <div className="mb-8 print:hidden">
                             <h3 className="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2">
-                                <span className="text-2xl">📅</span> Registro de Frequência
+                                <span className="text-2xl">📅</span> Registro de frequência
                             </h3>
                             <div className="bg-white p-6 rounded-lg shadow-md border border-gray-100">
                                 <p className="text-gray-600 text-sm mb-4">
