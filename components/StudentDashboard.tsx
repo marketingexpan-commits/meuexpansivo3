@@ -317,7 +317,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 {/* --- STUDENT INFO BAR (Replacing Tabs - Hidden on Bulletin) --- */}
                 {currentView !== 'grades' && currentView !== 'early_childhood' && (
                     <div className="flex flex-col border-b border-gray-100 bg-white rounded-t-3xl -mt-6 relative z-10 overflow-hidden shrink-0 shadow-sm mx-0">
-                        <div className="bg-blue-50/50 py-3 px-6 flex items-center justify-between border-b-2 border-blue-900">
+                        <div className="bg-blue-50/50 py-3 px-4 md:px-6 flex items-center justify-between border-b-2 border-blue-900">
                             <div className="flex flex-col">
                                 <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Aluno(a)</span>
                                 <span className="text-sm font-bold text-blue-900 truncate max-w-[180px] leading-tight">{student.name}</span>
@@ -334,7 +334,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 )}
 
                 {/* --- CONTEÚDO (SHEET BODY) --- */}
-                <div className={`p-6 pt-2 bg-white min-h-[500px] ${(currentView === 'grades' || currentView === 'early_childhood') ? 'rounded-t-3xl -mt-6 relative z-10 print:mt-0 print:rounded-none' : ''}`}>
+                <div className={`p-4 md:p-6 pt-2 bg-white min-h-[500px] ${(currentView === 'grades' || currentView === 'early_childhood') ? 'rounded-t-3xl -mt-6 relative z-10 print:mt-0 print:rounded-none' : ''}`}>
 
                     {/* --- MENU VIEW --- */}
                     {/* --- MENU VIEW --- */}

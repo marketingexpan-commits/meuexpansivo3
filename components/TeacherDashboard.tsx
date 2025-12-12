@@ -215,10 +215,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                     <div className="absolute top-0 right-20 -mt-10 w-64 h-64 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000"></div>
                 </div>
 
-                <div className="p-6 flex-1 flex flex-col">
+                <div className="p-4 md:p-6 flex-1 flex flex-col">
 
                     {/* TABS */}
-                    <div className="flex space-x-4 mb-6 border-b overflow-x-auto">
+                    <div className="flex space-x-4 mb-6 border-b overflow-x-auto w-full scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
                         <button onClick={() => setActiveTab('grades')} className={`pb-3 px-1 font-semibold border-b-2 whitespace-nowrap ${activeTab === 'grades' ? 'text-blue-950 border-blue-950' : 'text-gray-500 border-transparent hover:text-gray-700'}`}>
                             {selectedStudent && isEarlyChildhoodStudent ? 'Lançar Relatório' : 'Lançar Notas'}
                         </button>
