@@ -441,10 +441,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
                                             {studentAttendance.filter(a => a.status !== 'Presente').map((att, index) => (
                                                 <div key={index} className="p-3 border border-red-100 bg-red-50 rounded-lg flex flex-col items-center justify-center hover:shadow-sm transition-shadow">
-                                                    <p className="text-xs text-gray-700 font-bold mb-1">
+                                                    <p className="text-xs text-gray-700 font-bold">
                                                         {new Date(att.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                                                     </p>
-                                                    <span className="text-[10px] text-red-600 font-bold uppercase">{att.status}</span>
                                                 </div>
                                             ))}
                                         </div>
