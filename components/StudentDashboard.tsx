@@ -331,7 +331,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 )}
 
                 {/* --- CONTEÚDO (SHEET BODY) --- */}
-                <div className={`p-6 pt-2 bg-white min-h-[500px] ${(currentView === 'grades' || currentView === 'early_childhood') ? 'rounded-t-3xl -mt-6 relative z-10' : ''}`}>
+                <div className={`p-6 pt-2 bg-white min-h-[500px] ${(currentView === 'grades' || currentView === 'early_childhood') ? 'rounded-t-3xl -mt-6 relative z-10 print:mt-0 print:rounded-none' : ''}`}>
 
                     {/* --- MENU VIEW --- */}
                     {/* --- MENU VIEW --- */}
