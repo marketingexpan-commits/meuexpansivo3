@@ -149,9 +149,9 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
   return (
     <>
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 py-8">
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 p-0 md:p-4">
 
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden relative min-h-[500px]">
+        <div className="max-w-md w-full bg-white md:rounded-2xl shadow-xl overflow-hidden relative min-h-screen md:min-h-[500px]">
 
           {/* --- SPLASH SCREEN (ABSOLUTE INSIDE CARD) --- */}
           {showSplash && (
