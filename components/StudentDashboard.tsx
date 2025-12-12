@@ -223,8 +223,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     };
 
     return (
-        <div className="min-h-screen bg-gray-100 flex justify-center items-center py-8 px-4 font-sans">
-            <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden relative min-h-[600px] flex flex-col">
+        <div className="min-h-screen bg-gray-100 flex justify-center items-center py-8 px-4 font-sans transition-all duration-500 ease-in-out">
+            <div className={`w-full bg-white rounded-3xl shadow-2xl overflow-hidden relative min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${currentView === 'menu' ? 'max-w-md' : 'max-w-5xl'}`}>
 
                 {/* CABEÇALHO (GRADIENTE AZUL MARINHO - Igual ao Login) */}
                 {/* CABEÇALHO (GRADIENTE AZUL MARINHO - Igual ao Login) */}
