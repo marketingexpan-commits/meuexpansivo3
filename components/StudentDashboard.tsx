@@ -228,10 +228,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                 {/* CABEÇALHO (GRADIENTE AZUL MARINHO - Igual ao Login) */}
                 {/* CABEÇALHO (GRADIENTE AZUL MARINHO - Igual ao Login) */}
+                {/* CABEÇALHO (GRADIENTE AZUL MARINHO - Simplificado) */}
                 <div className="bg-gradient-to-br from-blue-950 to-slate-900 p-6 pb-12 shadow-md relative shrink-0">
                     <div className="flex flex-row justify-between items-center relative">
-                        {/* LEFT: Logo + Back Button */}
-                        <div className="flex items-center gap-3">
+                        {/* LEFT: Back Button + Mural Title */}
+                        <div className="flex items-center gap-3 text-white">
                             {currentView !== 'menu' && (
                                 <button
                                     onClick={() => setCurrentView('menu')}
@@ -240,72 +241,65 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                                 </button>
                             )}
-                            <SchoolLogo variant="login" />
+                            {/* Mural Title */}
+                            <div className="flex items-center gap-2">
+                                <svg className="w-5 h-5 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
+                                <span className="font-bold text-lg tracking-wide opacity-95">Mural de Avisos</span>
+                            </div>
                         </div>
 
-                        {/* RIGHT: Text & Controls */}
-                        <div className="flex flex-col items-end text-right">
-                            {/* Controls Row (Bell, Logout) */}
-                            <div className="flex items-center gap-2 mb-1">
-                                {/* Notification Bell */}
-                                <div className="relative">
-                                    <button
-                                        onClick={() => setShowNotifications(!showNotifications)}
-                                        className="p-1 text-white/80 hover:text-white transition-colors relative hover:bg-white/10 rounded-full"
-                                    >
-                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-                                        {unreadNotifications > 0 && (
-                                            <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold w-3.5 h-3.5 flex items-center justify-center rounded-full border border-blue-900 animate-pulse">
-                                                {unreadNotifications}
-                                            </span>
-                                        )}
-                                    </button>
-
-                                    {/* Notifications Dropdown (Mobile Optimized) */}
-                                    {showNotifications && (
-                                        <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden ring-1 ring-black ring-opacity-5 text-left">
-                                            <div className="p-3 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
-                                                <h4 className="font-bold text-blue-900 text-sm">Notificações</h4>
-                                                <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-gray-600">
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                                </button>
-                                            </div>
-                                            <div className="max-h-60 overflow-y-auto">
-                                                {notifications.length > 0 ? (
-                                                    notifications.map(n => (
-                                                        <div
-                                                            key={n.id}
-                                                            className={`p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer ${!n.read ? 'bg-blue-50/30' : ''}`}
-                                                            onClick={() => {
-                                                                if (!n.read && onMarkNotificationAsRead) onMarkNotificationAsRead(n.id);
-                                                            }}
-                                                        >
-                                                            <div className="flex justify-between items-start mb-1">
-                                                                <span className="font-bold text-xs text-gray-800">{n.title}</span>
-                                                                <span className="text-[10px] text-gray-400">{new Date(n.timestamp).toLocaleDateString()}</span>
-                                                            </div>
-                                                            <p className="text-xs text-gray-600 line-clamp-2">{n.message}</p>
-                                                        </div>
-                                                    ))
-                                                ) : (
-                                                    <div className="p-4 text-center text-gray-500 text-xs italic">
-                                                        Nenhuma notificação.
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
+                        {/* RIGHT: Notifications & Logout */}
+                        <div className="flex items-center gap-2">
+                            {/* Notification Bell */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => setShowNotifications(!showNotifications)}
+                                    className="p-2 text-white/80 hover:text-white transition-colors relative hover:bg-white/10 rounded-full"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                                    {unreadNotifications > 0 && (
+                                        <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold w-3.5 h-3.5 flex items-center justify-center rounded-full border border-blue-900 animate-pulse">
+                                            {unreadNotifications}
+                                        </span>
                                     )}
-                                </div>
-                                <Button variant="secondary" onClick={onLogout} className="bg-white/10 text-white border-white/20 hover:bg-white hover:text-blue-950 text-xs py-1 px-2 shadow-none h-auto min-h-0">Sair</Button>
-                            </div>
+                                </button>
 
-                            {/* Text Block - Mural Info and Title */}
-                            <p className="text-white/80 text-xs font-medium mb-0 leading-tight flex items-center gap-1">
-                                <svg className="w-3 h-3 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
-                                Mural de Avisos
-                            </p>
-                            <h2 className="text-xl font-extrabold text-white tracking-tight leading-tight">Meu Expansivo</h2>
-                            <p className="text-white/60 mt-0.5 text-[10px] uppercase tracking-widest font-semibold">PORTAL DO ALUNO</p>
+                                {/* Notifications Dropdown (Mobile Optimized) */}
+                                {showNotifications && (
+                                    <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden ring-1 ring-black ring-opacity-5 text-left">
+                                        <div className="p-3 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
+                                            <h4 className="font-bold text-blue-900 text-sm">Notificações</h4>
+                                            <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-gray-600">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                            </button>
+                                        </div>
+                                        <div className="max-h-60 overflow-y-auto">
+                                            {notifications.length > 0 ? (
+                                                notifications.map(n => (
+                                                    <div
+                                                        key={n.id}
+                                                        className={`p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer ${!n.read ? 'bg-blue-50/30' : ''}`}
+                                                        onClick={() => {
+                                                            if (!n.read && onMarkNotificationAsRead) onMarkNotificationAsRead(n.id);
+                                                        }}
+                                                    >
+                                                        <div className="flex justify-between items-start mb-1">
+                                                            <span className="font-bold text-xs text-gray-800">{n.title}</span>
+                                                            <span className="text-[10px] text-gray-400">{new Date(n.timestamp).toLocaleDateString()}</span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-600 line-clamp-2">{n.message}</p>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="p-4 text-center text-gray-500 text-xs italic">
+                                                    Nenhuma notificação.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <Button variant="secondary" onClick={onLogout} className="bg-white/10 text-white border-white/20 hover:bg-white hover:text-blue-950 text-xs py-1 px-2 shadow-none h-auto min-h-0">Sair</Button>
                         </div>
                     </div>
                 </div>
@@ -334,7 +328,21 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                             {/* Content Wrapper */}
                             <div className="space-y-6">
-                                {/* Welcome Context (Replacing Banners) */}
+
+                                {/* BRANDING (Moved from Header) */}
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-12">
+                                            <SchoolLogo variant="login" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-xl font-extrabold text-blue-950 tracking-tight leading-tight">Meu Expansivo</h2>
+                                            <p className="text-gray-500 text-[10px] uppercase tracking-widest font-semibold">PORTAL DO ALUNO</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Welcome Context */}
                                 <div className="text-left mb-2">
                                     <h3 className="text-gray-800 font-bold text-lg">Acompanhamento</h3>
                                     <p className="text-gray-500 text-sm">Selecione uma opção para visualizar.</p>
