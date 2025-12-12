@@ -17,25 +17,32 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
   // --- SPLASH SCREEN STATE ---
   const [showSplash, setShowSplash] = useState(true);
   const [splashFading, setSplashFading] = useState(false);
+  const [logoVisible, setLogoVisible] = useState(false);
   const [animateLogo, setAnimateLogo] = useState(false);
 
   React.useEffect(() => {
-    // 1. Iniciar troca de cor da logo (1s)
+    // 0. Iniciar com logo invisível (fade-in suave)
+    const timer0 = setTimeout(() => {
+      setLogoVisible(true);
+    }, 100);
+
+    // 1. Iniciar troca de cor da logo (2s) - Mais lento
     const timer1 = setTimeout(() => {
       setAnimateLogo(true);
-    }, 1000);
+    }, 2000);
 
-    // 2. Iniciar fade out da tela (2.5s)
+    // 2. Iniciar fade out da tela (4.5s) - Duração total maior
     const timer2 = setTimeout(() => {
       setSplashFading(true);
-    }, 2500);
+    }, 4500);
 
-    // 3. Remover splash da DOM (3.2s)
+    // 3. Remover splash da DOM (5.5s)
     const timer3 = setTimeout(() => {
       setShowSplash(false);
-    }, 3200);
+    }, 5500);
 
     return () => {
+      clearTimeout(timer0);
       clearTimeout(timer1);
       clearTimeout(timer2);
       clearTimeout(timer3);
@@ -145,28 +152,21 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
           {/* --- SPLASH SCREEN (ABSOLUTE INSIDE CARD) --- */}
           {showSplash && (
             <div
-              className={`absolute inset-0 z-50 bg-gradient-to-br from-blue-950 to-slate-900 flex flex-col items-center justify-center transition-opacity duration-700 ${splashFading ? 'opacity-0' : 'opacity-100'}`}
+              className={`absolute inset-0 z-50 bg-gradient-to-br from-blue-950 to-slate-900 flex flex-col items-center justify-center transition-opacity duration-1000 ${splashFading ? 'opacity-0' : 'opacity-100'}`}
             >
-              <div className="relative w-32 h-32 mb-8">
+              <div className={`relative w-32 h-32 transition-opacity duration-1000 ${logoVisible ? 'opacity-100' : 'opacity-0'}`}>
                 {/* Logo Branca (Inicial) */}
                 <img
                   src={SCHOOL_LOGO_WHITE_URL}
                   alt="Logo Branca"
-                  className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-1000 ${animateLogo ? 'opacity-0' : 'opacity-100'}`}
+                  className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-[1500ms] ${animateLogo ? 'opacity-0' : 'opacity-100'}`}
                 />
                 {/* Logo Laranja (Final) */}
                 <img
                   src={SCHOOL_LOGO_URL}
                   alt="Logo Oficial"
-                  className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-1000 ${animateLogo ? 'opacity-100' : 'opacity-0'}`}
+                  className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-[1500ms] ${animateLogo ? 'opacity-100' : 'opacity-0'}`}
                 />
-              </div>
-
-              {/* Loader Sutil */}
-              <div className="flex gap-2">
-                <div className="w-2 h-2 bg-white/50 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
-                <div className="w-2 h-2 bg-white/50 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-2 h-2 bg-white/50 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
               </div>
             </div>
           )}
