@@ -155,7 +155,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
           {/* --- SPLASH SCREEN (ABSOLUTE INSIDE CARD) --- */}
           {showSplash && (
-            <div className="absolute inset-0 z-[60] pointer-events-none rounded-2xl overflow-hidden">
+            <div className="fixed md:absolute inset-0 z-[60] pointer-events-none md:rounded-2xl overflow-hidden">
 
               {/* CAMADA DE FUNDO BRANCA - Desaparece revelando o login atrás */}
               <div
