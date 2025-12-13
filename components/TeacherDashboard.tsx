@@ -83,13 +83,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
         const currentMonth = new Date().getMonth();
         const bimesterNumber = Math.floor(currentMonth / 3) + 1;
 
-        const studentAbsences: Record<string, { bimester: number, year: number, monthly: { count: number, days: number[] } }> = {};
+        const studentAbsences: Record<string, { bimester: number, year: number, monthly: { count: number, details: { day: number, bimester: number }[] } }> = {};
 
         for (const student of attendanceStudents) {
             let yearAbsences = 0;
             let bimesterAbsences = 0;
             let monthlyCount = 0;
-            let monthlyDays: number[] = [];
+            let monthlyDetails: { day: number, bimester: number }[] = [];
 
             for (const record of attendanceRecords) {
                 if (record.studentStatus[student.id] === AttendanceStatus.ABSENT) {
@@ -102,16 +102,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
 
                         if ((m - 1) === selectedAbsenceMonth) {
                             monthlyCount++;
-                            monthlyDays.push(d);
+                            monthlyDetails.push({ day: d, bimester: recordBimester });
                         }
                     }
                 }
             }
-            monthlyDays.sort((a, b) => a - b);
             studentAbsences[student.id] = {
                 bimester: bimesterAbsences,
                 year: yearAbsences,
-                monthly: { count: monthlyCount, days: monthlyDays }
+                monthly: { count: monthlyCount, details: monthlyDetails.sort((a, b) => a.day - b.day) }
             };
         }
         return { absenceData: studentAbsences, currentBimester: bimesterNumber };
@@ -595,7 +594,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         {/* VIEW MOBILE/TABLET (CARDS) - Alterado para LG para cobrir tablets/celulares grandes */}
                                         <div className="lg:hidden space-y-4">
                                             {attendanceStudents.map(student => {
-                                                const absences = absenceData[student.id] || { bimester: 0, year: 0, monthly: { count: 0, days: [] } };
+                                                const absences = absenceData[student.id] || { bimester: 0, year: 0, monthly: { count: 0, details: [] } };
                                                 const status = studentStatuses[student.id]; // Assuming studentStatuses holds the current status
                                                 const bimesterAbsences = absences.bimester;
                                                 const totalAbsences = absences.year;
@@ -616,11 +615,16 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                     <p>{currentBimester}º Bimestre: <span className="font-bold text-red-600">{bimesterAbsences} falta(s)</span></p>
                                                                     <p>Total no Ano: <span className="font-bold text-gray-800">{totalAbsences} falta(s)</span></p>
                                                                     {monthlyAbsences.count > 0 && (
-                                                                        <p className="text-blue-800 bg-blue-50 p-1 rounded mt-1">
-                                                                            Faltas em {MONTH_NAMES[selectedAbsenceMonth]}: <span className="font-bold">{monthlyAbsences.count}</span>
-                                                                            <br />
-                                                                            <span className="text-[10px]">Dias: {monthlyAbsences.days.join(', ')}</span>
-                                                                        </p>
+                                                                        <div className="text-blue-800 bg-blue-50 p-1.5 rounded mt-1">
+                                                                            <p>Faltas em {MONTH_NAMES[selectedAbsenceMonth]}: <span className="font-bold">{monthlyAbsences.count}</span></p>
+                                                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                                                {monthlyAbsences.details.map((detail, idx) => (
+                                                                                    <span key={idx} className="text-[10px] bg-white border border-blue-100 px-1 rounded text-blue-900">
+                                                                                        Dia {detail.day} ({detail.bimester}º Bim)
+                                                                                    </span>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
                                                                     )}
                                                                 </div>
                                                             </div>
@@ -663,7 +667,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-200">
                                                     {attendanceStudents.map(student => {
-                                                        const absences = absenceData[student.id] || { bimester: 0, year: 0, monthly: { count: 0, days: [] } };
+                                                        const absences = absenceData[student.id] || { bimester: 0, year: 0, monthly: { count: 0, details: [] } };
                                                         return (
                                                             <tr key={student.id} className="hover:bg-gray-50">
                                                                 <td className="px-6 py-4">
@@ -677,9 +681,16 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                         <span>{currentBimester}º Bimestre: <strong className="text-red-600 font-bold">{absences.bimester} falta(s)</strong></span>
                                                                         <span>Total no Ano: <strong className="text-gray-700 font-bold">{absences.year} falta(s)</strong></span>
                                                                         {absences.monthly.count > 0 && (
-                                                                            <span className="bg-blue-50 text-blue-800 px-2 py-0.5 rounded border border-blue-100 pb-1">
-                                                                                {MONTH_NAMES[selectedAbsenceMonth]}: <strong>{absences.monthly.count}</strong> <span className="text-[10px] ml-1">(Dias: {absences.monthly.days.join(', ')})</span>
-                                                                            </span>
+                                                                            <div className="bg-blue-50 text-blue-800 px-2 py-1 rounded border border-blue-100 mt-1 inline-block">
+                                                                                <span className="font-bold">{MONTH_NAMES[selectedAbsenceMonth]}: {absences.monthly.count}</span>
+                                                                                <div className="flex flex-wrap gap-1 mt-0.5">
+                                                                                    {absences.monthly.details.map((detail, idx) => (
+                                                                                        <span key={idx} className="text-[9px] bg-white border border-blue-200 px-1 rounded text-blue-950">
+                                                                                            {detail.day} ({detail.bimester}ºB)
+                                                                                        </span>
+                                                                                    ))}
+                                                                                </div>
+                                                                            </div>
                                                                         )}
                                                                     </div>
                                                                 </td>

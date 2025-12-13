@@ -130,11 +130,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     }, [attendanceRecords, student.id]);
 
     const displayedAttendance = useMemo(() => {
-        return studentAttendance.filter(record => {
-            const recordDate = new Date(record.date + 'T00:00:00');
-            return recordDate.getFullYear() === currentYear &&
-                recordDate.getMonth() === selectedAttendanceMonth;
-        });
+        return studentAttendance
+            .filter(record => {
+                const recordDate = new Date(record.date + 'T00:00:00');
+                const matchesFilter = recordDate.getFullYear() === currentYear &&
+                    recordDate.getMonth() === selectedAttendanceMonth;
+                return matchesFilter;
+            })
+            .map(record => {
+                const recordDate = new Date(record.date + 'T00:00:00');
+                const bimester = Math.floor(recordDate.getMonth() / 3) + 1;
+                return { ...record, bimester };
+            });
     }, [studentAttendance, currentYear, selectedAttendanceMonth]);
 
     const absencesThisMonth = useMemo(() => {
@@ -438,9 +445,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3 text-center mb-6">
                                         {displayedAttendance.map((att, index) => (
                                             <div key={index} className="p-3 border rounded-lg flex flex-col items-center justify-center bg-gray-50">
-                                                <p className="text-xs text-gray-500 font-bold mb-2">
+                                                <p className="text-xs text-gray-500 font-bold mb-1">
                                                     {new Date(att.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                                                 </p>
+                                                <span className="text-[9px] text-gray-400 font-medium mb-1.5">{att.bimester}º Bimestre</span>
                                                 <span className={`px-3 py-1 text-xs font-bold rounded-full text-white ${att.status === 'Presente' ? 'bg-green-500' : 'bg-red-600'}`}>
                                                     {att.status}
                                                 </span>
