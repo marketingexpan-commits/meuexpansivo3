@@ -146,6 +146,20 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
       if (/^\d{0,5}$/.test(val)) {
         setIdentifier(val);
       }
+    } else if (activeTab === 'teacher') {
+      // CPF: Apenas números e Máscara
+      const numeric = val.replace(/\D/g, '').slice(0, 11); // Limita a 11 dígitos
+
+      let formatted = numeric;
+      if (numeric.length > 9) {
+        formatted = numeric.replace(/^(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+      } else if (numeric.length > 6) {
+        formatted = numeric.replace(/^(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+      } else if (numeric.length > 3) {
+        formatted = numeric.replace(/^(\d{3})(\d{1,3})/, '$1.$2');
+      }
+
+      setIdentifier(formatted);
     } else {
       setIdentifier(val);
     }
@@ -319,7 +333,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                 </label>
                 <input
                   type="text"
-                  inputMode={activeTab === 'student' ? 'numeric' : 'text'}
+                  inputMode={activeTab === 'student' || activeTab === 'teacher' ? 'numeric' : 'text'}
+                  maxLength={activeTab === 'student' ? 5 : activeTab === 'teacher' ? 14 : undefined}
                   value={identifier}
                   onChange={handleIdentifierChange}
                   placeholder={
