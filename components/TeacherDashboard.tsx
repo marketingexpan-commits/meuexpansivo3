@@ -594,10 +594,16 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                                 if (record.discipline !== grade.subject) return acc;
 
                                                                                 if (record.studentStatus[grade.studentId] === AttendanceStatus.ABSENT) {
-                                                                                    const [y, m] = record.date.split('-').map(Number);
-                                                                                    if (y === new Date().getFullYear()) {
-                                                                                        const b = Math.floor((m - 1) / 3) + 1;
-                                                                                        if (b === bimesterNum) return acc + 1;
+                                                                                    const [y, mStr] = record.date.split('-');
+                                                                                    const yNum = Number(y);
+                                                                                    const mNum = Number(mStr); // 1-12
+
+                                                                                    if (yNum === new Date().getFullYear()) {
+                                                                                        // Explicit check against bimesterNum (1,2,3,4)
+                                                                                        if (bimesterNum === 1 && mNum >= 1 && mNum <= 3) return acc + 1;
+                                                                                        if (bimesterNum === 2 && mNum >= 4 && mNum <= 6) return acc + 1;
+                                                                                        if (bimesterNum === 3 && mNum >= 7 && mNum <= 9) return acc + 1;
+                                                                                        if (bimesterNum === 4 && mNum >= 10 && mNum <= 12) return acc + 1;
                                                                                     }
                                                                                 }
                                                                                 return acc;
