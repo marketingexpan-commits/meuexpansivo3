@@ -629,26 +629,49 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             </button>
                         </div>
 
-                        {/* FILTROS */}
-                        <div className="p-4 bg-white border-b border-gray-100 flex gap-2 overflow-x-auto">
-                            <button
-                                onClick={() => handleFilterChange('today')}
-                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${logFilter === 'today' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                            >
-                                Hoje
-                            </button>
-                            <button
-                                onClick={() => handleFilterChange('week')}
-                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${logFilter === 'week' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                            >
-                                Últimos 7 Dias
-                            </button>
-                            <button
-                                onClick={() => handleFilterChange('month')}
-                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${logFilter === 'month' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                            >
-                                Este Mês
-                            </button>
+                        {/* FILTROS E AÇÕES */}
+                        <div className="p-4 bg-white border-b border-gray-100 flex flex-col md:flex-row gap-4 justify-between items-center">
+                            <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
+                                <button
+                                    onClick={() => handleFilterChange('today')}
+                                    className={`whitespace-nowrap px-4 py-2 rounded-lg text-xs font-bold transition-all ${logFilter === 'today' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                >
+                                    Hoje
+                                </button>
+                                <button
+                                    onClick={() => handleFilterChange('week')}
+                                    className={`whitespace-nowrap px-4 py-2 rounded-lg text-xs font-bold transition-all ${logFilter === 'week' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                >
+                                    7 Dias
+                                </button>
+                                <button
+                                    onClick={() => handleFilterChange('month')}
+                                    className={`whitespace-nowrap px-4 py-2 rounded-lg text-xs font-bold transition-all ${logFilter === 'month' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                >
+                                    Mês
+                                </button>
+                            </div>
+
+                            <div className="flex gap-2 items-center w-full md:w-auto">
+                                <select
+                                    value={logProfileFilter}
+                                    onChange={(e) => setLogProfileFilter(e.target.value as any)}
+                                    className="p-2 border rounded-lg text-sm bg-gray-50 flex-1 md:flex-none"
+                                >
+                                    <option value="all">Todos os Perfis</option>
+                                    <option value="student">Alunos</option>
+                                    <option value="teacher">Professores</option>
+                                    <option value="admin">Administração</option>
+                                </select>
+
+                                <button
+                                    onClick={handleDownloadPDF}
+                                    className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 shadow-sm transition-all whitespace-nowrap"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                    PDF
+                                </button>
+                            </div>
                         </div>
 
                         {/* CONTEÚDO / TABELA */}
