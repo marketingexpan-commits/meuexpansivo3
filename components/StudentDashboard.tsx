@@ -283,11 +283,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2 mb-0.5">
-                                        <h3 className="text-white font-bold text-sm tracking-wide">Matrículas Abertas 2026</h3>
+                                        <h3 className="text-white font-bold text-sm tracking-wide">Rematrículas Abertas 2026</h3>
                                         <span className="bg-green-500 text-[9px] px-1.5 py-0.5 rounded text-white font-extrabold uppercase tracking-wide">Novo</span>
                                     </div>
                                     <p className="text-blue-100 text-[10px] leading-tight max-w-[200px] opacity-90">
-                                        Garanta sua vaga com condições especiais até o final do mês. Procure a secretaria!
+                                        Garanta sua renovação com condições especiais até o final do mês. Procure a secretaria!
                                     </p>
                                 </div>
                             </div>
