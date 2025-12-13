@@ -57,6 +57,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
     const [attendanceGrade, setAttendanceGrade] = useState('');
     const [attendanceClass, setAttendanceClass] = useState<SchoolClass>(SchoolClass.A);
+    const [attendanceSubject, setAttendanceSubject] = useState<string>('');
     const [attendanceStudents, setAttendanceStudents] = useState<Student[]>([]);
     const [studentStatuses, setStudentStatuses] = useState<Record<string, AttendanceStatus>>({});
     const [isAttendanceLoading, setIsAttendanceLoading] = useState(false);
@@ -68,6 +69,14 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     ];
 
     const teacherSubjects = teacher.subjects;
+
+    // Auto-select subject if teacher has only one
+    useEffect(() => {
+        if (teacherSubjects.length === 1) {
+            setAttendanceSubject(teacherSubjects[0] as string);
+        }
+    }, [teacherSubjects]);
+
     const isEarlyChildhoodStudent = useMemo(() => selectedStudent?.gradeLevel.toLowerCase().includes('edu. infantil'), [selectedStudent]);
 
     // NEW: Calculate absences per bimester for the selected student
@@ -222,10 +231,12 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
 
     const loadAttendance = () => {
         if (!attendanceGrade) { alert("Por favor, selecione uma série."); return; }
+        if (!attendanceSubject) { alert("Por favor, selecione uma disciplina."); return; }
         setIsAttendanceLoading(true);
         const studentsInClass = students.filter(s => s.unit === activeUnit && s.gradeLevel === attendanceGrade && s.schoolClass === attendanceClass);
         setAttendanceStudents(studentsInClass);
-        const recordId = `${attendanceDate}_${activeUnit}_${attendanceGrade}_${attendanceClass}`;
+        // ID Includes Discipline now
+        const recordId = `${attendanceDate}_${activeUnit}_${attendanceGrade}_${attendanceClass}_${attendanceSubject}`;
         const existingRecord = attendanceRecords.find(r => r.id === recordId);
         if (existingRecord) { setStudentStatuses(existingRecord.studentStatus); }
         else { const defaultStatuses: Record<string, AttendanceStatus> = {}; studentsInClass.forEach(s => { defaultStatuses[s.id] = AttendanceStatus.PRESENT; }); setStudentStatuses(defaultStatuses); }
@@ -236,9 +247,20 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
 
     const handleSaveAttendance = async () => {
         if (attendanceStudents.length === 0) return; setIsAttendanceSaving(true);
-        const recordId = `${attendanceDate}_${activeUnit}_${attendanceGrade}_${attendanceClass}`;
-        const record: AttendanceRecord = { id: recordId, date: attendanceDate, unit: activeUnit, gradeLevel: attendanceGrade, schoolClass: attendanceClass, teacherId: teacher.id, teacherName: teacher.name, studentStatus: studentStatuses };
-        try { await onSaveAttendance(record); } finally { setIsAttendanceSaving(false); }
+        // ID Includes Discipline
+        const recordId = `${attendanceDate}_${activeUnit}_${attendanceGrade}_${attendanceClass}_${attendanceSubject}`;
+        const record: AttendanceRecord = {
+            id: recordId,
+            date: attendanceDate,
+            unit: activeUnit,
+            gradeLevel: attendanceGrade,
+            schoolClass: attendanceClass,
+            teacherId: teacher.id,
+            teacherName: teacher.name,
+            discipline: attendanceSubject, // Saving Discipline
+            studentStatus: studentStatuses
+        };
+        try { await onSaveAttendance(record); alert('Chamada salva com sucesso!'); } finally { setIsAttendanceSaving(false); }
     };
 
     const getBimesterDataDisplay = () => { if (!currentGradeData || selectedStage === 'recuperacaoFinal') return null; const key = selectedStage.replace('_rec', '') as keyof GradeEntry['bimesters']; return currentGradeData.bimesters[key]; }
@@ -615,6 +637,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         <label className="text-sm font-bold text-gray-700 mb-1 block">Turma</label>
                                         <select value={attendanceClass} onChange={e => setAttendanceClass(e.target.value as SchoolClass)} className="w-full p-2 border rounded">
                                             {SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-bold text-gray-700 mb-1 block">Disciplina</label>
+                                        <select value={attendanceSubject} onChange={e => setAttendanceSubject(e.target.value)} className="w-full p-2 border rounded">
+                                            <option value="">Selecione...</option>
+                                            {teacherSubjects.map(subj => <option key={subj} value={subj as string}>{subj as string}</option>)}
                                         </select>
                                     </div>
                                     <div>
