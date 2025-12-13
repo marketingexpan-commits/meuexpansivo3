@@ -108,6 +108,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
     // --- ESTADOS DE LOGS/STATS ---
     const [dailyLoginsCount, setDailyLoginsCount] = useState<number | null>(null);
+    const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+    const [accessLogs, setAccessLogs] = useState<any[]>([]);
+    const [logFilter, setLogFilter] = useState<'today' | 'week' | 'month'>('today');
+    const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
     useEffect(() => {
         if (!isGeneralAdmin) return; // Só busca se for Admin Geral
@@ -130,6 +134,80 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         fetchDailyStats();
     }, [isGeneralAdmin]);
+
+    // Função para buscar logs
+    const fetchLogs = async (filter: 'today' | 'week' | 'month') => {
+        if (!isGeneralAdmin) return;
+        setIsLoadingLogs(true);
+        setAccessLogs([]); // Limpa lista anterior
+
+        let startDate = new Date();
+        if (filter === 'today') {
+            startDate.setHours(0, 0, 0, 0);
+        } else if (filter === 'week') {
+            startDate.setDate(startDate.getDate() - 7);
+        } else if (filter === 'month') {
+            startDate.setMonth(startDate.getMonth() - 1);
+        }
+
+        try {
+            // OBS: 'date' no Firestore foi salvo como string ISO no App.tsx. 
+            // Para queries complexas precisariamos de index, vamos usar timestamp do proprio firestore se possivel ou filtrar string ISO.
+            // O App.tsx salva: date: new Date().toISOString()
+            const isoCheck = startDate.toISOString();
+
+            const snapshot = await db.collection('access_logs')
+                .where('date', '>=', isoCheck)
+                .orderBy('date', 'desc')
+                .limit(100) // Limite de segurança
+                .get();
+
+            const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setAccessLogs(logs);
+        } catch (error) {
+            console.error("Erro ao buscar logs:", error);
+            // Fallback simples se der erro de index (tenta buscar ultimos 50 sem filtro complexo)
+            try {
+                const snapshotFallback = await db.collection('access_logs')
+                    .orderBy('timestamp', 'desc')
+                    .limit(50)
+                    .get();
+                const logsFallback = snapshotFallback.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setAccessLogs(logsFallback);
+            } catch (e) {
+                console.error("Erro fatal ao buscar logs", e);
+            }
+        } finally {
+            setIsLoadingLogs(false);
+        }
+    };
+
+    const handleOpenLogModal = () => {
+        setIsLogModalOpen(true);
+        fetchLogs('today'); // Default filter
+    };
+
+    const handleFilterChange = (newFilter: 'today' | 'week' | 'month') => {
+        setLogFilter(newFilter);
+        fetchLogs(newFilter);
+    };
+
+    const resolveUserName = (userId: string) => {
+        // Tenta achar em alunos
+        const s = students.find(x => x.id === userId);
+        if (s) return `${s.name} (Aluno)`;
+
+        // Tenta achar em professores
+        const t = teachers.find(x => x.id === userId);
+        if (t) return `${t.name} (Prof.)`;
+
+        // Tenta achar em admins
+        const a = admins.find(x => x.id === userId);
+        if (a) return `${a.name} (Admin)`;
+
+        return userId; // Fallback
+    };
+
 
     const generatePassword = () => {
         const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -265,13 +343,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         {/* STATS WIDGET (TOP RIGHT) - Somente para Admin Geral */}
                         <div className="flex items-center gap-6">
                             {isGeneralAdmin && dailyLoginsCount !== null && (
-                                <div className="hidden md:flex flex-col items-end text-white/90">
+                                <button
+                                    onClick={handleOpenLogModal}
+                                    className="hidden md:flex flex-col items-end text-white/90 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all cursor-pointer"
+                                    title="Clique para ver detalhes"
+                                >
                                     <span className="text-[10px] uppercase tracking-wider font-semibold opacity-70">Acessos Hoje</span>
                                     <div className="flex items-baseline gap-1">
                                         <span className="text-2xl font-bold">{dailyLoginsCount}</span>
                                         <span className="text-xs">logins</span>
                                     </div>
-                                </div>
+                                </button>
                             )}
 
                             <div className="flex items-center gap-3">
