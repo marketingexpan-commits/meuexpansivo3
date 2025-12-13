@@ -235,7 +235,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         // Header Background
         doc.setFillColor(30, 58, 138); // blue-950
-        doc.rect(0, 0, 210, 35, 'F');
+        doc.rect(0, 0, 210, 40, 'F');
 
         try {
             // Carregar e processar a logo
@@ -246,7 +246,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 reader.onloadend = () => resolve(reader.result as string);
                 reader.readAsDataURL(blob);
             });
-            doc.addImage(base64, 'PNG', 10, 5, 25, 25);
+            // Logo reduzida (25x25)
+            doc.addImage(base64, 'PNG', 10, 8, 25, 25);
 
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(18);
