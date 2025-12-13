@@ -121,11 +121,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     return {
                         date: record.date,
                         status: record.studentStatus[student.id],
+                        discipline: record.discipline, // Added Discipline
                     };
                 }
                 return null;
             })
-            .filter((record): record is { date: string; status: AttendanceStatus } => record !== null)
+            .filter((record): record is { date: string; status: AttendanceStatus; discipline: string } => record !== null)
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [attendanceRecords, student.id]);
 
@@ -661,12 +662,26 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                         {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
                                                             const bData = grade.bimesters[key as keyof typeof grade.bimesters];
                                                             const bimesterNum = Number(key.replace('bimester', '')) as 1 | 2 | 3 | 4;
+
+                                                            // STRICT SUBJECT ABSENCE COUNT
+                                                            const currentAbsences = studentAttendance.reduce((acc, att) => {
+                                                                if (att.discipline !== grade.subject) return acc;
+                                                                if (att.status === AttendanceStatus.ABSENT) {
+                                                                    const d = new Date(att.date + 'T00:00:00');
+                                                                    if (d.getFullYear() === currentYear) {
+                                                                        const b = Math.floor(d.getMonth() / 3) + 1;
+                                                                        if (b === bimesterNum) return acc + 1;
+                                                                    }
+                                                                }
+                                                                return acc;
+                                                            }, 0);
+
                                                             return (
                                                                 <React.Fragment key={key}>
                                                                     <td className="px-1 py-2 text-center text-gray-600 border-r border-gray-300 text-xs">{formatGrade(bData.nota)}</td>
                                                                     <td className="px-1 py-2 text-center text-gray-600 border-r border-gray-300 text-xs">{formatGrade(bData.recuperacao)}</td>
                                                                     <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs">{formatGrade(bData.media)}</td>
-                                                                    <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300 text-xs">{calculatedAbsencesByBimester[bimesterNum] || ''}</td>
+                                                                    <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300 text-xs">{currentAbsences || ''}</td>
                                                                 </React.Fragment>
                                                             );
                                                         })}

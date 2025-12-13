@@ -586,6 +586,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                             // Calculate absences dynamically for this student and bimester
                                                                             // Reusing logic from calculatedAbsences but specifically for this student inside the map
                                                                             const currentStudentAbsences = attendanceRecords.reduce((acc, record) => {
+                                                                                // STRICT SUBJECT FILTER FOR BULLETIN ROW
+                                                                                if (record.discipline !== grade.subject) return acc;
+
                                                                                 if (record.studentStatus[grade.studentId] === AttendanceStatus.ABSENT) {
                                                                                     const [y, m] = record.date.split('-').map(Number);
                                                                                     if (y === new Date().getFullYear()) {
