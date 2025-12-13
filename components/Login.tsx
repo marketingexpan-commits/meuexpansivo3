@@ -109,11 +109,13 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Save or Remove 'remember me'
-    if (rememberMe && identifier) {
-      localStorage.setItem('savedUserCode', identifier);
-    } else {
-      localStorage.removeItem('savedUserCode');
+    // Save or Remove 'remember me' (Student Only)
+    if (activeTab === 'student') {
+      if (rememberMe && identifier) {
+        localStorage.setItem('savedUserCode', identifier);
+      } else {
+        localStorage.removeItem('savedUserCode');
+      }
     }
 
     if (activeTab === 'student') {
@@ -355,19 +357,21 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                 </div>
               </div>
 
-              {/* Checkbox "Lembrar meu código" */}
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded cursor-pointer"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700 cursor-pointer select-none">
-                  Lembrar meu código
-                </label>
-              </div>
+              {/* Checkbox "Lembrar meu código" (Exclusivo Aluno) */}
+              {activeTab === 'student' && (
+                <div className="flex items-center">
+                  <input
+                    id="remember-me"
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded cursor-pointer"
+                  />
+                  <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700 cursor-pointer select-none">
+                    Lembrar meu código
+                  </label>
+                </div>
+              )}
 
               {error && (
                 <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg border border-red-100 flex items-center">
