@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
 import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher } from '../types';
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
+import { calculateBimesterMedia, calculateFinalData } from '../src/constants'; // Import Sync Fix
 import { getStudyTips } from '../services/geminiService';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
@@ -96,7 +97,24 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const semester = currentMonth >= 7 ? 2 : 1;
     const headerText = `Boletim Escolar ${currentYear}.${semester}`;
 
-    const studentGrades = (grades || []).filter(g => g.studentId === student.id);
+
+
+    // CORREÇÃO DE SINCRONIZAÇÃO: Recalcular médias dinamicamente
+    const studentGrades = useMemo(() => {
+        return (grades || [])
+            .filter(g => g.studentId === student.id)
+            .map(grade => {
+                const calculatedBimesters = {
+                    bimester1: calculateBimesterMedia(grade.bimesters.bimester1),
+                    bimester2: calculateBimesterMedia(grade.bimesters.bimester2),
+                    bimester3: calculateBimesterMedia(grade.bimesters.bimester3),
+                    bimester4: calculateBimesterMedia(grade.bimesters.bimester4),
+                };
+                const finalData = calculateFinalData(calculatedBimesters, grade.recuperacaoFinal);
+                return { ...grade, bimesters: calculatedBimesters, ...finalData };
+            });
+    }, [grades, student.id]);
+
     const currentUnitInfo = UNITS_DATA[student.unit] || DEFAULT_UNIT_DATA;
 
     // Verifica se o aluno é da educação infantil
