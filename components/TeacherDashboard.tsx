@@ -53,6 +53,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     const [teacherObservations, setTeacherObservations] = useState('');
 
     const [selectedAbsenceMonth, setSelectedAbsenceMonth] = useState<number>(new Date().getMonth());
+    // New State for Bimester Filter - Default to current bimester
+    const [selectedFilterBimester, setSelectedFilterBimester] = useState<number>(Math.floor(new Date().getMonth() / 3) + 1);
+
 
     // Estados para a Chamada
     const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
@@ -684,6 +687,20 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                             ))}
                                         </select>
                                     </div>
+                                    <div className="flex flex-col">
+                                        <label className="text-sm font-bold text-gray-700 mb-1 block">Bimestre de Visualização</label>
+                                        <select
+                                            value={selectedFilterBimester}
+                                            onChange={e => setSelectedFilterBimester(Number(e.target.value))}
+                                            className="w-full p-2 border rounded text-blue-900 font-medium bg-blue-50 border-blue-200"
+                                        >
+                                            <option value={1}>1º Bimestre</option>
+                                            <option value={2}>2º Bimestre</option>
+                                            <option value={3}>3º Bimestre</option>
+                                            <option value={4}>4º Bimestre</option>
+                                        </select>
+                                    </div>
+
                                     <div className="self-end">
                                         <Button onClick={loadAttendance} className="w-full" disabled={!attendanceGrade}>Buscar Turma</Button>
                                     </div>
@@ -715,17 +732,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                     {status === AttendanceStatus.ABSENT && <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">FALTOU</span>}
                                                                 </div>
                                                                 <div className="mt-1 text-xs text-gray-500 space-y-0.5">
-                                                                    <div className="flex flex-wrap gap-2 text-xs">
-                                                                        {Object.entries(bimesterBreakdown).map(([bim, count]) => {
-                                                                            if (count === 0) return null;
-                                                                            return (
-                                                                                <span key={bim} className="text-gray-600">
-                                                                                    {bim}º Bim: <span className="font-bold text-red-600">{count}</span>
-                                                                                </span>
-                                                                            );
-                                                                        })}
-                                                                        {Object.values(bimesterBreakdown).every(c => c === 0) && <span className="text-gray-400 italic">Sem faltas.</span>}
-                                                                    </div>
+                                                                    <p className="text-gray-700">
+                                                                        {selectedFilterBimester}º Bimestre: <span className="font-bold text-red-600">{bimesterBreakdown[selectedFilterBimester] || 0} falta(s)</span>
+                                                                    </p>
 
                                                                     <p>Total no Ano: <span className="font-bold text-gray-800">{totalAbsences} falta(s)</span></p>
                                                                     {monthlyAbsences.count > 0 && (
@@ -794,15 +803,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                     </div>
                                                                     <div className="text-xs text-gray-500 mt-1 font-normal flex items-center gap-x-4 gap-y-1 flex-wrap">
                                                                         <div className="flex gap-2 text-xs border-r pr-3 border-gray-300">
-                                                                            {Object.entries(bimesterBreakdown).map(([bim, count]) => {
-                                                                                if (count === 0) return null;
-                                                                                return (
-                                                                                    <span key={bim}>
-                                                                                        {bim}º Bim: <strong className="text-red-600 font-bold">{count}</strong>
-                                                                                    </span>
-                                                                                );
-                                                                            })}
-                                                                            {Object.values(bimesterBreakdown).every(c => c === 0) && <span>Sem faltas.</span>}
+                                                                            <span>
+                                                                                {selectedFilterBimester}º Bimestre: <strong className="text-red-600 font-bold">{bimesterBreakdown[selectedFilterBimester] || 0} falta(s)</strong>
+                                                                            </span>
                                                                         </div>
 
                                                                         <span>Total no Ano: <strong className="text-gray-700 font-bold">{absences.year} falta(s)</strong></span>
