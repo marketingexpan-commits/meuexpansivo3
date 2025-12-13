@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
-import { Student, GradeEntry, Teacher, Subject, SchoolMessage, MessageRecipient, MessageType, AttendanceRecord, AttendanceStatus, BimesterData, UnitContact, EarlyChildhoodReport, CompetencyStatus, AppNotification } from '../types';
+import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher } from '../types';
+import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
 import { getStudyTips } from '../services/geminiService';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
@@ -83,7 +84,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const [selectedReportSemester, setSelectedReportSemester] = useState<1 | 2>(1);
 
     // Estado para controle do mês de frequência
-    const [selectedAttendanceMonth, setSelectedAttendanceMonth] = useState<number>(new Date().getMonth());
+    const [selectedBimester, setSelectedBimester] = useState<number>(Math.floor(new Date().getMonth() / 3) + 1);
 
     const MONTH_NAMES = [
         "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -116,61 +117,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
     const studentAttendance = useMemo(() => {
         return attendanceRecords
-            .map(record => {
-                if (record.studentStatus && record.studentStatus[student.id]) {
-                    return {
-                        date: record.date,
-                        status: record.studentStatus[student.id],
-                        discipline: record.discipline, // Added Discipline
-                    };
-                }
-                return null;
-            })
-            .filter((record): record is { date: string; status: AttendanceStatus; discipline: string } => record !== null)
+            .filter(record => record.studentStatus && record.studentStatus[student.id])
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [attendanceRecords, student.id]);
-
-    const displayedAttendance = useMemo(() => {
-        return studentAttendance
-            .filter(record => {
-                const recordDate = new Date(record.date + 'T00:00:00');
-                const matchesFilter = recordDate.getFullYear() === currentYear &&
-                    recordDate.getMonth() === selectedAttendanceMonth;
-                return matchesFilter;
-            })
-            .map(record => {
-                const recordDate = new Date(record.date + 'T00:00:00');
-                const bimester = Math.floor(recordDate.getMonth() / 3) + 1;
-                return { ...record, bimester };
-            });
-    }, [studentAttendance, currentYear, selectedAttendanceMonth]);
-
-    const absencesThisMonth = useMemo(() => {
-        return displayedAttendance.filter(record => record.status === AttendanceStatus.ABSENT).length;
-    }, [displayedAttendance]);
 
     const absencesThisYear = useMemo(() => {
         return studentAttendance.filter(record => {
             const recordDate = new Date(record.date + 'T00:00:00');
-            return recordDate.getFullYear() === currentYear && record.status === AttendanceStatus.ABSENT;
+            return recordDate.getFullYear() === currentYear && record.studentStatus[student.id] === AttendanceStatus.ABSENT;
         }).length;
-    }, [studentAttendance, currentYear]);
-
-    const calculatedAbsencesByBimester = useMemo(() => {
-        const absences = { 1: 0, 2: 0, 3: 0, 4: 0 };
-        studentAttendance.forEach(record => {
-            if (record.status === AttendanceStatus.ABSENT) {
-                const recordDate = new Date(record.date + 'T00:00:00');
-                if (recordDate.getFullYear() === currentYear) {
-                    const bimester = Math.floor(recordDate.getMonth() / 3) + 1;
-                    if (bimester >= 1 && bimester <= 4) {
-                        absences[bimester as keyof typeof absences]++;
-                    }
-                }
-            }
-        });
-        return absences;
-    }, [studentAttendance, currentYear]);
+    }, [studentAttendance, currentYear, student.id]);
 
 
     const formatGrade = (grade: number | null | undefined) => (grade !== null && grade !== undefined && grade !== 0) ? grade.toFixed(1) : '-';
@@ -279,7 +235,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             {/* Mural Content in Header - Visible on All Pages, Hidden on Print */}
                             <div className="flex items-start gap-3">
                                 <div className="bg-white/10 p-2 rounded-lg backdrop-blur-sm shrink-0">
-                                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2 mb-0.5">
@@ -453,9 +409,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                                     <p className="text-gray-600 text-sm">
                                         {(() => {
-                                            const bimesterSummary = Object.entries(calculatedAbsencesByBimester)
-                                                .filter(([_, count]) => count > 0)
-                                                .map(([bim, count]) => `${bim}º Bim: ${count}`)
+                                            // Use Helper for the Summary Bar
+                                            const breakdown = getAttendanceBreakdown(studentAttendance, student.id, undefined, currentYear);
+                                            const bimesterSummary = Object.entries(breakdown)
+                                                .filter(([_, data]) => data.count > 0)
+                                                .map(([bim, data]) => `${bim}º Bim: ${data.count}`)
                                                 .join(" | ");
 
                                             return (
@@ -471,44 +429,78 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             );
                                         })()}
                                     </p>
-                                    <select
-                                        value={selectedAttendanceMonth}
-                                        onChange={(e) => setSelectedAttendanceMonth(Number(e.target.value))}
-                                        className="p-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 focus:ring-blue-500 focus:border-blue-500"
-                                    >
-                                        {MONTH_NAMES.map((month, index) => (
-                                            <option key={index} value={index}>{month}</option>
-                                        ))}
-                                    </select>
+                                    <div className="flex items-center gap-2">
+                                        <label className="text-sm font-bold text-gray-700">Visualizar:</label>
+                                        <select
+                                            value={selectedBimester}
+                                            onChange={(e) => setSelectedBimester(Number(e.target.value))}
+                                            className="p-2 border border-blue-200 bg-blue-50 text-blue-900 rounded-md text-sm font-bold focus:ring-blue-500 focus:border-blue-500"
+                                        >
+                                            <option value={1}>1º Bimestre</option>
+                                            <option value={2}>2º Bimestre</option>
+                                            <option value={3}>3º Bimestre</option>
+                                            <option value={4}>4º Bimestre</option>
+                                        </select>
+                                    </div>
                                 </div>
 
-                                {displayedAttendance.length > 0 ? (
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3 text-center mb-6">
-                                        {displayedAttendance.map((att, index) => (
-                                            <div key={index} className="p-3 border rounded-lg flex flex-col items-center justify-center bg-gray-50">
-                                                <p className="text-xs text-gray-500 font-bold mb-1">
-                                                    {new Date(att.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                                                </p>
-                                                <p className="text-[10px] text-blue-900 font-extrabold uppercase mb-1 text-center leading-tight">
-                                                    {att.discipline || 'Disciplina'}
-                                                </p>
-                                                <span className="text-[9px] text-gray-400 font-medium mb-1.5">{att.bimester}º Bimestre</span>
-                                                <span className={`px-3 py-1 text-xs font-bold rounded-full text-white ${att.status === 'Presente' ? 'bg-green-500' : 'bg-red-600'}`}>
-                                                    {att.status}
-                                                </span>
+                                {/* DETAILED ATTENDANCE LIST (Grouped by Month) */}
+                                <div className="space-y-4">
+                                    {(() => {
+                                        // Filter for Selected Bimester
+                                        const bimesterRecords = studentAttendance.filter(record => {
+                                            if (record.studentStatus[student.id] !== AttendanceStatus.ABSENT) return false;
+                                            const [y, mStr] = record.date.split('-');
+                                            const yNum = Number(y);
+                                            const mNum = Number(mStr);
+                                            if (yNum !== currentYear) return false;
+
+                                            const recordBim = Math.floor((mNum - 1) / 3) + 1;
+                                            return recordBim === selectedBimester;
+                                        });
+
+                                        if (bimesterRecords.length === 0) {
+                                            return (
+                                                <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                                                    <p>Nenhuma falta registrada no {selectedBimester}º Bimestre.</p>
+                                                </div>
+                                            );
+                                        }
+
+                                        // Group by Month
+                                        const groupedByMonth: Record<string, AttendanceRecord[]> = {};
+                                        bimesterRecords.forEach(record => {
+                                            const mNum = Number(record.date.split('-')[1]);
+                                            const monthName = MONTH_NAMES[mNum - 1];
+                                            if (!groupedByMonth[monthName]) groupedByMonth[monthName] = [];
+                                            groupedByMonth[monthName].push(record);
+                                        });
+
+                                        // Sort Dates in each month
+                                        Object.keys(groupedByMonth).forEach(m => {
+                                            groupedByMonth[m].sort((a, b) => a.date.localeCompare(b.date));
+                                        });
+
+                                        return Object.entries(groupedByMonth).map(([monthName, records]) => (
+                                            <div key={monthName} className="border-l-4 border-red-400 pl-4 py-1">
+                                                <h4 className="font-bold text-gray-800 text-lg mb-2 capitalize">{monthName}</h4>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {records.map(record => {
+                                                        const day = record.date.split('-')[2];
+                                                        return (
+                                                            <span key={record.id} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-100 shadow-sm">
+                                                                Dia {day} <span className="mx-1 text-red-300">|</span> {record.discipline}
+                                                            </span>
+                                                        );
+                                                    })}
+                                                </div>
                                             </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-center text-gray-500 italic py-4">Nenhum registro de frequência encontrado para {MONTH_NAMES[selectedAttendanceMonth]}.</p>
-                                )}
-
-
+                                        ));
+                                    })()}
+                                </div>
                             </div>
                         </div>
                     )}
-
-
                     {/* --- BOLETIM / RELATÓRIO --- */}
                     {(currentView === 'grades' || currentView === 'early_childhood') && (
                         <div className="animate-fade-in-up">
@@ -892,6 +884,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
