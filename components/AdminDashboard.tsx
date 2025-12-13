@@ -211,6 +211,61 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         return userId; // Fallback
     };
 
+    const getLogUserInfo = (userId: string) => {
+        const s = students.find(x => x.id === userId);
+        if (s) return { name: s.name, role: 'Aluno', type: 'student' };
+
+        const t = teachers.find(x => x.id === userId);
+        if (t) return { name: t.name, role: 'Prof.', type: 'teacher' };
+
+        const a = admins.find(x => x.id === userId);
+        if (a) return { name: a.name, role: 'Admin', type: 'admin' };
+
+        return { name: userId, role: 'Desconhecido', type: 'unknown' };
+    };
+
+    const filteredAccessLogs = accessLogs.filter(log => {
+        if (logProfileFilter === 'all') return true;
+        const info = getLogUserInfo(log.user_id);
+        return info.type === logProfileFilter;
+    });
+
+    const handleDownloadPDF = () => {
+        const doc = new jsPDF();
+
+        // Header
+        doc.setFillColor(30, 58, 138); // blue-950
+        doc.rect(0, 0, 210, 20, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(16);
+        doc.text("Relatório de Acessos - Meu Expansivo", 14, 13);
+
+        doc.setTextColor(100, 100, 100);
+        doc.setFontSize(10);
+        doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 28);
+        doc.text(`Filtro Temporal: ${logFilter.toUpperCase()} | Filtro Perfil: ${logProfileFilter === 'all' ? 'TODOS' : logProfileFilter.toUpperCase()}`, 14, 33);
+
+        const tableData = filteredAccessLogs.map(log => {
+            const info = getLogUserInfo(log.user_id);
+            return [
+                new Date(log.date).toLocaleString('pt-BR'),
+                info.name + ` (${info.role})`,
+                log.ip || 'N/A'
+            ];
+        });
+
+        // @ts-ignore
+        autoTable(doc, {
+            head: [['Data/Hora', 'Usuário', 'IP']],
+            body: tableData,
+            startY: 40,
+            styles: { fontSize: 10 },
+            headStyles: { fillColor: [30, 58, 138] },
+        });
+
+        doc.save(`relatorio-acessos-${new Date().toISOString().split('T')[0]}.pdf`);
+    };
+
 
     const generatePassword = () => {
         const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -680,7 +735,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 <div className="flex items-center justify-center h-64">
                                     <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-950"></div>
                                 </div>
-                            ) : accessLogs.length > 0 ? (
+                            ) : filteredAccessLogs.length > 0 ? (
                                 <table className="w-full text-sm text-left">
                                     <thead className="bg-gray-100 text-gray-600 font-bold uppercase text-xs sticky top-0 shadow-sm z-10">
                                         <tr>
@@ -690,7 +745,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100 bg-white">
-                                        {accessLogs.map((log) => (
+                                        {filteredAccessLogs.map((log) => (
                                             <tr key={log.id} className="hover:bg-blue-50 transition-colors">
                                                 <td className="p-4 font-mono text-gray-600 whitespace-nowrap">
                                                     {new Date(log.date).toLocaleString('pt-BR')}
