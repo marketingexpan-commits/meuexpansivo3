@@ -1,7 +1,20 @@
 import { AttendanceRecord, AttendanceStatus } from '../../types';
 
+// Helper for month names (to avoid circular dependency or external constant import issues if minimal)
+const MONTH_NAMES = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+];
+
+export interface DetailedBimesterData {
+    count: number;
+    details: {
+        [monthName: string]: number[]; // List of days
+    };
+}
+
 export interface AttendanceBreakdown {
-    [bimester: number]: number;
+    [bimester: number]: DetailedBimesterData;
 }
 
 /**
@@ -10,7 +23,7 @@ export interface AttendanceBreakdown {
  * @param studentId ID do aluno para filtrar as faltas.
  * @param subject (Opcional) Disciplina para filtrar. Se omitido, considera todas (cuidado ao misturar disciplinas).
  * @param year (Opcional) Ano para filtrar. Se omitido, usa o ano atual.
- * @returns Objeto com o total de faltas por bimestre (ex: { 1: 2, 2: 0, 3: 1, 4: 0 }).
+ * @returns Objeto com o total e detalhes de faltas por bimestre.
  */
 export const getAttendanceBreakdown = (
     attendanceRecords: AttendanceRecord[],
@@ -18,7 +31,13 @@ export const getAttendanceBreakdown = (
     subject?: string,
     year: number = new Date().getFullYear()
 ): AttendanceBreakdown => {
-    const breakdown: AttendanceBreakdown = { 1: 0, 2: 0, 3: 0, 4: 0 };
+    // Initialize structure
+    const breakdown: AttendanceBreakdown = {
+        1: { count: 0, details: {} },
+        2: { count: 0, details: {} },
+        3: { count: 0, details: {} },
+        4: { count: 0, details: {} }
+    };
 
     attendanceRecords.forEach(record => {
         // Filtro por Disciplina (se fornecido)
@@ -26,20 +45,28 @@ export const getAttendanceBreakdown = (
 
         // Verifica se o aluno faltou nesse registro
         if (record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT) {
-            const [recordYear, recordMonth] = record.date.split('-').map(Number); // YYYY-MM-DD
+            const [recordYear, recordMonth, recordDay] = record.date.split('-').map(Number); // YYYY-MM-DD
 
             if (recordYear === year) {
                 // Cálculo do Bimestre (Jan-Mar=1, Abr-Jun=2, Jul-Set=3, Out-Dez=4)
-                // recordMonth é 1-12
-                // (Month - 1) / 3 => 0, 1, 2, 3
-                // + 1 => 1, 2, 3, 4
                 const bimester = Math.floor((recordMonth - 1) / 3) + 1;
 
                 if (bimester >= 1 && bimester <= 4) {
-                    breakdown[bimester]++;
+                    breakdown[bimester].count++;
+
+                    const monthName = MONTH_NAMES[recordMonth - 1];
+                    if (!breakdown[bimester].details[monthName]) {
+                        breakdown[bimester].details[monthName] = [];
+                    }
+                    breakdown[bimester].details[monthName].push(recordDay);
                 }
             }
         }
+    });
+
+    // Sort days numerically for better UX
+    Object.values(breakdown).forEach(b => {
+        Object.values(b.details).forEach(days => days.sort((a, b) => a - b));
     });
 
     return breakdown;

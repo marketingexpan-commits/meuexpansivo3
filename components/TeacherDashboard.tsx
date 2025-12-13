@@ -123,14 +123,14 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
         const currentMonth = new Date().getMonth();
         const bimesterNumber = Math.floor(currentMonth / 3) + 1;
 
-        const studentAbsences: Record<string, { bimester: Record<number, number>, year: number, monthly: { count: number, details: { day: number, bimester: number }[] } }> = {};
+        const studentAbsences: Record<string, { bimester: Record<number, { count: number, details: Record<string, number[]> }>, year: number, monthly: { count: number, details: { day: number, bimester: number }[] } }> = {};
 
         for (const student of attendanceStudents) {
             // Use Shared Helper
             const breakdown = getAttendanceBreakdown(attendanceRecords, student.id, attendanceSubject, currentYear);
 
             // Calculate Total Year from breakdown
-            const yearAbsences = Object.values(breakdown).reduce((acc, curr) => acc + curr, 0);
+            const yearAbsences = Object.values(breakdown).reduce((acc, curr) => acc + curr.count, 0);
 
             // Calculate Monthly Details (Local logic for Month View Only)
             let monthlyCount = 0;
@@ -713,7 +713,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         {/* VIEW MOBILE/TABLET (CARDS) - Alterado para LG para cobrir tablets/celulares grandes */}
                                         <div className="lg:hidden space-y-4">
                                             {attendanceStudents.map(student => {
-                                                const absences = absenceData[student.id] || { bimester: { 1: 0, 2: 0, 3: 0, 4: 0 } as Record<number, number>, year: 0, monthly: { count: 0, details: [] } };
+                                                const absences = absenceData[student.id] || {
+                                                    bimester: { 1: { count: 0, details: {} }, 2: { count: 0, details: {} }, 3: { count: 0, details: {} }, 4: { count: 0, details: {} } },
+                                                    year: 0,
+                                                    monthly: { count: 0, details: [] }
+                                                };
                                                 const status = studentStatuses[student.id]; // Assuming studentStatuses holds the current status
                                                 const bimesterBreakdown = absences.bimester;
 
@@ -732,9 +736,20 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                     {status === AttendanceStatus.ABSENT && <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">FALTOU</span>}
                                                                 </div>
                                                                 <div className="mt-1 text-xs text-gray-500 space-y-0.5">
-                                                                    <p className="text-gray-700">
-                                                                        {selectedFilterBimester}º Bimestre: <span className="font-bold text-red-600">{bimesterBreakdown[selectedFilterBimester] || 0} falta(s)</span>
-                                                                    </p>
+                                                                    <div className="text-gray-700">
+                                                                        <p>{selectedFilterBimester}º Bimestre: <span className="font-bold text-red-600">{bimesterBreakdown[selectedFilterBimester]?.count || 0} falta(s)</span></p>
+
+                                                                        {/* Detailed Breakdown */}
+                                                                        {bimesterBreakdown[selectedFilterBimester]?.count > 0 && (
+                                                                            <div className="mt-1 flex flex-wrap gap-2">
+                                                                                {Object.entries(bimesterBreakdown[selectedFilterBimester].details).map(([month, days]) => (
+                                                                                    <span key={month} className="text-[10px] bg-red-50 text-red-800 border border-red-100 rounded px-1.5 py-0.5">
+                                                                                        <strong>{month}:</strong> {days.map(d => `[${d}]`).join(' ')}
+                                                                                    </span>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
 
                                                                     <p>Total no Ano: <span className="font-bold text-gray-800">{totalAbsences} falta(s)</span></p>
                                                                     {monthlyAbsences.count > 0 && (
@@ -790,7 +805,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-200">
                                                     {attendanceStudents.map(student => {
-                                                        const absences = absenceData[student.id] || { bimester: { 1: 0, 2: 0, 3: 0, 4: 0 } as Record<number, number>, year: 0, monthly: { count: 0, details: [] } };
+                                                        const absences = absenceData[student.id] || {
+                                                            bimester: { 1: { count: 0, details: {} }, 2: { count: 0, details: {} }, 3: { count: 0, details: {} }, 4: { count: 0, details: {} } },
+                                                            year: 0,
+                                                            monthly: { count: 0, details: [] }
+                                                        };
                                                         const bimesterBreakdown = absences.bimester;
                                                         return (
                                                             <tr key={student.id} className="hover:bg-gray-50">
@@ -802,10 +821,22 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                         </span>
                                                                     </div>
                                                                     <div className="text-xs text-gray-500 mt-1 font-normal flex items-center gap-x-4 gap-y-1 flex-wrap">
-                                                                        <div className="flex gap-2 text-xs border-r pr-3 border-gray-300">
-                                                                            <span>
-                                                                                {selectedFilterBimester}º Bimestre: <strong className="text-red-600 font-bold">{bimesterBreakdown[selectedFilterBimester] || 0} falta(s)</strong>
-                                                                            </span>
+                                                                        <div className="flex gap-2 text-xs border-r pr-3 border-gray-300 items-start">
+                                                                            <div className="flex flex-col">
+                                                                                <span>
+                                                                                    {selectedFilterBimester}º Bimestre: <strong className="text-red-600 font-bold">{bimesterBreakdown[selectedFilterBimester]?.count || 0} falta(s)</strong>
+                                                                                </span>
+                                                                                {/* Detailed Breakdown for Desktop */}
+                                                                                {bimesterBreakdown[selectedFilterBimester]?.count > 0 && (
+                                                                                    <div className="mt-0.5 flex flex-wrap gap-1">
+                                                                                        {Object.entries(bimesterBreakdown[selectedFilterBimester].details).map(([month, days]) => (
+                                                                                            <span key={month} className="text-[10px] text-gray-500">
+                                                                                                <strong className="text-gray-700">{month}:</strong> {days.map(d => `[${d}]`).join(' ')} <span className="text-gray-300">|</span>
+                                                                                            </span>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
                                                                         </div>
 
                                                                         <span>Total no Ano: <strong className="text-gray-700 font-bold">{absences.year} falta(s)</strong></span>
