@@ -79,13 +79,16 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
 
     const isEarlyChildhoodStudent = useMemo(() => selectedStudent?.gradeLevel.toLowerCase().includes('edu. infantil'), [selectedStudent]);
 
-    // NEW: Calculate absences per bimester for the selected student
+    // NEW: Calculate absences per bimester for the selected student (BY SUBJECT)
     const calculatedAbsences = useMemo(() => {
         if (!selectedStudent) return { 1: 0, 2: 0, 3: 0, 4: 0 };
         const absences = { 1: 0, 2: 0, 3: 0, 4: 0 };
         const currentYear = new Date().getFullYear();
 
         attendanceRecords.forEach(record => {
+            // Filter: Only count absences for the currently selected subject
+            if (selectedSubject && record.discipline !== selectedSubject) return;
+
             if (record.studentStatus[selectedStudent.id] === AttendanceStatus.ABSENT) {
                 const [y, m] = record.date.split('-').map(Number);
                 if (y === currentYear) {
@@ -97,7 +100,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
             }
         });
         return absences;
-    }, [selectedStudent, attendanceRecords]);
+    }, [selectedStudent, attendanceRecords, selectedSubject]);
 
     const filteredStudents = useMemo(() => students.filter(student => {
         const matchesUnit = student.unit === activeUnit;
@@ -121,6 +124,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
             let monthlyDetails: { day: number, bimester: number }[] = [];
 
             for (const record of attendanceRecords) {
+                // STRICT SUBJECT FILTER
+                if (attendanceSubject && record.discipline !== attendanceSubject) continue;
+
                 if (record.studentStatus[student.id] === AttendanceStatus.ABSENT) {
                     const [y, m, d] = record.date.split('-').map(Number);
 
@@ -143,7 +149,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
             };
         }
         return { absenceData: studentAbsences, currentBimester: bimesterNumber };
-    }, [attendanceStudents, attendanceRecords, selectedAbsenceMonth]);
+    }, [attendanceStudents, attendanceRecords, selectedAbsenceMonth, attendanceSubject]);
 
     const getStageDisplay = (stage: string) => {
         if (stage === 'recuperacaoFinal') return 'Recuperação Final';
