@@ -261,11 +261,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             doc.text("Relatório de Acessos - Meu Expansivo", 14, 15);
         }
 
-        // Informações de Geração (AGORA DENTRO DO HEADER E BRANCAS)
+        // Informações de Geração (Alinhado à Direita)
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(9);
-        doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 40, 30);
-        doc.text(`Filtro: ${logFilter.toUpperCase()} | Perfil: ${logProfileFilter === 'all' ? 'TODOS' : logProfileFilter.toUpperCase()}`, 40, 35);
+        doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 200, 15, { align: 'right' });
+        doc.text(`Filtro: ${logFilter.toUpperCase()} | Perfil: ${logProfileFilter === 'all' ? 'TODOS' : logProfileFilter.toUpperCase()}`, 200, 22, { align: 'right' });
 
         const tableData = filteredAccessLogs.map(log => {
             const info = getLogUserInfo(log.user_id);
