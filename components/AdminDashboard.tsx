@@ -230,15 +230,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         return info.type === logProfileFilter;
     });
 
-    const handleDownloadPDF = () => {
+    const handleDownloadPDF = async () => {
         const doc = new jsPDF();
 
-        // Header
+        // Header Background
         doc.setFillColor(30, 58, 138); // blue-950
-        doc.rect(0, 0, 210, 20, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(16);
-        doc.text("Relatório de Acessos - Meu Expansivo", 14, 13);
+        doc.rect(0, 0, 210, 35, 'F');
+
+        try {
+            // Carregar e processar a logo
+            const response = await fetch(SCHOOL_LOGO_URL);
+            const blob = await response.blob();
+            const base64 = await new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.readAsDataURL(blob);
+            });
+            doc.addImage(base64, 'PNG', 10, 5, 25, 25);
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(18);
+            doc.text("Relatório de Acessos", 40, 15);
+            doc.setFontSize(12);
+            doc.text("Meu Expansivo - Sistema de Gestão", 40, 22);
+        } catch (error) {
+            console.error("Erro ao carregar logo:", error);
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(18);
+            doc.text("Relatório de Acessos - Meu Expansivo", 14, 15);
+        }
 
         doc.setTextColor(100, 100, 100);
         doc.setFontSize(10);
