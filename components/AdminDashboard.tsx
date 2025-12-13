@@ -260,10 +260,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             doc.text("Relatório de Acessos - Meu Expansivo", 14, 15);
         }
 
-        doc.setTextColor(100, 100, 100);
-        doc.setFontSize(10);
-        doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 28);
-        doc.text(`Filtro Temporal: ${logFilter.toUpperCase()} | Filtro Perfil: ${logProfileFilter === 'all' ? 'TODOS' : logProfileFilter.toUpperCase()}`, 14, 33);
+        // Informações de Geração (AGORA DENTRO DO HEADER E BRANCAS)
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(9);
+        doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 40, 30);
+        doc.text(`Filtro: ${logFilter.toUpperCase()} | Perfil: ${logProfileFilter === 'all' ? 'TODOS' : logProfileFilter.toUpperCase()}`, 40, 35);
 
         const tableData = filteredAccessLogs.map(log => {
             const info = getLogUserInfo(log.user_id);
@@ -278,9 +279,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         autoTable(doc, {
             head: [['Data/Hora', 'Usuário', 'IP']],
             body: tableData,
-            startY: 40,
+            startY: 50,
             styles: { fontSize: 10 },
             headStyles: { fillColor: [30, 58, 138] },
+            alternateRowStyles: { fillColor: [240, 248, 255] },
+            didDrawPage: function (data) {
+                // Rodapé
+                doc.setFontSize(10);
+                doc.setTextColor(100, 100, 100);
+                const footerText = "Expansivo - Rede de Ensino";
+                const pageSize = doc.internal.pageSize;
+                const pageWidth = pageSize.width ? pageSize.width : pageSize.getWidth();
+                const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
+
+                // Centralizado
+                doc.text(footerText, pageWidth / 2, pageHeight - 10, { align: 'center' });
+
+                // Paginação
+                // @ts-ignore
+                const pageCount = doc.internal.getNumberOfPages();
+                doc.text(`Página ${pageCount}`, pageWidth - 20, pageHeight - 10);
+            }
         });
 
         doc.save(`relatorio-acessos-${new Date().toISOString().split('T')[0]}.pdf`);
