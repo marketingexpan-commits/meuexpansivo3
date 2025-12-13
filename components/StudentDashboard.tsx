@@ -473,6 +473,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                 <p className="text-xs text-gray-500 font-bold mb-1">
                                                     {new Date(att.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                                                 </p>
+                                                <p className="text-[10px] text-blue-900 font-extrabold uppercase mb-1 text-center leading-tight">
+                                                    {att.discipline || 'Disciplina'}
+                                                </p>
                                                 <span className="text-[9px] text-gray-400 font-medium mb-1.5">{att.bimester}º Bimestre</span>
                                                 <span className={`px-3 py-1 text-xs font-bold rounded-full text-white ${att.status === 'Presente' ? 'bg-green-500' : 'bg-red-600'}`}>
                                                     {att.status}
