@@ -66,6 +66,17 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
+  // --- REMEMBER ME LOGIC ---
+  const [rememberMe, setRememberMe] = useState(false);
+
+  React.useEffect(() => {
+    const savedCode = localStorage.getItem('savedUserCode');
+    if (savedCode) {
+      setIdentifier(savedCode);
+      setRememberMe(true);
+    }
+  }, []);
+
   // --- MODO SECRETO ---
   const [isAdminVisible, setIsAdminVisible] = useState(false);
   const [secretClickCount, setSecretClickCount] = useState(0);
@@ -97,6 +108,14 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Save or Remove 'remember me'
+    if (rememberMe && identifier) {
+      localStorage.setItem('savedUserCode', identifier);
+    } else {
+      localStorage.removeItem('savedUserCode');
+    }
+
     if (activeTab === 'student') {
       onLoginStudent(identifier, password);
     } else if (activeTab === 'teacher') {
