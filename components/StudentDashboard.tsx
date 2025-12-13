@@ -155,6 +155,22 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         }).length;
     }, [studentAttendance, currentYear]);
 
+    const calculatedAbsencesByBimester = useMemo(() => {
+        const absences = { 1: 0, 2: 0, 3: 0, 4: 0 };
+        studentAttendance.forEach(record => {
+            if (record.status === AttendanceStatus.ABSENT) {
+                const recordDate = new Date(record.date + 'T00:00:00');
+                if (recordDate.getFullYear() === currentYear) {
+                    const bimester = Math.floor(recordDate.getMonth() / 3) + 1;
+                    if (bimester >= 1 && bimester <= 4) {
+                        absences[bimester as keyof typeof absences]++;
+                    }
+                }
+            }
+        });
+        return absences;
+    }, [studentAttendance, currentYear]);
+
 
     const formatGrade = (grade: number | null | undefined) => (grade !== null && grade !== undefined && grade !== 0) ? grade.toFixed(1) : '-';
 
@@ -644,12 +660,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                         </td>
                                                         {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
                                                             const bData = grade.bimesters[key as keyof typeof grade.bimesters];
+                                                            const bimesterNum = Number(key.replace('bimester', '')) as 1 | 2 | 3 | 4;
                                                             return (
                                                                 <React.Fragment key={key}>
                                                                     <td className="px-1 py-2 text-center text-gray-600 border-r border-gray-300 text-xs">{formatGrade(bData.nota)}</td>
                                                                     <td className="px-1 py-2 text-center text-gray-600 border-r border-gray-300 text-xs">{formatGrade(bData.recuperacao)}</td>
                                                                     <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs">{formatGrade(bData.media)}</td>
-                                                                    <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300 text-xs">{bData.faltas || ''}</td>
+                                                                    <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300 text-xs">{calculatedAbsencesByBimester[bimesterNum] || ''}</td>
                                                                 </React.Fragment>
                                                             );
                                                         })}

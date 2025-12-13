@@ -554,11 +554,25 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                         </td>
                                                                         {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
                                                                             const bData = grade.bimesters[key as keyof typeof grade.bimesters];
+                                                                            const bimesterNum = Number(key.replace('bimester', '')) as 1 | 2 | 3 | 4;
+                                                                            // Calculate absences dynamically for this student and bimester
+                                                                            // Reusing logic from calculatedAbsences but specifically for this student inside the map
+                                                                            const currentStudentAbsences = attendanceRecords.reduce((acc, record) => {
+                                                                                if (record.studentStatus[grade.studentId] === AttendanceStatus.ABSENT) {
+                                                                                    const [y, m] = record.date.split('-').map(Number);
+                                                                                    if (y === new Date().getFullYear()) {
+                                                                                        const b = Math.floor((m - 1) / 3) + 1;
+                                                                                        if (b === bimesterNum) return acc + 1;
+                                                                                    }
+                                                                                }
+                                                                                return acc;
+                                                                            }, 0);
+
                                                                             return (
                                                                                 <React.Fragment key={key}>
                                                                                     <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-300">{formatGrade(bData.nota)}</td>
                                                                                     <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-300">{formatGrade(bData.recuperacao)}</td>
-                                                                                    <td className="px-1 py-2 text-center text-gray-500 text-xs border-r border-gray-300">{bData.faltas || ''}</td>
+                                                                                    <td className="px-1 py-2 text-center text-gray-500 text-xs border-r border-gray-300">{currentStudentAbsences || ''}</td>
                                                                                 </React.Fragment>
                                                                             );
                                                                         })}
