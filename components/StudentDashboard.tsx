@@ -452,8 +452,24 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             <div className="bg-white p-6 rounded-lg shadow-md border border-gray-100">
                                 <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                                     <p className="text-gray-600 text-sm">
-                                        Resumo em <span className="font-bold text-gray-800">{MONTH_NAMES[selectedAttendanceMonth]}</span>: <span className={`font-bold ${absencesThisMonth > 0 ? 'text-red-600' : 'text-green-600'}`}>{absencesThisMonth} falta(s)</span>.
-                                        <span className="ml-2 text-gray-500">|</span> <span className="ml-2">Total no ano: <span className="font-bold text-gray-800">{absencesThisYear} falta(s)</span></span>
+                                        {(() => {
+                                            const bimesterSummary = Object.entries(calculatedAbsencesByBimester)
+                                                .filter(([_, count]) => count > 0)
+                                                .map(([bim, count]) => `${bim}º Bim: ${count}`)
+                                                .join(" | ");
+
+                                            return (
+                                                <>
+                                                    {bimesterSummary ? (
+                                                        <span className="font-bold text-gray-800">{bimesterSummary}</span>
+                                                    ) : (
+                                                        <span className="font-bold text-gray-800">Sem faltas registradas</span>
+                                                    )}
+                                                    <span className="mx-2 text-gray-400">|</span>
+                                                    <span>Total: <span className="font-bold text-gray-800">{absencesThisYear} falta(s)</span></span>
+                                                </>
+                                            );
+                                        })()}
                                     </p>
                                     <select
                                         value={selectedAttendanceMonth}
