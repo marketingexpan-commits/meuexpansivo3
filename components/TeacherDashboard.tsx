@@ -70,6 +70,26 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     const teacherSubjects = teacher.subjects;
     const isEarlyChildhoodStudent = useMemo(() => selectedStudent?.gradeLevel.toLowerCase().includes('edu. infantil'), [selectedStudent]);
 
+    // NEW: Calculate absences per bimester for the selected student
+    const calculatedAbsences = useMemo(() => {
+        if (!selectedStudent) return { 1: 0, 2: 0, 3: 0, 4: 0 };
+        const absences = { 1: 0, 2: 0, 3: 0, 4: 0 };
+        const currentYear = new Date().getFullYear();
+
+        attendanceRecords.forEach(record => {
+            if (record.studentStatus[selectedStudent.id] === AttendanceStatus.ABSENT) {
+                const [y, m] = record.date.split('-').map(Number);
+                if (y === currentYear) {
+                    const bimester = Math.floor((m - 1) / 3) + 1;
+                    if (bimester >= 1 && bimester <= 4) {
+                        absences[bimester as keyof typeof absences]++;
+                    }
+                }
+            }
+        });
+        return absences;
+    }, [selectedStudent, attendanceRecords]);
+
     const filteredStudents = useMemo(() => students.filter(student => {
         const matchesUnit = student.unit === activeUnit;
         const matchesGrade = filterGrade ? student.gradeLevel === filterGrade : true;
@@ -165,7 +185,22 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
         const baseBimesters = existingGrade?.bimesters || { bimester1: { nota: null, recuperacao: null, media: 0, faltas: 0 }, bimester2: { nota: null, recuperacao: null, media: 0, faltas: 0 }, bimester3: { nota: null, recuperacao: null, media: 0, faltas: 0 }, bimester4: { nota: null, recuperacao: null, media: 0, faltas: 0 } };
         let newBimesters = { ...baseBimesters }; let newRecFinal = existingGrade?.recuperacaoFinal ?? null;
         if (selectedStage === 'recuperacaoFinal') { newRecFinal = notaRecFinal !== '' ? Number(notaRecFinal) : null; }
-        else { const bimesterKey = selectedStage.replace('_rec', '') as keyof GradeEntry['bimesters']; const isRecoveryView = selectedStage.includes('_rec'); const currentData = newBimesters[bimesterKey]; const notaToSave = isRecoveryView ? currentData.nota : (nota !== '' ? Number(nota) : null); const recToSave = !isRecoveryView ? currentData.recuperacao : (recuperacao !== '' ? Number(recuperacao) : null); const faltasToSave = isRecoveryView ? currentData.faltas : (faltas !== '' ? Number(faltas) : 0); const rawBimesterData: BimesterData = { nota: notaToSave, recuperacao: recToSave, faltas: faltasToSave, media: 0, difficultyTopic: topic }; newBimesters[bimesterKey] = calculateBimesterMedia(rawBimesterData); }
+        else {
+            const bimesterKey = selectedStage.replace('_rec', '') as keyof GradeEntry['bimesters'];
+            const isRecoveryView = selectedStage.includes('_rec');
+            const currentData = newBimesters[bimesterKey];
+
+            const notaToSave = isRecoveryView ? currentData.nota : (nota !== '' ? Number(nota) : null);
+            const recToSave = !isRecoveryView ? currentData.recuperacao : (recuperacao !== '' ? Number(recuperacao) : null);
+
+            // USE CALCULATED ABSENCES HERE
+            const bimesterNumber = Number(bimesterKey.replace('bimester', '')) as 1 | 2 | 3 | 4;
+            const autoAbsences = calculatedAbsences[bimesterNumber] || 0;
+            const faltasToSave = autoAbsences;
+
+            const rawBimesterData: BimesterData = { nota: notaToSave, recuperacao: recToSave, faltas: faltasToSave, media: 0, difficultyTopic: topic };
+            newBimesters[bimesterKey] = calculateBimesterMedia(rawBimesterData);
+        }
         const finalData = calculateFinalData(newBimesters, newRecFinal);
         const gradeToSave: GradeEntry = { id: existingGrade ? existingGrade.id : `grade-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, studentId: selectedStudent.id, subject: selectedSubject, bimesters: newBimesters, recuperacaoFinal: newRecFinal, ...finalData, lastUpdated: new Date().toISOString() };
         await onSaveGrade(gradeToSave); setIsSaving(false); alert(`Dados de ${getStageDisplay(selectedStage)} salvos com sucesso!`);
@@ -448,8 +483,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                     <input type="number" step="0.1" min="0" max="10" value={recuperacao} onChange={handleInputChange(setRecuperacao)} disabled={!isRecoveryMode} className={`w-full p-2 border border-gray-300 rounded text-center text-gray-600 ${!isRecoveryMode ? 'bg-gray-100 cursor-not-allowed' : 'bg-white font-bold'}`} placeholder="-" />
                                                                 </div>
                                                                 <div className={isRecoveryMode ? "opacity-60" : ""}>
-                                                                    <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Faltas</label>
-                                                                    <input type="number" min="0" value={faltas} onChange={handleInputChange(setFaltas)} disabled={isRecoveryMode} className={`w-full p-2 border border-gray-300 rounded text-center ${isRecoveryMode ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`} placeholder="0" />
+                                                                    <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Faltas (Auto)</label>
+                                                                    <div className={`w-full p-2 border border-gray-300 rounded text-center bg-gray-100 text-gray-600 cursor-not-allowed`}>
+                                                                        {selectedStage.startsWith('bimester') ? calculatedAbsences[Number(selectedStage.replace('bimester', '').replace('_rec', '')) as 1 | 2 | 3 | 4] || 0 : '-'}
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         )}
