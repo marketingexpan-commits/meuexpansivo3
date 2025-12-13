@@ -148,6 +148,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         return displayedAttendance.filter(record => record.status === AttendanceStatus.ABSENT).length;
     }, [displayedAttendance]);
 
+    const absencesThisYear = useMemo(() => {
+        return studentAttendance.filter(record => {
+            const recordDate = new Date(record.date + 'T00:00:00');
+            return recordDate.getFullYear() === currentYear && record.status === AttendanceStatus.ABSENT;
+        }).length;
+    }, [studentAttendance, currentYear]);
+
 
     const formatGrade = (grade: number | null | undefined) => (grade !== null && grade !== undefined && grade !== 0) ? grade.toFixed(1) : '-';
 
@@ -429,6 +436,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                                     <p className="text-gray-600 text-sm">
                                         Resumo em <span className="font-bold text-gray-800">{MONTH_NAMES[selectedAttendanceMonth]}</span>: <span className={`font-bold ${absencesThisMonth > 0 ? 'text-red-600' : 'text-green-600'}`}>{absencesThisMonth} falta(s)</span>.
+                                        <span className="ml-2 text-gray-500">|</span> <span className="ml-2">Total no ano: <span className="font-bold text-gray-800">{absencesThisYear} falta(s)</span></span>
                                     </p>
                                     <select
                                         value={selectedAttendanceMonth}
