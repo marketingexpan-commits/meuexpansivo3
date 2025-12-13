@@ -695,7 +695,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             // STRICT SUBJECT ABSENCE COUNT
                                                             const currentAbsences = studentAttendance.reduce((acc, att) => {
                                                                 if (att.discipline !== grade.subject) return acc;
-                                                                if (att.status === AttendanceStatus.ABSENT) {
+                                                                if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
                                                                     const d = new Date(att.date + 'T00:00:00');
                                                                     if (d.getFullYear() === currentYear) {
                                                                         const m = d.getMonth(); // 0 - 11
