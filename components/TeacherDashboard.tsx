@@ -473,9 +473,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                 <tr className="bg-blue-50 text-[10px]">
                                                                     {[1, 2, 3, 4].map(num => (
                                                                         <React.Fragment key={num}>
-                                                                            <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300" title="Nota">N</th>
-                                                                            <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300" title="Recuperação">R</th>
-                                                                            <th className="px-1 py-1 text-center font-bold text-blue-950 bg-blue-50 border-r border-gray-300" title="Faltas">F</th>
+                                                                            <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300" title={`Nota ${num}º Bimestre`}>N{num}</th>
+                                                                            <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300" title={`Recuperação ${num}º Bimestre`}>R{num}</th>
+                                                                            <th className="px-1 py-1 text-center font-bold text-blue-950 bg-blue-50 border-r border-gray-300" title={`Faltas ${num}º Bimestre`}>F{num}</th>
                                                                         </React.Fragment>
                                                                     ))}
                                                                 </tr>
