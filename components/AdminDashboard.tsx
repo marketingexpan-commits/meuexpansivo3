@@ -273,6 +273,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 200, 15, { align: 'right' });
         doc.text(`Filtro: ${txFilter} | Perfil: ${txProfile}`, 200, 22, { align: 'right' });
 
+        // Resumo Dinâmico
+        let summaryText = "";
+        const total = filteredAccessLogs.length;
+
+        if (logProfileFilter === 'all') {
+            const counts: Record<string, number> = { 'student': 0, 'teacher': 0, 'admin': 0 };
+            filteredAccessLogs.forEach(log => {
+                const info = getLogUserInfo(log.user_id);
+                if (counts[info.type] !== undefined) counts[info.type]++;
+            });
+            summaryText = `Total de Acessos: ${total} (Admin: ${counts.admin}, Prof: ${counts.teacher}, Alunos: ${counts.student})`;
+        } else {
+            summaryText = `Resumo: Foram registrados ${total} acessos de ${txProfile} neste período.`;
+        }
+
+        doc.setFontSize(10);
+        doc.setTextColor(40, 40, 40);
+        doc.setFont("helvetica", "bold");
+        doc.text(summaryText, 14, 46);
+        doc.setFont("helvetica", "normal");
+
         const tableData = filteredAccessLogs.map(log => {
             const info = getLogUserInfo(log.user_id);
             return [
@@ -286,7 +307,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         autoTable(doc, {
             head: [['Data/Hora', 'Usuário', 'IP']],
             body: tableData,
-            startY: 50,
+            startY: 52,
             styles: { fontSize: 10 },
             headStyles: { fillColor: [10, 25, 60] },
             alternateRowStyles: { fillColor: [240, 248, 255] },
