@@ -672,8 +672,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 if (att.status === AttendanceStatus.ABSENT) {
                                                                     const d = new Date(att.date + 'T00:00:00');
                                                                     if (d.getFullYear() === currentYear) {
-                                                                        const b = Math.floor(d.getMonth() / 3) + 1;
-                                                                        if (b === bimesterNum) return acc + 1;
+                                                                        const m = d.getMonth(); // 0 - 11
+
+                                                                        // Explicit Ranges (Jan=0, Dec=11)
+                                                                        if (bimesterNum === 1 && m >= 0 && m <= 2) return acc + 1;
+                                                                        if (bimesterNum === 2 && m >= 3 && m <= 5) return acc + 1;
+                                                                        if (bimesterNum === 3 && m >= 6 && m <= 8) return acc + 1;
+                                                                        if (bimesterNum === 4 && m >= 9 && m <= 11) return acc + 1;
                                                                     }
                                                                 }
                                                                 return acc;

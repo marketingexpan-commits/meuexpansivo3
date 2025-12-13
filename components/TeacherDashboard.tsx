@@ -90,12 +90,16 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
             if (selectedSubject && record.discipline !== selectedSubject) return;
 
             if (record.studentStatus[selectedStudent.id] === AttendanceStatus.ABSENT) {
-                const [y, m] = record.date.split('-').map(Number);
-                if (y === currentYear) {
-                    const bimester = Math.floor((m - 1) / 3) + 1;
-                    if (bimester >= 1 && bimester <= 4) {
-                        absences[bimester as keyof typeof absences]++;
-                    }
+                const [y, mStr] = record.date.split('-');
+                const yNum = Number(y);
+                const mNum = Number(mStr); // 1-12
+
+                if (yNum === currentYear) {
+                    // Explicit Ranges
+                    if (mNum >= 1 && mNum <= 3) absences[1]++;
+                    else if (mNum >= 4 && mNum <= 6) absences[2]++;
+                    else if (mNum >= 7 && mNum <= 9) absences[3]++;
+                    else if (mNum >= 10 && mNum <= 12) absences[4]++;
                 }
             }
         });
