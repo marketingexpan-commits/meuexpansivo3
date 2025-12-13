@@ -607,7 +607,94 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     {activeTab === 'admins' && isGeneralAdmin && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-1"><div className="bg-white p-6 rounded-xl shadow-sm border border-purple-200"><h2 className="text-lg font-bold text-purple-800 mb-4">{editingAdminId ? 'Editar Admin' : 'Novo Admin de Unidade'}</h2><form onSubmit={handleAdminSubmit} className="space-y-4"><div><label className="text-sm font-medium">Nome (Descrição)</label><input type="text" value={aName} onChange={e => setAName(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Usuário de Login</label><input type="text" value={aUser} onChange={e => setAUser(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Unidade Responsável</label><select value={aUnit} onChange={e => setAUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select></div><div><label className="text-sm font-medium">Senha</label><div className="flex gap-2 relative"><input type={showAdminPassword ? "text" : "password"} value={aPass} onChange={e => setAPass(e.target.value)} required={!editingAdminId} className="w-full p-2 border rounded" /><button type="button" onClick={() => setShowAdminPassword(!showAdminPassword)} className="absolute right-16 top-2 text-gray-500">{showAdminPassword ? <EyeOffIcon /> : <EyeIcon />}</button><button type="button" onClick={handleGenerateAdminPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button></div></div><Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700">Salvar Admin</Button></form></div></div><div className="lg:col-span-2"><div className="bg-white rounded-xl shadow-sm border border-gray-200"><div className="p-4 bg-purple-50 border-b border-purple-100"><h3 className="font-bold text-purple-900">Administradores Cadastrados</h3></div><div className="overflow-x-auto"><table className="w-full min-w-[600px] text-sm text-left"><thead className="bg-gray-50"><tr><th className="p-3">Nome</th><th className="p-3">Usuário</th><th className="p-3">Unidade</th><th className="p-3">Ações</th></tr></thead><tbody>{filteredAdmins.map(a => (<tr key={a.id} className="border-b"><td className="p-3 font-medium">{a.name}</td><td className="p-3 font-mono text-gray-600">{a.username}</td><td className="p-3"><span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{a.unit}</span></td><td className="p-3 flex gap-2"><button onClick={() => startEditingAdmin(a)} className="text-blue-950 hover:underline">Editar</button><button onClick={() => initiateDeleteAdmin(a.id)} className="text-red-600 hover:underline">Excluir</button></td></tr>))}</tbody></table></div></div></div></div>)}
 
                 </div>
-            </div >
-        </div >
+            </div>
+
+            {/* MODAL DE LOGS */}
+            {isLogModalOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900 bg-opacity-70 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+                        {/* HEADER MODAL */}
+                        <div className="flex justify-between items-center p-6 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                                    📊 Registro de Acessos
+                                </h2>
+                                <p className="text-sm text-gray-500">Auditoria de logins no sistema</p>
+                            </div>
+                            <button onClick={() => setIsLogModalOpen(false)} className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-gray-200">
+                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+
+                        {/* FILTROS */}
+                        <div className="p-4 bg-white border-b border-gray-100 flex gap-2 overflow-x-auto">
+                            <button
+                                onClick={() => handleFilterChange('today')}
+                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${logFilter === 'today' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                            >
+                                Hoje
+                            </button>
+                            <button
+                                onClick={() => handleFilterChange('week')}
+                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${logFilter === 'week' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                            >
+                                Últimos 7 Dias
+                            </button>
+                            <button
+                                onClick={() => handleFilterChange('month')}
+                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${logFilter === 'month' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                            >
+                                Este Mês
+                            </button>
+                        </div>
+
+                        {/* CONTEÚDO / TABELA */}
+                        <div className="flex-1 overflow-y-auto p-0 bg-gray-50">
+                            {isLoadingLogs ? (
+                                <div className="flex items-center justify-center h-64">
+                                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-950"></div>
+                                </div>
+                            ) : accessLogs.length > 0 ? (
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-gray-100 text-gray-600 font-bold uppercase text-xs sticky top-0 shadow-sm z-10">
+                                        <tr>
+                                            <th className="p-4">Data/Hora</th>
+                                            <th className="p-4">Usuário</th>
+                                            <th className="p-4">IP</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100 bg-white">
+                                        {accessLogs.map((log) => (
+                                            <tr key={log.id} className="hover:bg-blue-50 transition-colors">
+                                                <td className="p-4 font-mono text-gray-600 whitespace-nowrap">
+                                                    {new Date(log.date).toLocaleString('pt-BR')}
+                                                </td>
+                                                <td className="p-4 font-bold text-gray-800">
+                                                    {resolveUserName(log.user_id)}
+                                                    <div className="text-[10px] text-gray-400 font-normal">{log.user_id}</div>
+                                                </td>
+                                                <td className="p-4 text-gray-600 font-mono text-xs">
+                                                    {log.ip || 'N/A'}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                                    <svg className="w-12 h-12 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                                    <p>Nenhum registro encontrado para este período.</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* FOOTER */}
+                        <div className="p-4 bg-gray-50 border-t border-gray-200 text-right">
+                            <p className="text-xs text-gray-400 text-center mb-2">Exibindo os {accessLogs.length} registros mais recentes.</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 }
