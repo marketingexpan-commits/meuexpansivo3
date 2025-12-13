@@ -4,6 +4,8 @@ import { SCHOOL_UNITS_LIST, SUBJECT_LIST, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIS
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 import { db } from '../firebaseConfig';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface AdminDashboardProps {
     admin: Admin;
@@ -111,6 +113,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [isLogModalOpen, setIsLogModalOpen] = useState(false);
     const [accessLogs, setAccessLogs] = useState<any[]>([]);
     const [logFilter, setLogFilter] = useState<'today' | 'week' | 'month'>('today');
+    const [logProfileFilter, setLogProfileFilter] = useState<'all' | 'admin' | 'teacher' | 'student'>('all');
     const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
     useEffect(() => {
