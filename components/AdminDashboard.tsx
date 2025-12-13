@@ -233,8 +233,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const handleDownloadPDF = async () => {
         const doc = new jsPDF();
 
-        // Header Background
-        doc.setFillColor(30, 58, 138); // blue-950
+        // Maps Translation
+        const filterMap: Record<string, string> = { 'today': 'HOJE', 'week': 'ÚLTIMOS 7 DIAS', 'month': 'ESTE MÊS' };
+        const profileMap: Record<string, string> = { 'all': 'TODOS', 'student': 'ALUNO', 'teacher': 'PROFESSOR', 'admin': 'ADMINISTRADOR' };
+        const txFilter = filterMap[logFilter] || logFilter.toUpperCase();
+        const txProfile = profileMap[logProfileFilter] || logProfileFilter.toUpperCase();
+
+        // Header Background (Navy Blue)
+        doc.setFillColor(10, 25, 60);
         doc.rect(0, 0, 210, 40, 'F');
 
         try {
@@ -265,7 +271,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(9);
         doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 200, 15, { align: 'right' });
-        doc.text(`Filtro: ${logFilter.toUpperCase()} | Perfil: ${logProfileFilter === 'all' ? 'TODOS' : logProfileFilter.toUpperCase()}`, 200, 22, { align: 'right' });
+        doc.text(`Filtro: ${txFilter} | Perfil: ${txProfile}`, 200, 22, { align: 'right' });
 
         const tableData = filteredAccessLogs.map(log => {
             const info = getLogUserInfo(log.user_id);
@@ -282,7 +288,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             body: tableData,
             startY: 50,
             styles: { fontSize: 10 },
-            headStyles: { fillColor: [30, 58, 138] },
+            headStyles: { fillColor: [10, 25, 60] },
             alternateRowStyles: { fillColor: [240, 248, 255] },
             didDrawPage: function (data) {
                 // Rodapé
