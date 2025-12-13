@@ -82,6 +82,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     // Estado para controle do semestre do relatório infantil
     const [selectedReportSemester, setSelectedReportSemester] = useState<1 | 2>(1);
 
+    // Estado para controle do mês de frequência
+    const [selectedAttendanceMonth, setSelectedAttendanceMonth] = useState<number>(new Date().getMonth());
+
+    const MONTH_NAMES = [
+        "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+        "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+    ];
+
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth() + 1;
     const semester = currentMonth >= 7 ? 2 : 1;
@@ -121,21 +129,17 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [attendanceRecords, student.id]);
 
-    const recentAttendance = studentAttendance.slice(0, 7);
-
-    // CORREÇÃO: Melhor tratamento de datas
-    const absencesThisMonth = useMemo(() => {
-        const now = new Date();
-        const currentMonthLocal = now.getMonth();
-        const currentYearLocal = now.getFullYear();
-
+    const displayedAttendance = useMemo(() => {
         return studentAttendance.filter(record => {
-            const recordDate = new Date(record.date + 'T00:00:00'); // Força interpretação local
-            return recordDate.getFullYear() === currentYearLocal &&
-                recordDate.getMonth() === currentMonthLocal &&
-                record.status === AttendanceStatus.ABSENT;
-        }).length;
-    }, [studentAttendance]);
+            const recordDate = new Date(record.date + 'T00:00:00');
+            return recordDate.getFullYear() === currentYear &&
+                recordDate.getMonth() === selectedAttendanceMonth;
+        });
+    }, [studentAttendance, currentYear, selectedAttendanceMonth]);
+
+    const absencesThisMonth = useMemo(() => {
+        return displayedAttendance.filter(record => record.status === AttendanceStatus.ABSENT).length;
+    }, [displayedAttendance]);
 
 
     const formatGrade = (grade: number | null | undefined) => (grade !== null && grade !== undefined && grade !== 0) ? grade.toFixed(1) : '-';
@@ -415,12 +419,24 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 <span className="text-2xl">📅</span> Registro de frequência
                             </h3>
                             <div className="bg-white p-6 rounded-lg shadow-md border border-gray-100">
-                                <p className="text-gray-600 text-sm mb-4">
-                                    Resumo mensal: <span className={`font-bold ${absencesThisMonth > 0 ? 'text-red-600' : 'text-green-600'}`}>{absencesThisMonth} falta(s)</span> este mês.
-                                </p>
-                                {recentAttendance.length > 0 ? (
+                                <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                                    <p className="text-gray-600 text-sm">
+                                        Resumo em <span className="font-bold text-gray-800">{MONTH_NAMES[selectedAttendanceMonth]}</span>: <span className={`font-bold ${absencesThisMonth > 0 ? 'text-red-600' : 'text-green-600'}`}>{absencesThisMonth} falta(s)</span>.
+                                    </p>
+                                    <select
+                                        value={selectedAttendanceMonth}
+                                        onChange={(e) => setSelectedAttendanceMonth(Number(e.target.value))}
+                                        className="p-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 focus:ring-blue-500 focus:border-blue-500"
+                                    >
+                                        {MONTH_NAMES.map((month, index) => (
+                                            <option key={index} value={index}>{month}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {displayedAttendance.length > 0 ? (
                                     <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3 text-center mb-6">
-                                        {recentAttendance.map((att, index) => (
+                                        {displayedAttendance.map((att, index) => (
                                             <div key={index} className="p-3 border rounded-lg flex flex-col items-center justify-center bg-gray-50">
                                                 <p className="text-xs text-gray-500 font-bold mb-2">
                                                     {new Date(att.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
@@ -432,7 +448,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         ))}
                                     </div>
                                 ) : (
-                                    <p className="text-center text-gray-500 italic py-4">Nenhum registro de frequência encontrado.</p>
+                                    <p className="text-center text-gray-500 italic py-4">Nenhum registro de frequência encontrado para {MONTH_NAMES[selectedAttendanceMonth]}.</p>
                                 )}
 
 
