@@ -2,6 +2,7 @@
 // src/App.tsx
 
 import React, { useState, useEffect } from 'react';
+import firebase from 'firebase/compat/app';
 import { UserRole, UserSession, Student, Teacher, GradeEntry, Admin, SchoolMessage, AttendanceRecord, EarlyChildhoodReport, UnitContact, AppNotification } from './types';
 import { MOCK_STUDENTS, MOCK_TEACHERS, MOCK_ADMINS, FINAL_GRADES_CALCULATED, ALLOW_MOCK_LOGIN } from './constants';
 import { Login } from './components/Login';
@@ -173,7 +174,7 @@ const App: React.FC = () => {
     if (!ALLOW_MOCK_LOGIN || !window.confirm("Isso apagará TODOS os dados atuais e restaurará os dados de teste. Deseja continuar?")) return;
     setIsSeeding(true);
     try {
-      const collections = ['students', 'teachers', 'admins', 'grades', 'schoolMessages', 'attendance', 'earlyChildhoodReports', 'unitContacts', 'notifications'];
+      const collections = ['students', 'teachers', 'admins', 'grades', 'schoolMessages', 'attendance', 'earlyChildhoodReports', 'unitContacts', 'notifications', 'access_logs', 'daily_stats']; // Incluídos logs na limpeza
       for (const col of collections) {
         const snapshot = await db.collection(col).get();
         if (!snapshot.empty) {
@@ -190,6 +191,48 @@ const App: React.FC = () => {
     } finally { setIsSeeding(false); }
   };
 
+  const logAccess = async (userId: string) => {
+    if (process.env.NODE_ENV === 'development' && ALLOW_MOCK_LOGIN) console.log(`[Mock] Logged access for ${userId}`);
+
+    // Data para o ID do documento de estatísticas (YYYY-MM-DD)
+    const today = new Date().toISOString().split('T')[0];
+    let ip = 'unknown';
+
+    // Tentar obter IP (sem bloquear o fluxo principal se falhar)
+    try {
+      // Executa em "background" relative ao login, mas await aqui é rápido
+      const res = await fetch('https://api.ipify.org?format=json').catch(() => null);
+      if (res) {
+        const data = await res.json();
+        ip = data.ip;
+      }
+    } catch (e) {
+      // Ignora erro de IP
+    }
+
+    const logData = {
+      user_id: userId,
+      date: new Date().toISOString(),
+      ip: ip,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    try {
+      // 1. Gravar Log Individual
+      db.collection('access_logs').add(logData).catch(err => console.error("Erro ao gravar log de acesso:", err));
+
+      // 2. Incrementar Contador Diário (Atomicamente)
+      const statsRef = db.collection('daily_stats').doc(today);
+      statsRef.set({
+        total_logins: firebase.firestore.FieldValue.increment(1),
+        last_updated: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true }).catch(err => console.error("Erro ao atualizar daily_stats:", err));
+
+    } catch (error) {
+      console.error("Erro geral no sistema de logs:", error);
+    }
+  };
+
   const handleStudentLogin = (code: string, pass: string) => {
     let student = students.find(s => s.code === code);
     if (!student && ALLOW_MOCK_LOGIN && students.length === 0) student = MOCK_STUDENTS.find(s => s.code === code);
@@ -197,6 +240,7 @@ const App: React.FC = () => {
       if (student.password === pass) {
         if (student.isBlocked) { setLoginError('Acesso negado. Entre em contato com a secretaria.'); return; }
         setSession({ role: UserRole.STUDENT, user: student }); setLoginError('');
+        logAccess(student.id);
       } else { setLoginError('Senha incorreta.'); }
     } else { setLoginError('Código de aluno não encontrado.'); }
   };
@@ -210,12 +254,17 @@ const App: React.FC = () => {
     }
     if (teacher.password !== pass) { setLoginError('Senha inválida.'); return; }
     setSession({ role: UserRole.TEACHER, user: teacher }); setLoginError('');
+    logAccess(teacher.id);
   };
 
   const handleAdminLogin = (user: string, pass: string) => {
     let admin = admins.find(a => a.username === user && a.password === pass);
     if (!admin && ALLOW_MOCK_LOGIN && admins.length === 0) admin = MOCK_ADMINS.find(a => a.username === user && a.password === pass);
-    if (admin) { setSession({ role: UserRole.ADMIN, user: admin }); setLoginError(''); }
+    if (admin) {
+      setSession({ role: UserRole.ADMIN, user: admin });
+      setLoginError('');
+      logAccess(admin.id);
+    }
     else { setLoginError('Credenciais inválidas.'); }
   }
 

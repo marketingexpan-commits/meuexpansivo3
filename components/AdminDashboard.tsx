@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Admin, Student, Teacher, SchoolUnit, Subject, SchoolShift, SchoolClass, SchoolMessage, MessageType, MessageRecipient, AttendanceRecord, AttendanceStatus, UnitContact, ContactRole } from '../types';
 import { SCHOOL_UNITS_LIST, SUBJECT_LIST, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST, SCHOOL_GRADES_LIST } from '../constants';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
+import { db } from '../firebaseConfig';
 
 interface AdminDashboardProps {
     admin: Admin;
@@ -104,6 +105,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [contactName, setContactName] = useState('');
     const [contactPhone, setContactPhone] = useState('+55');
     const [contactUnit, setContactUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_1);
+
+    // --- ESTADOS DE LOGS/STATS ---
+    const [dailyLoginsCount, setDailyLoginsCount] = useState<number | null>(null);
+
+    useEffect(() => {
+        if (!isGeneralAdmin) return; // Só busca se for Admin Geral
+
+        const fetchDailyStats = async () => {
+            const today = new Date().toISOString().split('T')[0];
+            try {
+                const doc = await db.collection('daily_stats').doc(today).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    setDailyLoginsCount(data?.total_logins || 0);
+                } else {
+                    setDailyLoginsCount(0);
+                }
+            } catch (error) {
+                console.error("Erro ao buscar estatísticas diárias:", error);
+                setDailyLoginsCount(null);
+            }
+        };
+
+        fetchDailyStats();
+    }, [isGeneralAdmin]);
 
     const generatePassword = () => {
         const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -235,10 +261,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-3">
-                            <Button variant="secondary" onClick={onLogout} className="!bg-transparent border-none !text-white font-medium hover:!text-gray-200 shadow-none !px-0">
-                                Sair
-                            </Button>
+
+                        {/* STATS WIDGET (TOP RIGHT) - Somente para Admin Geral */}
+                        <div className="flex items-center gap-6">
+                            {isGeneralAdmin && dailyLoginsCount !== null && (
+                                <div className="hidden md:flex flex-col items-end text-white/90">
+                                    <span className="text-[10px] uppercase tracking-wider font-semibold opacity-70">Acessos Hoje</span>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-2xl font-bold">{dailyLoginsCount}</span>
+                                        <span className="text-xs">logins</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex items-center gap-3">
+                                <Button variant="secondary" onClick={onLogout} className="!bg-transparent border-none !text-white font-medium hover:!text-gray-200 shadow-none !px-0">
+                                    Sair
+                                </Button>
+                            </div>
                         </div>
                     </div>
                     {/* Decorative Elements */}
@@ -485,7 +525,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     {activeTab === 'admins' && isGeneralAdmin && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-1"><div className="bg-white p-6 rounded-xl shadow-sm border border-purple-200"><h2 className="text-lg font-bold text-purple-800 mb-4">{editingAdminId ? 'Editar Admin' : 'Novo Admin de Unidade'}</h2><form onSubmit={handleAdminSubmit} className="space-y-4"><div><label className="text-sm font-medium">Nome (Descrição)</label><input type="text" value={aName} onChange={e => setAName(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Usuário de Login</label><input type="text" value={aUser} onChange={e => setAUser(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Unidade Responsável</label><select value={aUnit} onChange={e => setAUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select></div><div><label className="text-sm font-medium">Senha</label><div className="flex gap-2 relative"><input type={showAdminPassword ? "text" : "password"} value={aPass} onChange={e => setAPass(e.target.value)} required={!editingAdminId} className="w-full p-2 border rounded" /><button type="button" onClick={() => setShowAdminPassword(!showAdminPassword)} className="absolute right-16 top-2 text-gray-500">{showAdminPassword ? <EyeOffIcon /> : <EyeIcon />}</button><button type="button" onClick={handleGenerateAdminPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button></div></div><Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700">Salvar Admin</Button></form></div></div><div className="lg:col-span-2"><div className="bg-white rounded-xl shadow-sm border border-gray-200"><div className="p-4 bg-purple-50 border-b border-purple-100"><h3 className="font-bold text-purple-900">Administradores Cadastrados</h3></div><div className="overflow-x-auto"><table className="w-full min-w-[600px] text-sm text-left"><thead className="bg-gray-50"><tr><th className="p-3">Nome</th><th className="p-3">Usuário</th><th className="p-3">Unidade</th><th className="p-3">Ações</th></tr></thead><tbody>{filteredAdmins.map(a => (<tr key={a.id} className="border-b"><td className="p-3 font-medium">{a.name}</td><td className="p-3 font-mono text-gray-600">{a.username}</td><td className="p-3"><span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{a.unit}</span></td><td className="p-3 flex gap-2"><button onClick={() => startEditingAdmin(a)} className="text-blue-950 hover:underline">Editar</button><button onClick={() => initiateDeleteAdmin(a.id)} className="text-red-600 hover:underline">Excluir</button></td></tr>))}</tbody></table></div></div></div></div>)}
 
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }
