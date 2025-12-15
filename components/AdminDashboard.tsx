@@ -811,6 +811,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             </div>
                         </div>
 
+                        {/* SUMMARY STATS */}
+                        <div className="bg-blue-50 px-6 py-3 border-b border-blue-100 flex flex-wrap gap-4 text-sm justify-between items-center shadow-inner">
+                            <span className="font-bold text-blue-900">Total: {filteredAccessLogs.length}</span>
+                            <div className="flex gap-4">
+                                <span className="text-gray-600 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span> Alunos: <strong>{filteredAccessLogs.filter(l => getLogUserInfo(l.user_id).type === 'student').length}</strong></span>
+                                <span className="text-gray-600 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500"></span> Prof.: <strong>{filteredAccessLogs.filter(l => getLogUserInfo(l.user_id).type === 'teacher').length}</strong></span>
+                                <span className="text-gray-600 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500"></span> Admin: <strong>{filteredAccessLogs.filter(l => getLogUserInfo(l.user_id).type === 'admin').length}</strong></span>
+                            </div>
+                        </div>
+
                         {/* CONTEÚDO / TABELA */}
                         <div className="flex-1 overflow-y-auto p-0 bg-gray-50">
                             {isLoadingLogs ? (
