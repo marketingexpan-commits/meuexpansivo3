@@ -743,12 +743,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900 bg-opacity-70 backdrop-blur-sm animate-fade-in">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] md:h-auto md:max-h-[90vh] flex flex-col overflow-hidden">
                         {/* HEADER MODAL */}
-                        <div className="flex justify-between items-center p-6 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                        <div className="flex justify-between items-center p-3 md:p-6 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
                             <div>
-                                <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                                <h2 className="text-lg md:text-2xl font-bold text-gray-800 flex items-center gap-2">
                                     📊 Registro de Acessos
                                 </h2>
-                                <p className="text-sm text-gray-500">Auditoria de logins no sistema</p>
+                                <p className="hidden md:block text-sm text-gray-500">Auditoria de logins no sistema</p>
                             </div>
                             <button onClick={() => setIsLogModalOpen(false)} className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-gray-200">
                                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -756,23 +756,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
 
                         {/* FILTROS E AÇÕES */}
-                        <div className="p-4 bg-white border-b border-gray-100 flex flex-col md:flex-row gap-4 justify-between items-center">
-                            <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
+                        <div className="p-2 md:p-4 bg-white border-b border-gray-100 flex flex-col md:flex-row gap-2 md:gap-4 justify-between items-center">
+                            <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
                                 <button
                                     onClick={() => handleFilterChange('today')}
-                                    className={`whitespace-nowrap px-4 py-2 rounded-lg text-xs font-bold transition-all ${logFilter === 'today' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                    className={`whitespace-nowrap px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs font-bold transition-all ${logFilter === 'today' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                                 >
                                     Hoje
                                 </button>
                                 <button
                                     onClick={() => handleFilterChange('week')}
-                                    className={`whitespace-nowrap px-4 py-2 rounded-lg text-xs font-bold transition-all ${logFilter === 'week' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                    className={`whitespace-nowrap px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs font-bold transition-all ${logFilter === 'week' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                                 >
                                     7 Dias
                                 </button>
                                 <button
                                     onClick={() => handleFilterChange('month')}
-                                    className={`whitespace-nowrap px-4 py-2 rounded-lg text-xs font-bold transition-all ${logFilter === 'month' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                    className={`whitespace-nowrap px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs font-bold transition-all ${logFilter === 'month' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                                 >
                                     Mês
                                 </button>
@@ -812,9 +812,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
 
                         {/* SUMMARY STATS */}
-                        <div className="bg-blue-50 px-6 py-3 border-b border-blue-100 flex flex-wrap gap-4 text-sm justify-between items-center shadow-inner">
+                        <div className="bg-blue-50 px-3 py-2 md:px-6 md:py-3 border-b border-blue-100 flex flex-wrap gap-2 md:gap-4 text-xs md:text-sm justify-between items-center shadow-inner">
                             <span className="font-bold text-blue-900">Total: {filteredAccessLogs.length}</span>
-                            <div className="flex gap-4">
+                            <div className="flex gap-2 md:gap-4">
                                 <span className="text-gray-600 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span> Alunos: <strong>{filteredAccessLogs.filter(l => getLogUserInfo(l.user_id).type === 'student').length}</strong></span>
                                 <span className="text-gray-600 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500"></span> Prof.: <strong>{filteredAccessLogs.filter(l => getLogUserInfo(l.user_id).type === 'teacher').length}</strong></span>
                                 <span className="text-gray-600 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500"></span> Admin: <strong>{filteredAccessLogs.filter(l => getLogUserInfo(l.user_id).type === 'admin').length}</strong></span>
