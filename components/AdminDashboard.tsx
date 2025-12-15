@@ -470,7 +470,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             {isGeneralAdmin && dailyLoginsCount !== null && (
                                 <button
                                     onClick={handleOpenLogModal}
-                                    className="hidden md:flex flex-col items-end text-white/90 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all cursor-pointer"
+                                    className="flex flex-col items-end text-white/90 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all cursor-pointer"
                                     title="Clique para ver detalhes"
                                 >
                                     <span className="text-[10px] uppercase tracking-wider font-semibold opacity-70">Acessos Hoje</span>
