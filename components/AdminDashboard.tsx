@@ -822,13 +822,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
 
                         {/* CONTEÚDO / TABELA */}
-                        <div className="flex-1 overflow-y-auto p-0 bg-gray-50">
+                        <div className="flex-1 overflow-y-auto overflow-x-auto p-0 bg-gray-50">
                             {isLoadingLogs ? (
                                 <div className="flex items-center justify-center h-64">
                                     <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-950"></div>
                                 </div>
                             ) : filteredAccessLogs.length > 0 ? (
-                                <table className="w-full text-sm text-left">
+                                <table className="w-full min-w-[600px] text-sm text-left">
                                     <thead className="bg-gray-100 text-gray-600 font-bold uppercase text-xs sticky top-0 shadow-sm z-10">
                                         <tr>
                                             <th className="p-4">Data/Hora</th>
