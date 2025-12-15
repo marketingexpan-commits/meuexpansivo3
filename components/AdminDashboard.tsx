@@ -114,6 +114,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [accessLogs, setAccessLogs] = useState<any[]>([]);
     const [logFilter, setLogFilter] = useState<'today' | 'week' | 'month'>('today');
     const [logProfileFilter, setLogProfileFilter] = useState<'all' | 'admin' | 'teacher' | 'student'>('all');
+    const [logUnitFilter, setLogUnitFilter] = useState<string>('all');  // Novo estado
     const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
     useEffect(() => {
@@ -213,21 +214,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
     const getLogUserInfo = (userId: string) => {
         const s = students.find(x => x.id === userId);
-        if (s) return { name: s.name, role: 'Aluno', type: 'student' };
+        if (s) return { name: s.name, role: 'Aluno', type: 'student', unit: s.unit };
 
         const t = teachers.find(x => x.id === userId);
-        if (t) return { name: t.name, role: 'Prof.', type: 'teacher' };
+        if (t) return { name: t.name, role: 'Prof.', type: 'teacher', unit: t.unit };
 
         const a = admins.find(x => x.id === userId);
-        if (a) return { name: a.name, role: 'Admin', type: 'admin' };
+        if (a) return { name: a.name, role: 'Admin', type: 'admin', unit: a.unit };
 
-        return { name: userId, role: 'Desconhecido', type: 'unknown' };
+        return { name: userId, role: 'Desconhecido', type: 'unknown', unit: '' };
     };
 
     const filteredAccessLogs = accessLogs.filter(log => {
-        if (logProfileFilter === 'all') return true;
         const info = getLogUserInfo(log.user_id);
-        return info.type === logProfileFilter;
+
+        const matchesProfile = logProfileFilter === 'all' ? true : info.type === logProfileFilter;
+        const matchesUnit = logUnitFilter === 'all' ? true : info.unit === logUnitFilter;
+
+        return matchesProfile && matchesUnit;
     });
 
     const handleDownloadPDF = async () => {
@@ -774,11 +778,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 </button>
                             </div>
 
-                            <div className="flex gap-2 items-center w-full md:w-auto">
+                            <div className="flex flex-col md:flex-row gap-2 items-center w-full md:w-auto">
+                                <select
+                                    value={logUnitFilter}
+                                    onChange={(e) => setLogUnitFilter(e.target.value)}
+                                    className="p-2 border rounded-lg text-sm bg-gray-50 w-full md:w-auto"
+                                >
+                                    <option value="all">Todas as Unidades</option>
+                                    {SCHOOL_UNITS_LIST.map(u => (
+                                        <option key={u} value={u}>{u}</option>
+                                    ))}
+                                </select>
+
                                 <select
                                     value={logProfileFilter}
                                     onChange={(e) => setLogProfileFilter(e.target.value as any)}
-                                    className="p-2 border rounded-lg text-sm bg-gray-50 flex-1 md:flex-none"
+                                    className="p-2 border rounded-lg text-sm bg-gray-50 w-full md:w-auto"
                                 >
                                     <option value="all">Todos os Perfis</option>
                                     <option value="student">Alunos</option>
@@ -788,7 +803,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                                 <button
                                     onClick={handleDownloadPDF}
-                                    className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 shadow-sm transition-all whitespace-nowrap"
+                                    className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 shadow-sm transition-all whitespace-nowrap w-full md:w-auto justify-center"
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                     PDF
