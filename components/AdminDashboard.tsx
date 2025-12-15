@@ -448,15 +448,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
             <div className="w-full max-w-7xl bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col">
                 {/* HEADER */}
-                <div className="bg-gradient-to-br from-blue-950 to-slate-900 p-6 pb-6 shadow-md relative shrink-0">
-                    <div className="flex flex-row justify-between items-center relative z-10">
-                        <div className="flex items-center gap-4 text-white">
+                <div className="bg-gradient-to-br from-blue-950 to-slate-900 p-4 md:p-6 shadow-md relative shrink-0">
+                    <div className="flex flex-col md:flex-row justify-between items-center relative z-10 gap-4 md:gap-0">
+                        <div className="flex items-center gap-3 md:gap-4 text-white w-full md:w-auto">
                             <SchoolLogo variant="header" />
                             <div>
-                                <h1 className="text-2xl font-bold tracking-tight text-white mb-0.5 shadow-black drop-shadow-sm">
+                                <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white mb-0.5 shadow-black drop-shadow-sm">
                                     Meu Expansivo
                                 </h1>
-                                <div className="flex items-center gap-2 text-blue-200 text-sm font-medium">
+                                <div className="flex items-center gap-2 text-blue-200 text-xs md:text-sm font-medium">
                                     <span>Administração ({adminUnit || 'GERAL'})</span>
                                     <span className="w-1 h-1 rounded-full bg-blue-400"></span>
                                     <span className="text-blue-200">{admin.name}</span>
@@ -466,7 +466,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
 
                         {/* STATS WIDGET (TOP RIGHT) - Somente para Admin Geral */}
-                        <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-3 md:gap-6 w-full md:w-auto justify-between md:justify-start">
                             {isGeneralAdmin && dailyLoginsCount !== null && (
                                 <button
                                     onClick={handleOpenLogModal}
