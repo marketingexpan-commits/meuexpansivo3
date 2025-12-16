@@ -117,6 +117,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [logProfileFilter, setLogProfileFilter] = useState<'all' | 'admin' | 'teacher' | 'student'>('all');
     const [logUnitFilter, setLogUnitFilter] = useState<string>('all');  // Novo estado
     const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+    const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState(false);
 
     useEffect(() => {
         if (!isGeneralAdmin) return; // Só busca se for Admin Geral
@@ -487,6 +488,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             )}
 
                             <div className="flex items-center gap-3">
+                                {isGeneralAdmin && (
+                                    <button
+                                        onClick={() => setIsMaintenanceModalOpen(true)}
+                                        className="p-2 text-blue-200 hover:text-white hover:bg-white/10 rounded-full transition-colors order-first md:order-none"
+                                        title="Manutenção do Sistema"
+                                    >
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                    </button>
+                                )}
                                 <Button variant="secondary" onClick={onLogout} className="!bg-transparent border-none !text-white font-medium hover:!text-gray-200 shadow-none !px-0">
                                     Sair
                                 </Button>
@@ -739,20 +749,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
             </div>
 
-            {/* SEÇÃO DE MANUTENÇÃO (APENAS ADMIN GERAL) */}
-            {isGeneralAdmin && (
-                <div className="bg-gray-50 border-t border-gray-200 mt-8">
-                    <details className="group">
-                        <summary className="list-none flex items-center justify-between p-4 cursor-pointer hover:bg-gray-100 transition-colors">
-                            <h2 className="text-sm font-medium text-gray-500 hover:text-gray-700 flex items-center gap-2">
-                                ⚙️ Opções Avançadas / Manutenção do Sistema
-                            </h2>
-                            <span className="text-gray-400 group-open:rotate-180 transition-transform">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                            </span>
-                        </summary>
+            {/* MODAL DE MANUTENÇÃO */}
+            {isMaintenanceModalOpen && isGeneralAdmin && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900 bg-opacity-70 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-auto max-h-[90vh] flex flex-col overflow-hidden">
+                        {/* HEADER MODAL */}
+                        <div className="flex justify-between items-center p-6 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                                    ⚙️ Manutenção do Sistema
+                                </h2>
+                                <p className="text-sm text-gray-500">Ferramentas avançadas de administração e virada de ano.</p>
+                            </div>
+                            <button onClick={() => setIsMaintenanceModalOpen(false)} className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-gray-200">
+                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
 
-                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 border-t border-gray-200 animate-fade-in">
+                        {/* BODY MODAL */}
+                        <div className="p-8 overflow-y-auto">
                             <div className="p-4 bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 mb-8 rounded shadow-sm">
                                 <p className="font-bold">⚠️ Área de Risco</p>
                                 <p>Estas ferramentas manipulam dados críticos. Certifique-se de que sabe o que está fazendo.</p>
@@ -761,7 +776,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
 
                                 {/* 1. BACKUP */}
-                                <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+                                <div className="bg-white p-6 rounded-lg shadow border border-gray-200 hover:shadow-lg transition-shadow">
                                     <h3 className="text-lg font-bold text-blue-900 mb-2">1. Exportar Dados</h3>
                                     <p className="text-sm text-gray-600 mb-4">Gera um arquivo Excel (.xlsx) com todas as notas, faltas e mensagens atuais.</p>
                                     <Button onClick={async () => {
@@ -826,12 +841,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             alert("Erro ao gerar backup: " + e);
                                         }
                                     }} className="w-full">
-                                        💾 Baixar Backup Completo
+                                        💾 Baixar Backup
                                     </Button>
                                 </div>
 
                                 {/* 2. RESTORE */}
-                                <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+                                <div className="bg-white p-6 rounded-lg shadow border border-gray-200 hover:shadow-lg transition-shadow">
                                     <h3 className="text-lg font-bold text-green-900 mb-2">2. Restaurar Dados</h3>
                                     <p className="text-sm text-gray-600 mb-4">Reimporta dados de um backup anterior. Útil para desfazer erros.</p>
                                     <input type="file" id="restoreFile" accept=".xlsx" className="hidden" onChange={async (e) => {
@@ -894,7 +909,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 </div>
 
                                 {/* 3. RESET */}
-                                <div className="bg-white p-6 rounded-lg shadow border border-red-200">
+                                <div className="bg-white p-6 rounded-lg shadow border border-red-200 hover:shadow-lg transition-shadow">
                                     <h3 className="text-lg font-bold text-red-900 mb-2">3. Novo Ano Letivo</h3>
                                     <p className="text-sm text-gray-600 mb-4">Apaga NOTAS, FALTAS e MENSAGENS. Mantém alunos e professores.</p>
                                     <Button variant="danger" onClick={async () => {
@@ -928,7 +943,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                             </div>
                         </div>
-                    </details>
+                    </div>
                 </div>
             )}
 
