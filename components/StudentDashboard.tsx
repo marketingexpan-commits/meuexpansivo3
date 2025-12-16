@@ -379,7 +379,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
                                             <span className="text-xl">📊</span>
                                         </div>
-                                        <h3 className="font-bold text-gray-800 text-sm">Boletim Escolar</h3>
+                                        <h3 className="font-bold text-gray-800 text-sm">{isEarlyChildhood ? 'Relatório de Desenvolvimento' : 'Boletim Escolar'}</h3>
                                     </button>
 
                                     <button
