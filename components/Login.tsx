@@ -101,7 +101,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
   ];
 
   const DOWNLOAD_LINKS = [
-    { id: 4, title: 'Manual do Aluno', date: '05/01/2025', size: '4.0 MB', url: '/manual_do_aluno.pdf' },
+    { id: 4, title: 'Manual do Aluno', date: '16/12/2025', size: '4.0 MB', url: '/manual_do_aluno.pdf' },
     { id: 2, title: 'Lista de Livros - Fundamental I', date: '10/12/2024', size: '450 KB', url: '#' },
     { id: 3, title: 'Lista de Livros - Fundamental II', date: '10/12/2024', size: '480 KB', url: '#' },
     { id: 1, title: 'Calendário Acadêmico 2024 (Antigo)', date: '01/01/2024', size: '1.2 MB', url: '#' },
