@@ -103,6 +103,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     // Estados para Frequência
     const [attendanceFilterUnit, setAttendanceFilterUnit] = useState<SchoolUnit | ''>(adminUnit || '');
     const [attendanceFilterGrade, setAttendanceFilterGrade] = useState('');
+    const [attendanceFilterClass, setAttendanceFilterClass] = useState(''); // Novo filtro Turma
+    const [attendanceFilterShift, setAttendanceFilterShift] = useState(''); // Novo filtro Turno
     const [attendanceFilterDate, setAttendanceFilterDate] = useState(new Date().toISOString().split('T')[0]);
     const [expandedRecordId, setExpandedRecordId] = useState<string | null>(null);
 
@@ -370,11 +372,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const filteredMessages = schoolMessages.filter(message => (isGeneralAdmin || message.unit === adminUnit) && (messageFilter === 'all' || message.status === 'new'));
     const newMessagesCount = schoolMessages.filter(m => (isGeneralAdmin || m.unit === adminUnit) && m.status === 'new').length;
 
+    // Helper para inferir turno do record (olhando primeiro aluno)
+    const getRecordShift = (record: AttendanceRecord) => {
+        const firstStudentId = Object.keys(record.studentStatus)[0];
+        if (!firstStudentId) return null;
+        const student = students.find(s => s.id === firstStudentId);
+        return student ? student.shift : null;
+    };
+
     const filteredAttendanceRecords = attendanceRecords.filter(record => {
         const unitMatch = isGeneralAdmin ? (attendanceFilterUnit ? record.unit === attendanceFilterUnit : true) : record.unit === adminUnit;
         const gradeMatch = attendanceFilterGrade ? record.gradeLevel === attendanceFilterGrade : true;
+        const classMatch = attendanceFilterClass ? record.schoolClass === attendanceFilterClass : true;
+        
+        // Filtro de Turno (Inferido)
+        let shiftMatch = true;
+        if (attendanceFilterShift) {
+            const recordShift = getRecordShift(record);
+            // Se não conseguiu inferir (sem alunos?), assume que não bate ou mostra? Vamos assumir que mostra se não tiver filtro, mas se tiver filtro e não achar, esconde.
+            if (recordShift) {
+                shiftMatch = recordShift === attendanceFilterShift;
+            } else {
+                 // Se não tem alunos para verificar turno, talvez esconder? Ou mostrar? Vamos manter condicional estrita.
+                 shiftMatch = false; 
+            }
+        }
+
         const dateMatch = attendanceFilterDate ? record.date === attendanceFilterDate : true;
-        return unitMatch && gradeMatch && dateMatch;
+        return unitMatch && gradeMatch && classMatch && shiftMatch && dateMatch;
     }).sort((a, b) => a.id.localeCompare(b.id));
 
     // Filtros para contatos
@@ -618,6 +643,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         </select>
                                     </div>
                                     <div>
+                                        <label className="text-sm font-medium text-gray-700">Turma</label>
+                                        <select value={attendanceFilterClass} onChange={e => setAttendanceFilterClass(e.target.value)} className="w-full p-2 border rounded mt-1">
+                                            <option value="">Todas</option>
+                                            {SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700">Turno</label>
+                                        <select value={attendanceFilterShift} onChange={e => setAttendanceFilterShift(e.target.value)} className="w-full p-2 border rounded mt-1">
+                                            <option value="">Todos</option>
+                                            {SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
                                         <label className="text-sm font-medium text-gray-700">Data</label>
                                         <input type="date" value={attendanceFilterDate} onChange={e => setAttendanceFilterDate(e.target.value)} className="w-full p-2 border rounded mt-1" />
                                     </div>
@@ -635,12 +674,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 <div className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center cursor-pointer hover:bg-gray-50" onClick={() => setExpandedRecordId(expandedRecordId === record.id ? null : record.id)}>
                                                     <div>
                                                         <p className="font-bold text-blue-950">{record.gradeLevel} - Turma {record.schoolClass}</p>
-                                                        <p className="text-sm text-gray-500">{record.unit} | Data: {formatDate(record.date, false)}</p>
+                                                        <p className="text-sm text-gray-800 font-semibold my-0.5">Prof. {record.teacherName}</p>
+                                                        <p className="text-xs text-gray-500">{record.unit} | Data: {formatDate(record.date, false)}</p>
                                                     </div>
                                                     <div className="flex items-center gap-4 mt-2 md:mt-0 text-sm">
                                                         <span className="font-bold text-green-600">{presents} Presentes</span>
                                                         <span className="font-bold text-red-600">{absents} Ausentes</span>
-                                                        <span className="text-xs text-gray-400">por {record.teacherName.split(' ')[0]}</span>
                                                     </div>
                                                 </div>
                                                 {expandedRecordId === record.id && (
