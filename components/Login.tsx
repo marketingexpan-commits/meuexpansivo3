@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import firebase from 'firebase/compat/app';
+import { db } from '../firebaseConfig';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 import { SCHOOL_UNITS_LIST, ALLOW_MOCK_LOGIN, UNITS_CONTACT_INFO, SCHOOL_LOGO_URL, SCHOOL_LOGO_WHITE_URL } from '../constants';
@@ -22,6 +24,21 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
   const [animateLogo, setAnimateLogo] = useState(false);
   // Controla a visibilidade do logo estático no header para fazer a troca "mágica"
   const [showStaticLogo, setShowStaticLogo] = useState(false);
+
+  // --- CONTADOR DE VISITAS PÚBLICAS ---
+  useEffect(() => {
+    try {
+      const hasVisited = sessionStorage.getItem('visited_login_page');
+      if (!hasVisited) {
+        db.collection('site_stats').doc('general').set({
+          login_page_views: firebase.firestore.FieldValue.increment(1)
+        }, { merge: true });
+        sessionStorage.setItem('visited_login_page', 'true');
+      }
+    } catch (error) {
+      console.error("Erro ao registrar visita:", error);
+    }
+  }, []);
 
   React.useEffect(() => {
     // 0. Iniciar com logo invisível (fade-in suave)

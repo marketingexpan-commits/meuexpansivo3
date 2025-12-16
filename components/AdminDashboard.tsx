@@ -116,6 +116,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
     // --- ESTADOS DE LOGS/STATS ---
     const [dailyLoginsCount, setDailyLoginsCount] = useState<number | null>(null);
+    const [loginPageViews, setLoginPageViews] = useState<number | null>(null);
     const [isLogModalOpen, setIsLogModalOpen] = useState(false);
     const [accessLogs, setAccessLogs] = useState<any[]>([]);
     const [logFilter, setLogFilter] = useState<'today' | 'week' | 'month'>('today');
@@ -137,8 +138,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 } else {
                     setDailyLoginsCount(0);
                 }
+
+                // Buscar Stats Globais (Visitas Login)
+                const docGlobal = await db.collection('site_stats').doc('general').get();
+                if (docGlobal.exists) {
+                    setLoginPageViews(docGlobal.data()?.login_page_views || 0);
+                }
             } catch (error) {
-                console.error("Erro ao buscar estatísticas diárias:", error);
+                console.error("Erro ao buscar estatísticas:", error);
                 setDailyLoginsCount(null);
             }
         };
@@ -384,7 +391,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         const unitMatch = isGeneralAdmin ? (attendanceFilterUnit ? record.unit === attendanceFilterUnit : true) : record.unit === adminUnit;
         const gradeMatch = attendanceFilterGrade ? record.gradeLevel === attendanceFilterGrade : true;
         const classMatch = attendanceFilterClass ? record.schoolClass === attendanceFilterClass : true;
-        
+
         // Filtro de Turno (Inferido)
         let shiftMatch = true;
         if (attendanceFilterShift) {
@@ -393,8 +400,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             if (recordShift) {
                 shiftMatch = recordShift === attendanceFilterShift;
             } else {
-                 // Se não tem alunos para verificar turno, talvez esconder? Ou mostrar? Vamos manter condicional estrita.
-                 shiftMatch = false; 
+                // Se não tem alunos para verificar turno, talvez esconder? Ou mostrar? Vamos manter condicional estrita.
+                shiftMatch = false;
             }
         }
 
@@ -504,17 +511,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         {/* STATS WIDGET (TOP RIGHT) - Somente para Admin Geral */}
                         <div className="flex items-center gap-3 md:gap-6 w-full md:w-auto justify-between md:justify-start">
                             {isGeneralAdmin && dailyLoginsCount !== null && (
-                                <button
-                                    onClick={handleOpenLogModal}
-                                    className="flex flex-col items-end text-white/90 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all cursor-pointer"
-                                    title="Clique para ver detalhes"
-                                >
-                                    <span className="text-[10px] uppercase tracking-wider font-semibold opacity-70">Acessos Hoje</span>
-                                    <div className="flex items-baseline gap-1">
-                                        <span className="text-2xl font-bold">{dailyLoginsCount}</span>
-                                        <span className="text-xs">logins</span>
+                                <>
+                                    <div className="flex flex-col items-end text-white/90 p-2 rounded-lg transition-all" title="Total de visualizações na tela de login">
+                                        <span className="text-[10px] uppercase tracking-wider font-semibold opacity-70">Visitas Login</span>
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-2xl font-bold">{loginPageViews !== null ? loginPageViews : '-'}</span>
+                                            <span className="text-xs">views</span>
+                                        </div>
                                     </div>
-                                </button>
+                                    <div className="w-px h-8 bg-white/20 mx-2 hidden md:block"></div>
+                                    <button
+                                        onClick={handleOpenLogModal}
+                                        className="flex flex-col items-end text-white/90 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all cursor-pointer"
+                                        title="Clique para ver detalhes"
+                                    >
+                                        <span className="text-[10px] uppercase tracking-wider font-semibold opacity-70">Acessos Hoje</span>
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-2xl font-bold">{dailyLoginsCount}</span>
+                                            <span className="text-xs">logins</span>
+                                        </div>
+                                    </button>
+                                </>
                             )}
 
                             <div className="flex items-center gap-3">
