@@ -527,14 +527,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                         <div className="lg:col-span-2">
                             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                                <div className="p-4 bg-gray-50 border-b flex flex-col md:flex-row justify-between items-center gap-4">
+                                <div className="p-4 bg-gray-50 border-b flex flex-col gap-4">
                                     <h3 className="font-bold text-gray-700 whitespace-nowrap">Alunos ({filteredStudents.length})</h3>
-                                    <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                                    <div className="flex flex-wrap gap-2 w-full">
                                         {isGeneralAdmin && (
                                             <select
                                                 value={studentFilterUnit}
                                                 onChange={(e) => setStudentFilterUnit(e.target.value)}
-                                                className="p-2 border rounded text-sm bg-white text-gray-700 focus:ring-blue-950 focus:border-blue-950"
+                                                className="p-2 border rounded text-sm bg-white text-gray-700 focus:ring-blue-950 focus:border-blue-950 flex-grow md:flex-grow-0 md:w-auto w-full"
                                             >
                                                 <option value="">Todas as Unidades</option>
                                                 {SCHOOL_UNITS_LIST.map(u => (
@@ -545,7 +545,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         <select
                                             value={studentFilterGrade}
                                             onChange={(e) => setStudentFilterGrade(e.target.value)}
-                                            className="p-2 border rounded text-sm bg-white text-gray-700 focus:ring-blue-950 focus:border-blue-950"
+                                            className="p-2 border rounded text-sm bg-white text-gray-700 focus:ring-blue-950 focus:border-blue-950 flex-grow md:flex-grow-0 md:w-auto w-full"
                                         >
                                             <option value="">Todas as Séries</option>
                                             {SCHOOL_GRADES_LIST.map(g => (
@@ -555,7 +555,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         <select
                                             value={studentFilterClass}
                                             onChange={(e) => setStudentFilterClass(e.target.value)}
-                                            className="p-2 border rounded text-sm bg-white text-gray-700 focus:ring-blue-950 focus:border-blue-950"
+                                            className="p-2 border rounded text-sm bg-white text-gray-700 focus:ring-blue-950 focus:border-blue-950 flex-grow md:flex-grow-0 md:w-auto w-full"
                                         >
                                             <option value="">Todas as Turmas</option>
                                             {SCHOOL_CLASSES_LIST.map(c => (
@@ -565,7 +565,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         <select
                                             value={studentFilterShift}
                                             onChange={(e) => setStudentFilterShift(e.target.value)}
-                                            className="p-2 border rounded text-sm bg-white text-gray-700 focus:ring-blue-950 focus:border-blue-950"
+                                            className="p-2 border rounded text-sm bg-white text-gray-700 focus:ring-blue-950 focus:border-blue-950 flex-grow md:flex-grow-0 md:w-auto w-full"
                                         >
                                             <option value="">Todos os Turnos</option>
                                             {SCHOOL_SHIFTS_LIST.map(s => (
@@ -577,7 +577,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             placeholder="Buscar por nome ou código..."
                                             value={studentSearchTerm}
                                             onChange={e => setStudentSearchTerm(e.target.value)}
-                                            className="p-2 border rounded text-sm w-full md:w-64 focus:ring-blue-950 focus:border-blue-950"
+                                            className="p-2 border rounded text-sm w-full md:w-64 focus:ring-blue-950 focus:border-blue-950 flex-grow"
                                         />
                                     </div>
                                 </div>
