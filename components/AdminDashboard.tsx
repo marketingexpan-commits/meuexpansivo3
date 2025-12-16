@@ -75,6 +75,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [studentToDelete, setStudentToDelete] = useState<string | null>(null);
     const [studentSearchTerm, setStudentSearchTerm] = useState('');
     const [studentFilterGrade, setStudentFilterGrade] = useState(''); // Novo estado para filtro de série
+    const [studentFilterClass, setStudentFilterClass] = useState(''); // Novo estado para filtro de turma
+    const [studentFilterShift, setStudentFilterShift] = useState(''); // Novo estado para filtro de turno
 
     const [editingTeacherId, setEditingTeacherId] = useState<string | null>(null);
     const [tName, setTName] = useState('');
@@ -355,7 +357,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         const term = studentSearchTerm.toLowerCase();
         const matchesSearch = student.name.toLowerCase().includes(term) || student.code.includes(term);
         const matchesGrade = studentFilterGrade ? student.gradeLevel === studentFilterGrade : true;
-        return matchesUnit && matchesSearch && matchesGrade;
+        const matchesClass = studentFilterClass ? student.schoolClass === studentFilterClass : true;
+        const matchesShift = studentFilterShift ? student.shift === studentFilterShift : true;
+        return matchesUnit && matchesSearch && matchesGrade && matchesClass && matchesShift;
     });
 
     const filteredTeachers = teachers.filter(teacher => isGeneralAdmin || teacher.unit === adminUnit);
@@ -533,6 +537,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             <option value="">Todas as Séries</option>
                                             {SCHOOL_GRADES_LIST.map(g => (
                                                 <option key={g} value={g}>{g}</option>
+                                            ))}
+                                        </select>
+                                        <select
+                                            value={studentFilterClass}
+                                            onChange={(e) => setStudentFilterClass(e.target.value)}
+                                            className="p-2 border rounded text-sm bg-white text-gray-700 focus:ring-blue-950 focus:border-blue-950"
+                                        >
+                                            <option value="">Todas as Turmas</option>
+                                            {SCHOOL_CLASSES_LIST.map(c => (
+                                                <option key={c} value={c}>{c}</option>
+                                            ))}
+                                        </select>
+                                        <select
+                                            value={studentFilterShift}
+                                            onChange={(e) => setStudentFilterShift(e.target.value)}
+                                            className="p-2 border rounded text-sm bg-white text-gray-700 focus:ring-blue-950 focus:border-blue-950"
+                                        >
+                                            <option value="">Todos os Turnos</option>
+                                            {SCHOOL_SHIFTS_LIST.map(s => (
+                                                <option key={s} value={s}>{s}</option>
                                             ))}
                                         </select>
                                         <input
