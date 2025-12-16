@@ -101,9 +101,10 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
   ];
 
   const DOWNLOAD_LINKS = [
-    { id: 1, title: 'Calendário Acadêmico 2025', date: '05/01/2025', size: '1.2 MB' },
-    { id: 2, title: 'Lista de Livros - Fundamental I', date: '10/12/2024', size: '450 KB' },
-    { id: 3, title: 'Lista de Livros - Fundamental II', date: '10/12/2024', size: '480 KB' },
+    { id: 4, title: 'Manual do Aluno', date: '05/01/2025', size: '4.0 MB', url: '/manual_do_aluno.pdf' },
+    { id: 2, title: 'Lista de Livros - Fundamental I', date: '10/12/2024', size: '450 KB', url: '#' },
+    { id: 3, title: 'Lista de Livros - Fundamental II', date: '10/12/2024', size: '480 KB', url: '#' },
+    { id: 1, title: 'Calendário Acadêmico 2024 (Antigo)', date: '01/01/2024', size: '1.2 MB', url: '#' },
   ];
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -517,7 +518,14 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                     <ul className="divide-y divide-gray-100">
                       {DOWNLOAD_LINKS.map(link => (
                         <li key={link.id} className="hover:bg-blue-50 transition-colors group cursor-pointer relative">
-                          <a href="#" onClick={(e) => e.preventDefault()} className="block p-5">
+                          <a
+                            href={link.url}
+                            download={link.url !== '#' ? true : undefined}
+                            target={link.url !== '#' ? '_blank' : undefined}
+                            rel="noopener noreferrer"
+                            onClick={(e) => link.url === '#' && e.preventDefault()}
+                            className="block p-5"
+                          >
                             <div className="flex items-center gap-4">
                               <div className="flex-shrink-0">
                                 <div className="w-12 h-12 bg-red-50 text-red-500 rounded-lg flex items-center justify-center group-hover:bg-red-100 transition-colors shadow-sm">
