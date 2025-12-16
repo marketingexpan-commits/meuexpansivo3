@@ -577,7 +577,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             placeholder="Buscar por nome ou código..."
                                             value={studentSearchTerm}
                                             onChange={e => setStudentSearchTerm(e.target.value)}
-                                            className="p-2 border rounded text-sm w-full md:w-64 focus:ring-blue-950 focus:border-blue-950 flex-grow"
+                                            className="p-2 border rounded text-sm w-full md:w-64 focus:ring-blue-950 focus:border-blue-950"
                                         />
                                     </div>
                                 </div>
