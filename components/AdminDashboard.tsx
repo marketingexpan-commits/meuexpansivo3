@@ -77,6 +77,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [studentFilterGrade, setStudentFilterGrade] = useState(''); // Novo estado para filtro de série
     const [studentFilterClass, setStudentFilterClass] = useState(''); // Novo estado para filtro de turma
     const [studentFilterShift, setStudentFilterShift] = useState(''); // Novo estado para filtro de turno
+    const [studentFilterUnit, setStudentFilterUnit] = useState(''); // Novo estado para filtro de unidade
 
     const [editingTeacherId, setEditingTeacherId] = useState<string | null>(null);
     const [tName, setTName] = useState('');
@@ -353,7 +354,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const handleGenerateAdminPass = () => { setAPass(generatePassword()); setShowAdminPassword(true); };
 
     const filteredStudents = students.filter(student => {
-        const matchesUnit = isGeneralAdmin ? true : student.unit === adminUnit;
+        const matchesUnit = isGeneralAdmin ? (studentFilterUnit ? student.unit === studentFilterUnit : true) : student.unit === adminUnit;
         const term = studentSearchTerm.toLowerCase();
         const matchesSearch = student.name.toLowerCase().includes(term) || student.code.includes(term);
         const matchesGrade = studentFilterGrade ? student.gradeLevel === studentFilterGrade : true;
@@ -529,6 +530,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 <div className="p-4 bg-gray-50 border-b flex flex-col md:flex-row justify-between items-center gap-4">
                                     <h3 className="font-bold text-gray-700 whitespace-nowrap">Alunos ({filteredStudents.length})</h3>
                                     <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                                        {isGeneralAdmin && (
+                                            <select
+                                                value={studentFilterUnit}
+                                                onChange={(e) => setStudentFilterUnit(e.target.value)}
+                                                className="p-2 border rounded text-sm bg-white text-gray-700 focus:ring-blue-950 focus:border-blue-950"
+                                            >
+                                                <option value="">Todas as Unidades</option>
+                                                {SCHOOL_UNITS_LIST.map(u => (
+                                                    <option key={u} value={u}>{u}</option>
+                                                ))}
+                                            </select>
+                                        )}
                                         <select
                                             value={studentFilterGrade}
                                             onChange={(e) => setStudentFilterGrade(e.target.value)}
