@@ -30,9 +30,17 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
     try {
       const hasVisited = sessionStorage.getItem('visited_login_page');
       if (!hasVisited) {
+        // Incrementa Global
         db.collection('site_stats').doc('general').set({
           login_page_views: firebase.firestore.FieldValue.increment(1)
         }, { merge: true });
+
+        // Incrementa Diário
+        const today = new Date().toISOString().split('T')[0];
+        db.collection('daily_login_page_views').doc(today).set({
+          count: firebase.firestore.FieldValue.increment(1)
+        }, { merge: true });
+
         sessionStorage.setItem('visited_login_page', 'true');
       }
     } catch (error) {

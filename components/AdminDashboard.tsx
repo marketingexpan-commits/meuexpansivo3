@@ -117,6 +117,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     // --- ESTADOS DE LOGS/STATS ---
     const [dailyLoginsCount, setDailyLoginsCount] = useState<number | null>(null);
     const [loginPageViews, setLoginPageViews] = useState<number | null>(null);
+    const [loginPageViewsToday, setLoginPageViewsToday] = useState<number | null>(null);
     const [isLogModalOpen, setIsLogModalOpen] = useState(false);
     const [accessLogs, setAccessLogs] = useState<any[]>([]);
     const [logFilter, setLogFilter] = useState<'today' | 'week' | 'month'>('today');
@@ -143,6 +144,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 const docGlobal = await db.collection('site_stats').doc('general').get();
                 if (docGlobal.exists) {
                     setLoginPageViews(docGlobal.data()?.login_page_views || 0);
+                }
+
+                // Buscar Stats Hoje (Visitas Login Hoje)
+                const docTodayViews = await db.collection('daily_login_page_views').doc(today).get();
+                if (docTodayViews.exists) {
+                    setLoginPageViewsToday(docTodayViews.data()?.count || 0);
+                } else {
+                    setLoginPageViewsToday(0);
                 }
             } catch (error) {
                 console.error("Erro ao buscar estatísticas:", error);
@@ -512,11 +521,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <div className="flex items-center gap-3 md:gap-6 w-full md:w-auto justify-between md:justify-start">
                             {isGeneralAdmin && dailyLoginsCount !== null && (
                                 <>
-                                    <div className="flex flex-col items-end text-white/90 p-2 rounded-lg transition-all" title="Total de visualizações na tela de login">
+                                    <div className="flex flex-col items-end text-white/90 p-2 rounded-lg transition-all" title="Visualizações na tela de login">
                                         <span className="text-[10px] uppercase tracking-wider font-semibold opacity-70">Visitas Login</span>
-                                        <div className="flex items-baseline gap-1">
-                                            <span className="text-2xl font-bold">{loginPageViews !== null ? loginPageViews : '-'}</span>
-                                            <span className="text-xs">views</span>
+                                        <div className="flex items-baseline gap-2">
+                                            <div className="flex flex-col items-end">
+                                                <span className="text-xl font-bold leading-none">{loginPageViewsToday !== null ? loginPageViewsToday : '-'}</span>
+                                                <span className="text-[9px] opacity-70 leading-none">HOJE</span>
+                                            </div>
+                                            <div className="w-px h-6 bg-white/20"></div>
+                                            <div className="flex flex-col items-start">
+                                                <span className="text-xl font-bold leading-none">{loginPageViews !== null ? loginPageViews : '-'}</span>
+                                                <span className="text-[9px] opacity-70 leading-none">TOTAL</span>
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="w-px h-8 bg-white/20 mx-2 hidden md:block"></div>
