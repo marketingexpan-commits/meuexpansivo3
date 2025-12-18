@@ -21,6 +21,16 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
     const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('pix');
     const [selectedInstallments, setSelectedInstallments] = useState<number>(1);
     const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
+    const [eventQuantities, setEventQuantities] = useState<Record<string, number>>({});
+
+    // Inicializar quantidades para eventos
+    React.useEffect(() => {
+        const initialQuants: Record<string, number> = {};
+        eventos.forEach(e => {
+            initialQuants[e.id] = 1;
+        });
+        setEventQuantities(initialQuants);
+    }, [eventos]);
 
     // Reset installments and selection when tab or method changes
     React.useEffect(() => {
@@ -36,9 +46,16 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
         );
     };
 
+    const updateQuantity = (id: string, delta: number) => {
+        setEventQuantities(prev => ({
+            ...prev,
+            [id]: Math.max(1, (prev[id] || 1) + delta)
+        }));
+    };
+
     const totalSelectedValue = studentEventos
         .filter(e => selectedEventIds.includes(e.id))
-        .reduce((acc, e) => acc + e.value, 0);
+        .reduce((acc, e) => acc + (e.value * (eventQuantities[e.id] || 1)), 0);
 
     const getStatusStyle = (status: Mensalidade['status']) => {
         switch (status) {
@@ -229,7 +246,10 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                         <thead className="bg-gray-50 border-b border-gray-100">
                             <tr>
                                 {activeTab === 'eventos' && (
-                                    <th className="px-6 py-4 w-10"></th>
+                                    <>
+                                        <th className="px-6 py-4 w-10"></th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider w-32">Quantidade</th>
+                                    </>
                                 )}
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">{activeTab === 'mensalidades' ? 'Mês' : 'Descrição'}</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Valor Atualizado</th>
@@ -266,31 +286,57 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                 )
                             ) : (
                                 studentEventos.length > 0 ? (
-                                    studentEventos.sort((a, b) => b.dueDate.localeCompare(a.dueDate)).map((e) => (
-                                        <tr key={e.id} className="hover:bg-gray-50/50 transition-colors">
-                                            <td className="px-6 py-4">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedEventIds.includes(e.id)}
-                                                    onChange={() => toggleEventSelection(e.id)}
-                                                    className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                                />
-                                            </td>
-                                            <td className="px-6 py-4 font-bold text-gray-800">{e.description}</td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col">
-                                                    <span className="text-xs text-gray-400 line-through">R$ {e.value.toFixed(2).replace('.', ',')}</span>
-                                                    <span className="font-bold text-blue-900">R$ {calculateValue(e.value, 'evento').toFixed(2).replace('.', ',')}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-gray-600">{formatDate(e.dueDate)}</td>
-                                            <td className="px-6 py-4 text-center">
-                                                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusStyle(e.status)}`}>
-                                                    {e.status}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))
+                                    studentEventos.sort((a, b) => b.dueDate.localeCompare(a.dueDate)).map((e) => {
+                                        const isUniform = e.description.toLowerCase().includes('fardamento') || e.description.toLowerCase().includes('uniforme');
+                                        const quantity = eventQuantities[e.id] || 1;
+
+                                        return (
+                                            <tr key={e.id} className="hover:bg-gray-50/50 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedEventIds.includes(e.id)}
+                                                        onChange={() => toggleEventSelection(e.id)}
+                                                        className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                    />
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {isUniform ? (
+                                                        <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-1 w-fit">
+                                                            <button
+                                                                onClick={() => updateQuantity(e.id, -1)}
+                                                                className="w-8 h-8 flex items-center justify-center font-bold text-blue-900 bg-white border border-gray-200 rounded-md hover:bg-gray-100 transition-colors"
+                                                            >
+                                                                -
+                                                            </button>
+                                                            <span className="w-4 text-center font-bold text-blue-950">{quantity}</span>
+                                                            <button
+                                                                onClick={() => updateQuantity(e.id, 1)}
+                                                                className="w-8 h-8 flex items-center justify-center font-bold text-blue-900 bg-white border border-gray-200 rounded-md hover:bg-gray-100 transition-colors"
+                                                            >
+                                                                +
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-gray-400 text-xs ml-2 font-medium">1 (Fixo)</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 font-bold text-gray-800">{e.description}</td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs text-gray-400 line-through">R$ {(e.value * quantity).toFixed(2).replace('.', ',')}</span>
+                                                        <span className="font-bold text-blue-900">R$ {calculateValue(e.value * quantity, 'evento').toFixed(2).replace('.', ',')}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-gray-600">{formatDate(e.dueDate)}</td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusStyle(e.status)}`}>
+                                                        {e.status}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 ) : (
                                     <tr>
                                         <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">
@@ -309,7 +355,12 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
-                    Pagar {activeTab === 'eventos' && selectedEventIds.length > 0 && `(R$ ${calculateValue(totalSelectedValue, 'evento').toFixed(2).replace('.', ',')})`} com Pix, Cartão ou Boleto
+                    Pagar R$ {calculateValue(totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento').toFixed(2).replace('.', ',')} com {
+                        selectedMethod === 'pix' ? 'Pix' :
+                            selectedMethod === 'debito' ? 'Cartão Débito' :
+                                selectedMethod === 'credito' ? 'Cartão Crédito' :
+                                    'Boleto Bancário'
+                    }
                 </Button>
             </div>
 
@@ -328,14 +379,31 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                         <div className="space-y-4">
                             <h4 className="text-xl font-bold text-gray-900">Novo Sistema de Pagamentos</h4>
                             <div className="text-sm text-gray-600 text-left space-y-3 bg-gray-50 p-4 rounded-xl">
-                                <p><strong>Em breve você poderá pagar diretamente pelo app:</strong></p>
-                                <ul className="list-disc list-inside space-y-1 text-xs">
-                                    <li>Mensalidades no Crédito (à vista + 6%)</li>
-                                    <li>Débito (+ 3%) ou Boleto (com encargos)</li>
-                                    <li>Eventos parcelados em até 12x no Crédito</li>
-                                    <li>Pix permanece sem taxas extras</li>
+                                <p><strong>Resumo do Pagamento ({
+                                    selectedMethod === 'pix' ? 'Pix' :
+                                        selectedMethod === 'debito' ? 'Débito' :
+                                            selectedMethod === 'credito' ? 'Crédito' :
+                                                'Boleto'
+                                }):</strong></p>
+                                <ul className="list-disc list-inside space-y-1 text-xs border-b pb-2 mb-2">
+                                    {activeTab === 'mensalidades' ? (
+                                        studentMensalidades.filter(m => m.status !== 'Pago').map(m => (
+                                            <li key={m.id}>{m.month}: R$ {calculateValue(m.value, 'mensalidade').toFixed(2).replace('.', ',')}</li>
+                                        ))
+                                    ) : (
+                                        studentEventos.filter(e => selectedEventIds.includes(e.id)).map(e => (
+                                            <li key={e.id}>
+                                                {eventQuantities[e.id] > 1 ? `${eventQuantities[e.id]}x ` : ''}
+                                                {e.description}: R$ {calculateValue(e.value * (eventQuantities[e.id] || 1), 'evento').toFixed(2).replace('.', ',')}
+                                            </li>
+                                        ))
+                                    )}
                                 </ul>
-                                <p className="text-blue-900 font-bold border-t pt-2">Por enquanto, realize o pagamento na secretaria.</p>
+                                <p className="text-lg font-bold text-blue-950 flex justify-between items-center">
+                                    <span>Total:</span>
+                                    <span>R$ {calculateValue(totalSelectedValue || (activeTab === 'mensalidades' ? studentMensalidades.reduce((acc, m) => acc + (m.status !== 'Pago' ? m.value : 0), 0) : 0), activeTab === 'mensalidades' ? 'mensalidade' : 'evento').toFixed(2).replace('.', ',')}</span>
+                                </p>
+                                <p className="text-blue-900 font-bold border-t pt-2 mt-2">Por enquanto, realize o pagamento na secretaria.</p>
                             </div>
                         </div>
                         <Button onClick={() => setIsModalOpen(false)} className="w-full">Entendi</Button>
