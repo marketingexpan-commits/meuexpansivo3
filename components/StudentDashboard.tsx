@@ -335,6 +335,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             <div className="flex flex-col">
                                 <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Aluno(a)</span>
                                 <span className="text-sm font-bold text-blue-900 truncate max-w-[180px] leading-tight">{student.name}</span>
+                                {student.nome_responsavel && (
+                                    <span className="text-[10px] text-gray-400 font-medium truncate max-w-[180px]">Resp: {student.nome_responsavel}</span>
+                                )}
                             </div>
                             <div className="flex flex-col items-end">
                                 <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Turma</span>
@@ -678,22 +681,22 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                 <tr>
                                                     <th rowSpan={2} className="px-2 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-20 md:w-32 sticky left-0 bg-blue-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[10px] md:text-sm">Disciplina</th>
                                                     {[1, 2, 3, 4].map(num => (
-                                                        <th key={num} colSpan={4} className="px-1 py-2 text-center font-bold text-gray-700 uppercase border-r border-gray-300">
-                                                            {num}º Bim
+                                                        <th key={num} colSpan={4} className="px-1 py-1 text-center font-bold text-gray-700 uppercase border-r border-gray-300 border-b border-gray-200 text-[10px]">
+                                                            {num}º Bimestre
                                                         </th>
                                                     ))}
-                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-16 text-[10px] leading-tight">Média<br />Anual</th>
-                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-red-700 uppercase border-r border-gray-300 bg-red-50 w-16 text-[10px] leading-tight">Prova<br />Final</th>
-                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-blue-950 uppercase border-r border-gray-300 bg-blue-100 w-16 text-[10px] leading-tight">Média<br />Final</th>
-                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase w-20 text-[10px]">Situação</th>
+                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-16 text-[9px] leading-tight">Média<br />Anual</th>
+                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-red-700 uppercase border-r border-gray-300 bg-red-50 w-16 text-[9px] leading-tight">Prova<br />Final</th>
+                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-blue-950 uppercase border-r border-gray-300 bg-blue-100 w-16 text-[9px] leading-tight">Média<br />Final</th>
+                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase w-20 text-[9px]">Situação</th>
                                                 </tr>
-                                                <tr className="bg-blue-50 print:bg-gray-100 text-[10px]">
+                                                <tr className="bg-blue-50 print:bg-gray-100 text-[9px]">
                                                     {[1, 2, 3, 4].map(num => (
                                                         <React.Fragment key={num}>
-                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600" title="Nota">N{num}</th>
-                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600" title="Recuperação">R{num}</th>
-                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-bold text-blue-950 bg-blue-50" title="Média">M{num}</th>
-                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600" title="Faltas">F{num}</th>
+                                                            <th className="px-1 py-1 text-center border-r border-gray-200 font-semibold text-gray-500" title="Nota">N{num}</th>
+                                                            <th className="px-1 py-1 text-center border-r border-gray-200 font-semibold text-gray-500" title="Recuperação">R{num}</th>
+                                                            <th className="px-1 py-1 text-center border-r border-gray-200 font-bold text-blue-900 bg-blue-50" title="Média">M{num}</th>
+                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-500" title="Faltas">F{num}</th>
                                                         </React.Fragment>
                                                     ))}
                                                 </tr>
@@ -703,7 +706,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                     <tr key={grade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-300">
                                                         <td className="px-2 py-2 font-bold text-gray-900 border-r border-gray-300 text-[10px] md:text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] align-top">
                                                             <span className="uppercase block leading-tight mb-1">{grade.subject}</span>
-                                                            <span className="text-[9px] text-gray-500 font-normal block italic whitespace-normal leading-tight break-words">
+                                                            <span className="text-[9px] text-gray-500 font-normal block italic whitespace-normal leading-tight break-words opacity-70">
                                                                 Prof. {getTeacherName(grade.subject)}
                                                             </span>
                                                         </td>
@@ -717,9 +720,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
                                                                     const d = new Date(att.date + 'T00:00:00');
                                                                     if (d.getFullYear() === currentYear) {
-                                                                        const m = d.getMonth(); // 0 - 11
-
-                                                                        // Explicit Ranges (Jan=0, Dec=11)
+                                                                        const m = d.getMonth();
                                                                         if (bimesterNum === 1 && m >= 0 && m <= 2) return acc + 1;
                                                                         if (bimesterNum === 2 && m >= 3 && m <= 5) return acc + 1;
                                                                         if (bimesterNum === 3 && m >= 6 && m <= 8) return acc + 1;
@@ -731,23 +732,25 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                                             return (
                                                                 <React.Fragment key={key}>
-                                                                    <td className="px-1 py-2 text-center text-gray-600 border-r border-gray-300 text-xs">{formatGrade(bData.nota)}</td>
-                                                                    <td className="px-1 py-2 text-center text-gray-600 border-r border-gray-300 text-xs">{formatGrade(bData.recuperacao)}</td>
-                                                                    <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs">{formatGrade(bData.media)}</td>
-                                                                    <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300 text-xs">{currentAbsences || ''}</td>
+                                                                    <td className="px-1 py-2 text-center text-gray-600 border-r border-gray-100 text-[11px]">{formatGrade(bData.nota)}</td>
+                                                                    <td className="px-1 py-2 text-center text-gray-400 border-r border-gray-100 text-[11px]">{formatGrade(bData.recuperacao)}</td>
+                                                                    <td className="px-1 py-2 text-center text-blue-900 font-bold bg-blue-50/30 border-r border-gray-100 text-[11px]">{formatGrade(bData.media)}</td>
+                                                                    <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300 text-[11px] font-medium">{currentAbsences || ''}</td>
                                                                 </React.Fragment>
                                                             );
                                                         })}
-                                                        <td className="px-1 py-2 text-center font-bold text-gray-700 border-r border-gray-300 bg-gray-50 text-sm">{formatGrade(grade.mediaAnual)}</td>
-                                                        <td className="px-1 py-2 text-center font-bold text-red-600 border-r border-gray-300 bg-red-50 text-sm">{formatGrade(grade.recuperacaoFinal)}</td>
-                                                        <td className="px-1 py-2 text-center font-extrabold text-blue-950 border-r border-gray-300 bg-blue-50 text-sm">{formatGrade(grade.mediaFinal)}</td>
-                                                        <td className="px-1 py-2 text-center align-middle">
-                                                            <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
-                                                                grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                                                    'bg-red-50 text-red-700 border-red-200'
-                                                                }`}>
-                                                                {grade.situacaoFinal}
-                                                            </span>
+                                                        <td className="px-1 py-2 text-center font-bold text-gray-800 border-r border-gray-300 bg-gray-50/50 text-xs">{formatGrade(grade.mediaAnual)}</td>
+                                                        <td className="px-1 py-2 text-center font-bold text-red-600 border-r border-gray-300 bg-red-50/30 text-xs">{formatGrade(grade.recuperacaoFinal)}</td>
+                                                        <td className="px-1 py-2 text-center font-extrabold text-blue-950 border-r border-gray-300 bg-blue-50 text-xs">{formatGrade(grade.mediaFinal)}</td>
+                                                        <td className="px-1 py-2 text-center align-middle bg-white w-24">
+                                                            <div className="flex justify-center px-1">
+                                                                <span className={`px-2 py-0.5 rounded text-[8px] uppercase font-bold border w-full text-center ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200 shadow-sm' :
+                                                                    grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                                                        'bg-red-50 text-red-700 border-red-200'
+                                                                    }`}>
+                                                                    {grade.situacaoFinal}
+                                                                </span>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 ))}
