@@ -71,6 +71,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [sShift, setSShift] = useState<SchoolShift>(SchoolShift.MORNING);
     const [sClass, setSClass] = useState<SchoolClass>(SchoolClass.A);
     const [sPass, setSPass] = useState('');
+    const [sMetodoPagamento, setSMetodoPagamento] = useState<'Isaac' | 'Interno'>('Interno');
     const [showStudentPassword, setShowStudentPassword] = useState(false);
     const [studentToDelete, setStudentToDelete] = useState<string | null>(null);
     const [studentSearchTerm, setStudentSearchTerm] = useState('');
@@ -439,9 +440,92 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const startEditingAdmin = (adm: Admin) => { setEditingAdminId(adm.id); setAName(adm.name); setAUser(adm.username); setAUnit(adm.unit!); setAPass(adm.password); };
     const initiateDeleteAdmin = (id: string) => setAdminToDelete(id);
     const initiateDeleteStudent = (id: string) => setStudentToDelete(id);
-    const startEditingStudent = (s: Student) => { setEditingStudentId(s.id); setSName(s.name); setSCode(s.code); setSGrade(s.gradeLevel); setSUnit(s.unit); setSShift(s.shift); setSClass(s.schoolClass); setSPass(s.password); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    const startEditingStudent = (s: Student) => { setEditingStudentId(s.id); setSName(s.name); setSCode(s.code); setSGrade(s.gradeLevel); setSUnit(s.unit); setSShift(s.shift); setSClass(s.schoolClass); setSPass(s.password); setSMetodoPagamento(s.metodo_pagamento || 'Interno'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
     const cancelEditingStudent = () => { setEditingStudentId(null); setSName(''); setSCode(''); setSPass(''); };
-    const fullHandleStudentSubmit = (e: React.FormEvent) => { e.preventDefault(); const unitToSave = isGeneralAdmin ? sUnit : adminUnit!; if (editingStudentId) { const original = students.find(s => s.id === editingStudentId)!; onEditStudent({ ...original, name: sName, code: sCode, gradeLevel: sGrade, unit: unitToSave, shift: sShift, schoolClass: sClass, password: sPass.trim() ? sPass : original.password }); alert("Atualizado!"); cancelEditingStudent(); } else { onAddStudent({ id: `student-${Date.now()}`, name: sName, code: sCode, gradeLevel: sGrade, unit: unitToSave, shift: sShift, schoolClass: sClass, password: sPass, isBlocked: false }); alert("Cadastrado!"); setSName(''); setSCode(''); setSPass(''); } };
+    const fullHandleStudentSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const unitToSave = isGeneralAdmin ? sUnit : adminUnit!;
+
+        // Base student data
+        const studentData: Partial<Student> = {
+            name: sName,
+            code: sCode,
+            gradeLevel: sGrade,
+            unit: unitToSave,
+            shift: sShift,
+            schoolClass: sClass,
+            metodo_pagamento: sMetodoPagamento
+        };
+
+        if (editingStudentId) {
+            const original = students.find(s => s.id === editingStudentId)!;
+            onEditStudent({
+                ...original,
+                ...studentData,
+                password: sPass.trim() ? sPass : original.password
+            } as Student);
+            alert("Atualizado!");
+            cancelEditingStudent();
+        } else {
+            // New student with legacy fields initialization
+            const newStudent: Student = {
+                id: `student-${Date.now()}`,
+                ...studentData as Student,
+                password: sPass,
+                isBlocked: false,
+
+                // Legacy fields initialization (prevendo estrutura do sistema antigo)
+                numero_inscricao: "",
+                data_inicio: new Date().toLocaleDateString('pt-BR'),
+                cpf_aluno: "",
+                situacao: "Ativo",
+                alias: "",
+                nacionalidade: "Brasileira",
+                naturalidade: "",
+                uf_naturalidade: "",
+                data_nascimento: "",
+                identidade_rg: "",
+                rg_emissor: "",
+                sexo: "",
+                rg_numero_registro: "",
+                rg_livro: "",
+                rg_folha: "",
+                rg_cartorio: "",
+                data_registro: "",
+                data_desligamento: "",
+                procedencia_escolar: "",
+                ensino_religioso: "",
+                religiao: "",
+                bolsa_percentual: "",
+                autorizacao_saida: "",
+                observacoes_saude: "",
+
+                // Address
+                cep: "",
+                endereco_logradouro: "",
+                endereco_numero: "",
+                endereco_complemento: "",
+                endereco_bairro: "",
+                endereco_cidade: "",
+                endereco_uf: "",
+                telefone_contato: "",
+                localizacao_tipo: "Urbana",
+
+                // Family
+                nome_pai: "",
+                nome_mae: "",
+                nome_responsavel: "",
+                cpf_responsavel: "",
+
+                // Structural
+                ficha_saude: {},
+                documentos_entregues: []
+            };
+            onAddStudent(newStudent);
+            alert("Cadastrado!");
+            setSName(''); setSCode(''); setSPass(''); setSMetodoPagamento('Interno');
+        }
+    };
     const initiateDeleteTeacher = (id: string) => setTeacherToDelete(id);
     const startEditingTeacher = (t: Teacher) => { setEditingTeacherId(t.id); setTName(t.name); setTCpf(t.cpf); setTPhone(t.phoneNumber || '+55'); setTUnit(t.unit); setTSubjects(t.subjects); setTPass(t.password); window.scrollTo({ top: 0, behavior: 'smooth' }); };
     const cancelEditingTeacher = () => { setEditingTeacherId(null); setTName(''); setTCpf(''); setTPhone('+55'); setTPass(''); setTSubjects([]); };
@@ -581,7 +665,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         {isGeneralAdmin && <button onClick={() => setActiveTab('admins')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeTab === 'admins' ? 'bg-purple-800 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Gerenciar Admins</button>}
                     </div>
 
-                    {activeTab === 'students' && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-1"><div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"><h2 className="text-lg font-bold text-gray-800 mb-4">{editingStudentId ? 'Editar Aluno' : 'Cadastrar Novo Aluno'}</h2><form onSubmit={fullHandleStudentSubmit} className="space-y-4"><div><label className="text-sm font-medium">Nome</label><input type="text" value={sName} onChange={e => setSName(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Código</label><input type="text" value={sCode} onChange={e => setSCode(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Série</label><select value={sGrade} onChange={e => setSGrade(e.target.value)} className="w-full p-2 border rounded">{SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}</select></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">Turma</label><select value={sClass} onChange={e => setSClass(e.target.value as SchoolClass)} className="w-full p-2 border rounded">{SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}</select></div><div><label className="text-sm font-medium">Turno</label><select value={sShift} onChange={e => setSShift(e.target.value as SchoolShift)} className="w-full p-2 border rounded">{SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{s}</option>)}</select></div></div><div><label className="text-sm font-medium">Unidade</label>{isGeneralAdmin ? (<select value={sUnit} onChange={e => setSUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}</div><div><label className="text-sm font-medium">Senha</label><div className="flex gap-2 relative"><input type={showStudentPassword ? "text" : "password"} value={sPass} onChange={e => setSPass(e.target.value)} className="w-full p-2 border rounded" required={!editingStudentId} /><button type="button" onClick={() => setShowStudentPassword(!showStudentPassword)} className="absolute right-16 top-2 text-gray-500">{showStudentPassword ? <EyeOffIcon /> : <EyeIcon />}</button><button type="button" onClick={handleGenerateStudentPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button></div><p className="text-xs text-gray-500 mt-1">Senha automática (8 caracteres).</p></div><Button type="submit" className="w-full">{editingStudentId ? 'Salvar' : 'Cadastrar'}</Button></form></div></div>
+                    {activeTab === 'students' && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-1"><div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"><h2 className="text-lg font-bold text-gray-800 mb-4">{editingStudentId ? 'Editar Aluno' : 'Cadastrar Novo Aluno'}</h2><form onSubmit={fullHandleStudentSubmit} className="space-y-4"><div><label className="text-sm font-medium">Nome</label><input type="text" value={sName} onChange={e => setSName(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Código</label><input type="text" value={sCode} onChange={e => setSCode(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Série</label><select value={sGrade} onChange={e => setSGrade(e.target.value)} className="w-full p-2 border rounded">{SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}</select></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">Turma</label><select value={sClass} onChange={e => setSClass(e.target.value as SchoolClass)} className="w-full p-2 border rounded">{SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}</select></div><div><label className="text-sm font-medium">Turno</label><select value={sShift} onChange={e => setSShift(e.target.value as SchoolShift)} className="w-full p-2 border rounded">{SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{s}</option>)}</select></div></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">Unidade</label>{isGeneralAdmin ? (<select value={sUnit} onChange={e => setSUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}</div><div><label className="text-sm font-medium text-blue-700 font-bold">Método Pagamento</label><select value={sMetodoPagamento} onChange={e => setSMetodoPagamento(e.target.value as 'Isaac' | 'Interno')} className="w-full p-2 border-2 border-blue-200 rounded font-semibold text-blue-900 focus:border-blue-500"><option value="Interno">Sistema Interno</option><option value="Isaac">Parceiro Isaac</option></select></div></div><div><label className="text-sm font-medium">Senha</label>
+                        <div className="flex gap-2 relative"><input type={showStudentPassword ? "text" : "password"} value={sPass} onChange={e => setSPass(e.target.value)} className="w-full p-2 border rounded" required={!editingStudentId} /><button type="button" onClick={() => setShowStudentPassword(!showStudentPassword)} className="absolute right-16 top-2 text-gray-500">{showStudentPassword ? <EyeOffIcon /> : <EyeIcon />}</button><button type="button" onClick={handleGenerateStudentPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button></div><p className="text-xs text-gray-500 mt-1">Senha automática (8 caracteres).</p></div><Button type="submit" className="w-full">{editingStudentId ? 'Salvar' : 'Cadastrar'}</Button></form></div></div>
 
                         <div className="lg:col-span-2">
                             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">

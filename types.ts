@@ -181,6 +181,53 @@ export interface Student {
   unit: SchoolUnit;
   isBlocked: boolean;
   metodo_pagamento?: 'Isaac' | 'Interno';
+
+  // --- CAMPOS DE LEGADO / FICHA COMPLETA ---
+  numero_inscricao?: string;
+  data_inicio?: string;
+  cpf_aluno?: string;
+  situacao?: string;
+  alias?: string;
+  nacionalidade?: string;
+  naturalidade?: string;
+  uf_naturalidade?: string;
+  data_nascimento?: string;
+  identidade_rg?: string;
+  rg_emissor?: string;
+  sexo?: string;
+  rg_numero_registro?: string;
+  rg_livro?: string;
+  rg_folha?: string;
+  rg_cartorio?: string;
+  data_registro?: string;
+  data_desligamento?: string;
+  procedencia_escolar?: string;
+  ensino_religioso?: string;
+  religiao?: string;
+  bolsa_percentual?: string;
+  autorizacao_saida?: string;
+  observacoes_saude?: string;
+
+  // Endereço
+  cep?: string;
+  endereco_logradouro?: string;
+  endereco_numero?: string;
+  endereco_complemento?: string;
+  endereco_bairro?: string;
+  endereco_cidade?: string;
+  endereco_uf?: string;
+  telefone_contato?: string;
+  localizacao_tipo?: 'Urbana' | 'Rural';
+
+  // Família e Responsáveis
+  nome_pai?: string;
+  nome_mae?: string;
+  nome_responsavel?: string;
+  cpf_responsavel?: string;
+
+  // Estruturais / Flags
+  ficha_saude?: any;
+  documentos_entregues?: string[];
 }
 
 export interface Teacher {
