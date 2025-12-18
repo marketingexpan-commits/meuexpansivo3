@@ -24,6 +24,21 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
         }
     };
 
+    const formatDate = (dateStr: string) => {
+        if (!dateStr) return '-';
+        // Se já estiver no formato DD/MM/AAAA, retorna direto
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
+
+        try {
+            // Tenta converter de YYYY-MM-DD para DD/MM/AAAA
+            const date = new Date(dateStr + 'T00:00:00');
+            if (isNaN(date.getTime())) return dateStr;
+            return date.toLocaleDateString('pt-BR');
+        } catch (e) {
+            return dateStr;
+        }
+    };
+
     if (isIsaac) {
         return (
             <div className="animate-fade-in-up">
@@ -59,7 +74,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2z" />
                         </svg>
-                        Pagar com Pix/Cartão
+                        Pagar com Pix, Cartão ou Boleto
                     </Button>
                 </div>
 
@@ -80,7 +95,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                         <tr key={m.id} className="hover:bg-gray-50/50 transition-colors">
                                             <td className="px-6 py-4 font-bold text-gray-800">{m.month}</td>
                                             <td className="px-6 py-4 text-gray-700">R$ {m.value.toFixed(2).replace('.', ',')}</td>
-                                            <td className="px-6 py-4 text-gray-600">{new Date(m.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                                            <td className="px-6 py-4 text-gray-600">{formatDate(m.dueDate)}</td>
                                             <td className="px-6 py-4 text-center">
                                                 <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusStyle(m.status)}`}>
                                                     {m.status}
@@ -115,11 +130,12 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                             <div className="space-y-2">
                                 <h4 className="text-xl font-bold text-gray-900">Pagamento Digital em Breve!</h4>
                                 <p className="text-sm text-gray-600">
-                                    Estamos integrando nosso novo sistema administrativo para oferecer mais comodidade.
-                                    <strong> Por enquanto, realize o pagamento na secretaria.</strong>
+                                    Em breve, você poderá realizar seus pagamentos via <strong>Pix, Cartão de Crédito ou Boleto Bancário</strong> diretamente pelo aplicativo.
+                                    <br /><br />
+                                    Por enquanto, realize o pagamento na secretaria.
                                 </p>
                             </div>
-                            <Button onClick={() => setIsModalOpen(false)} className="w-full">Entendido</Button>
+                            <Button onClick={() => setIsModalOpen(false)} className="w-full">Entendi</Button>
                         </div>
                     </div>
                 )}
