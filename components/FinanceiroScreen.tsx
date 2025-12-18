@@ -53,7 +53,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                         </p>
                     </div>
                     <Button
-                        onClick={() => window.open('https://portal.isaac.com.br', '_blank')}
+                        onClick={() => window.open('https://meu.olaisaac.io/auth', '_blank')}
                         className="w-full sm:w-auto px-8"
                     >
                         Ir para o Portal Isaac
