@@ -147,7 +147,7 @@ const App: React.FC = () => {
       setInitialLoad(prev => ({ ...prev, mensalidades: true }));
     });
 
-    const unsubEventos = db.collection('eventos_financeiros').onSnapshot((snapshot) => {
+    const unsubEventos = db.collection('eventos_escola').onSnapshot((snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EventoFinanceiro));
       setEventosFinanceiros(data);
       setInitialLoad(prev => ({ ...prev, eventosFinanceiros: true }));
