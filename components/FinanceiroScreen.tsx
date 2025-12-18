@@ -14,6 +14,12 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'mensalidades' | 'eventos'>('mensalidades');
     const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('pix');
+    const [selectedInstallments, setSelectedInstallments] = useState<number>(1);
+
+    // Reset installments when tab or method changes
+    React.useEffect(() => {
+        setSelectedInstallments(1);
+    }, [activeTab, selectedMethod]);
 
     // Lógica de Filtro
     const studentMensalidades = mensalidades.filter(m => m.studentId === student.id);
@@ -148,9 +154,35 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                 </div>
 
                 {getFeeNotice() && (
-                    <div className="p-3 bg-amber-50 border border-amber-100 rounded-lg flex items-center gap-2">
-                        <span className="text-amber-600 font-bold">⚠️</span>
-                        <p className="text-xs text-amber-800 font-medium italic">{getFeeNotice()}</p>
+                    <div className="space-y-4">
+                        <div className="p-3 bg-amber-50 border border-amber-100 rounded-lg flex items-center gap-2">
+                            <span className="text-amber-600 font-bold">⚠️</span>
+                            <p className="text-xs text-amber-800 font-medium italic">{getFeeNotice()}</p>
+                        </div>
+
+                        {activeTab === 'eventos' && selectedMethod === 'credito' && (
+                            <div className="flex flex-col gap-2 animate-fade-in">
+                                <label className="text-sm font-bold text-blue-900 ml-1">Número de Parcelas:</label>
+                                <select
+                                    value={selectedInstallments}
+                                    onChange={(e) => setSelectedInstallments(Number(e.target.value))}
+                                    className="w-full sm:w-64 p-3 bg-white border-2 border-blue-200 rounded-xl text-blue-900 font-bold focus:border-blue-500 focus:outline-none transition-colors"
+                                >
+                                    {[...Array(12)].map((_, i) => {
+                                        const count = i + 1;
+                                        // Valor total base (eventos não tem acréscimo fixo da escola no crédito, juros são da operadora)
+                                        // Mas para exibição, vamos mostrar o valor dividido
+                                        const totalValue = studentEventos.length > 0 ? studentEventos[0].value : 0;
+                                        const instValue = totalValue / count;
+                                        return (
+                                            <option key={count} value={count}>
+                                                {count}x de R$ {instValue.toFixed(2).replace('.', ',')}
+                                            </option>
+                                        );
+                                    })}
+                                </select>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
