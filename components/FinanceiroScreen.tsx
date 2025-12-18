@@ -166,21 +166,35 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                 <select
                                     value={selectedInstallments}
                                     onChange={(e) => setSelectedInstallments(Number(e.target.value))}
-                                    className="w-full sm:w-64 p-3 bg-white border-2 border-blue-200 rounded-xl text-blue-900 font-bold focus:border-blue-500 focus:outline-none transition-colors"
+                                    className="w-full sm:w-80 p-3 bg-white border-2 border-blue-200 rounded-xl text-blue-900 font-bold focus:border-blue-500 focus:outline-none transition-colors"
                                 >
                                     {[...Array(12)].map((_, i) => {
                                         const count = i + 1;
-                                        // Valor total base (eventos não tem acréscimo fixo da escola no crédito, juros são da operadora)
-                                        // Mas para exibição, vamos mostrar o valor dividido
-                                        const totalValue = studentEventos.length > 0 ? studentEventos[0].value : 0;
-                                        const instValue = totalValue / count;
+                                        const totalValueBase = studentEventos.length > 0 ? studentEventos[0].value : 0;
+
+                                        let instValue: number;
+                                        let totalFinal: number;
+
+                                        if (count === 1) {
+                                            instValue = totalValueBase;
+                                            totalFinal = totalValueBase;
+                                        } else {
+                                            const monthlyRate = 0.0299; // 2.99% p.m.
+                                            // Fórmula PMT: P * (i * (1+i)^n) / ((1+i)^n - 1)
+                                            instValue = totalValueBase * (monthlyRate * Math.pow(1 + monthlyRate, count)) / (Math.pow(1 + monthlyRate, count) - 1);
+                                            totalFinal = instValue * count;
+                                        }
+
                                         return (
                                             <option key={count} value={count}>
-                                                {count}x de R$ {instValue.toFixed(2).replace('.', ',')}
+                                                {count}x de R$ {instValue.toFixed(2).replace('.', ',')} | Total: R$ {totalFinal.toFixed(2).replace('.', ',')}
                                             </option>
                                         );
                                     })}
                                 </select>
+                                <p className="text-[10px] text-gray-400 ml-1 italic font-medium">
+                                    Simulação aproximada. O valor final pode variar conforme as taxas da bandeira do seu cartão.
+                                </p>
                             </div>
                         )}
                     </div>
