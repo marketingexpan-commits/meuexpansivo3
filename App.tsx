@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import firebase from 'firebase/compat/app';
-import { UserRole, UserSession, Student, Teacher, GradeEntry, Admin, SchoolMessage, AttendanceRecord, EarlyChildhoodReport, UnitContact, AppNotification, Mensalidade } from './types';
+import { UserRole, UserSession, Student, Teacher, GradeEntry, Admin, SchoolMessage, AttendanceRecord, EarlyChildhoodReport, UnitContact, AppNotification, Mensalidade, EventoFinanceiro } from './types';
 import { MOCK_STUDENTS, MOCK_TEACHERS, MOCK_ADMINS, FINAL_GRADES_CALCULATED, ALLOW_MOCK_LOGIN } from './constants';
 import { Login } from './components/Login';
 import { StudentDashboard } from './components/StudentDashboard';
@@ -24,6 +24,7 @@ const App: React.FC = () => {
   const [unitContacts, setUnitContacts] = useState<UnitContact[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [mensalidades, setMensalidades] = useState<Mensalidade[]>([]);
+  const [eventosFinanceiros, setEventosFinanceiros] = useState<EventoFinanceiro[]>([]);
 
 
   const [loginError, setLoginError] = useState<string>('');
@@ -38,7 +39,8 @@ const App: React.FC = () => {
     earlyChildhoodReports: false,
     unitContacts: false,
     notifications: false,
-    mensalidades: false
+    mensalidades: false,
+    eventosFinanceiros: false
   });
 
   const [isSeeding, setIsSeeding] = useState(false);
@@ -141,7 +143,18 @@ const App: React.FC = () => {
       setInitialLoad(prev => ({ ...prev, mensalidades: true }));
     }, (error) => {
       console.error("Erro ao carregar mensalidades:", error);
+      setMensalidades([]);
       setInitialLoad(prev => ({ ...prev, mensalidades: true }));
+    });
+
+    const unsubEventos = db.collection('eventos_financeiros').onSnapshot((snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EventoFinanceiro));
+      setEventosFinanceiros(data);
+      setInitialLoad(prev => ({ ...prev, eventosFinanceiros: true }));
+    }, (error) => {
+      console.error("Erro ao carregar eventos financeiros:", error);
+      setEventosFinanceiros([]);
+      setInitialLoad(prev => ({ ...prev, eventosFinanceiros: true }));
     });
 
     return () => {
@@ -155,6 +168,7 @@ const App: React.FC = () => {
       unsubContacts();
       unsubNotifications();
       unsubMensalidades();
+      unsubEventos();
     };
   }, []);
 
@@ -450,6 +464,7 @@ const App: React.FC = () => {
         notifications={notifications}
         onMarkNotificationAsRead={handleMarkNotificationAsRead}
         mensalidades={mensalidades}
+        eventos={eventosFinanceiros}
       />
     );
   }

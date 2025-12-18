@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
-import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher } from '../types';
+import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro } from '../types';
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
 import { calculateBimesterMedia, calculateFinalData } from '../src/constants'; // Import Sync Fix
 import { getStudyTips } from '../services/geminiService';
@@ -8,7 +8,6 @@ import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 import { MessageBox } from './MessageBox';
 import { FinanceiroScreen } from './FinanceiroScreen';
-import { Mensalidade } from '../types';
 
 // --- DADOS DAS UNIDADES (Definidos localmente) ---
 const UNITS_DATA: Record<string, { address: string; cep: string; phone: string; email: string; cnpj: string }> = {
@@ -59,9 +58,10 @@ interface StudentDashboardProps {
     unitContacts?: UnitContact[];
     onLogout: () => void;
     onSendMessage: (message: Omit<SchoolMessage, 'id'>) => Promise<void>;
-    notifications?: AppNotification[];
-    onMarkNotificationAsRead?: (id: string) => Promise<void>;
-    mensalidades?: Mensalidade[];
+    notifications: AppNotification[];
+    onMarkNotificationAsRead: (id: string) => Promise<void>;
+    mensalidades: Mensalidade[];
+    eventos: EventoFinanceiro[];
 }
 
 export const StudentDashboard: React.FC<StudentDashboardProps> = ({
@@ -73,9 +73,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     unitContacts = [],
     onLogout,
     onSendMessage,
-    notifications = [],
+    notifications,
     onMarkNotificationAsRead,
-    mensalidades = []
+    mensalidades,
+    eventos
 }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState({ title: '', tip: '' });
@@ -433,11 +434,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     )}
 
                     {/* --- FINANCEIRO --- */}
-                    {currentView === 'financeiro' && (
-                        <div className="animate-fade-in-up">
-                            <FinanceiroScreen student={student} mensalidades={mensalidades} />
-                        </div>
-                    )}
+                    {currentView === 'financeiro' && <FinanceiroScreen student={student} mensalidades={mensalidades} eventos={eventos} />}
 
                     {/* --- FREQUÊNCIA --- */}
                     {currentView === 'attendance' && (

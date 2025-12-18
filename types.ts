@@ -112,6 +112,17 @@ export interface Mensalidade {
   lastUpdated: string;
 }
 
+export interface EventoFinanceiro {
+  id: string;
+  studentId: string;
+  description: string;
+  value: number;
+  dueDate: string;
+  status: 'Pago' | 'Pendente' | 'Atrasado';
+  lastUpdated: string;
+  type: 'Evento' | 'Extra';
+}
+
 // --- NOVOS TIPOS PARA RELATÓRIO DA EDUCAÇÃO INFANTIL ---
 
 export enum CompetencyStatus {
