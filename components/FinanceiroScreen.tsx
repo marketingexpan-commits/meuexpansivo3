@@ -57,10 +57,12 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
     };
 
     const getFeeNotice = () => {
+        if (selectedMethod === 'boleto') {
+            return 'A emissão do boleto está sujeita a taxas de processamento e atualização automática de juros/mora após o vencimento, conforme definido pela financeira.';
+        }
         if (activeTab === 'mensalidades') {
             if (selectedMethod === 'credito') return 'Pagamento no crédito (à vista) possui acréscimo de 6% referente a taxas operacionais.';
             if (selectedMethod === 'debito') return 'Pagamento no débito possui acréscimo de 3% referente a taxas operacionais.';
-            if (selectedMethod === 'boleto') return 'A emissão do boleto está sujeita a taxas de processamento e atualização automática de juros/mora após o vencimento, conforme definido pela financeira.';
         } else {
             if (selectedMethod === 'credito') return 'Parcelamento disponível em até 12x com juros padrão da operadora do cartão.';
             if (selectedMethod === 'debito') return 'Pagamento no débito possui acréscimo de 3% referente a taxas operacionais.';
