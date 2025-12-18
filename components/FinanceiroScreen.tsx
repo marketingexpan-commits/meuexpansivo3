@@ -11,20 +11,34 @@ interface FinanceiroScreenProps {
 type PaymentMethod = 'pix' | 'debito' | 'credito' | 'boleto';
 
 export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, mensalidades, eventos = [] }) => {
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'mensalidades' | 'eventos'>('mensalidades');
-    const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('pix');
-    const [selectedInstallments, setSelectedInstallments] = useState<number>(1);
-
-    // Reset installments when tab or method changes
-    React.useEffect(() => {
-        setSelectedInstallments(1);
-    }, [activeTab, selectedMethod]);
-
     // Lógica de Filtro
     const studentMensalidades = mensalidades.filter(m => m.studentId === student.id);
     const studentEventos = eventos.filter(e => e.studentId === student.id);
     const isIsaac = student.metodo_pagamento === 'Isaac';
+
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState<'mensalidades' | 'eventos'>('mensalidades');
+    const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('pix');
+    const [selectedInstallments, setSelectedInstallments] = useState<number>(1);
+    const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
+
+    // Reset installments and selection when tab or method changes
+    React.useEffect(() => {
+        setSelectedInstallments(1);
+        if (activeTab === 'mensalidades') {
+            setSelectedEventIds([]);
+        }
+    }, [activeTab, selectedMethod]);
+
+    const toggleEventSelection = (id: string) => {
+        setSelectedEventIds(prev =>
+            prev.includes(id) ? prev.filter(eid => eid !== id) : [...prev, id]
+        );
+    };
+
+    const totalSelectedValue = studentEventos
+        .filter(e => selectedEventIds.includes(e.id))
+        .reduce((acc, e) => acc + e.value, 0);
 
     const getStatusStyle = (status: Mensalidade['status']) => {
         switch (status) {
@@ -74,6 +88,14 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             if (selectedMethod === 'debito') return 'Pagamento no débito possui acréscimo de 3% referente a taxas operacionais.';
         }
         return null;
+    };
+
+    const handlePaymentClick = () => {
+        if (activeTab === 'eventos' && selectedEventIds.length === 0) {
+            alert('Por favor, selecione ao menos um evento para prosseguir');
+            return;
+        }
+        setIsModalOpen(true);
     };
 
     if (isIsaac) {
@@ -170,7 +192,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                 >
                                     {[...Array(12)].map((_, i) => {
                                         const count = i + 1;
-                                        const totalValueBase = studentEventos.length > 0 ? studentEventos[0].value : 0;
+                                        const totalValueBase = totalSelectedValue;
 
                                         let instValue: number;
                                         let totalFinal: number;
@@ -206,6 +228,9 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                     <table className="w-full text-left">
                         <thead className="bg-gray-50 border-b border-gray-100">
                             <tr>
+                                {activeTab === 'eventos' && (
+                                    <th className="px-6 py-4 w-10"></th>
+                                )}
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">{activeTab === 'mensalidades' ? 'Mês' : 'Descrição'}</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Valor Atualizado</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Vencimento</th>
@@ -243,6 +268,14 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                 studentEventos.length > 0 ? (
                                     studentEventos.sort((a, b) => b.dueDate.localeCompare(a.dueDate)).map((e) => (
                                         <tr key={e.id} className="hover:bg-gray-50/50 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedEventIds.includes(e.id)}
+                                                    onChange={() => toggleEventSelection(e.id)}
+                                                    className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                />
+                                            </td>
                                             <td className="px-6 py-4 font-bold text-gray-800">{e.description}</td>
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col">
@@ -260,7 +293,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={4} className="px-6 py-12 text-center text-gray-400 italic">
+                                        <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">
                                             Nenhum evento ou extra encontrado.
                                         </td>
                                     </tr>
@@ -272,11 +305,11 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             </div>
 
             <div className="flex justify-end">
-                <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
+                <Button onClick={handlePaymentClick} className="flex items-center gap-2">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
-                    Pagar com Pix, Cartão ou Boleto
+                    Pagar {activeTab === 'eventos' && selectedEventIds.length > 0 && `(R$ ${calculateValue(totalSelectedValue, 'evento').toFixed(2).replace('.', ',')})`} com Pix, Cartão ou Boleto
                 </Button>
             </div>
 
