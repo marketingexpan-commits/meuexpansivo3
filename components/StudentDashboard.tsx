@@ -7,6 +7,8 @@ import { getStudyTips } from '../services/geminiService';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 import { MessageBox } from './MessageBox';
+import { FinanceiroScreen } from './FinanceiroScreen';
+import { Mensalidade } from '../types';
 
 // --- DADOS DAS UNIDADES (Definidos localmente) ---
 const UNITS_DATA: Record<string, { address: string; cep: string; phone: string; email: string; cnpj: string }> = {
@@ -59,6 +61,7 @@ interface StudentDashboardProps {
     onSendMessage: (message: Omit<SchoolMessage, 'id'>) => Promise<void>;
     notifications?: AppNotification[];
     onMarkNotificationAsRead?: (id: string) => Promise<void>;
+    mensalidades?: Mensalidade[];
 }
 
 export const StudentDashboard: React.FC<StudentDashboardProps> = ({
@@ -71,12 +74,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     onLogout,
     onSendMessage,
     notifications = [],
-    onMarkNotificationAsRead
+    onMarkNotificationAsRead,
+    mensalidades = []
 }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState({ title: '', tip: '' });
     const [isLoadingAI, setIsLoadingAI] = useState(false);
-    const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood'>('menu');
+    const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro'>('menu');
     const [showNotifications, setShowNotifications] = useState(false);
 
     const unreadNotifications = notifications.filter(n => !n.read).length;
@@ -324,7 +328,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 </div>
 
                 {/* --- STUDENT INFO BAR (Replacing Tabs - Hidden on Bulletin) --- */}
-                {currentView !== 'grades' && currentView !== 'early_childhood' && (
+                {currentView !== 'grades' && currentView !== 'early_childhood' && currentView !== 'financeiro' && (
                     <div className="flex flex-col border-b border-gray-100 bg-white rounded-t-3xl -mt-6 relative z-10 overflow-hidden shrink-0 shadow-sm mx-0">
                         <div className="bg-blue-50/50 py-3 px-4 md:px-6 flex items-center justify-between border-b-2 border-blue-900">
                             <div className="flex flex-col">
@@ -411,9 +415,27 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Fale com a Escola</h3>
                                     </button>
+
+                                    {/* FINANCEIRO CARD */}
+                                    <button
+                                        onClick={() => setCurrentView('financeiro')}
+                                        className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-600 hover:shadow-md transition-all group aspect-square"
+                                    >
+                                        <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
+                                            <span className="text-xl">💳</span>
+                                        </div>
+                                        <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Minha Vida Financeira</h3>
+                                    </button>
                                 </div>
                             </div>
 
+                        </div>
+                    )}
+
+                    {/* --- FINANCEIRO --- */}
+                    {currentView === 'financeiro' && (
+                        <div className="animate-fade-in-up">
+                            <FinanceiroScreen student={student} mensalidades={mensalidades} />
                         </div>
                     )}
 

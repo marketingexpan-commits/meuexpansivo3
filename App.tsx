@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import firebase from 'firebase/compat/app';
-import { UserRole, UserSession, Student, Teacher, GradeEntry, Admin, SchoolMessage, AttendanceRecord, EarlyChildhoodReport, UnitContact, AppNotification } from './types';
+import { UserRole, UserSession, Student, Teacher, GradeEntry, Admin, SchoolMessage, AttendanceRecord, EarlyChildhoodReport, UnitContact, AppNotification, Mensalidade } from './types';
 import { MOCK_STUDENTS, MOCK_TEACHERS, MOCK_ADMINS, FINAL_GRADES_CALCULATED, ALLOW_MOCK_LOGIN } from './constants';
 import { Login } from './components/Login';
 import { StudentDashboard } from './components/StudentDashboard';
@@ -23,6 +23,7 @@ const App: React.FC = () => {
   const [earlyChildhoodReports, setEarlyChildhoodReports] = useState<EarlyChildhoodReport[]>([]);
   const [unitContacts, setUnitContacts] = useState<UnitContact[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [mensalidades, setMensalidades] = useState<Mensalidade[]>([]);
 
 
   const [loginError, setLoginError] = useState<string>('');
@@ -36,7 +37,8 @@ const App: React.FC = () => {
     attendance: false,
     earlyChildhoodReports: false,
     unitContacts: false,
-    notifications: false
+    notifications: false,
+    mensalidades: false
   });
 
   const [isSeeding, setIsSeeding] = useState(false);
@@ -133,6 +135,15 @@ const App: React.FC = () => {
       setInitialLoad(prev => ({ ...prev, notifications: true }));
     });
 
+    const unsubMensalidades = db.collection('mensalidades').onSnapshot((snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Mensalidade));
+      setMensalidades(data);
+      setInitialLoad(prev => ({ ...prev, mensalidades: true }));
+    }, (error) => {
+      console.error("Erro ao carregar mensalidades:", error);
+      setInitialLoad(prev => ({ ...prev, mensalidades: true }));
+    });
+
     return () => {
       unsubStudents();
       unsubTeachers();
@@ -143,6 +154,7 @@ const App: React.FC = () => {
       unsubEarlyChildhoodReports();
       unsubContacts();
       unsubNotifications();
+      unsubMensalidades();
     };
   }, []);
 
@@ -437,6 +449,7 @@ const App: React.FC = () => {
         onSendMessage={handleSendMessage}
         notifications={notifications}
         onMarkNotificationAsRead={handleMarkNotificationAsRead}
+        mensalidades={mensalidades}
       />
     );
   }

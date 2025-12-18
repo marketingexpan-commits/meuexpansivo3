@@ -102,6 +102,16 @@ export interface GradeEntry {
   lastUpdated: string;
 }
 
+export interface Mensalidade {
+  id: string;
+  studentId: string;
+  month: string;
+  value: number;
+  dueDate: string;
+  status: 'Pago' | 'Pendente' | 'Atrasado';
+  lastUpdated: string;
+}
+
 // --- NOVOS TIPOS PARA RELATÓRIO DA EDUCAÇÃO INFANTIL ---
 
 export enum CompetencyStatus {
@@ -170,6 +180,7 @@ export interface Student {
   shift: SchoolShift;
   unit: SchoolUnit;
   isBlocked: boolean;
+  metodo_pagamento?: 'Isaac' | 'Interno';
 }
 
 export interface Teacher {
