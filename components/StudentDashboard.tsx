@@ -104,10 +104,31 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
 
 
-    // CORREÇÃO DE SINCRONIZAÇÃO: Recalcular médias dinamicamente
+    // CORREÇÃO DE SINCRONIZAÇÃO: Recalcular médias dinamicamente e aplicar regras de exibição 2025
     const studentGrades = useMemo(() => {
-        return (grades || [])
-            .filter(g => g.studentId === student.id)
+        const isFirstYearHS = student.gradeLevel && student.gradeLevel.includes('1ª Série');
+
+        // 1. Filtrar notas do aluno e deduplicar por disciplina (priorizando 2025)
+        const gradeMap = new Map<string, GradeEntry>();
+
+        (grades || []).filter(g => g.studentId === student.id).forEach(g => {
+            const existing = gradeMap.get(g.subject);
+            // Prioriza o registro que tem ano 2025 ou o que tem nota maior se ambos forem do mesmo ano
+            if (!existing || (g.year === 2025 && existing.year !== 2025) || (g.mediaAnual || 0) > (existing.mediaAnual || 0)) {
+                gradeMap.set(g.subject, g);
+            }
+        });
+
+        return Array.from(gradeMap.values())
+            .filter(grade => {
+                // Regra: Remover 'Ciências' da 1ª Série
+                if (isFirstYearHS && grade.subject === 'Ciências') return false;
+
+                // Regra: Ocultar matérias sem nota lançada
+                if (!grade.mediaAnual || grade.mediaAnual === 0) return false;
+
+                return true;
+            })
             .map(grade => {
                 const calculatedBimesters = {
                     bimester1: calculateBimesterMedia(grade.bimesters.bimester1),
@@ -116,9 +137,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     bimester4: calculateBimesterMedia(grade.bimesters.bimester4),
                 };
                 const finalData = calculateFinalData(calculatedBimesters, grade.recuperacaoFinal);
-                return { ...grade, bimesters: calculatedBimesters, ...finalData };
+
+                // Sobrescrever situacao se já estiver no banco (importado)
+                const situacaoFinal = grade.situacao || grade.situacaoFinal || finalData.situacaoFinal;
+
+                return { ...grade, bimesters: calculatedBimesters, ...finalData, situacaoFinal };
             });
-    }, [grades, student.id]);
+    }, [grades, student.id, student.gradeLevel]);
 
     const currentUnitInfo = UNITS_DATA[student.unit] || DEFAULT_UNIT_DATA;
 
