@@ -14,6 +14,7 @@ export const Rematricula: React.FC<RematriculaProps> = ({ students, grades, onRe
     const [selectedUnit, setSelectedUnit] = useState<SchoolUnit | ''>('');
     const [selectedGrade, setSelectedGrade] = useState<string>('');
     const [selectedClass, setSelectedClass] = useState<SchoolClass | ''>('');
+    const [searchTerm, setSearchTerm] = useState('');
     const [isExecuting, setIsExecuting] = useState(false);
 
     // Estado para armazenar as seleções de série destino (2026) editadas pelo usuário
@@ -53,9 +54,13 @@ export const Rematricula: React.FC<RematriculaProps> = ({ students, grades, onRe
             if (selectedUnit && s.unit !== selectedUnit) return false;
             if (selectedGrade && s.gradeLevel !== selectedGrade) return false;
             if (selectedClass && s.schoolClass !== selectedClass) return false;
+            if (searchTerm) {
+                const searchLower = searchTerm.toLowerCase();
+                return s.name.toLowerCase().includes(searchLower) || s.code.toLowerCase().includes(searchLower);
+            }
             return true;
         });
-    }, [students, selectedUnit, selectedGrade, selectedClass]);
+    }, [students, selectedUnit, selectedGrade, selectedClass, searchTerm]);
 
     const handleGradeChange = (studentId: string, newGrade: string) => {
         setDestinationGrades(prev => ({ ...prev, [studentId]: newGrade }));
@@ -169,6 +174,18 @@ export const Rematricula: React.FC<RematriculaProps> = ({ students, grades, onRe
                         {SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                 </div>
+            </div>
+
+            {/* Search Input */}
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Pesquisar Aluno</label>
+                <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    placeholder="Pesquisar por nome ou matrícula..."
+                    className="w-full p-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-blue-500"
+                />
             </div>
 
             {/* LISTAGEM */}
