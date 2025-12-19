@@ -602,7 +602,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                             <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-6">
                                                                 <div className="flex flex-col items-center mb-3 pb-2 border-b border-blue-200 gap-2">
                                                                     <h3 className="font-bold text-lg text-blue-950 whitespace-nowrap">{getStageDisplay(selectedStage).replace('Recuperação ', '')}</h3>
-                                                                    <span className={`px - 2 py - 1 rounded text - xs font - bold uppercase ${ isAnnualMediaPassing ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' } `}>
+                                                                    <span className={`px - 2 py - 1 rounded text - xs font - bold uppercase ${isAnnualMediaPassing ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'} `}>
                                                                         {currentGradeData ? (isAnnualMediaPassing ? 'NA MÉDIA' : 'ABAIXO DA MÉDIA') : 'SEM REGISTRO'}
                                                                     </span>
                                                                 </div>
@@ -627,11 +627,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                             <div className="grid grid-cols-3 gap-2 md:gap-4">
                                                                 <div className={isRecoveryMode ? "opacity-60" : ""}>
                                                                     <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Nota {isRecoveryMode && <span className="text-[10px] text-gray-500 hidden md:inline">(Leitura)</span>}</label>
-                                                                    <input type="number" step="0.1" min="0" max="10" value={nota} onChange={handleInputChange(setNota)} disabled={isRecoveryMode} className={`w - full p - 2 border border - gray - 300 rounded text - center font - bold text - lg ${ isRecoveryMode ? 'bg-gray-100 cursor-not-allowed' : 'bg-white' } `} placeholder="-" />
+                                                                    <input type="number" step="0.1" min="0" max="10" value={nota} onChange={handleInputChange(setNota)} disabled={isRecoveryMode} className={`w - full p - 2 border border - gray - 300 rounded text - center font - bold text - lg ${isRecoveryMode ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'} `} placeholder="-" />
                                                                 </div>
                                                                 <div className={!isRecoveryMode ? "opacity-60" : ""}>
                                                                     <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Rec. {!isRecoveryMode && <span className="text-[10px] text-gray-500 hidden md:inline">(Leitura)</span>}</label>
-                                                                    <input type="number" step="0.1" min="0" max="10" value={recuperacao} onChange={handleInputChange(setRecuperacao)} disabled={!isRecoveryMode} className={`w - full p - 2 border border - gray - 300 rounded text - center text - gray - 600 ${ !isRecoveryMode ? 'bg-gray-100 cursor-not-allowed' : 'bg-white font-bold' } `} placeholder="-" />
+                                                                    <input type="number" step="0.1" min="0" max="10" value={recuperacao} onChange={handleInputChange(setRecuperacao)} disabled={!isRecoveryMode} className={`w - full p - 2 border border - gray - 300 rounded text - center text - gray - 600 ${!isRecoveryMode ? 'bg-gray-100 cursor-not-allowed' : 'bg-white font-bold'} `} placeholder="-" />
                                                                 </div>
                                                                 <div className={isRecoveryMode ? "opacity-60" : ""}>
                                                                     <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Faltas (Auto)</label>
@@ -666,7 +666,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                         </div>
 
                                                         <div className="flex">
-                                                            <Button type="submit" disabled={isSaving} className={`w - full py - 3 shadow - md flex justify - center items - center ${ isSaving ? 'opacity-70 cursor-not-allowed' : '' } `}>
+                                                            <Button type="submit" disabled={isSaving} className={`w - full py - 3 shadow - md flex justify - center items - center ${isSaving ? 'opacity-70 cursor-not-allowed' : ''} `}>
                                                                 {isSaving ? 'Salvando...' : 'Salvar Lançamento'}
                                                             </Button>
                                                         </div>
@@ -694,14 +694,14 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                             <button
                                                                 type="button"
                                                                 onClick={() => setSelectedYear(2026)}
-                                                                className={`px - 4 py - 1.5 rounded - md text - xs font - bold transition - all ${ selectedYear === 2026 ? 'bg-blue-950 text-white shadow-md' : 'text-gray-500 hover:bg-gray-200' } `}
+                                                                className={`px - 4 py - 1.5 rounded - md text - xs font - bold transition - all ${selectedYear === 2026 ? 'bg-blue-950 text-white shadow-md' : 'text-gray-500 hover:bg-gray-200'} `}
                                                             >
                                                                 2026 (Atual)
                                                             </button>
                                                             <button
                                                                 type="button"
                                                                 onClick={() => setSelectedYear(2025)}
-                                                                className={`px - 4 py - 1.5 rounded - md text - xs font - bold transition - all ${ selectedYear === 2025 ? 'bg-blue-950 text-white shadow-md' : 'text-gray-500 hover:bg-gray-200' } `}
+                                                                className={`px - 4 py - 1.5 rounded - md text - xs font - bold transition - all ${selectedYear === 2025 ? 'bg-blue-950 text-white shadow-md' : 'text-gray-500 hover:bg-gray-200'} `}
                                                             >
                                                                 Ver Ano Anterior (2025)
                                                             </button>
@@ -725,372 +725,373 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                         Actually, the Form (Lançamento de Notas) should probably be hidden or disabled for 2025 if it's "Historical".
                                                         If I wrapped the helper at 474, it REPLACES the form. Correct.
                                                     */}
-                                                            {[1, 2, 3, 4].map(num => (<th key={num} colSpan={4} className="px-1 py-2 text-center font-bold text-gray-700 uppercase tracking-wider border-l border-r border-gray-300 text-[10px]">{num}º BIM</th>))}
-                                                            <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-16 text-[10px] leading-tight">Média<br />Anual</th>
-                                                            <th rowSpan={2} className="px-2 py-3 text-center font-bold text-red-700 uppercase tracking-wider border-r border-gray-300 bg-red-50 w-16 text-[10px] leading-tight">Prova<br />Final</th>
-                                                            <th rowSpan={2} className="px-2 py-3 text-center font-bold text-blue-950 uppercase tracking-wider border-r border-gray-300 bg-blue-100 w-16 text-[10px] leading-tight">Média<br />Final</th>
-                                                            <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase w-20 text-[10px]">Situação</th>
-                                                        </tr>
-                                                        <tr className="bg-blue-50 text-[10px]">
-                                                            {[1, 2, 3, 4].map(num => (
-                                                                <React.Fragment key={num}>
-                                                                    <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-200" title={`Nota ${ num }º Bimestre`}>N{num}</th>
-                                                                    <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-200" title={`Recuperação ${ num }º Bimestre`}>R{num}</th>
-                                                                    <th className="px-1 py-1 text-center font-bold text-blue-900 bg-blue-50 border-r border-gray-200" title={`Média ${ num }º Bimestre`}>M{num}</th>
-                                                                    <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300" title={`Faltas ${ num }º Bimestre`}>F{num}</th>
-                                                                </React.Fragment>
-                                                            ))}
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="bg-white divide-y divide-gray-200">
-                                                        {(() => {
-                                                            const isHS = selectedStudent.gradeLevel && selectedStudent.gradeLevel.includes('Ens. Médio');
-                                                            const is2025 = selectedYear === 2025;
+                                                    <div className="overflow-x-auto">
+                                                        <table className="min-w-full divide-y divide-gray-200 border border-gray-300">
+                                                            <thead className="bg-gray-50">
+                                                                <tr>
+                                                                    <th rowSpan={2} className="px-2 py-3 text-left font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300 w-32 text-[10px] sticky left-0 bg-gray-50 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">DISCIPLINA</th>
+                                                                    {[1, 2, 3, 4].map(num => (<th key={num} colSpan={4} className="px-1 py-2 text-center font-bold text-gray-700 uppercase tracking-wider border-l border-r border-gray-300 text-[10px]">{num}º BIM</th>))}
+                                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-16 text-[10px] leading-tight">Média<br />Anual</th>
+                                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-red-700 uppercase tracking-wider border-r border-gray-300 bg-red-50 w-16 text-[10px] leading-tight">Prova<br />Final</th>
+                                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-blue-950 uppercase tracking-wider border-r border-gray-300 bg-blue-100 w-16 text-[10px] leading-tight">Média<br />Final</th>
+                                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase w-20 text-[10px]">Situação</th>
+                                                                </tr>
+                                                                <tr className="bg-blue-50 text-[10px]">
+                                                                    {[1, 2, 3, 4].map(num => (
+                                                                        <React.Fragment key={num}>
+                                                                            <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-200" title={`Nota ${num}º Bimestre`}>N{num}</th>
+                                                                            <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-200" title={`Recuperação ${num}º Bimestre`}>R{num}</th>
+                                                                            <th className="px-1 py-1 text-center font-bold text-blue-900 bg-blue-50 border-r border-gray-200" title={`Média ${num}º Bimestre`}>M{num}</th>
+                                                                            <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300" title={`Faltas ${num}º Bimestre`}>F{num}</th>
+                                                                        </React.Fragment>
+                                                                    ))}
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                                {(() => {
+                                                                    const isHS = selectedStudent.gradeLevel && selectedStudent.gradeLevel.includes('Ens. Médio');
+                                                                    const is2025 = selectedYear === 2025;
 
-                                                            // 1. Determinar o currículo esperado
-                                                            let curriculum: string[] = [];
-                                                            if (isHS) {
-                                                                curriculum = is2025 ? HS_SUBJECTS_2025 : HS_SUBJECTS_2026;
-                                                            } else {
-                                                                curriculum = EF_SUBJECTS;
-                                                            }
+                                                                    // 1. Determinar o currículo esperado
+                                                                    let curriculum: string[] = [];
+                                                                    if (isHS) {
+                                                                        curriculum = is2025 ? HS_SUBJECTS_2025 : HS_SUBJECTS_2026;
+                                                                    } else {
+                                                                        curriculum = EF_SUBJECTS;
+                                                                    }
 
-                                                            // 2. Filtrar notas do aluno e deduplicar por disciplina (priorizando atualização mais recente)
-                                                            const gradeMap = new Map<string, GradeEntry>();
-                                                            (liveGrades || []).filter(g => g.studentId === selectedStudent.id && (g.year === selectedYear || (!g.year && selectedYear === 2025))).forEach(g => {
-                                                                const subjectKey = g.subject === 'Artes' ? 'Ens. Artes' :
-                                                                    g.subject === 'Educação Física' ? 'Ed. Física' :
-                                                                        g.subject === 'Ensino Religioso' ? 'Ens. Religioso' : g.subject;
+                                                                    // 2. Filtrar notas do aluno e deduplicar por disciplina (priorizando atualização mais recente)
+                                                                    const gradeMap = new Map<string, GradeEntry>();
+                                                                    (liveGrades || []).filter(g => g.studentId === selectedStudent.id && (g.year === selectedYear || (!g.year && selectedYear === 2025))).forEach(g => {
+                                                                        const subjectKey = g.subject === 'Artes' ? 'Ens. Artes' :
+                                                                            g.subject === 'Educação Física' ? 'Ed. Física' :
+                                                                                g.subject === 'Ensino Religioso' ? 'Ens. Religioso' : g.subject;
 
-                                                                const existing = gradeMap.get(subjectKey);
-                                                                if (!existing || (g.lastUpdated || '') > (existing.lastUpdated || '')) {
-                                                                    gradeMap.set(subjectKey, g);
-                                                                }
-                                                            });
+                                                                        const existing = gradeMap.get(subjectKey);
+                                                                        if (!existing || (g.lastUpdated || '') > (existing.lastUpdated || '')) {
+                                                                            gradeMap.set(subjectKey, g);
+                                                                        }
+                                                                    });
 
-                                                            // 3. Mapear o currículo para garantir que TODAS as matérias apareçam
-                                                            return curriculum.map((subjectName, index) => {
-                                                                const existingGrade = gradeMap.get(subjectName);
+                                                                    // 3. Mapear o currículo para garantir que TODAS as matérias apareçam
+                                                                    return curriculum.map((subjectName, index) => {
+                                                                        const existingGrade = gradeMap.get(subjectName);
 
-                                                                // Se não existe nota, criamos um placeholder para permitir exibir faltas
-                                                                const baseGrade: GradeEntry = existingGrade || {
-                                                                    id: `placeholder_${ selectedStudent.id }_${ subjectName }_${ selectedYear }_${ index } `,
-                                                                    studentId: selectedStudent.id,
-                                                                    subject: subjectName,
-                                                                    year: selectedYear,
-                                                                    lastUpdated: '',
-                                                                    bimesters: {
-                                                                        bimester1: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                                                                        bimester2: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                                                                        bimester3: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                                                                        bimester4: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                                                                    },
-                                                                    mediaAnual: 0,
-                                                                    mediaFinal: 0,
-                                                                    situacaoFinal: 'Recuperação'
-                                                                };
+                                                                        // Se não existe nota, criamos um placeholder para permitir exibir faltas
+                                                                        const baseGrade: GradeEntry = existingGrade || {
+                                                                            id: `placeholder_${selectedStudent.id}_${subjectName}_${selectedYear}_${index} `,
+                                                                            studentId: selectedStudent.id,
+                                                                            subject: subjectName,
+                                                                            year: selectedYear,
+                                                                            lastUpdated: '',
+                                                                            bimesters: {
+                                                                                bimester1: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                                                                                bimester2: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                                                                                bimester3: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                                                                                bimester4: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                                                                            },
+                                                                            mediaAnual: 0,
+                                                                            mediaFinal: 0,
+                                                                            situacaoFinal: 'Recuperação'
+                                                                        };
 
-                                                                const calculatedBimesters = {
-                                                                    bimester1: calculateBimesterMedia(baseGrade.bimesters.bimester1),
-                                                                    bimester2: calculateBimesterMedia(baseGrade.bimesters.bimester2),
-                                                                    bimester3: calculateBimesterMedia(baseGrade.bimesters.bimester3),
-                                                                    bimester4: calculateBimesterMedia(baseGrade.bimesters.bimester4),
-                                                                };
-                                                                const finalData = calculateFinalData(calculatedBimesters, baseGrade.recuperacaoFinal);
+                                                                        const calculatedBimesters = {
+                                                                            bimester1: calculateBimesterMedia(baseGrade.bimesters.bimester1),
+                                                                            bimester2: calculateBimesterMedia(baseGrade.bimesters.bimester2),
+                                                                            bimester3: calculateBimesterMedia(baseGrade.bimesters.bimester3),
+                                                                            bimester4: calculateBimesterMedia(baseGrade.bimesters.bimester4),
+                                                                        };
+                                                                        const finalData = calculateFinalData(calculatedBimesters, baseGrade.recuperacaoFinal);
 
-                                                                // Regra específica para 2025 (Histórico)
-                                                                if (is2025) {
-                                                                    // Em 2025 Fundamental, mostrar apenas se tiver nota importada
-                                                                    if (!isHS && (!baseGrade.mediaAnual || baseGrade.mediaAnual === 0)) return null;
+                                                                        // Regra específica para 2025 (Histórico)
+                                                                        if (is2025) {
+                                                                            // Em 2025 Fundamental, mostrar apenas se tiver nota importada
+                                                                            if (!isHS && (!baseGrade.mediaAnual || baseGrade.mediaAnual === 0)) return null;
 
-                                                                    return {
-                                                                        ...baseGrade,
-                                                                        bimesters: {
-                                                                            bimester1: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                                                                            bimester2: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                                                                            bimester3: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                                                                            bimester4: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                                                                        },
-                                                                        recuperacaoFinal: null,
-                                                                        mediaAnual: baseGrade.mediaAnual || 0,
-                                                                        mediaFinal: baseGrade.mediaAnual || 0,
-                                                                        situacaoFinal: baseGrade.situacao || baseGrade.situacaoFinal
-                                                                    };
-                                                                }
+                                                                            return {
+                                                                                ...baseGrade,
+                                                                                bimesters: {
+                                                                                    bimester1: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                                                                                    bimester2: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                                                                                    bimester3: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                                                                                    bimester4: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                                                                                },
+                                                                                recuperacaoFinal: null,
+                                                                                mediaAnual: baseGrade.mediaAnual || 0,
+                                                                                mediaFinal: baseGrade.mediaAnual || 0,
+                                                                                situacaoFinal: baseGrade.situacao || baseGrade.situacaoFinal
+                                                                            };
+                                                                        }
 
-                                                                const displayGrade = { ...baseGrade, bimesters: calculatedBimesters, ...finalData };
+                                                                        const displayGrade = { ...baseGrade, bimesters: calculatedBimesters, ...finalData };
 
-                                                                return (
-                                                                    <tr key={displayGrade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-200">
-                                                                        <td className="px-2 py-2 font-bold text-gray-900 border-r border-gray-300 text-[10px] md:text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] align-top">
-                                                                            <span className="uppercase block leading-tight mb-1">{displayGrade.subject}</span>
-                                                                        </td>
-                                                                        {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
-                                                                            const bData = displayGrade.bimesters[key as keyof typeof displayGrade.bimesters];
-                                                                            const bimesterNum = Number(key.replace('bimester', '')) as 1 | 2 | 3 | 4;
-                                                                            // Calculate absences dynamically for this student and bimester
-                                                                            const currentStudentAbsences = attendanceRecords.reduce((acc, record) => {
-                                                                                // Filter by normalized discipline name if needed, but here we assume match
-                                                                                if (record.discipline !== displayGrade.subject) return acc;
-                                                                                if (record.studentStatus[selectedStudent.id] === AttendanceStatus.ABSENT) {
-                                                                                    const [y, mStr] = record.date.split('-');
-                                                                                    const yNum = Number(y);
-                                                                                    const mNum = Number(mStr);
-                                                                                    if (yNum === selectedYear) {
-                                                                                        if (bimesterNum === 1 && mNum >= 1 && mNum <= 3) return acc + 1;
-                                                                                        if (bimesterNum === 2 && mNum >= 4 && mNum <= 6) return acc + 1;
-                                                                                        if (bimesterNum === 3 && mNum >= 7 && mNum <= 9) return acc + 1;
-                                                                                        if (bimesterNum === 4 && mNum >= 10 && mNum <= 12) return acc + 1;
-                                                                                    }
-                                                                                }
-                                                                                return acc;
-                                                                            }, 0);
+                                                                        return (
+                                                                            <tr key={displayGrade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-200">
+                                                                                <td className="px-2 py-2 font-bold text-gray-900 border-r border-gray-300 text-[10px] md:text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] align-top">
+                                                                                    <span className="uppercase block leading-tight mb-1">{displayGrade.subject}</span>
+                                                                                </td>
+                                                                                {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
+                                                                                    const bData = displayGrade.bimesters[key as keyof typeof displayGrade.bimesters];
+                                                                                    const bimesterNum = Number(key.replace('bimester', '')) as 1 | 2 | 3 | 4;
+                                                                                    // Calculate absences dynamically for this student and bimester
+                                                                                    const currentStudentAbsences = attendanceRecords.reduce((acc, record) => {
+                                                                                        // Filter by normalized discipline name if needed, but here we assume match
+                                                                                        if (record.discipline !== displayGrade.subject) return acc;
+                                                                                        if (record.studentStatus[selectedStudent.id] === AttendanceStatus.ABSENT) {
+                                                                                            const [y, mStr] = record.date.split('-');
+                                                                                            const yNum = Number(y);
+                                                                                            const mNum = Number(mStr);
+                                                                                            if (yNum === selectedYear) {
+                                                                                                if (bimesterNum === 1 && mNum >= 1 && mNum <= 3) return acc + 1;
+                                                                                                if (bimesterNum === 2 && mNum >= 4 && mNum <= 6) return acc + 1;
+                                                                                                if (bimesterNum === 3 && mNum >= 7 && mNum <= 9) return acc + 1;
+                                                                                                if (bimesterNum === 4 && mNum >= 10 && mNum <= 12) return acc + 1;
+                                                                                            }
+                                                                                        }
+                                                                                        return acc;
+                                                                                    }, 0);
 
-                                                                            return (
-                                                                                <React.Fragment key={key}>
-                                                                                    <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-100">{formatGrade(bData.nota)}</td>
-                                                                                    <td className="px-1 py-2 text-center text-gray-400 text-xs border-r border-gray-100">{formatGrade(bData.recuperacao)}</td>
-                                                                                    <td className="px-1 py-2 text-center text-blue-900 font-bold bg-blue-50/30 text-xs border-r border-gray-100">{formatGrade(bData.media)}</td>
-                                                                                    <td className="px-1 py-2 text-center text-gray-500 text-xs border-r border-gray-300">
-                                                                                        {/* Prioritize persisted field (from trigger), fallback to live calculation */}
-                                                                                        {bData.faltas !== undefined && bData.faltas !== 0 ? bData.faltas : (currentStudentAbsences || '')}
-                                                                                    </td>
-                                                                                </React.Fragment>
-                                                                            );
-                                                                        })}
-                                                                        <td className="px-1 py-2 text-center font-bold text-gray-800 border-r border-gray-300 bg-gray-50/50 text-sm">{formatGrade(displayGrade.mediaAnual)}</td>
-                                                                        <td className="px-1 py-2 text-center font-bold text-red-600 bg-red-50 text-sm border-r border-gray-300">{formatGrade(displayGrade.recuperacaoFinal)}</td>
-                                                                        <td className="px-1 py-2 text-center font-extrabold text-blue-950 bg-blue-50 text-sm border-r border-gray-300">{formatGrade(displayGrade.mediaFinal)}</td>
-                                                                        <td className="px-1 py-2 text-center align-middle">
-                                                                            <span className={`inline - block w - full py - 0.5 rounded text - [9px] uppercase font - bold border ${
-    displayGrade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
-    displayGrade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-        'bg-red-50 text-red-700 border-red-200'
-} `}>
-                                                                                {displayGrade.situacaoFinal}
-                                                                            </span>
+                                                                                    return (
+                                                                                        <React.Fragment key={key}>
+                                                                                            <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-100">{formatGrade(bData.nota)}</td>
+                                                                                            <td className="px-1 py-2 text-center text-gray-400 text-xs border-r border-gray-100">{formatGrade(bData.recuperacao)}</td>
+                                                                                            <td className="px-1 py-2 text-center text-blue-900 font-bold bg-blue-50/30 text-xs border-r border-gray-100">{formatGrade(bData.media)}</td>
+                                                                                            <td className="px-1 py-2 text-center text-gray-500 text-xs border-r border-gray-300">
+                                                                                                {/* Prioritize persisted field (from trigger), fallback to live calculation */}
+                                                                                                {bData.faltas !== undefined && bData.faltas !== 0 ? bData.faltas : (currentStudentAbsences || '')}
+                                                                                            </td>
+                                                                                        </React.Fragment>
+                                                                                    );
+                                                                                })}
+                                                                                <td className="px-1 py-2 text-center font-bold text-gray-800 border-r border-gray-300 bg-gray-50/50 text-sm">{formatGrade(displayGrade.mediaAnual)}</td>
+                                                                                <td className="px-1 py-2 text-center font-bold text-red-600 bg-red-50 text-sm border-r border-gray-300">{formatGrade(displayGrade.recuperacaoFinal)}</td>
+                                                                                <td className="px-1 py-2 text-center font-extrabold text-blue-950 bg-blue-50 text-sm border-r border-gray-300">{formatGrade(displayGrade.mediaFinal)}</td>
+                                                                                <td className="px-1 py-2 text-center align-middle">
+                                                                                    <span className={`inline - block w - full py - 0.5 rounded text - [9px] uppercase font - bold border ${displayGrade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                                                        displayGrade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                                                                            'bg-red-50 text-red-700 border-red-200'
+                                                                                        } `}>
+                                                                                        {displayGrade.situacaoFinal}
+                                                                                    </span>
+                                                                                </td>
+                                                                            </tr>
+                                                                        );
+                                                                    }).filter(g => g !== null);
+                                                                })()}
+                                                                {/* AVISO INFORMATIVO 2025 */}
+                                                                {selectedYear === 2025 && (
+                                                                    <tr>
+                                                                        <td colSpan={21} className="px-4 py-4 bg-amber-50 text-center">
+                                                                            <p className="text-amber-800 text-[10px] font-medium uppercase tracking-wider">
+                                                                                Aviso: Consulta informativa do histórico de 2025. Para documentos oficiais, contate a secretaria.
+                                                                            </p>
                                                                         </td>
                                                                     </tr>
-                                                                );
-                                                            }).filter(g => g !== null);
-                                                        })()}
-                                                        {/* AVISO INFORMATIVO 2025 */}
-                                                        {selectedYear === 2025 && (
-                                                            <tr>
-                                                                <td colSpan={21} className="px-4 py-4 bg-amber-50 text-center">
-                                                                    <p className="text-amber-800 text-[10px] font-medium uppercase tracking-wider">
-                                                                        Aviso: Consulta informativa do histórico de 2025. Para documentos oficiais, contate a secretaria.
-                                                                    </p>
-                                                                </td>
-                                                            </tr>
-                                                        )}
-                                                    </tbody>
-                                                </table>
-                        </div>
-                    )}
-                                                    )}
-                </div>
-                                    )}
-            </div>
-                                    ))}
-        </div>
-                        </div >
-                    )}
-
-{
-    activeTab === 'attendance' && (
-        <div className="animate-fade-in-up">
-            <div className="p-6 border rounded-lg shadow-md bg-white">
-                <h2 className="text-xl font-bold mb-4 text-blue-950">Chamada Diária</h2>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-gray-50 rounded-lg border mb-6">
-                    <div>
-                        <label className="text-sm font-bold text-gray-700 mb-1 block">Série/Ano</label>
-                        <select value={attendanceGrade} onChange={e => setAttendanceGrade(e.target.value)} className="w-full p-2 border rounded">
-                            <option value="">Selecione...</option>
-                            {SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="text-sm font-bold text-gray-700 mb-1 block">Turma</label>
-                        <select value={attendanceClass} onChange={e => setAttendanceClass(e.target.value as SchoolClass)} className="w-full p-2 border rounded">
-                            {SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="text-sm font-bold text-gray-700 mb-1 block">Disciplina</label>
-                        <select value={attendanceSubject} onChange={e => setAttendanceSubject(e.target.value)} className="w-full p-2 border rounded">
-                            <option value="">Selecione...</option>
-                            {teacherSubjects.map(subj => <option key={subj} value={subj as string}>{subj as string}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="text-sm font-bold text-gray-700 mb-1 block">Data</label>
-                        <input type="date" value={attendanceDate} onChange={e => setAttendanceDate(e.target.value)} className="w-full p-2 border rounded" />
-                    </div>
-
-                    <div className="flex flex-col">
-                        <label className="text-sm font-bold text-gray-700 mb-1 block">Bimestre de Visualização</label>
-                        <select
-                            value={selectedFilterBimester}
-                            onChange={e => setSelectedFilterBimester(Number(e.target.value))}
-                            className="w-full p-2 border rounded text-blue-900 font-medium bg-blue-50 border-blue-200"
-                        >
-                            <option value={1}>1º Bimestre</option>
-                            <option value={2}>2º Bimestre</option>
-                            <option value={3}>3º Bimestre</option>
-                            <option value={4}>4º Bimestre</option>
-                        </select>
-                    </div>
-
-                    <div className="self-end">
-                        <Button onClick={loadAttendance} className="w-full" disabled={!attendanceGrade}>Buscar Turma</Button>
-                    </div>
-                </div>
-
-                {isAttendanceLoading && <p>Carregando...</p>}
-
-                {attendanceStudents.length > 0 && (
-                    <div>
-                        {/* VIEW MOBILE/TABLET (CARDS) - Alterado para LG para cobrir tablets/celulares grandes */}
-                        <div className="lg:hidden space-y-4">
-                            {attendanceStudents.map(student => {
-                                const absences: StudentAbsenceSummary = absenceData[student.id] || {
-                                    bimester: { 1: { count: 0, details: {} }, 2: { count: 0, details: {} }, 3: { count: 0, details: {} }, 4: { count: 0, details: {} } },
-                                    year: 0
-                                };
-                                const status = studentStatuses[student.id]; // Assuming studentStatuses holds the current status
-                                const bimesterBreakdown = absences.bimester;
-
-                                const totalAbsences = absences.year;
-                                return (
-                                    <div key={student.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col gap-3">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <h4 className="font-bold text-gray-800">{student.name}</h4>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span className={`text - [10px] font - bold px - 2 py - 0.5 rounded - full ${student.shift === 'Matutino' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'} `}>
-                                                        {student.shift}
-                                                    </span>
-                                                    {status === AttendanceStatus.PRESENT && <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">PRESENTE</span>}
-                                                    {status === AttendanceStatus.ABSENT && <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">FALTOU</span>}
-                                                </div>
-                                                <div className="mt-1 text-xs text-gray-500 space-y-0.5">
-                                                    <div className="text-gray-700">
-                                                        <p>{selectedFilterBimester}º Bimestre: <span className="font-bold text-red-600">{bimesterBreakdown[selectedFilterBimester]?.count || 0} falta(s)</span></p>
-
-                                                        {/* Detailed Breakdown */}
-                                                        {bimesterBreakdown[selectedFilterBimester]?.count > 0 && (
-                                                            <div className="mt-1 flex flex-wrap gap-2">
-                                                                {Object.entries(bimesterBreakdown[selectedFilterBimester].details).map(([month, days]) => (
-                                                                    <span key={month} className="text-[10px] bg-red-50 text-red-800 border border-red-100 rounded px-1.5 py-0.5">
-                                                                        <strong>{month}:</strong> {days.map(d => `[${d}]`).join(' ')}
-                                                                    </span>
-                                                                ))}
-                                                            </div>
-                                                        )}
+                                                                )}
+                                                            </tbody>
+                                                        </table>
                                                     </div>
+                                                </div>
+                                            )}
+                                    }
+                                        </div>
+                            </div>
+                        )}
 
-                                                    <p>Total no Ano: <span className="font-bold text-gray-800">{totalAbsences} falta(s)</span></p>
+                            {
+                                activeTab === 'attendance' && (
+                                    <div className="animate-fade-in-up">
+                                        <div className="p-6 border rounded-lg shadow-md bg-white">
+                                            <h2 className="text-xl font-bold mb-4 text-blue-950">Chamada Diária</h2>
+                                            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-gray-50 rounded-lg border mb-6">
+                                                <div>
+                                                    <label className="text-sm font-bold text-gray-700 mb-1 block">Série/Ano</label>
+                                                    <select value={attendanceGrade} onChange={e => setAttendanceGrade(e.target.value)} className="w-full p-2 border rounded">
+                                                        <option value="">Selecione...</option>
+                                                        {SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="text-sm font-bold text-gray-700 mb-1 block">Turma</label>
+                                                    <select value={attendanceClass} onChange={e => setAttendanceClass(e.target.value as SchoolClass)} className="w-full p-2 border rounded">
+                                                        {SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="text-sm font-bold text-gray-700 mb-1 block">Disciplina</label>
+                                                    <select value={attendanceSubject} onChange={e => setAttendanceSubject(e.target.value)} className="w-full p-2 border rounded">
+                                                        <option value="">Selecione...</option>
+                                                        {teacherSubjects.map(subj => <option key={subj} value={subj as string}>{subj as string}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="text-sm font-bold text-gray-700 mb-1 block">Data</label>
+                                                    <input type="date" value={attendanceDate} onChange={e => setAttendanceDate(e.target.value)} className="w-full p-2 border rounded" />
+                                                </div>
+
+                                                <div className="flex flex-col">
+                                                    <label className="text-sm font-bold text-gray-700 mb-1 block">Bimestre de Visualização</label>
+                                                    <select
+                                                        value={selectedFilterBimester}
+                                                        onChange={e => setSelectedFilterBimester(Number(e.target.value))}
+                                                        className="w-full p-2 border rounded text-blue-900 font-medium bg-blue-50 border-blue-200"
+                                                    >
+                                                        <option value={1}>1º Bimestre</option>
+                                                        <option value={2}>2º Bimestre</option>
+                                                        <option value={3}>3º Bimestre</option>
+                                                        <option value={4}>4º Bimestre</option>
+                                                    </select>
+                                                </div>
+
+                                                <div className="self-end">
+                                                    <Button onClick={loadAttendance} className="w-full" disabled={!attendanceGrade}>Buscar Turma</Button>
                                                 </div>
                                             </div>
-                                        </div>
 
-                                        <div className="flex gap-2 w-full mt-2">
-                                            <button
-                                                onClick={() => handleStatusChange(student.id, AttendanceStatus.PRESENT)}
-                                                className={`flex - 1 py - 3 rounded - lg font - bold text - sm transition - all duration - 200 border ${status === AttendanceStatus.PRESENT
-                                                        ? 'bg-green-500 text-white border-green-600 shadow-md transform scale-105'
-                                                        : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                                                    } `}
-                                            >
-                                                Presente
-                                            </button>
-                                            <button
-                                                onClick={() => handleStatusChange(student.id, AttendanceStatus.ABSENT)}
-                                                className={`flex - 1 py - 3 rounded - lg font - bold text - sm transition - all duration - 200 border ${status === AttendanceStatus.ABSENT
-                                                        ? 'bg-red-500 text-white border-red-600 shadow-md transform scale-105'
-                                                        : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                                                    } `}
-                                            >
-                                                Faltou
-                                            </button>
+                                            {isAttendanceLoading && <p>Carregando...</p>}
+
+                                            {attendanceStudents.length > 0 && (
+                                                <div>
+                                                    {/* VIEW MOBILE/TABLET (CARDS) - Alterado para LG para cobrir tablets/celulares grandes */}
+                                                    <div className="lg:hidden space-y-4">
+                                                        {attendanceStudents.map(student => {
+                                                            const absences: StudentAbsenceSummary = absenceData[student.id] || {
+                                                                bimester: { 1: { count: 0, details: {} }, 2: { count: 0, details: {} }, 3: { count: 0, details: {} }, 4: { count: 0, details: {} } },
+                                                                year: 0
+                                                            };
+                                                            const status = studentStatuses[student.id]; // Assuming studentStatuses holds the current status
+                                                            const bimesterBreakdown = absences.bimester;
+
+                                                            const totalAbsences = absences.year;
+                                                            return (
+                                                                <div key={student.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col gap-3">
+                                                                    <div className="flex justify-between items-start">
+                                                                        <div>
+                                                                            <h4 className="font-bold text-gray-800">{student.name}</h4>
+                                                                            <div className="flex items-center gap-2 mt-1">
+                                                                                <span className={`text - [10px] font - bold px - 2 py - 0.5 rounded - full ${student.shift === 'Matutino' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'} `}>
+                                                                                    {student.shift}
+                                                                                </span>
+                                                                                {status === AttendanceStatus.PRESENT && <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">PRESENTE</span>}
+                                                                                {status === AttendanceStatus.ABSENT && <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">FALTOU</span>}
+                                                                            </div>
+                                                                            <div className="mt-1 text-xs text-gray-500 space-y-0.5">
+                                                                                <div className="text-gray-700">
+                                                                                    <p>{selectedFilterBimester}º Bimestre: <span className="font-bold text-red-600">{bimesterBreakdown[selectedFilterBimester]?.count || 0} falta(s)</span></p>
+
+                                                                                    {/* Detailed Breakdown */}
+                                                                                    {bimesterBreakdown[selectedFilterBimester]?.count > 0 && (
+                                                                                        <div className="mt-1 flex flex-wrap gap-2">
+                                                                                            {Object.entries(bimesterBreakdown[selectedFilterBimester].details).map(([month, days]) => (
+                                                                                                <span key={month} className="text-[10px] bg-red-50 text-red-800 border border-red-100 rounded px-1.5 py-0.5">
+                                                                                                    <strong>{month}:</strong> {days.map(d => `[${d}]`).join(' ')}
+                                                                                                </span>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+
+                                                                                <p>Total no Ano: <span className="font-bold text-gray-800">{totalAbsences} falta(s)</span></p>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div className="flex gap-2 w-full mt-2">
+                                                                        <button
+                                                                            onClick={() => handleStatusChange(student.id, AttendanceStatus.PRESENT)}
+                                                                            className={`flex - 1 py - 3 rounded - lg font - bold text - sm transition - all duration - 200 border ${status === AttendanceStatus.PRESENT
+                                                                                ? 'bg-green-500 text-white border-green-600 shadow-md transform scale-105'
+                                                                                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                                                                } `}
+                                                                        >
+                                                                            Presente
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleStatusChange(student.id, AttendanceStatus.ABSENT)}
+                                                                            className={`flex - 1 py - 3 rounded - lg font - bold text - sm transition - all duration - 200 border ${status === AttendanceStatus.ABSENT
+                                                                                ? 'bg-red-500 text-white border-red-600 shadow-md transform scale-105'
+                                                                                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                                                                } `}
+                                                                        >
+                                                                            Faltou
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+
+                                                    {/* VIEW DESKTOP (TABLE) - Apenas acima de LG */}
+                                                    <div className="hidden lg:block bg-white rounded-lg shadow-sm border overflow-x-auto">
+                                                        {/* min-w-[800px] força o scroll se a tela for menor que isso, evitando esmagamento */}
+                                                        <table className="min-w-[800px] w-full">
+                                                            <thead className="bg-gray-50">
+                                                                <tr>
+                                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aluno</th>
+                                                                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-gray-200">
+                                                                {attendanceStudents.map(student => {
+                                                                    const absences: StudentAbsenceSummary = absenceData[student.id] || {
+                                                                        bimester: { 1: { count: 0, details: {} }, 2: { count: 0, details: {} }, 3: { count: 0, details: {} }, 4: { count: 0, details: {} } },
+                                                                        year: 0
+                                                                    };
+                                                                    const bimesterBreakdown = absences.bimester;
+                                                                    return (
+                                                                        <tr key={student.id} className="hover:bg-gray-50">
+                                                                            <td className="px-6 py-4">
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <p className="font-medium text-gray-900">{student.name}</p>
+                                                                                    <span className={`text - [10px] px - 2 py - 0.5 rounded - full font - bold border ${student.shift === 'Matutino' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-blue-50 text-blue-700 border-blue-200'} `}>
+                                                                                        {student.shift}
+                                                                                    </span>
+                                                                                </div>
+                                                                                <div className="text-xs text-gray-500 mt-1 font-normal flex items-center gap-x-4 gap-y-1 flex-wrap">
+                                                                                    <div className="flex gap-2 text-xs border-r pr-3 border-gray-300 items-start">
+                                                                                        <div className="flex flex-col">
+                                                                                            <span>
+                                                                                                {selectedFilterBimester}º Bimestre: <strong className="text-red-600 font-bold">{bimesterBreakdown[selectedFilterBimester]?.count || 0} falta(s)</strong>
+                                                                                            </span>
+                                                                                            {/* Detailed Breakdown for Desktop */}
+                                                                                            {bimesterBreakdown[selectedFilterBimester]?.count > 0 && (
+                                                                                                <div className="mt-0.5 flex flex-wrap gap-1">
+                                                                                                    {Object.entries(bimesterBreakdown[selectedFilterBimester].details).map(([month, days]) => (
+                                                                                                        <span key={month} className="text-[10px] text-gray-500">
+                                                                                                            <strong className="text-gray-700">{month}:</strong> {days.map(d => `[${d}]`).join(' ')} <span className="text-gray-300">|</span>
+                                                                                                        </span>
+                                                                                                    ))}
+                                                                                                </div>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    <span>Total no Ano: <strong className="text-gray-700 font-bold">{absences.year} falta(s)</strong></span>
+                                                                                </div>
+                                                                            </td>
+                                                                            <td className="px-6 py-4 text-center">
+                                                                                <div className="inline-flex rounded-md shadow-sm" role="group">
+                                                                                    <button type="button" onClick={() => handleStatusChange(student.id, AttendanceStatus.PRESENT)} className={`px - 4 py - 2 text - sm font - medium border rounded - l - lg transition - colors ${studentStatuses[student.id] === AttendanceStatus.PRESENT ? 'bg-green-500 text-white border-green-600 z-10' : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-100'} `}>Presente</button>
+                                                                                    <button type="button" onClick={() => handleStatusChange(student.id, AttendanceStatus.ABSENT)} className={`px - 4 py - 2 text - sm font - medium border rounded - r - lg transition - colors ${studentStatuses[student.id] === AttendanceStatus.ABSENT ? 'bg-red-600 text-white border-red-700 z-10' : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-100'} `}>Faltou</button>
+                                                                                </div>
+                                                                            </td>
+                                                                        </tr>
+                                                                    );
+                                                                })}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                    <div className="mt-6 text-right">
+                                                        <Button onClick={handleSaveAttendance} disabled={isAttendanceSaving}>{isAttendanceSaving ? 'Salvando...' : 'Salvar Chamada'}</Button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                );
-                            })}
-                        </div>
-
-                        {/* VIEW DESKTOP (TABLE) - Apenas acima de LG */}
-                        <div className="hidden lg:block bg-white rounded-lg shadow-sm border overflow-x-auto">
-                            {/* min-w-[800px] força o scroll se a tela for menor que isso, evitando esmagamento */}
-                            <table className="min-w-[800px] w-full">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aluno</th>
-                                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200">
-                                    {attendanceStudents.map(student => {
-                                        const absences: StudentAbsenceSummary = absenceData[student.id] || {
-                                            bimester: { 1: { count: 0, details: {} }, 2: { count: 0, details: {} }, 3: { count: 0, details: {} }, 4: { count: 0, details: {} } },
-                                            year: 0
-                                        };
-                                        const bimesterBreakdown = absences.bimester;
-                                        return (
-                                            <tr key={student.id} className="hover:bg-gray-50">
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <p className="font-medium text-gray-900">{student.name}</p>
-                                                        <span className={`text - [10px] px - 2 py - 0.5 rounded - full font - bold border ${student.shift === 'Matutino' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-blue-50 text-blue-700 border-blue-200'} `}>
-                                                            {student.shift}
-                                                        </span>
-                                                    </div>
-                                                    <div className="text-xs text-gray-500 mt-1 font-normal flex items-center gap-x-4 gap-y-1 flex-wrap">
-                                                        <div className="flex gap-2 text-xs border-r pr-3 border-gray-300 items-start">
-                                                            <div className="flex flex-col">
-                                                                <span>
-                                                                    {selectedFilterBimester}º Bimestre: <strong className="text-red-600 font-bold">{bimesterBreakdown[selectedFilterBimester]?.count || 0} falta(s)</strong>
-                                                                </span>
-                                                                {/* Detailed Breakdown for Desktop */}
-                                                                {bimesterBreakdown[selectedFilterBimester]?.count > 0 && (
-                                                                    <div className="mt-0.5 flex flex-wrap gap-1">
-                                                                        {Object.entries(bimesterBreakdown[selectedFilterBimester].details).map(([month, days]) => (
-                                                                            <span key={month} className="text-[10px] text-gray-500">
-                                                                                <strong className="text-gray-700">{month}:</strong> {days.map(d => `[${d}]`).join(' ')} <span className="text-gray-300">|</span>
-                                                                            </span>
-                                                                        ))}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-
-                                                        <span>Total no Ano: <strong className="text-gray-700 font-bold">{absences.year} falta(s)</strong></span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <div className="inline-flex rounded-md shadow-sm" role="group">
-                                                        <button type="button" onClick={() => handleStatusChange(student.id, AttendanceStatus.PRESENT)} className={`px - 4 py - 2 text - sm font - medium border rounded - l - lg transition - colors ${studentStatuses[student.id] === AttendanceStatus.PRESENT ? 'bg-green-500 text-white border-green-600 z-10' : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-100'} `}>Presente</button>
-                                                        <button type="button" onClick={() => handleStatusChange(student.id, AttendanceStatus.ABSENT)} className={`px - 4 py - 2 text - sm font - medium border rounded - r - lg transition - colors ${studentStatuses[student.id] === AttendanceStatus.ABSENT ? 'bg-red-600 text-white border-red-700 z-10' : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-100'} `}>Faltou</button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                        <div className="mt-6 text-right">
-                            <Button onClick={handleSaveAttendance} disabled={isAttendanceSaving}>{isAttendanceSaving ? 'Salvando...' : 'Salvar Chamada'}</Button>
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div>
-    )
-}
+                                )
+                            }
+                        </div >
+        </div >
             </div >
-        </div >
-        </div >
-    );
+            );
 };
