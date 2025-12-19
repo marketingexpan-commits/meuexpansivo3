@@ -7,6 +7,7 @@ import { SchoolLogo } from './SchoolLogo';
 import { db } from '../firebaseConfig';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { Rematricula } from './Rematricula';
 
 interface AdminDashboardProps {
     admin: Admin;
@@ -15,6 +16,7 @@ interface AdminDashboardProps {
     admins?: Admin[];
     schoolMessages: SchoolMessage[];
     attendanceRecords: AttendanceRecord[];
+    grades: GradeEntry[]; // Nova prop
     unitContacts?: UnitContact[]; // Nova prop
     onAddStudent: (student: Student) => void;
     onEditStudent: (student: Student) => void;
@@ -40,6 +42,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     admins = [],
     schoolMessages,
     attendanceRecords,
+    grades,
     unitContacts = [],
     onAddStudent,
     onEditStudent,
@@ -57,7 +60,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     onDeleteUnitContact,
     onLogout
 }) => {
-    const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'admins' | 'messages' | 'attendance' | 'contacts'>('students');
+    const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'admins' | 'messages' | 'attendance' | 'contacts' | 'rematricula'>('students');
 
     const adminUnit = admin.unit;
     const isGeneralAdmin = !adminUnit;
@@ -664,6 +667,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <button onClick={() => setActiveTab('messages')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap flex items-center gap-2 ${activeTab === 'messages' ? 'bg-blue-950 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Mensagens{newMessagesCount > 0 && <span className="bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">{newMessagesCount}</span>}</button>
                         <button onClick={() => setActiveTab('attendance')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeTab === 'attendance' ? 'bg-blue-950 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Controle de Frequência</button>
                         <button onClick={() => setActiveTab('contacts')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeTab === 'contacts' ? 'bg-blue-950 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Gestão de Contatos</button>
+                        <button onClick={() => setActiveTab('rematricula')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap flex items-center gap-2 ${activeTab === 'rematricula' ? 'bg-green-700 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>
+                            <span>🎓</span> Rematrícula 2026
+                        </button>
                         {isGeneralAdmin && <button onClick={() => setActiveTab('admins')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeTab === 'admins' ? 'bg-purple-800 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Gerenciar Admins</button>}
                     </div>
 
@@ -942,6 +948,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     )}
 
                     {activeTab === 'admins' && isGeneralAdmin && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-1"><div className="bg-white p-6 rounded-xl shadow-sm border border-purple-200"><h2 className="text-lg font-bold text-purple-800 mb-4">{editingAdminId ? 'Editar Admin' : 'Novo Admin de Unidade'}</h2><form onSubmit={handleAdminSubmit} className="space-y-4"><div><label className="text-sm font-medium">Nome (Descrição)</label><input type="text" value={aName} onChange={e => setAName(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Usuário de Login</label><input type="text" value={aUser} onChange={e => setAUser(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Unidade Responsável</label><select value={aUnit} onChange={e => setAUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select></div><div><label className="text-sm font-medium">Senha</label><div className="flex gap-2 relative"><input type={showAdminPassword ? "text" : "password"} value={aPass} onChange={e => setAPass(e.target.value)} required={!editingAdminId} className="w-full p-2 border rounded" /><button type="button" onClick={() => setShowAdminPassword(!showAdminPassword)} className="absolute right-16 top-2 text-gray-500">{showAdminPassword ? <EyeOffIcon /> : <EyeIcon />}</button><button type="button" onClick={handleGenerateAdminPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button></div></div><Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700">Salvar Admin</Button></form></div></div><div className="lg:col-span-2"><div className="bg-white rounded-xl shadow-sm border border-gray-200"><div className="p-4 bg-purple-50 border-b border-purple-100"><h3 className="font-bold text-purple-900">Administradores Cadastrados</h3></div><div className="overflow-x-auto"><table className="w-full min-w-[600px] text-sm text-left"><thead className="bg-gray-50"><tr><th className="p-3">Nome</th><th className="p-3">Usuário</th><th className="p-3">Unidade</th><th className="p-3">Ações</th></tr></thead><tbody>{filteredAdmins.map(a => (<tr key={a.id} className="border-b"><td className="p-3 font-medium">{a.name}</td><td className="p-3 font-mono text-gray-600">{a.username}</td><td className="p-3"><span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{a.unit}</span></td><td className="p-3 flex gap-2"><button onClick={() => startEditingAdmin(a)} className="text-blue-950 hover:underline">Editar</button><button onClick={() => initiateDeleteAdmin(a.id)} className="text-red-600 hover:underline">Excluir</button></td></tr>))}</tbody></table></div></div></div></div>)}
+                    {activeTab === 'rematricula' && (
+                        <Rematricula
+                            students={students}
+                            grades={grades}
+                            onRefresh={async () => {
+                                // Re-triggering parent data via mock add if needed, 
+                                // but Firestore is real-time.
+                            }}
+                        />
+                    )}
 
                 </div>
             </div>

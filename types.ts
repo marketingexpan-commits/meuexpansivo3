@@ -239,6 +239,7 @@ export interface Student {
   // Estruturais / Flags
   ficha_saude?: any;
   documentos_entregues?: string[];
+  historico_escolar_2025?: string;
 }
 
 export interface Teacher {

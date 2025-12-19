@@ -482,6 +482,7 @@ const App: React.FC = () => {
         admins={admins}
         schoolMessages={schoolMessages}
         attendanceRecords={attendanceRecords}
+        grades={grades}
         unitContacts={unitContacts}
         onAddStudent={handleAddStudent}
         onEditStudent={handleEditStudent}
