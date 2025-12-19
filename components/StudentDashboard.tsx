@@ -742,7 +742,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             {num}º Bimestre
                                                         </th>
                                                     ))}
-                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-16 text-[9px] leading-tight">Média<br />Anual</th>
                                                     <th rowSpan={2} className="px-2 py-3 text-center font-bold text-red-700 uppercase border-r border-gray-300 bg-red-50 w-16 text-[9px] leading-tight">Prova<br />Final</th>
                                                     <th rowSpan={2} className="px-2 py-3 text-center font-bold text-blue-950 uppercase border-r border-gray-300 bg-blue-100 w-16 text-[9px] leading-tight">Média<br />Final</th>
                                                     <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase w-20 text-[9px]">Situação</th>
@@ -795,7 +794,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 </React.Fragment>
                                                             );
                                                         })}
-                                                        <td className="px-1 py-2 text-center font-bold text-gray-800 border-r border-gray-300 bg-gray-50/50 text-xs">{formatGrade(grade.mediaAnual)}</td>
                                                         <td className="px-1 py-2 text-center font-bold text-red-600 border-r border-gray-300 bg-red-50/30 text-xs">{formatGrade(grade.recuperacaoFinal)}</td>
                                                         <td className="px-1 py-2 text-center font-extrabold text-blue-950 border-r border-gray-300 bg-blue-50 text-xs">{formatGrade(grade.mediaFinal)}</td>
                                                         <td className="px-1 py-2 text-center align-middle bg-white w-24">
