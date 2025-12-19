@@ -202,13 +202,26 @@ function parseStudents(text) {
 
 function translateGrade(grade) {
     const map = {
+        'N1': 'Nível I - Edu. Infantil',
         'N2': 'Nível II - Edu. Infantil',
         'N3': 'Nível III - Edu. Infantil',
         'N4': 'Nível IV - Edu. Infantil',
-        'N5': 'Nível V - Edu. Infantil',
-        '1A': '1º Ano'
+        'N5': 'Nível V - Edu. Infantil'
     };
-    return map[grade] || grade;
+
+    // Regra: Iniciada com N = Infantil
+    if (grade.startsWith('N')) {
+        return map[grade] || grade;
+    }
+
+    // Regra: Iniciada com número (1, 2, 3...) = Fundamental
+    if (/^\d/.test(grade)) {
+        // Se for algo como '1A', traduz para '1º Ano - Fundamental I'
+        const year = grade.match(/^\d+/)[0];
+        return `${year}º Ano - Fundamental I`;
+    }
+
+    return grade;
 }
 
 function translateShift(shift) {
