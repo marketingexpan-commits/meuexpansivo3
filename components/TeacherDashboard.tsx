@@ -570,10 +570,19 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                     ) : (
                                         // --- PAINEL DE NOTAS (FUNDAMENTAL/MÉDIO) ---
                                         <div>
-                                            <h2 className="text-xl font-bold mb-6 text-blue-950 flex items-center">
-                                                <span className="bg-blue-100 text-blue-950 rounded-full w-8 h-8 flex items-center justify-center mr-3 text-sm">📝</span>
-                                                Lançamento de Notas
-                                            </h2>
+                                            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-2">
+                                                <h2 className="text-xl font-bold text-blue-950 flex items-center">
+                                                    <span className="bg-blue-100 text-blue-950 rounded-full w-8 h-8 flex items-center justify-center mr-3 text-sm">📝</span>
+                                                    Lançamento de Notas
+                                                </h2>
+                                                {selectedStudent && (
+                                                    <div className="bg-blue-50 border border-blue-200 text-blue-900 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 animate-fade-in">
+                                                        <span className="text-blue-400">👤</span>
+                                                        {selectedStudent.name}
+                                                        <span className="text-xs font-normal text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded ml-1">#{selectedStudent.code}</span>
+                                                    </div>
+                                                )}
+                                            </div>
                                             <form onSubmit={handleGradeSubmit} className="bg-white p-6 rounded-lg shadow-sm mb-8">
                                                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-6">
                                                     <label className="block text-sm font-bold text-blue-950 mb-1">Unidade Escolar</label>
