@@ -10,6 +10,7 @@ import { StudentDashboard } from './components/StudentDashboard';
 import { TeacherDashboard } from './components/TeacherDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { db } from './firebaseConfig';
+import { BackToTopButton } from './components/BackToTopButton';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<UserSession>({ role: UserRole.NONE, user: null });
@@ -447,59 +448,75 @@ const App: React.FC = () => {
   }
 
   if (session.role === UserRole.NONE) {
-    return (<Login onLoginStudent={handleStudentLogin} onLoginTeacher={handleTeacherLogin} onLoginAdmin={handleAdminLogin} onResetSystem={handleResetSystem} error={loginError} adminsList={admins} />);
+    return (
+      <>
+        <Login onLoginStudent={handleStudentLogin} onLoginTeacher={handleTeacherLogin} onLoginAdmin={handleAdminLogin} onResetSystem={handleResetSystem} error={loginError} adminsList={admins} />
+        <BackToTopButton />
+      </>
+    );
   }
 
   if (session.role === UserRole.STUDENT && session.user) {
     return (
-      <StudentDashboard
-        student={session.user as Student}
-        grades={grades}
-        teachers={teachers}
-        attendanceRecords={attendanceRecords}
-        earlyChildhoodReports={earlyChildhoodReports}
-        unitContacts={unitContacts}
-        onLogout={handleLogout}
-        onSendMessage={handleSendMessage}
-        notifications={notifications}
-        onMarkNotificationAsRead={handleMarkNotificationAsRead}
-        mensalidades={mensalidades}
-        eventos={eventosFinanceiros}
-      />
+      <>
+        <StudentDashboard
+          student={session.user as Student}
+          grades={grades}
+          teachers={teachers}
+          attendanceRecords={attendanceRecords}
+          earlyChildhoodReports={earlyChildhoodReports}
+          unitContacts={unitContacts}
+          onLogout={handleLogout}
+          onSendMessage={handleSendMessage}
+          notifications={notifications}
+          onMarkNotificationAsRead={handleMarkNotificationAsRead}
+          mensalidades={mensalidades}
+          eventos={eventosFinanceiros}
+        />
+        <BackToTopButton />
+      </>
     );
   }
 
   if (session.role === UserRole.TEACHER && session.user) {
-    return (<TeacherDashboard teacher={session.user as Teacher} students={students} grades={grades} onSaveGrade={handleSaveGrade} onLogout={handleLogout} attendanceRecords={attendanceRecords} onSaveAttendance={handleSaveAttendance} earlyChildhoodReports={earlyChildhoodReports} onSaveEarlyChildhoodReport={handleSaveEarlyChildhoodReport} />);
+    return (
+      <>
+        <TeacherDashboard teacher={session.user as Teacher} students={students} grades={grades} onSaveGrade={handleSaveGrade} onLogout={handleLogout} attendanceRecords={attendanceRecords} onSaveAttendance={handleSaveAttendance} earlyChildhoodReports={earlyChildhoodReports} onSaveEarlyChildhoodReport={handleSaveEarlyChildhoodReport} />
+        <BackToTopButton />
+      </>
+    );
   }
 
   if (session.role === UserRole.ADMIN && session.user) {
     return (
-      <AdminDashboard
-        admin={session.user as Admin}
-        students={students}
-        teachers={teachers}
-        admins={admins}
-        schoolMessages={schoolMessages}
-        attendanceRecords={attendanceRecords}
-        grades={grades}
-        unitContacts={unitContacts}
-        onAddStudent={handleAddStudent}
-        onEditStudent={handleEditStudent}
-        onDeleteStudent={handleDeleteStudent}
-        onToggleBlockStudent={handleToggleBlockStudent}
-        onAddTeacher={handleAddTeacher}
-        onEditTeacher={handleEditTeacher}
-        onDeleteTeacher={handleDeleteTeacher}
-        onAddAdmin={handleAddAdmin}
-        onEditAdmin={handleEditAdmin}
-        onDeleteAdmin={handleDeleteAdmin}
-        onUpdateMessageStatus={handleUpdateMessageStatus}
-        onAddUnitContact={handleAddUnitContact}
-        onEditUnitContact={handleEditUnitContact}
-        onDeleteUnitContact={handleDeleteUnitContact}
-        onLogout={handleLogout}
-      />
+      <>
+        <AdminDashboard
+          admin={session.user as Admin}
+          students={students}
+          teachers={teachers}
+          admins={admins}
+          schoolMessages={schoolMessages}
+          attendanceRecords={attendanceRecords}
+          grades={grades}
+          unitContacts={unitContacts}
+          onAddStudent={handleAddStudent}
+          onEditStudent={handleEditStudent}
+          onDeleteStudent={handleDeleteStudent}
+          onToggleBlockStudent={handleToggleBlockStudent}
+          onAddTeacher={handleAddTeacher}
+          onEditTeacher={handleEditTeacher}
+          onDeleteTeacher={handleDeleteTeacher}
+          onAddAdmin={handleAddAdmin}
+          onEditAdmin={handleEditAdmin}
+          onDeleteAdmin={handleDeleteAdmin}
+          onUpdateMessageStatus={handleUpdateMessageStatus}
+          onAddUnitContact={handleAddUnitContact}
+          onEditUnitContact={handleEditUnitContact}
+          onDeleteUnitContact={handleDeleteUnitContact}
+          onLogout={handleLogout}
+        />
+        <BackToTopButton />
+      </>
     );
   }
 

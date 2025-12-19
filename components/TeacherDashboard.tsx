@@ -50,7 +50,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     // Refs for mobile navigation
     const gradeFormRef = React.useRef<HTMLDivElement>(null);
     const studentListRef = React.useRef<HTMLDivElement>(null);
-    const [showScrollTop, setShowScrollTop] = useState(false);
+    // Removed local showScrollTop state as global button is used
 
     // Estados para Relatório (Educação Infantil)
     const [selectedSemester, setSelectedSemester] = useState<1 | 2>(1);
@@ -184,38 +184,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
         }
     }, [selectedStudent, selectedSemester, isEarlyChildhoodStudent, earlyChildhoodReports, selectedSubject, selectedStage, grades, reloadGradeInputState]);
 
-    // Scroll Listener for "Back to Top" button
-    useEffect(() => {
-        const listDiv = studentListRef.current;
-
-        const handleScroll = () => {
-            // Check both element scroll (desktop/constrained) and window scroll (mobile/unconstrained)
-            const elementScroll = listDiv ? listDiv.scrollTop : 0;
-            const windowScroll = window.scrollY;
-
-            if (elementScroll > 200 || windowScroll > 200) {
-                setShowScrollTop(true);
-            } else {
-                setShowScrollTop(false);
-            }
-        };
-
-        if (listDiv) listDiv.addEventListener('scroll', handleScroll);
-        window.addEventListener('scroll', handleScroll);
-
-        return () => {
-            if (listDiv) listDiv.removeEventListener('scroll', handleScroll);
-            window.removeEventListener('scroll', handleScroll);
-        };
-    }, []);
-
-    const scrollToTop = () => {
-        // Scroll both to cover all cases
-        if (studentListRef.current) {
-            studentListRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
+    // Scroll Listener removed (Global used)
 
     const handleStudentSelect = (student: Student) => {
         setSelectedStudent(student);
@@ -507,20 +476,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                 </div>
                             </div>
 
-                            {/* Floating Back to Top Button - Moved outside overflow container for Fixed positioning */}
-                            {showScrollTop && (
-                                <button
-                                    onClick={scrollToTop}
-                                    className="fixed bottom-6 right-6 bg-blue-600 text-white p-3 rounded-full shadow-2xl hover:bg-blue-700 transition-all z-50 w-12 h-12 flex items-center justify-center opacity-90 hover:opacity-100 animate-bounce-subtle border-2 border-white"
-                                    title="Voltar ao topo"
-                                    aria-label="Voltar ao topo"
-                                    style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                                    </svg>
-                                </button>
-                            )}
+
 
                             <div ref={gradeFormRef} className="w-full md:w-2/3 p-6 border rounded-lg shadow-md bg-blue-50 overflow-y-auto max-h-[85vh]">
                                 {!selectedStudent ? (
@@ -992,6 +948,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
