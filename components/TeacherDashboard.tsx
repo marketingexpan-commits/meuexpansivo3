@@ -1,5 +1,6 @@
 // src/components/TeacherDashboard.tsx
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { db } from '../firebaseConfig';
 import { Teacher, Student, GradeEntry, BimesterData, SchoolUnit, Subject, SchoolClass, AttendanceRecord, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus } from '../types';
 import { getAttendanceBreakdown, AttendanceBreakdown } from '../src/utils/attendanceUtils';
 import {
@@ -13,7 +14,7 @@ import {
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 import { HistoricalReport2025 } from './HistoricalReport2025';
-import { UNITS_DATA } from '../src/constants';
+import { UNITS_DATA, HS_SUBJECTS_2025, HS_SUBJECTS_2026, EF_SUBJECTS } from '../src/constants';
 
 interface TeacherDashboardProps {
     teacher: Teacher;
@@ -32,6 +33,22 @@ const formatGrade = (value: number | undefined | null) => {
 };
 
 export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, students, grades, attendanceRecords, earlyChildhoodReports, onSaveGrade, onSaveAttendance, onSaveEarlyChildhoodReport, onLogout }) => {
+    // REGRAS DE SINCRONIZAÇÃO EM TEMPO REAL (onSnapshot DIRETO NO COMPONENTE)
+    const [liveGrades, setLiveGrades] = useState<GradeEntry[]>(grades);
+    const [liveAttendance, setLiveAttendance] = useState<AttendanceRecord[]>(attendanceRecords);
+
+    useEffect(() => {
+        const unsubGrades = db.collection('grades').onSnapshot((snapshot) => {
+            const data = snapshot.docs.map(doc => doc.data() as GradeEntry);
+            setLiveGrades(data);
+        });
+        const unsubAttendance = db.collection('attendance').onSnapshot((snapshot) => {
+            const data = snapshot.docs.map(doc => doc.data() as AttendanceRecord);
+            setLiveAttendance(data);
+        });
+        return () => { unsubGrades(); unsubAttendance(); };
+    }, []);
+
     const [activeTab, setActiveTab] = useState<'grades' | 'attendance'>('grades');
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -95,7 +112,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
         if (!selectedStudent) return { 1: 0, 2: 0, 3: 0, 4: 0 };
         const absences = { 1: 0, 2: 0, 3: 0, 4: 0 };
 
-        attendanceRecords.forEach(record => {
+        (liveAttendance || []).forEach(record => {
             // Filter: Only count absences for the currently selected subject
             if (selectedSubject && record.discipline !== selectedSubject) return;
 
@@ -114,7 +131,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
             }
         });
         return absences;
-    }, [selectedStudent, attendanceRecords, selectedSubject, selectedYear]);
+    }, [selectedStudent, liveAttendance, selectedSubject, selectedYear]);
 
     const filteredStudents = useMemo(() => students.filter(student => {
         const matchesUnit = student.unit === activeUnit;
@@ -132,7 +149,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
 
         for (const student of attendanceStudents) {
             // Use Shared Helper - Sempre relativo ao ano atual para a chamada
-            const breakdown = getAttendanceBreakdown(attendanceRecords, student.id, attendanceSubject, new Date().getFullYear());
+            const breakdown = getAttendanceBreakdown(liveAttendance, student.id, attendanceSubject, new Date().getFullYear());
 
             // Calculate Total Year from breakdown
             const yearAbsences = Object.values(breakdown).reduce((acc, curr) => acc + curr.count, 0);
@@ -143,7 +160,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
             };
         }
         return { absenceData: studentAbsences, currentBimester: bimesterNumber };
-    }, [attendanceStudents, attendanceRecords, attendanceSubject]);
+    }, [attendanceStudents, liveAttendance, attendanceSubject]);
 
     const getStageDisplay = (stage: string) => {
         if (stage === 'recuperacaoFinal') return 'Recuperação Final';
@@ -174,10 +191,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
             }
             setCurrentGradeData(null); setNota(''); setRecuperacao(''); setFaltas(''); setTopic(''); setNotaRecFinal('');
         } else {
-            reloadGradeInputState(selectedStudent, selectedSubject, selectedStage, grades, selectedYear);
+            reloadGradeInputState(selectedStudent, selectedSubject, selectedStage, liveGrades, selectedYear);
             setCurrentReport(null);
         }
-    }, [selectedStudent, selectedSemester, isEarlyChildhoodStudent, earlyChildhoodReports, selectedSubject, selectedStage, grades, reloadGradeInputState, selectedYear]);
+    }, [selectedStudent, selectedSemester, isEarlyChildhoodStudent, earlyChildhoodReports, selectedSubject, selectedStage, liveGrades, reloadGradeInputState, selectedYear]);
 
     const handleStudentSelect = (student: Student) => {
         setSelectedStudent(student);
@@ -189,7 +206,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     const handleGradeSubmit = async (e: React.FormEvent) => {
         e.preventDefault(); if (!selectedStudent || !selectedSubject) return alert("Selecione um aluno e uma disciplina.");
         setIsSaving(true);
-        const existingGrade = grades.find(g => g.studentId === selectedStudent.id && g.subject === selectedSubject);
+        // Usar liveGrades para garantir dados mais recentes antes de salvar
+        const existingGrade = liveGrades.find(g => g.studentId === selectedStudent.id && g.subject === selectedSubject && g.year === selectedYear);
         const baseBimesters = existingGrade?.bimesters || { bimester1: { nota: null, recuperacao: null, media: 0, faltas: 0 }, bimester2: { nota: null, recuperacao: null, media: 0, faltas: 0 }, bimester3: { nota: null, recuperacao: null, media: 0, faltas: 0 }, bimester4: { nota: null, recuperacao: null, media: 0, faltas: 0 } };
         let newBimesters = { ...baseBimesters }; let newRecFinal = existingGrade?.recuperacaoFinal ?? null;
         if (selectedStage === 'recuperacaoFinal') { newRecFinal = notaRecFinal !== '' ? Number(notaRecFinal) : null; }
@@ -211,7 +229,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
         }
         const finalData = calculateFinalData(newBimesters, newRecFinal);
 
-        // CORREÇÃO: Usar ID determinístico (estilo student_CODE_SUBJECT_2025)
+        // CORREÇÃO: Usar ID determinístico. Como App.tsx agora garante que id = doc.id, usamos isso.
         const standardId = `${selectedStudent.id}_${selectedSubject.replace(/\s+/g, '_')}_${selectedYear}`;
 
         const gradeToSave: GradeEntry = {
@@ -636,49 +654,66 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                 <tbody className="bg-white divide-y divide-gray-200">
                                                                     {(() => {
                                                                         const isHS = selectedStudent.gradeLevel && selectedStudent.gradeLevel.includes('Ens. Médio');
+                                                                        const is2025 = selectedYear === 2025;
 
+                                                                        // 1. Determinar o currículo esperado
+                                                                        let curriculum: string[] = [];
+                                                                        if (isHS) {
+                                                                            curriculum = is2025 ? HS_SUBJECTS_2025 : HS_SUBJECTS_2026;
+                                                                        } else {
+                                                                            curriculum = EF_SUBJECTS;
+                                                                        }
+
+                                                                        // 2. Filtrar notas do aluno e deduplicar por disciplina (priorizando atualização mais recente)
                                                                         const gradeMap = new Map<string, GradeEntry>();
-                                                                        (grades || []).filter(g => g.studentId === selectedStudent.id).forEach(g => {
-                                                                            // Filtrar pelo ano selecionado
-                                                                            if (g.year !== selectedYear) return;
+                                                                        (liveGrades || []).filter(g => g.studentId === selectedStudent.id && (g.year === selectedYear || (!g.year && selectedYear === 2025))).forEach(g => {
+                                                                            const subjectKey = g.subject === 'Artes' ? 'Ens. Artes' :
+                                                                                g.subject === 'Educação Física' ? 'Ed. Física' :
+                                                                                    g.subject === 'Ensino Religioso' ? 'Ens. Religioso' : g.subject;
 
-                                                                            const existing = gradeMap.get(g.subject);
+                                                                            const existing = gradeMap.get(subjectKey);
                                                                             if (!existing || (g.lastUpdated || '') > (existing.lastUpdated || '')) {
-                                                                                gradeMap.set(g.subject, g);
+                                                                                gradeMap.set(subjectKey, g);
                                                                             }
                                                                         });
 
-                                                                        return Array.from(gradeMap.values())
-                                                                            .filter(grade => {
-                                                                                const is2025 = selectedYear === 2025;
+                                                                        // 3. Mapear o currículo para garantir que TODAS as matérias apareçam
+                                                                        return curriculum.map((subjectName, index) => {
+                                                                            const existingGrade = gradeMap.get(subjectName);
 
-                                                                                // Regra 2025 Ensino Médio: Mostrar APENAS as 17 disciplinas do PDF
-                                                                                if (is2025 && isHS) {
-                                                                                    const HS_SUBJECTS_2025 = [
-                                                                                        "Português", "Matemática", "Inglês", "História", "Geografia",
-                                                                                        "Literatura", "Biologia", "Física", "Química", "Redação",
-                                                                                        "Espanhol", "Ens. Artes", "Filosofia", "Sociologia",
-                                                                                        "Ed. Física", "Projeto de Vida", "Empreendedorismo"
-                                                                                    ];
-                                                                                    return HS_SUBJECTS_2025.includes(grade.subject);
-                                                                                }
+                                                                            // Se não existe nota, criamos um placeholder para permitir exibir faltas
+                                                                            const baseGrade: GradeEntry = existingGrade || {
+                                                                                id: `placeholder_${selectedStudent.id}_${subjectName}_${selectedYear}_${index}`,
+                                                                                studentId: selectedStudent.id,
+                                                                                subject: subjectName,
+                                                                                year: selectedYear,
+                                                                                lastUpdated: '',
+                                                                                bimesters: {
+                                                                                    bimester1: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                                                                                    bimester2: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                                                                                    bimester3: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                                                                                    bimester4: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                                                                                },
+                                                                                mediaAnual: 0,
+                                                                                mediaFinal: 0,
+                                                                                situacaoFinal: 'Recuperação'
+                                                                            };
 
-                                                                                // Regra: Remover 'Ciências' do Ensino Médio em 2026
-                                                                                if (selectedYear === 2026 && isHS && grade.subject === 'Ciências') return false;
+                                                                            const calculatedBimesters = {
+                                                                                bimester1: calculateBimesterMedia(baseGrade.bimesters.bimester1),
+                                                                                bimester2: calculateBimesterMedia(baseGrade.bimesters.bimester2),
+                                                                                bimester3: calculateBimesterMedia(baseGrade.bimesters.bimester3),
+                                                                                bimester4: calculateBimesterMedia(baseGrade.bimesters.bimester4),
+                                                                            };
+                                                                            const finalData = calculateFinalData(calculatedBimesters, baseGrade.recuperacaoFinal);
 
-                                                                                if (isHS) {
-                                                                                    const HS_SUBJECTS = ["Artes", "Biologia", "Educação Física", "Empreendedorismo", "Ensino Religioso", "Espanhol", "Filosofia", "Física", "Geografia", "História", "Inglês", "Literatura", "Matemática", "Português", "Projeto de Vida", "Química", "Redação", "Sociologia"];
-                                                                                    if (!HS_SUBJECTS.includes(grade.subject)) return false;
-                                                                                }
+                                                                            // Regra específica para 2025 (Histórico)
+                                                                            if (is2025) {
+                                                                                // Em 2025 Fundamental, mostrar apenas se tiver nota importada
+                                                                                if (!isHS && (!baseGrade.mediaAnual || baseGrade.mediaAnual === 0)) return null;
 
-                                                                                // Para 2025, ocultar disciplinas sem média (limpar visualização)
-                                                                                if (is2025 && (!grade.mediaAnual || grade.mediaAnual === 0)) return false;
-
-                                                                                return true;
-                                                                            })
-                                                                            .map((grade) => {
-                                                                                const displayGrade = selectedYear === 2025 ? {
-                                                                                    ...grade,
+                                                                                return {
+                                                                                    ...baseGrade,
                                                                                     bimesters: {
                                                                                         bimester1: { nota: null, recuperacao: null, media: 0, faltas: 0 },
                                                                                         bimester2: { nota: null, recuperacao: null, media: 0, faltas: 0 },
@@ -686,58 +721,63 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                                         bimester4: { nota: null, recuperacao: null, media: 0, faltas: 0 },
                                                                                     },
                                                                                     recuperacaoFinal: null,
-                                                                                    mediaFinal: grade.mediaAnual || 0,
-                                                                                    situacaoFinal: grade.situacaoFinal || 'Aprovado'
-                                                                                } : grade;
+                                                                                    mediaAnual: baseGrade.mediaAnual || 0,
+                                                                                    mediaFinal: baseGrade.mediaAnual || 0,
+                                                                                    situacaoFinal: baseGrade.situacao || baseGrade.situacaoFinal
+                                                                                };
+                                                                            }
 
-                                                                                return (
-                                                                                    <tr key={displayGrade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-200">
-                                                                                        <td className="px-2 py-2 font-bold text-gray-900 border-r border-gray-300 text-[10px] md:text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] align-top">
-                                                                                            <span className="uppercase block leading-tight mb-1">{displayGrade.subject}</span>
-                                                                                        </td>
-                                                                                        {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
-                                                                                            const bData = displayGrade.bimesters[key as keyof typeof displayGrade.bimesters];
-                                                                                            const bimesterNum = Number(key.replace('bimester', '')) as 1 | 2 | 3 | 4;
-                                                                                            // Calculate absences dynamically for this student and bimester
-                                                                                            const currentStudentAbsences = attendanceRecords.reduce((acc, record) => {
-                                                                                                if (record.discipline !== grade.subject) return acc;
-                                                                                                if (record.studentStatus[grade.studentId] === AttendanceStatus.ABSENT) {
-                                                                                                    const [y, mStr] = record.date.split('-');
-                                                                                                    const yNum = Number(y);
-                                                                                                    const mNum = Number(mStr);
-                                                                                                    if (yNum === selectedYear) {
-                                                                                                        if (bimesterNum === 1 && mNum >= 1 && mNum <= 3) return acc + 1;
-                                                                                                        if (bimesterNum === 2 && mNum >= 4 && mNum <= 6) return acc + 1;
-                                                                                                        if (bimesterNum === 3 && mNum >= 7 && mNum <= 9) return acc + 1;
-                                                                                                        if (bimesterNum === 4 && mNum >= 10 && mNum <= 12) return acc + 1;
-                                                                                                    }
+                                                                            const displayGrade = { ...baseGrade, bimesters: calculatedBimesters, ...finalData };
+
+                                                                            return (
+                                                                                <tr key={displayGrade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-200">
+                                                                                    <td className="px-2 py-2 font-bold text-gray-900 border-r border-gray-300 text-[10px] md:text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] align-top">
+                                                                                        <span className="uppercase block leading-tight mb-1">{displayGrade.subject}</span>
+                                                                                    </td>
+                                                                                    {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
+                                                                                        const bData = displayGrade.bimesters[key as keyof typeof displayGrade.bimesters];
+                                                                                        const bimesterNum = Number(key.replace('bimester', '')) as 1 | 2 | 3 | 4;
+                                                                                        // Calculate absences dynamically for this student and bimester
+                                                                                        const currentStudentAbsences = attendanceRecords.reduce((acc, record) => {
+                                                                                            // Filter by normalized discipline name if needed, but here we assume match
+                                                                                            if (record.discipline !== displayGrade.subject) return acc;
+                                                                                            if (record.studentStatus[selectedStudent.id] === AttendanceStatus.ABSENT) {
+                                                                                                const [y, mStr] = record.date.split('-');
+                                                                                                const yNum = Number(y);
+                                                                                                const mNum = Number(mStr);
+                                                                                                if (yNum === selectedYear) {
+                                                                                                    if (bimesterNum === 1 && mNum >= 1 && mNum <= 3) return acc + 1;
+                                                                                                    if (bimesterNum === 2 && mNum >= 4 && mNum <= 6) return acc + 1;
+                                                                                                    if (bimesterNum === 3 && mNum >= 7 && mNum <= 9) return acc + 1;
+                                                                                                    if (bimesterNum === 4 && mNum >= 10 && mNum <= 12) return acc + 1;
                                                                                                 }
-                                                                                                return acc;
-                                                                                            }, 0);
+                                                                                            }
+                                                                                            return acc;
+                                                                                        }, 0);
 
-                                                                                            return (
-                                                                                                <React.Fragment key={key}>
-                                                                                                    <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-100">{formatGrade(bData.nota)}</td>
-                                                                                                    <td className="px-1 py-2 text-center text-gray-400 text-xs border-r border-gray-100">{formatGrade(bData.recuperacao)}</td>
-                                                                                                    <td className="px-1 py-2 text-center text-blue-900 font-bold bg-blue-50/30 text-xs border-r border-gray-100">{formatGrade(bData.media)}</td>
-                                                                                                    <td className="px-1 py-2 text-center text-gray-500 text-xs border-r border-gray-300">{currentStudentAbsences || ''}</td>
-                                                                                                </React.Fragment>
-                                                                                            );
-                                                                                        })}
-                                                                                        <td className="px-1 py-2 text-center font-bold text-gray-800 border-r border-gray-300 bg-gray-50/50 text-sm">{formatGrade(displayGrade.mediaAnual)}</td>
-                                                                                        <td className="px-1 py-2 text-center font-bold text-red-600 bg-red-50 text-sm border-r border-gray-300">{formatGrade(displayGrade.recuperacaoFinal)}</td>
-                                                                                        <td className="px-1 py-2 text-center font-extrabold text-blue-950 bg-blue-50 text-sm border-r border-gray-300">{formatGrade(displayGrade.mediaFinal)}</td>
-                                                                                        <td className="px-1 py-2 text-center align-middle">
-                                                                                            <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${displayGrade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
-                                                                                                displayGrade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                                                                                    'bg-red-50 text-red-700 border-red-200'
-                                                                                                }`}>
-                                                                                                {displayGrade.situacaoFinal}
-                                                                                            </span>
-                                                                                        </td>
-                                                                                    </tr>
-                                                                                )
-                                                                            })
+                                                                                        return (
+                                                                                            <React.Fragment key={key}>
+                                                                                                <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-100">{formatGrade(bData.nota)}</td>
+                                                                                                <td className="px-1 py-2 text-center text-gray-400 text-xs border-r border-gray-100">{formatGrade(bData.recuperacao)}</td>
+                                                                                                <td className="px-1 py-2 text-center text-blue-900 font-bold bg-blue-50/30 text-xs border-r border-gray-100">{formatGrade(bData.media)}</td>
+                                                                                                <td className="px-1 py-2 text-center text-gray-500 text-xs border-r border-gray-300">{currentStudentAbsences || ''}</td>
+                                                                                            </React.Fragment>
+                                                                                        );
+                                                                                    })}
+                                                                                    <td className="px-1 py-2 text-center font-bold text-gray-800 border-r border-gray-300 bg-gray-50/50 text-sm">{formatGrade(displayGrade.mediaAnual)}</td>
+                                                                                    <td className="px-1 py-2 text-center font-bold text-red-600 bg-red-50 text-sm border-r border-gray-300">{formatGrade(displayGrade.recuperacaoFinal)}</td>
+                                                                                    <td className="px-1 py-2 text-center font-extrabold text-blue-950 bg-blue-50 text-sm border-r border-gray-300">{formatGrade(displayGrade.mediaFinal)}</td>
+                                                                                    <td className="px-1 py-2 text-center align-middle">
+                                                                                        <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${displayGrade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                                                            displayGrade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                                                                                'bg-red-50 text-red-700 border-red-200'
+                                                                                            }`}>
+                                                                                            {displayGrade.situacaoFinal}
+                                                                                        </span>
+                                                                                    </td>
+                                                                                </tr>
+                                                                            );
+                                                                        }).filter(g => g !== null);
                                                                     })()}
                                                                     {/* AVISO INFORMATIVO 2025 */}
                                                                     {selectedYear === 2025 && (

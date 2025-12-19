@@ -69,6 +69,29 @@ export const SCHOOL_GRADES_LIST = [
   '1ª Série - Ens. Médio', '2ª Série - Ens. Médio', '3ª Série - Ens. Médio'
 ];
 
+// --- CURRÍCULOS CENTRALIZADOS ---
+// Garantir que os nomes batam EXATAMENTE com o Subject enum em types.ts
+
+export const HS_SUBJECTS_2025 = [
+  "Português", "Matemática", "Inglês", "História", "Geografia",
+  "Literatura", "Biologia", "Física", "Química", "Redação",
+  "Espanhol", "Ens. Artes", "Filosofia", "Sociologia",
+  "Ed. Física", "Projeto de Vida", "Empreendedorismo"
+];
+
+export const HS_SUBJECTS_2026 = [
+  "Português", "Matemática", "Inglês", "História", "Geografia",
+  "Literatura", "Biologia", "Física", "Química", "Redação",
+  "Espanhol", "Ens. Artes", "Filosofia", "Sociologia",
+  "Ed. Física", "Projeto de Vida", "Empreendedorismo", "Ensino Religioso"
+];
+
+export const EF_SUBJECTS = [
+  "Português", "Matemática", "História", "Geografia", "Ciências",
+  "Inglês", "Ens. Artes", "Ed. Física", "Ensino Religioso", "Redação",
+  "Literatura", "Projeto de Vida", "Empreendedorismo"
+];
+
 export const MOCK_STUDENTS: Student[] = [
   {
     id: 's1',

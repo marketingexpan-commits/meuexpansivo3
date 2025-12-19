@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { db } from '../firebaseConfig';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
 import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro } from '../types';
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
-import { calculateBimesterMedia, calculateFinalData, UNITS_DATA, DEFAULT_UNIT_DATA } from '../src/constants'; // Import Sync Fix
+import { calculateBimesterMedia, calculateFinalData, UNITS_DATA, DEFAULT_UNIT_DATA, HS_SUBJECTS_2025, HS_SUBJECTS_2026, EF_SUBJECTS } from '../src/constants'; // Import Sync Fix
 import { getStudyTips } from '../services/geminiService';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
@@ -41,6 +42,22 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     mensalidades,
     eventos
 }) => {
+    // REGRAS DE SINCRONIZAÇÃO EM TEMPO REAL (onSnapshot DIRETO NO COMPONENTE)
+    const [liveGrades, setLiveGrades] = useState<GradeEntry[]>(grades);
+    const [liveAttendance, setLiveAttendance] = useState<AttendanceRecord[]>(attendanceRecords);
+
+    useEffect(() => {
+        const unsubGrades = db.collection('grades').onSnapshot((snapshot) => {
+            const data = snapshot.docs.map(doc => doc.data() as GradeEntry);
+            setLiveGrades(data);
+        });
+        const unsubAttendance = db.collection('attendance').onSnapshot((snapshot) => {
+            const data = snapshot.docs.map(doc => doc.data() as AttendanceRecord);
+            setLiveAttendance(data);
+        });
+        return () => { unsubGrades(); unsubAttendance(); };
+    }, []);
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState({ title: '', tip: '' });
     const [isLoadingAI, setIsLoadingAI] = useState(false);
@@ -68,86 +85,91 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
 
 
-    // CORREÇÃO DE SINCRONIZAÇÃO: Recalcular médias dinamicamente e aplicar regras de exibição 2025
+    // CORREÇÃO DE SINCRONIZAÇÃO: Garantir que TODAS as matérias do currículo apareçam (mesmo sem nota), permitindo ver faltas.
     const studentGrades = useMemo(() => {
-        const isFirstYearHS = student.gradeLevel && student.gradeLevel.includes('1ª Série');
+        const isHS = student.gradeLevel && student.gradeLevel.includes('Ens. Médio');
+        const is2025 = selectedYear === 2025;
 
-        // 1. Filtrar notas do aluno e deduplicar por disciplina (priorizando 2025)
+        // 1. Determinar o currículo esperado
+        let curriculum: string[] = [];
+        if (isHS) {
+            curriculum = is2025 ? HS_SUBJECTS_2025 : HS_SUBJECTS_2026;
+        } else {
+            curriculum = EF_SUBJECTS;
+        }
+
+        // 2. Filtrar notas do aluno e deduplicar por disciplina (priorizando atualização mais recente)
         const gradeMap = new Map<string, GradeEntry>();
+        const studentIdRaw = student.id.replace('student_', '');
 
-        (grades || []).filter(g => g.studentId === student.id).forEach(g => {
-            const existing = gradeMap.get(g.subject);
-            // Filtrar pelo ano selecionado
-            if (g.year !== selectedYear) return;
+        (liveGrades || []).filter(g => {
+            const matchesId = g.studentId === student.id || g.studentId === studentIdRaw;
+            const matchesYear = (g.year === selectedYear || (!g.year && selectedYear === 2025));
+            return matchesId && matchesYear;
+        }).forEach(g => {
+            const subjectKey = g.subject === 'Artes' ? 'Ens. Artes' :
+                g.subject === 'Educação Física' ? 'Ed. Física' :
+                    g.subject === 'Ensino Religioso' ? 'Ens. Religioso' : g.subject;
 
+            const existing = gradeMap.get(subjectKey);
             if (!existing || (g.lastUpdated || '') > (existing.lastUpdated || '')) {
-                gradeMap.set(g.subject, g);
+                gradeMap.set(subjectKey, g);
             }
         });
 
-        return Array.from(gradeMap.values())
-            .filter(grade => {
-                const isHS = student.gradeLevel && student.gradeLevel.includes('Ens. Médio');
-                const is2025 = selectedYear === 2025;
+        // 3. Mapear o currículo para garantir que TODAS as matérias apareçam
+        return curriculum.map((subjectName, index) => {
+            const existingGrade = gradeMap.get(subjectName);
 
-                // Regra 2025 Ensino Médio: Mostrar APENAS as 17 disciplinas do PDF
-                if (is2025 && isHS) {
-                    const HS_SUBJECTS_2025 = [
-                        "Português", "Matemática", "Inglês", "História", "Geografia",
-                        "Literatura", "Biologia", "Física", "Química", "Redação",
-                        "Espanhol", "Ens. Artes", "Filosofia", "Sociologia",
-                        "Ed. Física", "Projeto de Vida", "Empreendedorismo"
-                    ];
-                    return HS_SUBJECTS_2025.includes(grade.subject);
-                }
+            // Se não existe nota, criamos um placeholder para permitir exibir faltas
+            const baseGrade: GradeEntry = existingGrade || {
+                id: `placeholder_${student.id}_${subjectName}_${selectedYear}_${index}`,
+                studentId: student.id,
+                subject: subjectName,
+                year: selectedYear,
+                lastUpdated: '',
+                bimesters: {
+                    bimester1: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                    bimester2: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                    bimester3: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                    bimester4: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                },
+                mediaAnual: 0,
+                mediaFinal: 0,
+                situacaoFinal: 'Recuperação'
+            };
 
-                // Regra: Remover 'Ciências' do Ensino Médio em 2026
-                if (selectedYear === 2026 && isHS && grade.subject === 'Ciências') return false;
+            const calculatedBimesters = {
+                bimester1: calculateBimesterMedia(baseGrade.bimesters.bimester1),
+                bimester2: calculateBimesterMedia(baseGrade.bimesters.bimester2),
+                bimester3: calculateBimesterMedia(baseGrade.bimesters.bimester3),
+                bimester4: calculateBimesterMedia(baseGrade.bimesters.bimester4),
+            };
+            const finalData = calculateFinalData(calculatedBimesters, baseGrade.recuperacaoFinal);
 
-                // Regra: Currículo Médio 2026 (Só as 18 disciplinas oficiais - incluindo Ciências se for 2026? Não, removido acima)
-                if (isHS) {
-                    const HS_SUBJECTS = ["Artes", "Biologia", "Educação Física", "Empreendedorismo", "Ensino Religioso", "Espanhol", "Filosofia", "Física", "Geografia", "História", "Inglês", "Literatura", "Matemática", "Português", "Projeto de Vida", "Química", "Redação", "Sociologia"];
-                    if (!HS_SUBJECTS.includes(grade.subject)) return false;
-                    return true;
-                }
+            // Regra específica para 2025 (Histórico)
+            if (is2025) {
+                // Em 2025 Fundamental, mostrar apenas se tiver nota importada
+                if (!isHS && (!baseGrade.mediaAnual || baseGrade.mediaAnual === 0)) return null;
 
-                // Regra: Em 2025, mostrar apenas se tiver média anual (importados)
-                if (is2025 && (!grade.mediaAnual || grade.mediaAnual === 0)) return false;
-
-                return true;
-            })
-            .map(grade => {
-                const calculatedBimesters = {
-                    bimester1: calculateBimesterMedia(grade.bimesters.bimester1),
-                    bimester2: calculateBimesterMedia(grade.bimesters.bimester2),
-                    bimester3: calculateBimesterMedia(grade.bimesters.bimester3),
-                    bimester4: calculateBimesterMedia(grade.bimesters.bimester4),
+                return {
+                    ...baseGrade,
+                    bimesters: {
+                        bimester1: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                        bimester2: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                        bimester3: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                        bimester4: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                    },
+                    recuperacaoFinal: null,
+                    mediaAnual: baseGrade.mediaAnual || 0,
+                    mediaFinal: baseGrade.mediaAnual || 0,
+                    situacaoFinal: baseGrade.situacao || baseGrade.situacaoFinal
                 };
-                const finalData = calculateFinalData(calculatedBimesters, grade.recuperacaoFinal);
+            }
 
-                // Sobrescrever situacao se já estiver no banco (importado)
-                const situacaoFinal = grade.situacao || grade.situacaoFinal || finalData.situacaoFinal;
-
-                // Se for 2025, limpar as notas parciais (mostrar apenas média anual e status conforme solicitado)
-                if (selectedYear === 2025) {
-                    return {
-                        ...grade,
-                        bimesters: {
-                            bimester1: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                            bimester2: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                            bimester3: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                            bimester4: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                        },
-                        recuperacaoFinal: null,
-                        mediaAnual: grade.mediaAnual || 0,
-                        mediaFinal: grade.mediaAnual || 0,
-                        situacaoFinal: situacaoFinal
-                    };
-                }
-
-                return { ...grade, bimesters: calculatedBimesters, ...finalData, situacaoFinal };
-            });
-    }, [grades, student.id, student.gradeLevel, selectedYear]);
+            return { ...baseGrade, bimesters: calculatedBimesters, ...finalData };
+        }).filter(g => g !== null) as GradeEntry[];
+    }, [liveGrades, student.id, student.gradeLevel, selectedYear]);
 
     const currentUnitInfo = UNITS_DATA[student.unit] || DEFAULT_UNIT_DATA;
 
@@ -168,17 +190,17 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     }, [isEarlyChildhood, earlyChildhoodReports, student.id, selectedYear, selectedReportSemester]);
 
     const studentAttendance = useMemo(() => {
-        return attendanceRecords
+        return (liveAttendance || [])
             .filter(record => record.studentStatus && record.studentStatus[student.id])
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [attendanceRecords, student.id]);
+    }, [liveAttendance, student.id]);
 
     const absencesThisYear = useMemo(() => {
         return studentAttendance.filter(record => {
             const recordDate = new Date(record.date + 'T00:00:00');
             return recordDate.getFullYear() === selectedYear && record.studentStatus[student.id] === AttendanceStatus.ABSENT;
         }).length;
-    }, [studentAttendance, currentYear, student.id]);
+    }, [studentAttendance, selectedYear, student.id]);
 
 
     const formatGrade = (grade: number | null | undefined) => (grade !== null && grade !== undefined && grade !== 0) ? grade.toFixed(1) : '-';

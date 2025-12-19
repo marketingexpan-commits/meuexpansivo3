@@ -47,7 +47,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const unsubStudents = db.collection('students').onSnapshot((snapshot) => {
-      const data = snapshot.docs.map(doc => doc.data() as Student);
+      const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Student));
       setStudents(data);
       setInitialLoad(prev => ({ ...prev, students: true }));
     }, (error) => {
@@ -56,7 +56,7 @@ const App: React.FC = () => {
     });
 
     const unsubTeachers = db.collection('teachers').onSnapshot((snapshot) => {
-      const data = snapshot.docs.map(doc => doc.data() as Teacher);
+      const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Teacher));
       setTeachers(data);
       setInitialLoad(prev => ({ ...prev, teachers: true }));
     }, (error) => {
@@ -65,7 +65,7 @@ const App: React.FC = () => {
     });
 
     const unsubAdmins = db.collection('admins').onSnapshot((snapshot) => {
-      const data = snapshot.docs.map(doc => doc.data() as Admin);
+      const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Admin));
       setAdmins(data);
       setInitialLoad(prev => ({ ...prev, admins: true }));
     }, (error) => {
