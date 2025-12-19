@@ -672,9 +672,12 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                 )}
                                             </form>
 
-                                            {selectedStudent && (
+                                            {selectedStudent && selectedYear !== 2025 && (
                                                 <div className="mt-8">
-                                                    {/* SELETOR DE ANO (HISTÓRICO) */}
+                                                    {/* SELETOR DE ANO (HISTÓRICO)                                                    {/* NOTE: If selectedYear is 2025, we DO NOT render this individual section. 
+                                                        The ClassReport is rendered at the top level of this panel (line 470+).
+                                                        We must ensure this entire block is conditional.
+                                                    */}
                                                     <div className="mb-6 flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl border border-gray-200 gap-4 shadow-sm">
                                                         <div className="flex items-center gap-3">
                                                             <div className="p-2 bg-blue-50 rounded-lg text-blue-900">
@@ -720,16 +723,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                         Actually, the Form (Lançamento de Notas) should probably be hidden or disabled for 2025 if it's "Historical".
                                                         If I wrapped the helper at 474, it REPLACES the form. Correct.
                                                     */}
-                                                    grades={grades}
-                                                    unitData={UNITS_DATA[selectedStudent.unit] || null}
-                                                            />
-                                                </div>
-                                            ) : (
-                                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto pb-4">
-                                                <table className="min-w-[1000px] divide-y divide-gray-200 border border-gray-200 text-sm">
-                                                    <thead className="bg-blue-50">
-                                                        <tr>
-                                                            <th rowSpan={2} className="px-2 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-24 md:w-40 sticky left-0 bg-blue-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[10px] md:text-sm">Disciplina</th>
                                                             {[1, 2, 3, 4].map(num => (<th key={num} colSpan={4} className="px-1 py-2 text-center font-bold text-gray-700 uppercase tracking-wider border-l border-r border-gray-300 text-[10px]">{num}º BIM</th>))}
                                                             <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-16 text-[10px] leading-tight">Média<br />Anual</th>
                                                             <th rowSpan={2} className="px-2 py-3 text-center font-bold text-red-700 uppercase tracking-wider border-r border-gray-300 bg-red-50 w-16 text-[10px] leading-tight">Prova<br />Final</th>
@@ -890,208 +883,211 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                         )}
                                                     </tbody>
                                                 </table>
-                                            </div>
-                                                    )}
-                                        </div>
-                                    )}
-                            </div>
-                                    ))}
-                        </div>
                         </div>
                     )}
+                                                    )}
+                </div>
+                                    )}
+            </div>
+                                    ))}
+        </div>
+                        </div >
+                    )}
 
-                {activeTab === 'attendance' && (
-                    <div className="animate-fade-in-up">
-                        <div className="p-6 border rounded-lg shadow-md bg-white">
-                            <h2 className="text-xl font-bold mb-4 text-blue-950">Chamada Diária</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-gray-50 rounded-lg border mb-6">
-                                <div>
-                                    <label className="text-sm font-bold text-gray-700 mb-1 block">Série/Ano</label>
-                                    <select value={attendanceGrade} onChange={e => setAttendanceGrade(e.target.value)} className="w-full p-2 border rounded">
-                                        <option value="">Selecione...</option>
-                                        {SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="text-sm font-bold text-gray-700 mb-1 block">Turma</label>
-                                    <select value={attendanceClass} onChange={e => setAttendanceClass(e.target.value as SchoolClass)} className="w-full p-2 border rounded">
-                                        {SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="text-sm font-bold text-gray-700 mb-1 block">Disciplina</label>
-                                    <select value={attendanceSubject} onChange={e => setAttendanceSubject(e.target.value)} className="w-full p-2 border rounded">
-                                        <option value="">Selecione...</option>
-                                        {teacherSubjects.map(subj => <option key={subj} value={subj as string}>{subj as string}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="text-sm font-bold text-gray-700 mb-1 block">Data</label>
-                                    <input type="date" value={attendanceDate} onChange={e => setAttendanceDate(e.target.value)} className="w-full p-2 border rounded" />
-                                </div>
+{
+    activeTab === 'attendance' && (
+        <div className="animate-fade-in-up">
+            <div className="p-6 border rounded-lg shadow-md bg-white">
+                <h2 className="text-xl font-bold mb-4 text-blue-950">Chamada Diária</h2>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-gray-50 rounded-lg border mb-6">
+                    <div>
+                        <label className="text-sm font-bold text-gray-700 mb-1 block">Série/Ano</label>
+                        <select value={attendanceGrade} onChange={e => setAttendanceGrade(e.target.value)} className="w-full p-2 border rounded">
+                            <option value="">Selecione...</option>
+                            {SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-sm font-bold text-gray-700 mb-1 block">Turma</label>
+                        <select value={attendanceClass} onChange={e => setAttendanceClass(e.target.value as SchoolClass)} className="w-full p-2 border rounded">
+                            {SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-sm font-bold text-gray-700 mb-1 block">Disciplina</label>
+                        <select value={attendanceSubject} onChange={e => setAttendanceSubject(e.target.value)} className="w-full p-2 border rounded">
+                            <option value="">Selecione...</option>
+                            {teacherSubjects.map(subj => <option key={subj} value={subj as string}>{subj as string}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-sm font-bold text-gray-700 mb-1 block">Data</label>
+                        <input type="date" value={attendanceDate} onChange={e => setAttendanceDate(e.target.value)} className="w-full p-2 border rounded" />
+                    </div>
 
-                                <div className="flex flex-col">
-                                    <label className="text-sm font-bold text-gray-700 mb-1 block">Bimestre de Visualização</label>
-                                    <select
-                                        value={selectedFilterBimester}
-                                        onChange={e => setSelectedFilterBimester(Number(e.target.value))}
-                                        className="w-full p-2 border rounded text-blue-900 font-medium bg-blue-50 border-blue-200"
-                                    >
-                                        <option value={1}>1º Bimestre</option>
-                                        <option value={2}>2º Bimestre</option>
-                                        <option value={3}>3º Bimestre</option>
-                                        <option value={4}>4º Bimestre</option>
-                                    </select>
-                                </div>
+                    <div className="flex flex-col">
+                        <label className="text-sm font-bold text-gray-700 mb-1 block">Bimestre de Visualização</label>
+                        <select
+                            value={selectedFilterBimester}
+                            onChange={e => setSelectedFilterBimester(Number(e.target.value))}
+                            className="w-full p-2 border rounded text-blue-900 font-medium bg-blue-50 border-blue-200"
+                        >
+                            <option value={1}>1º Bimestre</option>
+                            <option value={2}>2º Bimestre</option>
+                            <option value={3}>3º Bimestre</option>
+                            <option value={4}>4º Bimestre</option>
+                        </select>
+                    </div>
 
-                                <div className="self-end">
-                                    <Button onClick={loadAttendance} className="w-full" disabled={!attendanceGrade}>Buscar Turma</Button>
-                                </div>
-                            </div>
+                    <div className="self-end">
+                        <Button onClick={loadAttendance} className="w-full" disabled={!attendanceGrade}>Buscar Turma</Button>
+                    </div>
+                </div>
 
-                            {isAttendanceLoading && <p>Carregando...</p>}
+                {isAttendanceLoading && <p>Carregando...</p>}
 
-                            {attendanceStudents.length > 0 && (
-                                <div>
-                                    {/* VIEW MOBILE/TABLET (CARDS) - Alterado para LG para cobrir tablets/celulares grandes */}
-                                    <div className="lg:hidden space-y-4">
-                                        {attendanceStudents.map(student => {
-                                            const absences: StudentAbsenceSummary = absenceData[student.id] || {
-                                                bimester: { 1: { count: 0, details: {} }, 2: { count: 0, details: {} }, 3: { count: 0, details: {} }, 4: { count: 0, details: {} } },
-                                                year: 0
-                                            };
-                                            const status = studentStatuses[student.id]; // Assuming studentStatuses holds the current status
-                                            const bimesterBreakdown = absences.bimester;
+                {attendanceStudents.length > 0 && (
+                    <div>
+                        {/* VIEW MOBILE/TABLET (CARDS) - Alterado para LG para cobrir tablets/celulares grandes */}
+                        <div className="lg:hidden space-y-4">
+                            {attendanceStudents.map(student => {
+                                const absences: StudentAbsenceSummary = absenceData[student.id] || {
+                                    bimester: { 1: { count: 0, details: {} }, 2: { count: 0, details: {} }, 3: { count: 0, details: {} }, 4: { count: 0, details: {} } },
+                                    year: 0
+                                };
+                                const status = studentStatuses[student.id]; // Assuming studentStatuses holds the current status
+                                const bimesterBreakdown = absences.bimester;
 
-                                            const totalAbsences = absences.year;
-                                            return (
-                                                <div key={student.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col gap-3">
-                                                    <div className="flex justify-between items-start">
-                                                        <div>
-                                                            <h4 className="font-bold text-gray-800">{student.name}</h4>
-                                                            <div className="flex items-center gap-2 mt-1">
-                                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${student.shift === 'Matutino' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>
-                                                                    {student.shift}
-                                                                </span>
-                                                                {status === AttendanceStatus.PRESENT && <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">PRESENTE</span>}
-                                                                {status === AttendanceStatus.ABSENT && <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">FALTOU</span>}
+                                const totalAbsences = absences.year;
+                                return (
+                                    <div key={student.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col gap-3">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <h4 className="font-bold text-gray-800">{student.name}</h4>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${student.shift === 'Matutino' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                        {student.shift}
+                                                    </span>
+                                                    {status === AttendanceStatus.PRESENT && <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">PRESENTE</span>}
+                                                    {status === AttendanceStatus.ABSENT && <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">FALTOU</span>}
+                                                </div>
+                                                <div className="mt-1 text-xs text-gray-500 space-y-0.5">
+                                                    <div className="text-gray-700">
+                                                        <p>{selectedFilterBimester}º Bimestre: <span className="font-bold text-red-600">{bimesterBreakdown[selectedFilterBimester]?.count || 0} falta(s)</span></p>
+
+                                                        {/* Detailed Breakdown */}
+                                                        {bimesterBreakdown[selectedFilterBimester]?.count > 0 && (
+                                                            <div className="mt-1 flex flex-wrap gap-2">
+                                                                {Object.entries(bimesterBreakdown[selectedFilterBimester].details).map(([month, days]) => (
+                                                                    <span key={month} className="text-[10px] bg-red-50 text-red-800 border border-red-100 rounded px-1.5 py-0.5">
+                                                                        <strong>{month}:</strong> {days.map(d => `[${d}]`).join(' ')}
+                                                                    </span>
+                                                                ))}
                                                             </div>
-                                                            <div className="mt-1 text-xs text-gray-500 space-y-0.5">
-                                                                <div className="text-gray-700">
-                                                                    <p>{selectedFilterBimester}º Bimestre: <span className="font-bold text-red-600">{bimesterBreakdown[selectedFilterBimester]?.count || 0} falta(s)</span></p>
+                                                        )}
+                                                    </div>
 
-                                                                    {/* Detailed Breakdown */}
-                                                                    {bimesterBreakdown[selectedFilterBimester]?.count > 0 && (
-                                                                        <div className="mt-1 flex flex-wrap gap-2">
-                                                                            {Object.entries(bimesterBreakdown[selectedFilterBimester].details).map(([month, days]) => (
-                                                                                <span key={month} className="text-[10px] bg-red-50 text-red-800 border border-red-100 rounded px-1.5 py-0.5">
-                                                                                    <strong>{month}:</strong> {days.map(d => `[${d}]`).join(' ')}
-                                                                                </span>
-                                                                            ))}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
+                                                    <p>Total no Ano: <span className="font-bold text-gray-800">{totalAbsences} falta(s)</span></p>
+                                                </div>
+                                            </div>
+                                        </div>
 
-                                                                <p>Total no Ano: <span className="font-bold text-gray-800">{totalAbsences} falta(s)</span></p>
+                                        <div className="flex gap-2 w-full mt-2">
+                                            <button
+                                                onClick={() => handleStatusChange(student.id, AttendanceStatus.PRESENT)}
+                                                className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all duration-200 border ${status === AttendanceStatus.PRESENT
+                                                    ? 'bg-green-500 text-white border-green-600 shadow-md transform scale-105'
+                                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                                    }`}
+                                            >
+                                                Presente
+                                            </button>
+                                            <button
+                                                onClick={() => handleStatusChange(student.id, AttendanceStatus.ABSENT)}
+                                                className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all duration-200 border ${status === AttendanceStatus.ABSENT
+                                                    ? 'bg-red-500 text-white border-red-600 shadow-md transform scale-105'
+                                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                                    }`}
+                                            >
+                                                Faltou
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* VIEW DESKTOP (TABLE) - Apenas acima de LG */}
+                        <div className="hidden lg:block bg-white rounded-lg shadow-sm border overflow-x-auto">
+                            {/* min-w-[800px] força o scroll se a tela for menor que isso, evitando esmagamento */}
+                            <table className="min-w-[800px] w-full">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aluno</th>
+                                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {attendanceStudents.map(student => {
+                                        const absences: StudentAbsenceSummary = absenceData[student.id] || {
+                                            bimester: { 1: { count: 0, details: {} }, 2: { count: 0, details: {} }, 3: { count: 0, details: {} }, 4: { count: 0, details: {} } },
+                                            year: 0
+                                        };
+                                        const bimesterBreakdown = absences.bimester;
+                                        return (
+                                            <tr key={student.id} className="hover:bg-gray-50">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-medium text-gray-900">{student.name}</p>
+                                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${student.shift === 'Matutino' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                                                            {student.shift}
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-xs text-gray-500 mt-1 font-normal flex items-center gap-x-4 gap-y-1 flex-wrap">
+                                                        <div className="flex gap-2 text-xs border-r pr-3 border-gray-300 items-start">
+                                                            <div className="flex flex-col">
+                                                                <span>
+                                                                    {selectedFilterBimester}º Bimestre: <strong className="text-red-600 font-bold">{bimesterBreakdown[selectedFilterBimester]?.count || 0} falta(s)</strong>
+                                                                </span>
+                                                                {/* Detailed Breakdown for Desktop */}
+                                                                {bimesterBreakdown[selectedFilterBimester]?.count > 0 && (
+                                                                    <div className="mt-0.5 flex flex-wrap gap-1">
+                                                                        {Object.entries(bimesterBreakdown[selectedFilterBimester].details).map(([month, days]) => (
+                                                                            <span key={month} className="text-[10px] text-gray-500">
+                                                                                <strong className="text-gray-700">{month}:</strong> {days.map(d => `[${d}]`).join(' ')} <span className="text-gray-300">|</span>
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
+
+                                                        <span>Total no Ano: <strong className="text-gray-700 font-bold">{absences.year} falta(s)</strong></span>
                                                     </div>
-
-                                                    <div className="flex gap-2 w-full mt-2">
-                                                        <button
-                                                            onClick={() => handleStatusChange(student.id, AttendanceStatus.PRESENT)}
-                                                            className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all duration-200 border ${status === AttendanceStatus.PRESENT
-                                                                ? 'bg-green-500 text-white border-green-600 shadow-md transform scale-105'
-                                                                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                                                                }`}
-                                                        >
-                                                            Presente
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleStatusChange(student.id, AttendanceStatus.ABSENT)}
-                                                            className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all duration-200 border ${status === AttendanceStatus.ABSENT
-                                                                ? 'bg-red-500 text-white border-red-600 shadow-md transform scale-105'
-                                                                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                                                                }`}
-                                                        >
-                                                            Faltou
-                                                        </button>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <div className="inline-flex rounded-md shadow-sm" role="group">
+                                                        <button type="button" onClick={() => handleStatusChange(student.id, AttendanceStatus.PRESENT)} className={`px-4 py-2 text-sm font-medium border rounded-l-lg transition-colors ${studentStatuses[student.id] === AttendanceStatus.PRESENT ? 'bg-green-500 text-white border-green-600 z-10' : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-100'}`}>Presente</button>
+                                                        <button type="button" onClick={() => handleStatusChange(student.id, AttendanceStatus.ABSENT)} className={`px-4 py-2 text-sm font-medium border rounded-r-lg transition-colors ${studentStatuses[student.id] === AttendanceStatus.ABSENT ? 'bg-red-600 text-white border-red-700 z-10' : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-100'}`}>Faltou</button>
                                                     </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-
-                                    {/* VIEW DESKTOP (TABLE) - Apenas acima de LG */}
-                                    <div className="hidden lg:block bg-white rounded-lg shadow-sm border overflow-x-auto">
-                                        {/* min-w-[800px] força o scroll se a tela for menor que isso, evitando esmagamento */}
-                                        <table className="min-w-[800px] w-full">
-                                            <thead className="bg-gray-50">
-                                                <tr>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aluno</th>
-                                                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-200">
-                                                {attendanceStudents.map(student => {
-                                                    const absences: StudentAbsenceSummary = absenceData[student.id] || {
-                                                        bimester: { 1: { count: 0, details: {} }, 2: { count: 0, details: {} }, 3: { count: 0, details: {} }, 4: { count: 0, details: {} } },
-                                                        year: 0
-                                                    };
-                                                    const bimesterBreakdown = absences.bimester;
-                                                    return (
-                                                        <tr key={student.id} className="hover:bg-gray-50">
-                                                            <td className="px-6 py-4">
-                                                                <div className="flex items-center gap-2">
-                                                                    <p className="font-medium text-gray-900">{student.name}</p>
-                                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${student.shift === 'Matutino' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
-                                                                        {student.shift}
-                                                                    </span>
-                                                                </div>
-                                                                <div className="text-xs text-gray-500 mt-1 font-normal flex items-center gap-x-4 gap-y-1 flex-wrap">
-                                                                    <div className="flex gap-2 text-xs border-r pr-3 border-gray-300 items-start">
-                                                                        <div className="flex flex-col">
-                                                                            <span>
-                                                                                {selectedFilterBimester}º Bimestre: <strong className="text-red-600 font-bold">{bimesterBreakdown[selectedFilterBimester]?.count || 0} falta(s)</strong>
-                                                                            </span>
-                                                                            {/* Detailed Breakdown for Desktop */}
-                                                                            {bimesterBreakdown[selectedFilterBimester]?.count > 0 && (
-                                                                                <div className="mt-0.5 flex flex-wrap gap-1">
-                                                                                    {Object.entries(bimesterBreakdown[selectedFilterBimester].details).map(([month, days]) => (
-                                                                                        <span key={month} className="text-[10px] text-gray-500">
-                                                                                            <strong className="text-gray-700">{month}:</strong> {days.map(d => `[${d}]`).join(' ')} <span className="text-gray-300">|</span>
-                                                                                        </span>
-                                                                                    ))}
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <span>Total no Ano: <strong className="text-gray-700 font-bold">{absences.year} falta(s)</strong></span>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-6 py-4 text-center">
-                                                                <div className="inline-flex rounded-md shadow-sm" role="group">
-                                                                    <button type="button" onClick={() => handleStatusChange(student.id, AttendanceStatus.PRESENT)} className={`px-4 py-2 text-sm font-medium border rounded-l-lg transition-colors ${studentStatuses[student.id] === AttendanceStatus.PRESENT ? 'bg-green-500 text-white border-green-600 z-10' : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-100'}`}>Presente</button>
-                                                                    <button type="button" onClick={() => handleStatusChange(student.id, AttendanceStatus.ABSENT)} className={`px-4 py-2 text-sm font-medium border rounded-r-lg transition-colors ${studentStatuses[student.id] === AttendanceStatus.ABSENT ? 'bg-red-600 text-white border-red-700 z-10' : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-100'}`}>Faltou</button>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div className="mt-6 text-right">
-                                        <Button onClick={handleSaveAttendance} disabled={isAttendanceSaving}>{isAttendanceSaving ? 'Salvando...' : 'Salvar Chamada'}</Button>
-                                    </div>
-                                </div>
-                            )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="mt-6 text-right">
+                            <Button onClick={handleSaveAttendance} disabled={isAttendanceSaving}>{isAttendanceSaving ? 'Salvando...' : 'Salvar Chamada'}</Button>
                         </div>
                     </div>
                 )}
             </div>
         </div>
+    )
+}
+            </div >
+        </div >
         </div >
     );
 };

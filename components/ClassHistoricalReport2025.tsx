@@ -37,7 +37,7 @@ export const ClassHistoricalReport2025: React.FC<ClassHistoricalReport2025Props>
                 if (gradeEntry) {
                     // Check if specific subject is essentially approved via global rule or individual grade
                     const finalMedia = gradeEntry.mediaAnual || 0;
-                    gradesMap[subject] = finalMedia.toFixed(1);
+                    gradesMap[subject] = String(finalMedia);
                 } else {
                     gradesMap[subject] = '-';
                 }
@@ -59,7 +59,7 @@ export const ClassHistoricalReport2025: React.FC<ClassHistoricalReport2025Props>
             return {
                 student,
                 grades: gradesMap,
-                mediaFinal: overallAverage.toFixed(1),
+                mediaFinal: overallAverage.toFixed(2), // Keep 2 decimals for overall average to be precise
                 // If Overall Approved, Status is Approved. Otherwise, check individual? 
                 // User said: "Status: Reflita a aprovação global do PDF em todas as linhas do aluno aprovado"
                 // Since this is a summary row, we show the calculated final average.
