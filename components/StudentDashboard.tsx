@@ -83,6 +83,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const [isLoadingAI, setIsLoadingAI] = useState(false);
     const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro'>('menu');
     const [showNotifications, setShowNotifications] = useState(false);
+    const [selectedYear, setSelectedYear] = useState<number>(2026);
 
     const unreadNotifications = notifications.filter(n => !n.read).length;
 
@@ -100,7 +101,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth() + 1;
     const semester = currentMonth >= 7 ? 2 : 1;
-    const headerText = `Boletim Escolar ${currentYear}.${semester}`;
+    const headerText = `Boletim Escolar ${selectedYear}.${semester}`;
 
 
 
@@ -113,8 +114,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
         (grades || []).filter(g => g.studentId === student.id).forEach(g => {
             const existing = gradeMap.get(g.subject);
-            // Prioriza o registro que tem ano 2025 ou o que tem nota maior se ambos forem do mesmo ano
-            if (!existing || (g.year === 2025 && existing.year !== 2025) || (g.mediaAnual || 0) > (existing.mediaAnual || 0)) {
+            // Filtrar pelo ano selecionado
+            if (g.year !== selectedYear) return;
+
+            if (!existing || (g.mediaAnual || 0) > (existing.mediaAnual || 0)) {
                 gradeMap.set(g.subject, g);
             }
         });
@@ -123,18 +126,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             .filter(grade => {
                 const isHS = student.gradeLevel && student.gradeLevel.includes('Ens. Médio');
 
-                // Regra: Remover 'Ciências' da 1ª Série
-                if (isFirstYearHS && grade.subject === 'Ciências') return false;
+                // Regra: Remover 'Ciências' do Ensino Médio em 2026
+                if (selectedYear === 2026 && isHS && grade.subject === 'Ciências') return false;
 
                 // Regra: Currículo Médio (Só as 18 disciplinas oficiais)
                 if (isHS) {
                     const HS_SUBJECTS = ["Artes", "Biologia", "Educação Física", "Empreendedorismo", "Ensino Religioso", "Espanhol", "Filosofia", "Física", "Geografia", "História", "Inglês", "Literatura", "Matemática", "Português", "Projeto de Vida", "Química", "Redação", "Sociologia"];
                     if (!HS_SUBJECTS.includes(grade.subject)) return false;
-                    return true; // Para Médio, mostra todas as disciplinas do currículo
+                    return true;
                 }
 
-                // Regra: Fundamental (Ocultar matérias sem nota para manter limpo, como solicitado anteriormente)
-                if (!grade.mediaAnual || grade.mediaAnual === 0) return false;
+                // Regra: Em 2025, mostrar apenas se tiver média anual (importados)
+                if (selectedYear === 2025 && (!grade.mediaAnual || grade.mediaAnual === 0)) return false;
 
                 return true;
             })
@@ -150,9 +153,26 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 // Sobrescrever situacao se já estiver no banco (importado)
                 const situacaoFinal = grade.situacao || grade.situacaoFinal || finalData.situacaoFinal;
 
+                // Se for 2025, limpar as notas parciais (mostrar apenas média anual e status conforme solicitado)
+                if (selectedYear === 2025) {
+                    return {
+                        ...grade,
+                        bimesters: {
+                            bimester1: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                            bimester2: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                            bimester3: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                            bimester4: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                        },
+                        recuperacaoFinal: null,
+                        mediaAnual: grade.mediaAnual || 0,
+                        mediaFinal: grade.mediaAnual || 0,
+                        situacaoFinal: situacaoFinal
+                    };
+                }
+
                 return { ...grade, bimesters: calculatedBimesters, ...finalData, situacaoFinal };
             });
-    }, [grades, student.id, student.gradeLevel]);
+    }, [grades, student.id, student.gradeLevel, selectedYear]);
 
     const currentUnitInfo = UNITS_DATA[student.unit] || DEFAULT_UNIT_DATA;
 
@@ -167,10 +187,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         if (!isEarlyChildhood) return null;
         return earlyChildhoodReports?.find(
             r => r.studentId === student.id &&
-                r.year === currentYear &&
+                r.year === selectedYear &&
                 r.semester === selectedReportSemester
         );
-    }, [isEarlyChildhood, earlyChildhoodReports, student.id, currentYear, selectedReportSemester]);
+    }, [isEarlyChildhood, earlyChildhoodReports, student.id, selectedYear, selectedReportSemester]);
 
     const studentAttendance = useMemo(() => {
         return attendanceRecords
@@ -578,6 +598,33 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     {/* --- BOLETIM / RELATÓRIO --- */}
                     {(currentView === 'grades' || currentView === 'early_childhood') && (
                         <div className="animate-fade-in-up">
+                            {/* SELETOR DE ANO (HISTÓRICO) */}
+                            <div className="mb-6 flex flex-col md:flex-row justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100 gap-4 print:hidden">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-blue-100 rounded-lg text-blue-900">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-blue-900">Ano de Referência</h4>
+                                        <p className="text-[10px] text-blue-700">Visualize seu histórico escolar de anos anteriores.</p>
+                                    </div>
+                                </div>
+                                <div className="flex bg-white p-1 rounded-lg shadow-sm border border-blue-200">
+                                    <button
+                                        onClick={() => setSelectedYear(2026)}
+                                        className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${selectedYear === 2026 ? 'bg-blue-900 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+                                    >
+                                        2026 (Atual)
+                                    </button>
+                                    <button
+                                        onClick={() => setSelectedYear(2025)}
+                                        className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${selectedYear === 2025 ? 'bg-blue-900 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+                                    >
+                                        Ver Ano Anterior (2025)
+                                    </button>
+                                </div>
+                            </div>
+
                             {/* --- CABEÇALHO DO BOLETIM (COMUM A TODOS) --- */}
                             <div className="mb-8 border-b-2 border-blue-950 pb-4">
                                 <div className="flex flex-col md:flex-row justify-between items-start gap-4">
@@ -753,7 +800,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 if (att.discipline !== grade.subject) return acc;
                                                                 if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
                                                                     const d = new Date(att.date + 'T00:00:00');
-                                                                    if (d.getFullYear() === currentYear) {
+                                                                    if (d.getFullYear() === selectedYear) {
                                                                         const m = d.getMonth();
                                                                         if (bimesterNum === 1 && m >= 0 && m <= 2) return acc + 1;
                                                                         if (bimesterNum === 2 && m >= 3 && m <= 5) return acc + 1;
@@ -794,6 +841,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             </tbody>
                                         </table>
                                     </div>
+
+                                    {/* AVISO INFORMATIVO 2025 */}
+                                    {selectedYear === 2025 && (
+                                        <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg text-center">
+                                            <p className="text-amber-800 text-xs font-medium">
+                                                <strong>Nota:</strong> Consulta informativa do histórico de 2025. Para documentos oficiais, contate a secretaria.
+                                            </p>
+                                        </div>
+                                    )}
                                 </>
                             )}
                         </div>
