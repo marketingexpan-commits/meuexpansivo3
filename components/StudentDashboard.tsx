@@ -63,7 +63,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const [isLoadingAI, setIsLoadingAI] = useState(false);
     const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro'>('menu');
     const [showNotifications, setShowNotifications] = useState(false);
-    const [selectedYear, setSelectedYear] = useState<number>(2026);
+    const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
     const unreadNotifications = notifications.filter(n => !n.read).length;
 

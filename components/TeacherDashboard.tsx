@@ -65,7 +65,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     const [topic, setTopic] = useState('');
     const [notaRecFinal, setNotaRecFinal] = useState<number | ''>('');
     const [currentGradeData, setCurrentGradeData] = useState<GradeEntry | null>(null);
-    const [selectedYear, setSelectedYear] = useState<number>(2026);
+    const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
     // Estados para Relatório (Educação Infantil)
     const [selectedSemester, setSelectedSemester] = useState<1 | 2>(1);
@@ -299,7 +299,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
             await onSaveAttendance(record);
 
             // --- TRIGGER: Sincronização Automática de Faltas no Boletim (Grades) ---
-            const year = new Date(attendanceDate).getFullYear();
+            const attendanceYear = new Date(attendanceDate).getFullYear(); // Ano da chamada (ex: 2025)
+            const targetGradeYear = selectedYear; // Ano do boletim onde deve aparecer (ex: 2026)
+
             const month = new Date(attendanceDate).getMonth(); // 0-11
             const bimesterOffset = Math.floor(month / 3) + 1; // 1, 2, 3, 4
 
@@ -315,15 +317,18 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                         const [rY, rM] = r.date.split('-').map(Number);
                         // rM vem do split (1-12), entao (rM-1)/3 + 1
                         const rBimester = Math.floor((rM - 1) / 3) + 1;
-                        if (rY === year && rBimester === bimesterOffset) {
+                        // FILTRO: Contamos faltas que ocorreram no ano da chamada e no bimestre correto.
+                        // A magica acontece ao escrever essa contagem no targetGradeYear abaixo.
+                        if (rY === attendanceYear && rBimester === bimesterOffset) {
                             bimesterAbsences++;
                         }
                     }
                 });
 
                 // 2. Identificar documento de grade
-                // Usar standardId determinístico: studentId_subject_year
-                const gradeId = `${student.id}_${attendanceSubject.replace(/\s+/g, '_')}_${year}`;
+                // FIX: Usar targetGradeYear (ano do boletim) ao inves do ano da data da chamada.
+                // Isso permite que chamadas feitas em Dez/2025 contem para o ano letivo de 2026 se selecionado.
+                const gradeId = `${student.id}_${attendanceSubject.replace(/\s+/g, '_')}_${targetGradeYear}`;
                 const existingGrade = liveGrades.find(g => g.id === gradeId);
 
                 // 3. Atualizar no Firestore
@@ -341,7 +346,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                         id: gradeId,
                         studentId: student.id,
                         subject: attendanceSubject,
-                        year: year,
+                        year: targetGradeYear,
                         matchesId: true, // Flag interna
                         subjectId: attendanceSubject.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, ""),
                         bimesters: {
