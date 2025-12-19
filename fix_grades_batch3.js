@@ -21,36 +21,36 @@ const SUBJECTS = [
 ];
 
 async function fixGrades() {
-    console.log("Iniciando correção de séries...");
+    console.log("Iniciando saneamento do banco (Unidade Boa Sorte)...");
 
-    // Buscar todos os alunos da unidade 'Boa Sorte'
     const snapshot = await db.collection('students')
         .where('unit', '==', 'Boa Sorte')
         .get();
 
-    console.log(`Encontrados ${snapshot.size} alunos na unidade Boa Sorte.`);
+    console.log(`Verificando ${snapshot.size} alunos...`);
 
     for (const doc of snapshot.docs) {
         const student = doc.data();
-        const currentGrade = student.gradeLevel;
+        let currentGrade = student.gradeLevel || "";
 
-        // O usuário disse que confundiu com 'Nível I - Edu. Infantil'
-        // Também vamos verificar se apenas '1º Ano' precisa ser expandido para '1º Ano - Fundamental I'
-        if (currentGrade === 'Nível I - Edu. Infantil' || currentGrade === '1º Ano') {
-            console.log(`Corrigindo aluno: ${student.name} (${currentGrade} -> 1º Ano - Fundamental I)`);
+        // Normalização para comparação (evitar problemas de encoding com º)
+        const normalizedGrade = currentGrade.normalize('NFD');
+        const target1 = "1º Ano - Fundamental I";
+
+        if (currentGrade.includes('1º Ano') || currentGrade.includes('1A') || currentGrade.includes('Nível I')) {
+            console.log(`Corrigindo: ${student.name} | De: "${currentGrade}" Para: "${target1}"`);
 
             await db.collection('students').doc(doc.id).update({
-                gradeLevel: '1º Ano - Fundamental I'
+                gradeLevel: target1
             });
 
-            // Verificar se já tem notas. Se não tiver, gerar as 20 pautas.
+            // Garantir 20 disciplinas
             const gradesSnapshot = await db.collection('grades')
                 .where('studentId', '==', doc.id)
-                .limit(1)
                 .get();
 
-            if (gradesSnapshot.empty) {
-                console.log(`     -> Gerando 20 disciplinas para ${student.name}...`);
+            if (gradesSnapshot.size < 20) {
+                console.log(`     -> Criando 20 disciplinas para ${student.name}...`);
                 const batch = db.batch();
                 const now = new Date().toISOString();
 
@@ -71,14 +71,14 @@ async function fixGrades() {
                         mediaFinal: 0,
                         situacaoFinal: 'Recuperação',
                         lastUpdated: now
-                    });
+                    }, { merge: true });
                 }
                 await batch.commit();
             }
         }
     }
 
-    console.log("Correção concluída!");
+    console.log("Saneamento concluído!");
     process.exit(0);
 }
 
