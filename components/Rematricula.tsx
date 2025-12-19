@@ -140,7 +140,17 @@ export const Rematricula: React.FC<RematriculaProps> = ({ students, grades, onRe
             </div>
 
             {/* FILTROS */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-blue-50 p-4 rounded-xl border border-blue-100">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                <div>
+                    <label className="block text-xs font-bold text-blue-900 uppercase mb-1">Pesquisar Aluno</label>
+                    <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        placeholder="Nome ou matrícula..."
+                        className="w-full p-2 rounded-lg border border-blue-200 text-sm focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
                 <div>
                     <label className="block text-xs font-bold text-blue-900 uppercase mb-1">Unidade</label>
                     <select
@@ -176,17 +186,7 @@ export const Rematricula: React.FC<RematriculaProps> = ({ students, grades, onRe
                 </div>
             </div>
 
-            {/* Search Input */}
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Pesquisar Aluno</label>
-                <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                    placeholder="Pesquisar por nome ou matrícula..."
-                    className="w-full p-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-blue-500"
-                />
-            </div>
+
 
             {/* LISTAGEM */}
             <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
