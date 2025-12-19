@@ -36,6 +36,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     const activeUnit = teacher.unit;
     const [filterGrade, setFilterGrade] = useState<string>('');
     const [filterShift, setFilterShift] = useState<string>('');
+    const [searchTerm, setSearchTerm] = useState<string>('');
 
     // Estados para Lançamento de Notas (Fundamental/Médio)
     const [selectedSubject, setSelectedSubject] = useState<string>('');
@@ -123,8 +124,12 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
         const matchesUnit = student.unit === activeUnit;
         const matchesGrade = filterGrade ? student.gradeLevel === filterGrade : true;
         const matchesShift = filterShift ? student.shift === filterShift : true;
-        return matchesUnit && matchesGrade && matchesShift;
-    }), [students, activeUnit, filterGrade, filterShift]);
+        const matchesSearch = searchTerm ? (
+            student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            student.code.toLowerCase().includes(searchTerm.toLowerCase())
+        ) : true;
+        return matchesUnit && matchesGrade && matchesShift && matchesSearch;
+    }), [students, activeUnit, filterGrade, filterShift, searchTerm]);
 
     const { absenceData, currentBimester } = useMemo(() => {
         if (attendanceStudents.length === 0) return { absenceData: {} as Record<string, StudentAbsenceSummary>, currentBimester: 1 };
@@ -454,6 +459,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         <option value="">Todos os Turnos</option>
                                         {SCHOOL_SHIFTS_LIST.map((shift) => (<option key={shift} value={shift}>{shift}</option>))}
                                     </select>
+                                    <input
+                                        type="text"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        placeholder="Pesquisar por nome ou matrícula..."
+                                        className="w-full text-sm p-2 border border-gray-300 rounded focus:ring-blue-950 focus:border-blue-950 mt-2"
+                                    />
                                 </div>
                                 <div ref={studentListRef} className="flex-1 overflow-y-auto pr-2 relative">
                                     <ul className="divide-y divide-gray-200">
