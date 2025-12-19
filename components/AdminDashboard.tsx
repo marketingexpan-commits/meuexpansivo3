@@ -1128,6 +1128,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             if (wsGrades) {
                                                 const gradesJson = XLSX.utils.sheet_to_json(wsGrades);
                                                 gradesJson.forEach((row: any) => {
+                                                    // Filter by Unit if selected
+                                                    if (maintenanceUnit !== 'all' && row.UNIDADE !== maintenanceUnit) return;
+
                                                     if (row.RAW_DATA) {
                                                         const gBase = JSON.parse(row.RAW_DATA);
                                                         batch.set(db.collection('grades').doc(gBase.id), gBase);
@@ -1140,6 +1143,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             if (wsAtt) {
                                                 const attJson = XLSX.utils.sheet_to_json(wsAtt);
                                                 attJson.forEach((row: any) => {
+                                                    // Filter by Unit if selected
+                                                    if (maintenanceUnit !== 'all' && row.UNIDADE !== maintenanceUnit) return;
+
                                                     if (row.RAW_DATA) {
                                                         const aBase = JSON.parse(row.RAW_DATA);
                                                         batch.set(db.collection('attendance').doc(aBase.id), aBase);
@@ -1154,6 +1160,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 msgJson.forEach((row: any) => {
                                                     if (row.ID) {
                                                         const { ID, ...rest } = row;
+                                                        // Difficult to filter messages by unit without extra info, but assuming user caution.
+                                                        // If we added unit to export, we could filter here.
+                                                        // Current Export doesn't explicitly add UNIDADE column to messages, so we SKIP filtering or Restore ALL.
+                                                        // Safest: Restore All for messages as they might be system wide or we can't tell.
+                                                        // Alternatively, assume messages are not unit-critical for selective restore?
+                                                        // Let's keep it restoring all to prevent data loss, or skip if strict.
                                                         batch.set(db.collection('schoolMessages').doc(ID), rest);
                                                     }
                                                 });
@@ -1164,6 +1176,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             if (wsRep) {
                                                 const repJson = XLSX.utils.sheet_to_json(wsRep);
                                                 repJson.forEach((row: any) => {
+                                                    // Filter by Unit if selected
+                                                    if (maintenanceUnit !== 'all' && row.UNIDADE !== maintenanceUnit) return;
+
                                                     if (row.ID) {
                                                         const { ID, UNIDADE, ...rest } = row; // remove helper fields
                                                         batch.set(db.collection('earlyChildhoodReports').doc(ID), rest);
