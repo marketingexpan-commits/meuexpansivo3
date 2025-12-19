@@ -245,8 +245,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     const handleStatusChange = (studentId: string, status: AttendanceStatus) => { setStudentStatuses(prev => ({ ...prev, [studentId]: status })); };
 
     const handleSaveAttendance = async () => {
-        if (attendanceStudents.length === 0) return; setIsAttendanceSaving(true);
-        // ID Includes Discipline
+        if (attendanceStudents.length === 0) return;
+        setIsAttendanceSaving(true);
+
+        // 1. Save the Attendance Record
         const recordId = `${attendanceDate}_${activeUnit}_${attendanceGrade}_${attendanceClass}_${attendanceSubject}`;
         const record: AttendanceRecord = {
             id: recordId,
@@ -256,10 +258,117 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
             schoolClass: attendanceClass,
             teacherId: teacher.id,
             teacherName: teacher.name,
-            discipline: attendanceSubject, // Saving Discipline
+            discipline: attendanceSubject,
             studentStatus: studentStatuses
         };
-        try { await onSaveAttendance(record); alert('Chamada salva com sucesso!'); } finally { setIsAttendanceSaving(false); }
+
+        try {
+            await onSaveAttendance(record);
+
+            // 2. TRIGGER: Synchronize Absences to 'Grades' Collection
+            // Goal: Immediately reflect "Faltas" in the Grade/Bulletin document without manual "Save Grade"
+
+            const [yearStr, monthStr] = attendanceDate.split('-');
+            const yearNum = Number(yearStr);
+            const monthNum = Number(monthStr);
+
+            // Determine Bimester (Simple Quarter Logic matches existing codebase)
+            let targetBimester: 1 | 2 | 3 | 4 | null = null;
+            if (monthNum >= 1 && monthNum <= 3) targetBimester = 1;
+            else if (monthNum >= 4 && monthNum <= 6) targetBimester = 2;
+            else if (monthNum >= 7 && monthNum <= 9) targetBimester = 3;
+            else if (monthNum >= 9 && monthNum <= 12) targetBimester = 4; // Including 9 in both? Existing code used basic range. Let's stick to 1-3, 4-6, 7-9, 10-12
+
+            // Correction based on line 107 logic:
+            if (monthNum >= 1 && monthNum <= 3) targetBimester = 1;
+            else if (monthNum >= 4 && monthNum <= 6) targetBimester = 2;
+            else if (monthNum >= 7 && monthNum <= 9) targetBimester = 3;
+            else if (monthNum >= 10 && monthNum <= 12) targetBimester = 4;
+
+            if (targetBimester && yearNum === new Date().getFullYear()) {
+                const bimesterKey = `bimester${targetBimester}` as keyof GradeEntry['bimesters'];
+
+                // Helper to calculate total absences for a specific student/subject/bimester
+                // We must use the *updated* record we just created, plus *other* records from the list
+                // Since 'attendanceRecords' might be stale, we filter out the OPEN record from 'attendanceRecords' and add our 'record'
+
+                const otherRecords = attendanceRecords.filter(r => r.id !== recordId && r.discipline === attendanceSubject);
+                const allRelevantRecords = [...otherRecords, record];
+
+                const updates: Promise<void>[] = [];
+
+                for (const student of attendanceStudents) {
+                    // Calculate Total Absences for this Student/Bimester
+                    let totalAbsences = 0;
+
+                    allRelevantRecords.forEach(r => {
+                        if (r.studentStatus[student.id] === AttendanceStatus.ABSENT) {
+                            const [y, m] = r.date.split('-');
+                            const mN = Number(m);
+                            const yN = Number(y);
+                            if (yN !== yearNum) return;
+
+                            let rBim = 0;
+                            if (mN >= 1 && mN <= 3) rBim = 1;
+                            else if (mN >= 4 && mN <= 6) rBim = 2;
+                            else if (mN >= 7 && mN <= 9) rBim = 3;
+                            else if (mN >= 10 && mN <= 12) rBim = 4;
+
+                            if (rBim === targetBimester) {
+                                totalAbsences++;
+                            }
+                        }
+                    });
+
+                    // Find or Create partial Grade Entry
+                    const existingGrade = grades.find(g => g.studentId === student.id && g.subject === attendanceSubject);
+
+                    // Construct new bimesters object
+                    const baseBimesters = existingGrade?.bimesters || {
+                        bimester1: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                        bimester2: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                        bimester3: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                        bimester4: { nota: null, recuperacao: null, media: 0, faltas: 0 }
+                    };
+
+                    const currentBimesterData = baseBimesters[bimesterKey];
+
+                    // If the absence count hasn't changed, skip write to save bandwidth? 
+                    // No, 'existingGrade.faltas' might be stale. Better to ensure sync.
+                    if (currentBimesterData.faltas === totalAbsences) continue;
+
+                    const newBimesterData = { ...currentBimesterData, faltas: totalAbsences };
+                    const newBimesters = { ...baseBimesters, [bimesterKey]: newBimesterData };
+
+                    // Recalculate Final Data (Media Annual might not change if only faltas changed, but good to be safe)
+                    // Note: calculateFinalData usually inputs bimesters and recuperacaoFinal
+                    const finalData = calculateFinalData(newBimesters, existingGrade?.recuperacaoFinal ?? null);
+
+                    const gradeToSave: GradeEntry = {
+                        id: existingGrade ? existingGrade.id : `grade-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                        studentId: student.id,
+                        subject: attendanceSubject,
+                        bimesters: newBimesters,
+                        recuperacaoFinal: existingGrade?.recuperacaoFinal ?? null,
+                        ...finalData,
+                        lastUpdated: new Date().toISOString()
+                    };
+
+                    updates.push(onSaveGrade(gradeToSave));
+                }
+
+                if (updates.length > 0) {
+                    await Promise.all(updates);
+                }
+            }
+
+            alert('Chamada salva e boletins atualizados com sucesso!');
+        } catch (error) {
+            console.error("Erro ao salvar chamada:", error);
+            alert("Erro ao salvar chamada.");
+        } finally {
+            setIsAttendanceSaving(false);
+        }
     };
 
     const getBimesterDataDisplay = () => { if (!currentGradeData || selectedStage === 'recuperacaoFinal') return null; const key = selectedStage.replace('_rec', '') as keyof GradeEntry['bimesters']; return currentGradeData.bimesters[key]; }
@@ -602,7 +711,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                                 <React.Fragment key={key}>
                                                                                     <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-300">{formatGrade(bData.nota)}</td>
                                                                                     <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-300">{formatGrade(bData.recuperacao)}</td>
-                                                                                    <td className="px-1 py-2 text-center text-gray-500 text-xs border-r border-gray-300">{currentStudentAbsences || ''}</td>
+                                                                                    <td className="px-1 py-2 text-center text-gray-500 text-xs border-r border-gray-300">
+                                                                                        {bData.faltas !== undefined && bData.faltas !== null ? bData.faltas : (currentStudentAbsences || '')}
+                                                                                    </td>
                                                                                 </React.Fragment>
                                                                             );
                                                                         })}

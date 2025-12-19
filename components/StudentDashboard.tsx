@@ -688,7 +688,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                     <td className="px-1 py-2 text-center text-gray-600 border-r border-gray-300 text-xs">{formatGrade(bData.nota)}</td>
                                                                     <td className="px-1 py-2 text-center text-gray-600 border-r border-gray-300 text-xs">{formatGrade(bData.recuperacao)}</td>
                                                                     <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs">{formatGrade(bData.media)}</td>
-                                                                    <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300 text-xs">{currentAbsences || ''}</td>
+                                                                    <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300 text-xs">
+                                                                        {/* Prioritize persisted 'faltas' from sync, fallback to dynamic */}
+                                                                        {bData.faltas !== undefined && bData.faltas !== null ? bData.faltas : (currentAbsences || '')}
+                                                                    </td>
                                                                 </React.Fragment>
                                                             );
                                                         })}
