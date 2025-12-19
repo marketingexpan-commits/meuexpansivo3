@@ -610,10 +610,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                         .filter(grade => {
                                                                             if (isFirstYearHS && grade.subject === 'Ciências') return false;
                                                                             if (isHS) {
-                                                                                const HS_SUBJECTS = ["Artes", "Biologia", "Educação Física", "Ensino Religioso", "Espanhol", "Filosofia", "Física", "Geografia", "História", "Inglês", "Literatura", "Matemática", "Português", "Projeto de Vida", "Química", "Redação", "Sociologia"];
+                                                                                const HS_SUBJECTS = ["Artes", "Biologia", "Educação Física", "Empreendedorismo", "Ensino Religioso", "Espanhol", "Filosofia", "Física", "Geografia", "História", "Inglês", "Literatura", "Matemática", "Português", "Projeto de Vida", "Química", "Redação", "Sociologia"];
                                                                                 if (!HS_SUBJECTS.includes(grade.subject)) return false;
                                                                             }
-                                                                            return grade.mediaAnual !== 0;
+                                                                            return true; // Mostrar sempre se passar pelo filtro de currículo
                                                                         })
                                                                         .map((grade) => (
                                                                             <tr key={grade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-200">
