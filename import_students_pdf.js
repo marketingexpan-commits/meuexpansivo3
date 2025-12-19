@@ -251,6 +251,7 @@ async function importStudents() {
             name: data.name,
             password: '123',
             gradeLevel: translateGrade(data.gradeLevelSigla),
+            gradeLevelSigla: data.gradeLevelSigla, // Store the original sigla
             shift: data.shift,
             schoolClass: data.schoolClass,
             unit: 'Boa Sorte',

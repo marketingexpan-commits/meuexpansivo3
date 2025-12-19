@@ -240,6 +240,7 @@ export interface Student {
   ficha_saude?: any;
   documentos_entregues?: string[];
   historico_escolar_2025?: string;
+  gradeLevelSigla?: string; // New field to preserve original PDF sigla
 }
 
 export interface Teacher {
