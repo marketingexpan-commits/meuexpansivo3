@@ -8,10 +8,16 @@ import {
     SCHOOL_GRADES_LIST,
     SCHOOL_SHIFTS_LIST,
     SCHOOL_CLASSES_LIST,
-    EARLY_CHILDHOOD_REPORT_TEMPLATE
-} from '../constants';
+    EARLY_CHILDHOOD_REPORT_TEMPLATE,
+    UNITS_DATA,
+    HS_SUBJECTS_2025,
+    HS_SUBJECTS_2026,
+    EF_SUBJECTS
+} from '../src/constants';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
+import { ClassHistoricalReport2025 } from './ClassHistoricalReport2025';
+import { applyGradePatches } from '../utils/dataPatch';
 
 interface TeacherDashboardProps {
     teacher: Teacher;
@@ -46,6 +52,22 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     const [topic, setTopic] = useState('');
     const [notaRecFinal, setNotaRecFinal] = useState<number | ''>('');
     const [currentGradeData, setCurrentGradeData] = useState<GradeEntry | null>(null);
+    const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+
+    // REGRAS DE SINCRONIZAÇÃO EM TEMPO REAL (onSnapshot DIRETO NO COMPONENTE)
+    // Note: User removed db import, we need to make sure we have access to live data or props.
+    // The props `grades` and `attendanceRecords` are passed. Usually we want live sync. 
+    // User backup removed live sync logic block (lines 30-45).
+    // I will restore `selectedYear` first as it's critical for 2025 view.
+    // For live sync, if the user backup relies on props, I will stick to props for now OR try to re-add live sync if I re-import db.
+    // Given "Security of Code", I'll stick to props `grades` for now but enable the View.
+    // Wait, the patching happens on `liveGrades`.
+    // I will define `liveGrades` as `grades` from props to minimize diffs if I can't easily re-add db listeners quickly without risk.
+    // Actually, I can just alias it: `const liveGrades = grades;` and `const liveAttendance = attendanceRecords;` 
+    // This makes the rest of the code compatible if I use `liveGrades` variables.
+
+    const liveGrades = grades;
+    const liveAttendance = attendanceRecords;
 
     // Estados para Relatório (Educação Infantil)
     const [selectedSemester, setSelectedSemester] = useState<1 | 2>(1);
@@ -320,6 +342,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                 <div className="mb-4 space-y-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
                                     <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Filtrar por:</h3>
                                     <div>
+                                        <label className="text-xs text-gray-400 block mb-1">Ano Letivo</label>
+                                        <select
+                                            value={selectedYear}
+                                            onChange={e => setSelectedYear(Number(e.target.value))}
+                                            className="w-full text-sm p-2 border border-gray-300 rounded focus:ring-blue-950 focus:border-blue-950 font-bold text-blue-900 mb-3"
+                                        >
+                                            <option value={2024}>2024</option>
+                                            <option value={2025}>2025 (Pauta)</option>
+                                        </select>
+                                    </div>
+                                    <div>
                                         <label className="text-xs text-gray-400 block mb-1">Unidade Escolar</label>
                                         <div className="w-full text-sm p-2 border border-gray-300 rounded bg-gray-100 text-gray-600 font-medium cursor-not-allowed">{activeUnit}</div>
                                     </div>
@@ -359,7 +392,16 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         <p className="text-lg">Selecione um aluno na lista ao lado.</p>
                                     </div>
                                 ) : (
-                                    isEarlyChildhoodStudent ? (
+                                    selectedYear === 2025 ? (
+                                        <div className="bg-white rounded-lg shadow-sm">
+                                            <ClassHistoricalReport2025
+                                                students={filteredStudents}
+                                                grades={applyGradePatches(grades)}
+                                                attendanceRecords={attendanceRecords}
+                                                unitData={UNITS_DATA[activeUnit]}
+                                            />
+                                        </div>
+                                    ) : isEarlyChildhoodStudent ? (
                                         // --- PAINEL DE RELATÓRIO INFANTIL ---
                                         <div>
                                             <h2 className="text-xl font-bold mb-6 text-blue-950 flex items-center">
