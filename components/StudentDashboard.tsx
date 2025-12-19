@@ -684,6 +684,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     student={student}
                                     grades={grades}
                                     unitData={currentUnitInfo}
+                                    attendanceRecords={liveAttendance}
                                 />
                             ) : isEarlyChildhood ? (
                                 // --- VIEW EDUCAÇÃO INFANTIL ---
