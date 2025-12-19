@@ -813,7 +813,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                     <td className="px-1 py-2 text-center text-gray-600 border-r border-gray-100 text-[11px]">{formatGrade(bData.nota)}</td>
                                                                     <td className="px-1 py-2 text-center text-gray-400 border-r border-gray-100 text-[11px]">{formatGrade(bData.recuperacao)}</td>
                                                                     <td className="px-1 py-2 text-center text-blue-900 font-bold bg-blue-50/30 border-r border-gray-100 text-[11px]">{formatGrade(bData.media)}</td>
-                                                                    <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300 text-[11px] font-medium">{currentAbsences || ''}</td>
+                                                                    <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300 text-[11px] font-medium">
+                                                                        {/* Prioritize persisted field (from trigger), fallback to live calculation */}
+                                                                        {bData.faltas !== undefined && bData.faltas !== 0 ? bData.faltas : (currentAbsences || '')}
+                                                                    </td>
                                                                 </React.Fragment>
                                                             );
                                                         })}

@@ -295,7 +295,76 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
             discipline: attendanceSubject, // Saving Discipline
             studentStatus: studentStatuses
         };
-        try { await onSaveAttendance(record); alert('Chamada salva com sucesso!'); } finally { setIsAttendanceSaving(false); }
+        try {
+            await onSaveAttendance(record);
+
+            // --- TRIGGER: Sincronização Automática de Faltas no Boletim (Grades) ---
+            const year = new Date(attendanceDate).getFullYear();
+            const month = new Date(attendanceDate).getMonth(); // 0-11
+            const bimesterOffset = Math.floor(month / 3) + 1; // 1, 2, 3, 4
+
+            // Combinar o registro atual com os existentes (excluindo versao anterior do mesmo dia se houver)
+            const updatedAttendanceRecords = [record, ...liveAttendance.filter(r => r.id !== recordId)];
+
+            const batchPromises = attendanceStudents.map(async (student) => {
+                // 1. Calcular faltas totais deste bimestre para este aluno/matéria
+                let bimesterAbsences = 0;
+                updatedAttendanceRecords.forEach(r => {
+                    if (r.discipline !== attendanceSubject) return;
+                    if (r.studentStatus[student.id] === AttendanceStatus.ABSENT) {
+                        const [rY, rM] = r.date.split('-').map(Number);
+                        // rM vem do split (1-12), entao (rM-1)/3 + 1
+                        const rBimester = Math.floor((rM - 1) / 3) + 1;
+                        if (rY === year && rBimester === bimesterOffset) {
+                            bimesterAbsences++;
+                        }
+                    }
+                });
+
+                // 2. Identificar documento de grade
+                // Usar standardId determinístico: studentId_subject_year
+                const gradeId = `${student.id}_${attendanceSubject.replace(/\s+/g, '_')}_${year}`;
+                const existingGrade = liveGrades.find(g => g.id === gradeId);
+
+                // 3. Atualizar no Firestore
+                const gradeRef = db.collection('grades').doc(gradeId);
+
+                if (existingGrade) {
+                    // Se existe, atualizamos apenas o campo de faltas do bimestre específico usando dot notation
+                    await gradeRef.update({
+                        [`bimesters.bimester${bimesterOffset}.faltas`]: bimesterAbsences,
+                        lastUpdated: new Date().toISOString()
+                    });
+                } else {
+                    // Se não existe, criamos o documento inicial
+                    const newGrade: GradeEntry = {
+                        id: gradeId,
+                        studentId: student.id,
+                        subject: attendanceSubject,
+                        year: year,
+                        matchesId: true, // Flag interna
+                        subjectId: attendanceSubject.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, ""),
+                        bimesters: {
+                            bimester1: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                            bimester2: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                            bimester3: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                            bimester4: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                        },
+                        mediaAnual: 0,
+                        mediaFinal: 0,
+                        situacaoFinal: 'Cursando',
+                        lastUpdated: new Date().toISOString()
+                    };
+                    // Atualiza o bimestre correto no novo objeto
+                    (newGrade.bimesters as any)[`bimester${bimesterOffset}`].faltas = bimesterAbsences;
+
+                    await gradeRef.set(newGrade);
+                }
+            });
+
+            await Promise.all(batchPromises);
+            alert('Chamada salva e faltas sincronizadas com sucesso!');
+        } finally { setIsAttendanceSaving(false); }
     };
 
     const getBimesterDataDisplay = () => { if (!currentGradeData || selectedStage === 'recuperacaoFinal') return null; const key = selectedStage.replace('_rec', '') as keyof GradeEntry['bimesters']; return currentGradeData.bimesters[key]; }
@@ -760,7 +829,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                                                 <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-100">{formatGrade(bData.nota)}</td>
                                                                                                 <td className="px-1 py-2 text-center text-gray-400 text-xs border-r border-gray-100">{formatGrade(bData.recuperacao)}</td>
                                                                                                 <td className="px-1 py-2 text-center text-blue-900 font-bold bg-blue-50/30 text-xs border-r border-gray-100">{formatGrade(bData.media)}</td>
-                                                                                                <td className="px-1 py-2 text-center text-gray-500 text-xs border-r border-gray-300">{currentStudentAbsences || ''}</td>
+                                                                                                <td className="px-1 py-2 text-center text-gray-500 text-xs border-r border-gray-300">
+                                                                                                    {/* Prioritize persisted field (from trigger), fallback to live calculation */}
+                                                                                                    {bData.faltas !== undefined && bData.faltas !== 0 ? bData.faltas : (currentStudentAbsences || '')}
+                                                                                                </td>
                                                                                             </React.Fragment>
                                                                                         );
                                                                                     })}
