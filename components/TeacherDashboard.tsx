@@ -637,6 +637,19 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
 
                                                                     return Array.from(gradeMap.values())
                                                                         .filter(grade => {
+                                                                            const is2025 = selectedYear === 2025;
+
+                                                                            // Regra 2025 Ensino Médio: Mostrar APENAS as 17 disciplinas do PDF
+                                                                            if (is2025 && isHS) {
+                                                                                const HS_SUBJECTS_2025 = [
+                                                                                    "Português", "Matemática", "Inglês", "História", "Geografia",
+                                                                                    "Literatura", "Biologia", "Física", "Química", "Redação",
+                                                                                    "Espanhol", "Ens. Artes", "Filosofia", "Sociologia",
+                                                                                    "Ed. Física", "Projeto de Vida", "Empreendedorismo"
+                                                                                ];
+                                                                                return HS_SUBJECTS_2025.includes(grade.subject);
+                                                                            }
+
                                                                             // Regra: Remover 'Ciências' do Ensino Médio em 2026
                                                                             if (selectedYear === 2026 && isHS && grade.subject === 'Ciências') return false;
 
@@ -646,7 +659,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                             }
 
                                                                             // Para 2025, ocultar disciplinas sem média (limpar visualização)
-                                                                            if (selectedYear === 2025 && (!grade.mediaAnual || grade.mediaAnual === 0)) return false;
+                                                                            if (is2025 && (!grade.mediaAnual || grade.mediaAnual === 0)) return false;
 
                                                                             return true;
                                                                         })

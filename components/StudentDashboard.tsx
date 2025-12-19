@@ -125,11 +125,23 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         return Array.from(gradeMap.values())
             .filter(grade => {
                 const isHS = student.gradeLevel && student.gradeLevel.includes('Ens. Médio');
+                const is2025 = selectedYear === 2025;
+
+                // Regra 2025 Ensino Médio: Mostrar APENAS as 17 disciplinas do PDF
+                if (is2025 && isHS) {
+                    const HS_SUBJECTS_2025 = [
+                        "Português", "Matemática", "Inglês", "História", "Geografia",
+                        "Literatura", "Biologia", "Física", "Química", "Redação",
+                        "Espanhol", "Ens. Artes", "Filosofia", "Sociologia",
+                        "Ed. Física", "Projeto de Vida", "Empreendedorismo"
+                    ];
+                    return HS_SUBJECTS_2025.includes(grade.subject);
+                }
 
                 // Regra: Remover 'Ciências' do Ensino Médio em 2026
                 if (selectedYear === 2026 && isHS && grade.subject === 'Ciências') return false;
 
-                // Regra: Currículo Médio (Só as 18 disciplinas oficiais)
+                // Regra: Currículo Médio 2026 (Só as 18 disciplinas oficiais - incluindo Ciências se for 2026? Não, removido acima)
                 if (isHS) {
                     const HS_SUBJECTS = ["Artes", "Biologia", "Educação Física", "Empreendedorismo", "Ensino Religioso", "Espanhol", "Filosofia", "Física", "Geografia", "História", "Inglês", "Literatura", "Matemática", "Português", "Projeto de Vida", "Química", "Redação", "Sociologia"];
                     if (!HS_SUBJECTS.includes(grade.subject)) return false;
@@ -137,7 +149,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 }
 
                 // Regra: Em 2025, mostrar apenas se tiver média anual (importados)
-                if (selectedYear === 2025 && (!grade.mediaAnual || grade.mediaAnual === 0)) return false;
+                if (is2025 && (!grade.mediaAnual || grade.mediaAnual === 0)) return false;
 
                 return true;
             })

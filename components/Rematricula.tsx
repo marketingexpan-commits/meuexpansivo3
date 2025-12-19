@@ -36,7 +36,7 @@ export const Rematricula: React.FC<RematriculaProps> = ({ students, grades, onRe
         const isInfantil = student.gradeLevel.includes('Nível') || student.gradeLevel.includes('Infantil');
         if (isInfantil) return { color: 'text-blue-600', label: 'Infantil - Promoção por Idade', approved: true };
 
-        const studentGrades = grades.filter(g => g.studentId === student.id);
+        const studentGrades = grades.filter(g => g.studentId === student.id && g.year === 2025);
         if (studentGrades.length === 0) return { color: 'text-gray-400', label: 'Sem notas lançadas', approved: false };
 
         const allApproved = studentGrades.every(g => g.situacaoFinal === 'Aprovado');
