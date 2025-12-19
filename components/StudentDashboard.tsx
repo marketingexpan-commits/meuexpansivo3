@@ -2,52 +2,15 @@ import React, { useState, useMemo } from 'react';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
 import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro } from '../types';
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
-import { calculateBimesterMedia, calculateFinalData } from '../src/constants'; // Import Sync Fix
+import { calculateBimesterMedia, calculateFinalData, UNITS_DATA, DEFAULT_UNIT_DATA } from '../src/constants'; // Import Sync Fix
 import { getStudyTips } from '../services/geminiService';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 import { MessageBox } from './MessageBox';
 import { FinanceiroScreen } from './FinanceiroScreen';
+import { HistoricalReport2025 } from './HistoricalReport2025';
 
-// --- DADOS DAS UNIDADES (Definidos localmente) ---
-const UNITS_DATA: Record<string, { address: string; cep: string; phone: string; email: string; cnpj: string }> = {
-    'Zona Norte': {
-        address: 'Rua Desportista José Augusto de Freitas, 50 - Pajuçara, Natal - RN',
-        cep: '59133-400',
-        phone: '(84) 3661-4742',
-        email: 'contato.zn@expansivo.com.br',
-        cnpj: '08.693.673/0001-95'
-    },
-    'Boa Sorte': {
-        address: 'Av. Boa Sorte, 265 - Nossa Senhora da Apresentação, Natal - RN',
-        cep: '59114-250',
-        phone: '(84) 3661-4742',
-        email: 'contato.bs@expansivo.com.br',
-        cnpj: '08.693.673/0002-76'
-    },
-    'Extremoz': {
-        address: 'Rua do Futebol, 32 - Estivas, Extremoz - RN',
-        cep: '59575-000',
-        phone: '(84) 98186-3522',
-        email: 'expansivoextremoz@gmail.com',
-        cnpj: '08.693.673/0003-57'
-    },
-    'Quintas': {
-        address: 'Rua Coemaçu, 1045 - Quintas, Natal - RN',
-        cep: '59035-060',
-        phone: '(84) 3653-1063',
-        email: 'contato.quintas@expansivo.com.br',
-        cnpj: '08.693.673/0004-38'
-    }
-};
-
-const DEFAULT_UNIT_DATA = {
-    address: 'Expansivo Rede de Ensino - Matriz',
-    cep: '59000-000',
-    phone: '(84) 3232-0000',
-    email: 'contato@expansivo.com.br',
-    cnpj: '00.000.000/0001-00'
-};
+// UNITS_DATA and DEFAULT_UNIT_DATA moved to src/constants.ts
 
 interface StudentDashboardProps {
     student: Student;
@@ -610,29 +573,29 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     {/* --- BOLETIM / RELATÓRIO --- */}
                     {(currentView === 'grades' || currentView === 'early_childhood') && (
                         <div className="animate-fade-in-up">
-                            {/* SELETOR DE ANO (HISTÓRICO) */}
+                            {/* SELETOR DE ANO / TIPO DE BOLETIM */}
                             <div className="mb-6 flex flex-col md:flex-row justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100 gap-4 print:hidden">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 bg-blue-100 rounded-lg text-blue-900">
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                     </div>
                                     <div>
-                                        <h4 className="text-sm font-bold text-blue-900">Ano de Referência</h4>
-                                        <p className="text-[10px] text-blue-700">Visualize seu histórico escolar de anos anteriores.</p>
+                                        <h4 className="text-sm font-bold text-blue-900">Visualização do Desempenho</h4>
+                                        <p className="text-[10px] text-blue-700">Selecione o ano letivo para consulta.</p>
                                     </div>
                                 </div>
-                                <div className="flex bg-white p-1 rounded-lg shadow-sm border border-blue-200">
+                                <div className="flex bg-white p-1 rounded-lg shadow-inner border border-blue-200">
                                     <button
                                         onClick={() => setSelectedYear(2026)}
-                                        className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${selectedYear === 2026 ? 'bg-blue-900 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+                                        className={`px-4 py-2 rounded-md text-[10px] md:text-sm font-bold transition-all ${selectedYear === 2026 ? 'bg-blue-900 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
                                     >
-                                        2026 (Atual)
+                                        Boletim Atual (2026)
                                     </button>
                                     <button
                                         onClick={() => setSelectedYear(2025)}
-                                        className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${selectedYear === 2025 ? 'bg-blue-900 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+                                        className={`px-4 py-2 rounded-md text-[10px] md:text-sm font-bold transition-all ${selectedYear === 2025 ? 'bg-blue-900 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
                                     >
-                                        Ver Ano Anterior (2025)
+                                        Resumo Médias (2025)
                                     </button>
                                 </div>
                             </div>
@@ -693,8 +656,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 </Button>
                             </div>
 
-                            {/* --- RENDERIZAÇÃO CONDICIONAL: EDUCAÇÃO INFANTIL vs FUNDAMENTAL/MÉDIO --- */}
-                            {isEarlyChildhood ? (
+                            {/* --- RENDERIZAÇÃO CONDICIONAL: EDUCAÇÃO INFANTIL vs FUNDAMENTAL/MÉDIO vs HISTÓRICO 2025 --- */}
+                            {selectedYear === 2025 && !isEarlyChildhood ? (
+                                <HistoricalReport2025
+                                    student={student}
+                                    grades={grades}
+                                    unitData={currentUnitInfo}
+                                />
+                            ) : isEarlyChildhood ? (
                                 // --- VIEW EDUCAÇÃO INFANTIL ---
                                 <div className="space-y-6">
                                     <div className="flex gap-4 mb-4 print:hidden">
@@ -715,14 +684,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         <h3 className="text-center font-bold text-xl text-blue-950 mb-2 uppercase">Relatório - {selectedReportSemester}º Semestre</h3>
 
                                         {/* LEGENDA */}
-                                        {/* LEGENDA */}
                                         <div className="flex flex-wrap justify-center gap-4 my-6 text-xs">
                                             <div className="flex items-center gap-2"><span className="w-3 h-3 bg-green-100 border border-green-300 rounded-sm flex-shrink-0"></span> <span className="whitespace-nowrap"><strong>D</strong> - Desenvolvido</span></div>
                                             <div className="flex items-center gap-2"><span className="w-3 h-3 bg-yellow-100 border border-yellow-300 rounded-sm flex-shrink-0"></span> <span className="whitespace-nowrap"><strong>EP</strong> - Em Processo</span></div>
                                             <div className="flex items-center gap-2"><span className="w-3 h-3 bg-red-100 border border-red-300 rounded-sm flex-shrink-0"></span> <span className="whitespace-nowrap"><strong>NO</strong> - Não Observado</span></div>
                                         </div>
 
-                                        {/* CORREÇÃO: Verificar se currentReport existe antes de acessar fields */}
                                         {currentReport && currentReport.fields ? (
                                             <>
                                                 <div className="space-y-6">
@@ -745,7 +712,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                     ))}
                                                 </div>
 
-                                                {/* OBSERVAÇÕES DO PROFESSOR */}
                                                 <div className="mt-8 border border-gray-200 rounded-lg p-6 bg-blue-50/30">
                                                     <h4 className="font-bold text-blue-950 mb-3 flex items-center gap-2">
                                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path></svg>
@@ -766,9 +732,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             ) : (
                                 // --- VIEW FUNDAMENTAL E MÉDIO (Notas Numéricas) ---
                                 <>
-                                    {/* --- VIEW GRADES: RESPONSIVE TABLE (ALL SCREENS) --- */}
                                     <div className="overflow-x-auto pb-4 w-full print:overflow-visible print:w-full print:pb-0">
-                                        {/* Print Adjustment: Remove fixed min-width to allow shrinking, reduce text size further */}
                                         <table className="min-w-[1000px] print:min-w-0 print:w-full divide-y divide-gray-200 border border-gray-300 text-sm print:text-[8px] print:leading-tight">
                                             <thead className="bg-blue-50 print:bg-gray-100">
                                                 <tr>
@@ -807,7 +771,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             const bData = grade.bimesters[key as keyof typeof grade.bimesters];
                                                             const bimesterNum = Number(key.replace('bimester', '')) as 1 | 2 | 3 | 4;
 
-                                                            // STRICT SUBJECT ABSENCE COUNT
                                                             const currentAbsences = studentAttendance.reduce((acc, att) => {
                                                                 if (att.discipline !== grade.subject) return acc;
                                                                 if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
@@ -853,15 +816,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             </tbody>
                                         </table>
                                     </div>
-
-                                    {/* AVISO INFORMATIVO 2025 */}
-                                    {selectedYear === 2025 && (
-                                        <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg text-center">
-                                            <p className="text-amber-800 text-xs font-medium">
-                                                <strong>Nota:</strong> Consulta informativa do histórico de 2025. Para documentos oficiais, contate a secretaria.
-                                            </p>
-                                        </div>
-                                    )}
                                 </>
                             )}
                         </div>

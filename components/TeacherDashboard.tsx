@@ -12,6 +12,8 @@ import {
 } from '../constants';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
+import { HistoricalReport2025 } from './HistoricalReport2025';
+import { UNITS_DATA } from '../src/constants';
 
 interface TeacherDashboardProps {
     teacher: Teacher;
@@ -599,145 +601,156 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                     </div>
 
                                                     <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center"><span className="mr-2">📊</span> Boletim Geral do Aluno ({selectedYear})</h3>
-                                                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto pb-4">
-                                                        <table className="min-w-[1000px] divide-y divide-gray-200 border border-gray-200 text-sm">
-                                                            <thead className="bg-blue-50">
-                                                                <tr>
-                                                                    <th rowSpan={2} className="px-2 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-24 md:w-40 sticky left-0 bg-blue-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[10px] md:text-sm">Disciplina</th>
-                                                                    {[1, 2, 3, 4].map(num => (<th key={num} colSpan={4} className="px-1 py-2 text-center font-bold text-gray-700 uppercase tracking-wider border-l border-r border-gray-300 text-[10px]">{num}º BIM</th>))}
-                                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-red-700 uppercase tracking-wider border-r border-gray-300 bg-red-50 w-16 text-[10px] leading-tight">Prova<br />Final</th>
-                                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-blue-950 uppercase tracking-wider border-r border-gray-300 bg-blue-100 w-16 text-[10px] leading-tight">Média<br />Final</th>
-                                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase w-20 text-[10px]">Situação</th>
-                                                                </tr>
-                                                                <tr className="bg-blue-50 text-[10px]">
-                                                                    {[1, 2, 3, 4].map(num => (
-                                                                        <React.Fragment key={num}>
-                                                                            <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-200" title={`Nota ${num}º Bimestre`}>N{num}</th>
-                                                                            <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-200" title={`Recuperação ${num}º Bimestre`}>R{num}</th>
-                                                                            <th className="px-1 py-1 text-center font-bold text-blue-900 bg-blue-50 border-r border-gray-200" title={`Média ${num}º Bimestre`}>M{num}</th>
-                                                                            <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300" title={`Faltas ${num}º Bimestre`}>F{num}</th>
-                                                                        </React.Fragment>
-                                                                    ))}
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody className="bg-white divide-y divide-gray-200">
-                                                                {(() => {
-                                                                    const isHS = selectedStudent.gradeLevel && selectedStudent.gradeLevel.includes('Ens. Médio');
 
-                                                                    const gradeMap = new Map<string, GradeEntry>();
-                                                                    (grades || []).filter(g => g.studentId === selectedStudent.id).forEach(g => {
-                                                                        // Filtrar pelo ano selecionado
-                                                                        if (g.year !== selectedYear) return;
-
-                                                                        const existing = gradeMap.get(g.subject);
-                                                                        if (!existing || (g.mediaAnual || 0) > (existing.mediaAnual || 0)) {
-                                                                            gradeMap.set(g.subject, g);
-                                                                        }
-                                                                    });
-
-                                                                    return Array.from(gradeMap.values())
-                                                                        .filter(grade => {
-                                                                            const is2025 = selectedYear === 2025;
-
-                                                                            // Regra 2025 Ensino Médio: Mostrar APENAS as 17 disciplinas do PDF
-                                                                            if (is2025 && isHS) {
-                                                                                const HS_SUBJECTS_2025 = [
-                                                                                    "Português", "Matemática", "Inglês", "História", "Geografia",
-                                                                                    "Literatura", "Biologia", "Física", "Química", "Redação",
-                                                                                    "Espanhol", "Ens. Artes", "Filosofia", "Sociologia",
-                                                                                    "Ed. Física", "Projeto de Vida", "Empreendedorismo"
-                                                                                ];
-                                                                                return HS_SUBJECTS_2025.includes(grade.subject);
-                                                                            }
-
-                                                                            // Regra: Remover 'Ciências' do Ensino Médio em 2026
-                                                                            if (selectedYear === 2026 && isHS && grade.subject === 'Ciências') return false;
-
-                                                                            if (isHS) {
-                                                                                const HS_SUBJECTS = ["Artes", "Biologia", "Educação Física", "Empreendedorismo", "Ensino Religioso", "Espanhol", "Filosofia", "Física", "Geografia", "História", "Inglês", "Literatura", "Matemática", "Português", "Projeto de Vida", "Química", "Redação", "Sociologia"];
-                                                                                if (!HS_SUBJECTS.includes(grade.subject)) return false;
-                                                                            }
-
-                                                                            // Para 2025, ocultar disciplinas sem média (limpar visualização)
-                                                                            if (is2025 && (!grade.mediaAnual || grade.mediaAnual === 0)) return false;
-
-                                                                            return true;
-                                                                        })
-                                                                        .map((grade) => {
-                                                                            const displayGrade = selectedYear === 2025 ? {
-                                                                                ...grade,
-                                                                                bimesters: {
-                                                                                    bimester1: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                                                                                    bimester2: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                                                                                    bimester3: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                                                                                    bimester4: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                                                                                },
-                                                                                recuperacaoFinal: null,
-                                                                                mediaFinal: grade.mediaAnual || 0,
-                                                                                situacaoFinal: grade.situacaoFinal || 'Aprovado'
-                                                                            } : grade;
-
-                                                                            return (
-                                                                                <tr key={displayGrade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-200">
-                                                                                    <td className="px-2 py-2 font-bold text-gray-900 border-r border-gray-300 text-[10px] md:text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] align-top">
-                                                                                        <span className="uppercase block leading-tight mb-1">{displayGrade.subject}</span>
-                                                                                    </td>
-                                                                                    {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
-                                                                                        const bData = displayGrade.bimesters[key as keyof typeof displayGrade.bimesters];
-                                                                                        const bimesterNum = Number(key.replace('bimester', '')) as 1 | 2 | 3 | 4;
-                                                                                        // Calculate absences dynamically for this student and bimester
-                                                                                        const currentStudentAbsences = attendanceRecords.reduce((acc, record) => {
-                                                                                            if (record.discipline !== grade.subject) return acc;
-                                                                                            if (record.studentStatus[grade.studentId] === AttendanceStatus.ABSENT) {
-                                                                                                const [y, mStr] = record.date.split('-');
-                                                                                                const yNum = Number(y);
-                                                                                                const mNum = Number(mStr);
-                                                                                                if (yNum === selectedYear) {
-                                                                                                    if (bimesterNum === 1 && mNum >= 1 && mNum <= 3) return acc + 1;
-                                                                                                    if (bimesterNum === 2 && mNum >= 4 && mNum <= 6) return acc + 1;
-                                                                                                    if (bimesterNum === 3 && mNum >= 7 && mNum <= 9) return acc + 1;
-                                                                                                    if (bimesterNum === 4 && mNum >= 10 && mNum <= 12) return acc + 1;
-                                                                                                }
-                                                                                            }
-                                                                                            return acc;
-                                                                                        }, 0);
-
-                                                                                        return (
-                                                                                            <React.Fragment key={key}>
-                                                                                                <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-100">{formatGrade(bData.nota)}</td>
-                                                                                                <td className="px-1 py-2 text-center text-gray-400 text-xs border-r border-gray-100">{formatGrade(bData.recuperacao)}</td>
-                                                                                                <td className="px-1 py-2 text-center text-blue-900 font-bold bg-blue-50/30 text-xs border-r border-gray-100">{formatGrade(bData.media)}</td>
-                                                                                                <td className="px-1 py-2 text-center text-gray-500 text-xs border-r border-gray-300">{currentStudentAbsences || ''}</td>
-                                                                                            </React.Fragment>
-                                                                                        );
-                                                                                    })}
-                                                                                    <td className="px-1 py-2 text-center font-bold text-red-600 bg-red-50 text-sm border-r border-gray-300">{formatGrade(displayGrade.recuperacaoFinal)}</td>
-                                                                                    <td className="px-1 py-2 text-center font-extrabold text-blue-950 bg-blue-50 text-sm border-r border-gray-300">{formatGrade(displayGrade.mediaFinal)}</td>
-                                                                                    <td className="px-1 py-2 text-center align-middle">
-                                                                                        <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${displayGrade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
-                                                                                            displayGrade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                                                                                'bg-red-50 text-red-700 border-red-200'
-                                                                                            }`}>
-                                                                                            {displayGrade.situacaoFinal}
-                                                                                        </span>
-                                                                                    </td>
-                                                                                </tr>
-                                                                            )
-                                                                        })
-                                                                })()}
-                                                                {/* AVISO INFORMATIVO 2025 */}
-                                                                {selectedYear === 2025 && (
+                                                    {selectedYear === 2025 && !isEarlyChildhoodStudent ? (
+                                                        <div className="animate-fade-in-up">
+                                                            <HistoricalReport2025
+                                                                student={selectedStudent}
+                                                                grades={grades}
+                                                                unitData={UNITS_DATA[selectedStudent.unit] || null}
+                                                            />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto pb-4">
+                                                            <table className="min-w-[1000px] divide-y divide-gray-200 border border-gray-200 text-sm">
+                                                                <thead className="bg-blue-50">
                                                                     <tr>
-                                                                        <td colSpan={21} className="px-4 py-4 bg-amber-50 text-center">
-                                                                            <p className="text-amber-800 text-[10px] font-medium uppercase tracking-wider">
-                                                                                Aviso: Consulta informativa do histórico de 2025. Para documentos oficiais, contate a secretaria.
-                                                                            </p>
-                                                                        </td>
+                                                                        <th rowSpan={2} className="px-2 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-24 md:w-40 sticky left-0 bg-blue-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[10px] md:text-sm">Disciplina</th>
+                                                                        {[1, 2, 3, 4].map(num => (<th key={num} colSpan={4} className="px-1 py-2 text-center font-bold text-gray-700 uppercase tracking-wider border-l border-r border-gray-300 text-[10px]">{num}º BIM</th>))}
+                                                                        <th rowSpan={2} className="px-2 py-3 text-center font-bold text-red-700 uppercase tracking-wider border-r border-gray-300 bg-red-50 w-16 text-[10px] leading-tight">Prova<br />Final</th>
+                                                                        <th rowSpan={2} className="px-2 py-3 text-center font-bold text-blue-950 uppercase tracking-wider border-r border-gray-300 bg-blue-100 w-16 text-[10px] leading-tight">Média<br />Final</th>
+                                                                        <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase w-20 text-[10px]">Situação</th>
                                                                     </tr>
-                                                                )}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
+                                                                    <tr className="bg-blue-50 text-[10px]">
+                                                                        {[1, 2, 3, 4].map(num => (
+                                                                            <React.Fragment key={num}>
+                                                                                <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-200" title={`Nota ${num}º Bimestre`}>N{num}</th>
+                                                                                <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-200" title={`Recuperação ${num}º Bimestre`}>R{num}</th>
+                                                                                <th className="px-1 py-1 text-center font-bold text-blue-900 bg-blue-50 border-r border-gray-200" title={`Média ${num}º Bimestre`}>M{num}</th>
+                                                                                <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300" title={`Faltas ${num}º Bimestre`}>F{num}</th>
+                                                                            </React.Fragment>
+                                                                        ))}
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="bg-white divide-y divide-gray-200">
+                                                                    {(() => {
+                                                                        const isHS = selectedStudent.gradeLevel && selectedStudent.gradeLevel.includes('Ens. Médio');
+
+                                                                        const gradeMap = new Map<string, GradeEntry>();
+                                                                        (grades || []).filter(g => g.studentId === selectedStudent.id).forEach(g => {
+                                                                            // Filtrar pelo ano selecionado
+                                                                            if (g.year !== selectedYear) return;
+
+                                                                            const existing = gradeMap.get(g.subject);
+                                                                            if (!existing || (g.mediaAnual || 0) > (existing.mediaAnual || 0)) {
+                                                                                gradeMap.set(g.subject, g);
+                                                                            }
+                                                                        });
+
+                                                                        return Array.from(gradeMap.values())
+                                                                            .filter(grade => {
+                                                                                const is2025 = selectedYear === 2025;
+
+                                                                                // Regra 2025 Ensino Médio: Mostrar APENAS as 17 disciplinas do PDF
+                                                                                if (is2025 && isHS) {
+                                                                                    const HS_SUBJECTS_2025 = [
+                                                                                        "Português", "Matemática", "Inglês", "História", "Geografia",
+                                                                                        "Literatura", "Biologia", "Física", "Química", "Redação",
+                                                                                        "Espanhol", "Ens. Artes", "Filosofia", "Sociologia",
+                                                                                        "Ed. Física", "Projeto de Vida", "Empreendedorismo"
+                                                                                    ];
+                                                                                    return HS_SUBJECTS_2025.includes(grade.subject);
+                                                                                }
+
+                                                                                // Regra: Remover 'Ciências' do Ensino Médio em 2026
+                                                                                if (selectedYear === 2026 && isHS && grade.subject === 'Ciências') return false;
+
+                                                                                if (isHS) {
+                                                                                    const HS_SUBJECTS = ["Artes", "Biologia", "Educação Física", "Empreendedorismo", "Ensino Religioso", "Espanhol", "Filosofia", "Física", "Geografia", "História", "Inglês", "Literatura", "Matemática", "Português", "Projeto de Vida", "Química", "Redação", "Sociologia"];
+                                                                                    if (!HS_SUBJECTS.includes(grade.subject)) return false;
+                                                                                }
+
+                                                                                // Para 2025, ocultar disciplinas sem média (limpar visualização)
+                                                                                if (is2025 && (!grade.mediaAnual || grade.mediaAnual === 0)) return false;
+
+                                                                                return true;
+                                                                            })
+                                                                            .map((grade) => {
+                                                                                const displayGrade = selectedYear === 2025 ? {
+                                                                                    ...grade,
+                                                                                    bimesters: {
+                                                                                        bimester1: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                                                                                        bimester2: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                                                                                        bimester3: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                                                                                        bimester4: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                                                                                    },
+                                                                                    recuperacaoFinal: null,
+                                                                                    mediaFinal: grade.mediaAnual || 0,
+                                                                                    situacaoFinal: grade.situacaoFinal || 'Aprovado'
+                                                                                } : grade;
+
+                                                                                return (
+                                                                                    <tr key={displayGrade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-200">
+                                                                                        <td className="px-2 py-2 font-bold text-gray-900 border-r border-gray-300 text-[10px] md:text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] align-top">
+                                                                                            <span className="uppercase block leading-tight mb-1">{displayGrade.subject}</span>
+                                                                                        </td>
+                                                                                        {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
+                                                                                            const bData = displayGrade.bimesters[key as keyof typeof displayGrade.bimesters];
+                                                                                            const bimesterNum = Number(key.replace('bimester', '')) as 1 | 2 | 3 | 4;
+                                                                                            // Calculate absences dynamically for this student and bimester
+                                                                                            const currentStudentAbsences = attendanceRecords.reduce((acc, record) => {
+                                                                                                if (record.discipline !== grade.subject) return acc;
+                                                                                                if (record.studentStatus[grade.studentId] === AttendanceStatus.ABSENT) {
+                                                                                                    const [y, mStr] = record.date.split('-');
+                                                                                                    const yNum = Number(y);
+                                                                                                    const mNum = Number(mStr);
+                                                                                                    if (yNum === selectedYear) {
+                                                                                                        if (bimesterNum === 1 && mNum >= 1 && mNum <= 3) return acc + 1;
+                                                                                                        if (bimesterNum === 2 && mNum >= 4 && mNum <= 6) return acc + 1;
+                                                                                                        if (bimesterNum === 3 && mNum >= 7 && mNum <= 9) return acc + 1;
+                                                                                                        if (bimesterNum === 4 && mNum >= 10 && mNum <= 12) return acc + 1;
+                                                                                                    }
+                                                                                                }
+                                                                                                return acc;
+                                                                                            }, 0);
+
+                                                                                            return (
+                                                                                                <React.Fragment key={key}>
+                                                                                                    <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-100">{formatGrade(bData.nota)}</td>
+                                                                                                    <td className="px-1 py-2 text-center text-gray-400 text-xs border-r border-gray-100">{formatGrade(bData.recuperacao)}</td>
+                                                                                                    <td className="px-1 py-2 text-center text-blue-900 font-bold bg-blue-50/30 text-xs border-r border-gray-100">{formatGrade(bData.media)}</td>
+                                                                                                    <td className="px-1 py-2 text-center text-gray-500 text-xs border-r border-gray-300">{currentStudentAbsences || ''}</td>
+                                                                                                </React.Fragment>
+                                                                                            );
+                                                                                        })}
+                                                                                        <td className="px-1 py-2 text-center font-bold text-red-600 bg-red-50 text-sm border-r border-gray-300">{formatGrade(displayGrade.recuperacaoFinal)}</td>
+                                                                                        <td className="px-1 py-2 text-center font-extrabold text-blue-950 bg-blue-50 text-sm border-r border-gray-300">{formatGrade(displayGrade.mediaFinal)}</td>
+                                                                                        <td className="px-1 py-2 text-center align-middle">
+                                                                                            <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${displayGrade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                                                                displayGrade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                                                                                    'bg-red-50 text-red-700 border-red-200'
+                                                                                                }`}>
+                                                                                                {displayGrade.situacaoFinal}
+                                                                                            </span>
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                )
+                                                                            })
+                                                                    })()}
+                                                                    {/* AVISO INFORMATIVO 2025 */}
+                                                                    {selectedYear === 2025 && (
+                                                                        <tr>
+                                                                            <td colSpan={21} className="px-4 py-4 bg-amber-50 text-center">
+                                                                                <p className="text-amber-800 text-[10px] font-medium uppercase tracking-wider">
+                                                                                    Aviso: Consulta informativa do histórico de 2025. Para documentos oficiais, contate a secretaria.
+                                                                                </p>
+                                                                            </td>
+                                                                        </tr>
+                                                                    )}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
