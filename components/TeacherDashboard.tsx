@@ -212,10 +212,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
         const finalData = calculateFinalData(newBimesters, newRecFinal);
 
         // CORREÇÃO: Usar ID determinístico (estilo student_CODE_SUBJECT_2025)
-        const standardId = `${selectedStudent.id}_${selectedSubject.replace(/\s+/g, '_')}_2025`;
+        const standardId = `${selectedStudent.id}_${selectedSubject.replace(/\s+/g, '_')}_${selectedYear}`;
 
         const gradeToSave: GradeEntry = {
-            id: standardId.replace('2025', selectedYear.toString()),
+            id: standardId,
             studentId: selectedStudent.id,
             subject: selectedSubject,
             mediaAnual: finalData.mediaAnual,
@@ -643,7 +643,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                             if (g.year !== selectedYear) return;
 
                                                                             const existing = gradeMap.get(g.subject);
-                                                                            if (!existing || (g.mediaAnual || 0) > (existing.mediaAnual || 0)) {
+                                                                            if (!existing || (g.lastUpdated || '') > (existing.lastUpdated || '')) {
                                                                                 gradeMap.set(g.subject, g);
                                                                             }
                                                                         });

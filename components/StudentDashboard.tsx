@@ -80,7 +80,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             // Filtrar pelo ano selecionado
             if (g.year !== selectedYear) return;
 
-            if (!existing || (g.mediaAnual || 0) > (existing.mediaAnual || 0)) {
+            if (!existing || (g.lastUpdated || '') > (existing.lastUpdated || '')) {
                 gradeMap.set(g.subject, g);
             }
         });
@@ -176,7 +176,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const absencesThisYear = useMemo(() => {
         return studentAttendance.filter(record => {
             const recordDate = new Date(record.date + 'T00:00:00');
-            return recordDate.getFullYear() === currentYear && record.studentStatus[student.id] === AttendanceStatus.ABSENT;
+            return recordDate.getFullYear() === selectedYear && record.studentStatus[student.id] === AttendanceStatus.ABSENT;
         }).length;
     }, [studentAttendance, currentYear, student.id]);
 
