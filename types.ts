@@ -99,6 +99,9 @@ export interface GradeEntry {
   mediaAnual: number;
   mediaFinal: number;
   situacaoFinal: 'Aprovado' | 'Recuperação' | 'Reprovado';
+  situacao?: string;
+  year?: number;
+  subjectId?: string;
   lastUpdated: string;
 }
 

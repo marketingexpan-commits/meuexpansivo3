@@ -210,7 +210,25 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
             newBimesters[bimesterKey] = calculateBimesterMedia(rawBimesterData);
         }
         const finalData = calculateFinalData(newBimesters, newRecFinal);
-        const gradeToSave: GradeEntry = { id: existingGrade ? existingGrade.id : `grade-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, studentId: selectedStudent.id, subject: selectedSubject, bimesters: newBimesters, recuperacaoFinal: newRecFinal, ...finalData, lastUpdated: new Date().toISOString() };
+
+        // CORREÇÃO: Usar ID determinístico (estilo student_CODE_SUBJECT_2025)
+        const standardId = `${selectedStudent.id}_${selectedSubject.replace(/\s+/g, '_')}_2025`;
+
+        const gradeToSave: GradeEntry = {
+            id: standardId,
+            studentId: selectedStudent.id,
+            subject: selectedSubject,
+            mediaAnual: finalData.mediaAnual,
+            mediaFinal: finalData.mediaFinal,
+            situacaoFinal: finalData.situacaoFinal,
+            situacao: finalData.situacaoFinal,
+            year: 2025,
+            subjectId: selectedSubject.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, ""),
+            lastUpdated: new Date().toISOString(),
+            bimesters: newBimesters,
+            recuperacaoFinal: newRecFinal
+        };
+
         await onSaveGrade(gradeToSave); setIsSaving(false); alert(`Dados de ${getStageDisplay(selectedStage)} salvos com sucesso!`);
     };
 
@@ -576,57 +594,74 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                 </tr>
                                                             </thead>
                                                             <tbody className="bg-white divide-y divide-gray-200">
-                                                                {(grades.filter(g => g.studentId === selectedStudent.id) || []).map((grade) => (
-                                                                    <tr key={grade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-200">
-                                                                        <td className="px-2 py-2 font-bold text-gray-900 border-r border-gray-300 text-[10px] md:text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] align-top">
-                                                                            <span className="uppercase block leading-tight mb-1">{grade.subject}</span>
-                                                                        </td>
-                                                                        {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
-                                                                            const bData = grade.bimesters[key as keyof typeof grade.bimesters];
-                                                                            const bimesterNum = Number(key.replace('bimester', '')) as 1 | 2 | 3 | 4;
-                                                                            // Calculate absences dynamically for this student and bimester
-                                                                            // Reusing logic from calculatedAbsences but specifically for this student inside the map
-                                                                            const currentStudentAbsences = attendanceRecords.reduce((acc, record) => {
-                                                                                // STRICT SUBJECT FILTER FOR BULLETIN ROW
-                                                                                if (record.discipline !== grade.subject) return acc;
+                                                                {(() => {
+                                                                    const isFirstYearHS = selectedStudent.gradeLevel && selectedStudent.gradeLevel.includes('1ª Série');
+                                                                    const isHS = selectedStudent.gradeLevel && selectedStudent.gradeLevel.includes('Ens. Médio');
 
-                                                                                if (record.studentStatus[grade.studentId] === AttendanceStatus.ABSENT) {
-                                                                                    const [y, mStr] = record.date.split('-');
-                                                                                    const yNum = Number(y);
-                                                                                    const mNum = Number(mStr); // 1-12
+                                                                    const gradeMap = new Map<string, GradeEntry>();
+                                                                    (grades || []).filter(g => g.studentId === selectedStudent.id).forEach(g => {
+                                                                        const existing = gradeMap.get(g.subject);
+                                                                        if (!existing || (g.year === 2025 && existing.year !== 2025) || (g.mediaAnual || 0) > (existing.mediaAnual || 0)) {
+                                                                            gradeMap.set(g.subject, g);
+                                                                        }
+                                                                    });
 
-                                                                                    if (yNum === new Date().getFullYear()) {
-                                                                                        // Explicit check against bimesterNum (1,2,3,4)
-                                                                                        if (bimesterNum === 1 && mNum >= 1 && mNum <= 3) return acc + 1;
-                                                                                        if (bimesterNum === 2 && mNum >= 4 && mNum <= 6) return acc + 1;
-                                                                                        if (bimesterNum === 3 && mNum >= 7 && mNum <= 9) return acc + 1;
-                                                                                        if (bimesterNum === 4 && mNum >= 10 && mNum <= 12) return acc + 1;
-                                                                                    }
-                                                                                }
-                                                                                return acc;
-                                                                            }, 0);
+                                                                    return Array.from(gradeMap.values())
+                                                                        .filter(grade => {
+                                                                            if (isFirstYearHS && grade.subject === 'Ciências') return false;
+                                                                            if (isHS) {
+                                                                                const HS_SUBJECTS = ["Artes", "Biologia", "Educação Física", "Ensino Religioso", "Espanhol", "Filosofia", "Física", "Geografia", "História", "Inglês", "Literatura", "Matemática", "Português", "Projeto de Vida", "Química", "Redação", "Sociologia"];
+                                                                                if (!HS_SUBJECTS.includes(grade.subject)) return false;
+                                                                            }
+                                                                            return grade.mediaAnual !== 0;
+                                                                        })
+                                                                        .map((grade) => (
+                                                                            <tr key={grade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-200">
+                                                                                <td className="px-2 py-2 font-bold text-gray-900 border-r border-gray-300 text-[10px] md:text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] align-top">
+                                                                                    <span className="uppercase block leading-tight mb-1">{grade.subject}</span>
+                                                                                </td>
+                                                                                {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
+                                                                                    const bData = grade.bimesters[key as keyof typeof grade.bimesters];
+                                                                                    const bimesterNum = Number(key.replace('bimester', '')) as 1 | 2 | 3 | 4;
+                                                                                    // Calculate absences dynamically for this student and bimester
+                                                                                    const currentStudentAbsences = attendanceRecords.reduce((acc, record) => {
+                                                                                        if (record.discipline !== grade.subject) return acc;
+                                                                                        if (record.studentStatus[grade.studentId] === AttendanceStatus.ABSENT) {
+                                                                                            const [y, mStr] = record.date.split('-');
+                                                                                            const yNum = Number(y);
+                                                                                            const mNum = Number(mStr);
+                                                                                            if (yNum === new Date().getFullYear()) {
+                                                                                                if (bimesterNum === 1 && mNum >= 1 && mNum <= 3) return acc + 1;
+                                                                                                if (bimesterNum === 2 && mNum >= 4 && mNum <= 6) return acc + 1;
+                                                                                                if (bimesterNum === 3 && mNum >= 7 && mNum <= 9) return acc + 1;
+                                                                                                if (bimesterNum === 4 && mNum >= 10 && mNum <= 12) return acc + 1;
+                                                                                            }
+                                                                                        }
+                                                                                        return acc;
+                                                                                    }, 0);
 
-                                                                            return (
-                                                                                <React.Fragment key={key}>
-                                                                                    <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-100">{formatGrade(bData.nota)}</td>
-                                                                                    <td className="px-1 py-2 text-center text-gray-400 text-xs border-r border-gray-100">{formatGrade(bData.recuperacao)}</td>
-                                                                                    <td className="px-1 py-2 text-center text-blue-900 font-bold bg-blue-50/30 text-xs border-r border-gray-100">{formatGrade(bData.media)}</td>
-                                                                                    <td className="px-1 py-2 text-center text-gray-500 text-xs border-r border-gray-300">{currentStudentAbsences || ''}</td>
-                                                                                </React.Fragment>
-                                                                            );
-                                                                        })}
-                                                                        <td className="px-1 py-2 text-center font-bold text-red-600 bg-red-50 text-sm border-r border-gray-300">{formatGrade(grade.recuperacaoFinal)}</td>
-                                                                        <td className="px-1 py-2 text-center font-extrabold text-blue-950 bg-blue-50 text-sm border-r border-gray-300">{formatGrade(grade.mediaFinal)}</td>
-                                                                        <td className="px-1 py-2 text-center align-middle">
-                                                                            <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
-                                                                                grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                                                                    'bg-red-50 text-red-700 border-red-200'
-                                                                                }`}>
-                                                                                {grade.situacaoFinal}
-                                                                            </span>
-                                                                        </td>
-                                                                    </tr>
-                                                                ))}
+                                                                                    return (
+                                                                                        <React.Fragment key={key}>
+                                                                                            <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-100">{formatGrade(bData.nota)}</td>
+                                                                                            <td className="px-1 py-2 text-center text-gray-400 text-xs border-r border-gray-100">{formatGrade(bData.recuperacao)}</td>
+                                                                                            <td className="px-1 py-2 text-center text-blue-900 font-bold bg-blue-50/30 text-xs border-r border-gray-100">{formatGrade(bData.media)}</td>
+                                                                                            <td className="px-1 py-2 text-center text-gray-500 text-xs border-r border-gray-300">{currentStudentAbsences || ''}</td>
+                                                                                        </React.Fragment>
+                                                                                    );
+                                                                                })}
+                                                                                <td className="px-1 py-2 text-center font-bold text-red-600 bg-red-50 text-sm border-r border-gray-300">{formatGrade(grade.recuperacaoFinal)}</td>
+                                                                                <td className="px-1 py-2 text-center font-extrabold text-blue-950 bg-blue-50 text-sm border-r border-gray-300">{formatGrade(grade.mediaFinal)}</td>
+                                                                                <td className="px-1 py-2 text-center align-middle">
+                                                                                    <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                                                        grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                                                                            'bg-red-50 text-red-700 border-red-200'
+                                                                                        }`}>
+                                                                                        {grade.situacaoFinal}
+                                                                                    </span>
+                                                                                </td>
+                                                                            </tr>
+                                                                        ));
+                                                                })()}
                                                             </tbody>
                                                         </table>
                                                     </div>

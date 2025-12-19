@@ -121,8 +121,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
         return Array.from(gradeMap.values())
             .filter(grade => {
+                const isHS = student.gradeLevel && student.gradeLevel.includes('Ens. Médio');
+
                 // Regra: Remover 'Ciências' da 1ª Série
                 if (isFirstYearHS && grade.subject === 'Ciências') return false;
+
+                // Regra: Currículo Médio (Só as 17 disciplinas oficiais)
+                if (isHS) {
+                    const HS_SUBJECTS = ["Artes", "Biologia", "Educação Física", "Ensino Religioso", "Espanhol", "Filosofia", "Física", "Geografia", "História", "Inglês", "Literatura", "Matemática", "Português", "Projeto de Vida", "Química", "Redação", "Sociologia"];
+                    if (!HS_SUBJECTS.includes(grade.subject)) return false;
+                }
 
                 // Regra: Ocultar matérias sem nota lançada
                 if (!grade.mediaAnual || grade.mediaAnual === 0) return false;
