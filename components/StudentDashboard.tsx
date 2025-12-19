@@ -1,18 +1,53 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { db } from '../firebaseConfig';
+import React, { useState, useMemo } from 'react';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
 import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro } from '../types';
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
-import { calculateBimesterMedia, calculateFinalData, UNITS_DATA, DEFAULT_UNIT_DATA, HS_SUBJECTS_2025, HS_SUBJECTS_2026, EF_SUBJECTS } from '../src/constants'; // Import Sync Fix
+import { calculateBimesterMedia, calculateFinalData } from '../src/constants'; // Import Sync Fix
 import { getStudyTips } from '../services/geminiService';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
-import { QRCodeSVG } from 'qrcode.react';
-import { applyGradePatches } from '../utils/dataPatch';
+import { MessageBox } from './MessageBox';
 import { FinanceiroScreen } from './FinanceiroScreen';
-import { HistoricalReport2025 } from './HistoricalReport2025';
 
-// UNITS_DATA and DEFAULT_UNIT_DATA moved to src/constants.ts
+// --- DADOS DAS UNIDADES (Definidos localmente) ---
+const UNITS_DATA: Record<string, { address: string; cep: string; phone: string; email: string; cnpj: string }> = {
+    'Zona Norte': {
+        address: 'Rua Desportista José Augusto de Freitas, 50 - Pajuçara, Natal - RN',
+        cep: '59133-400',
+        phone: '(84) 3661-4742',
+        email: 'contato.zn@expansivo.com.br',
+        cnpj: '08.693.673/0001-95'
+    },
+    'Boa Sorte': {
+        address: 'Av. Boa Sorte, 265 - Nossa Senhora da Apresentação, Natal - RN',
+        cep: '59114-250',
+        phone: '(84) 3661-4742',
+        email: 'contato.bs@expansivo.com.br',
+        cnpj: '08.693.673/0002-76'
+    },
+    'Extremoz': {
+        address: 'Rua do Futebol, 32 - Estivas, Extremoz - RN',
+        cep: '59575-000',
+        phone: '(84) 98186-3522',
+        email: 'expansivoextremoz@gmail.com',
+        cnpj: '08.693.673/0003-57'
+    },
+    'Quintas': {
+        address: 'Rua Coemaçu, 1045 - Quintas, Natal - RN',
+        cep: '59035-060',
+        phone: '(84) 3653-1063',
+        email: 'contato.quintas@expansivo.com.br',
+        cnpj: '08.693.673/0004-38'
+    }
+};
+
+const DEFAULT_UNIT_DATA = {
+    address: 'Expansivo Rede de Ensino - Matriz',
+    cep: '59000-000',
+    phone: '(84) 3232-0000',
+    email: 'contato@expansivo.com.br',
+    cnpj: '00.000.000/0001-00'
+};
 
 interface StudentDashboardProps {
     student: Student;
@@ -23,8 +58,8 @@ interface StudentDashboardProps {
     unitContacts?: UnitContact[];
     onLogout: () => void;
     onSendMessage: (message: Omit<SchoolMessage, 'id'>) => Promise<void>;
-    notifications: AppNotification[];
-    onMarkNotificationAsRead: (id: string) => Promise<void>;
+    notifications?: AppNotification[];
+    onMarkNotificationAsRead?: (id: string) => Promise<void>;
     mensalidades: Mensalidade[];
     eventos: EventoFinanceiro[];
 }
@@ -38,33 +73,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     unitContacts = [],
     onLogout,
     onSendMessage,
-    notifications,
+    notifications = [],
     onMarkNotificationAsRead,
     mensalidades,
     eventos
 }) => {
-    // REGRAS DE SINCRONIZAÇÃO EM TEMPO REAL (onSnapshot DIRETO NO COMPONENTE)
-    const [liveGrades, setLiveGrades] = useState<GradeEntry[]>(grades);
-    const [liveAttendance, setLiveAttendance] = useState<AttendanceRecord[]>(attendanceRecords);
-
-    useEffect(() => {
-        const unsubGrades = db.collection('grades').onSnapshot((snapshot) => {
-            const data = snapshot.docs.map(doc => doc.data() as GradeEntry);
-            setLiveGrades(data);
-        });
-        const unsubAttendance = db.collection('attendance').onSnapshot((snapshot) => {
-            const data = snapshot.docs.map(doc => doc.data() as AttendanceRecord);
-            setLiveAttendance(data);
-        });
-        return () => { unsubGrades(); unsubAttendance(); };
-    }, []);
-
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState({ title: '', tip: '' });
     const [isLoadingAI, setIsLoadingAI] = useState(false);
     const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro'>('menu');
     const [showNotifications, setShowNotifications] = useState(false);
-    const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
     const unreadNotifications = notifications.filter(n => !n.read).length;
 
@@ -82,95 +100,23 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth() + 1;
     const semester = currentMonth >= 7 ? 2 : 1;
-    const headerText = `Boletim Escolar ${selectedYear}.${semester}`;
+    const headerText = `Boletim Escolar ${currentYear}.${semester}`;
 
-
-
-    // CORREÇÃO DE SINCRONIZAÇÃO: Garantir que TODAS as matérias do currículo apareçam (mesmo sem nota), permitindo ver faltas.
+    // CORREÇÃO DE SINCRONIZAÇÃO: Recalcular médias dinamicamente
     const studentGrades = useMemo(() => {
-        const isHS = student.gradeLevel && student.gradeLevel.includes('Ens. Médio');
-        const is2025 = selectedYear === 2025;
-
-        // 1. Determinar o currículo esperado
-        let curriculum: string[] = [];
-        if (isHS) {
-            curriculum = is2025 ? HS_SUBJECTS_2025 : HS_SUBJECTS_2026;
-        } else {
-            curriculum = EF_SUBJECTS;
-        }
-
-        // 2. Filtrar notas do aluno e deduplicar por disciplina (priorizando atualização mais recente)
-        const gradeMap = new Map<string, GradeEntry>();
-        const studentIdRaw = student.id.replace('student_', '');
-
-        (liveGrades || []).filter(g => {
-            const matchesId = g.studentId === student.id || g.studentId === studentIdRaw;
-            const matchesYear = (g.year === selectedYear || (!g.year && selectedYear === 2025));
-            return matchesId && matchesYear;
-        }).forEach(g => {
-            const subjectKey = g.subject === 'Artes' ? 'Ens. Artes' :
-                g.subject === 'Educação Física' ? 'Ed. Física' :
-                    g.subject === 'Ensino Religioso' ? 'Ens. Religioso' : g.subject;
-
-            const existing = gradeMap.get(subjectKey);
-            if (!existing || (g.lastUpdated || '') > (existing.lastUpdated || '')) {
-                gradeMap.set(subjectKey, g);
-            }
-        });
-
-        // 3. Mapear o currículo para garantir que TODAS as matérias apareçam
-        return curriculum.map((subjectName, index) => {
-            const existingGrade = gradeMap.get(subjectName);
-
-            // Se não existe nota, criamos um placeholder para permitir exibir faltas
-            const baseGrade: GradeEntry = existingGrade || {
-                id: `placeholder_${student.id}_${subjectName}_${selectedYear}_${index}`,
-                studentId: student.id,
-                subject: subjectName,
-                year: selectedYear,
-                lastUpdated: '',
-                bimesters: {
-                    bimester1: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                    bimester2: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                    bimester3: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                    bimester4: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                },
-                mediaAnual: 0,
-                mediaFinal: 0,
-                situacaoFinal: 'Recuperação'
-            };
-
-            const calculatedBimesters = {
-                bimester1: calculateBimesterMedia(baseGrade.bimesters.bimester1),
-                bimester2: calculateBimesterMedia(baseGrade.bimesters.bimester2),
-                bimester3: calculateBimesterMedia(baseGrade.bimesters.bimester3),
-                bimester4: calculateBimesterMedia(baseGrade.bimesters.bimester4),
-            };
-            const finalData = calculateFinalData(calculatedBimesters, baseGrade.recuperacaoFinal);
-
-            // Regra específica para 2025 (Histórico)
-            if (is2025) {
-                // Em 2025 Fundamental, mostrar apenas se tiver nota importada
-                if (!isHS && (!baseGrade.mediaAnual || baseGrade.mediaAnual === 0)) return null;
-
-                return {
-                    ...baseGrade,
-                    bimesters: {
-                        bimester1: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                        bimester2: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                        bimester3: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                        bimester4: { nota: null, recuperacao: null, media: 0, faltas: 0 },
-                    },
-                    recuperacaoFinal: null,
-                    mediaAnual: baseGrade.mediaAnual || 0,
-                    mediaFinal: baseGrade.mediaAnual || 0,
-                    situacaoFinal: baseGrade.situacao || baseGrade.situacaoFinal
+        return (grades || [])
+            .filter(g => g.studentId === student.id)
+            .map(grade => {
+                const calculatedBimesters = {
+                    bimester1: calculateBimesterMedia(grade.bimesters.bimester1),
+                    bimester2: calculateBimesterMedia(grade.bimesters.bimester2),
+                    bimester3: calculateBimesterMedia(grade.bimesters.bimester3),
+                    bimester4: calculateBimesterMedia(grade.bimesters.bimester4),
                 };
-            }
-
-            return { ...baseGrade, bimesters: calculatedBimesters, ...finalData };
-        }).filter(g => g !== null) as GradeEntry[];
-    }, [liveGrades, student.id, student.gradeLevel, selectedYear]);
+                const finalData = calculateFinalData(calculatedBimesters, grade.recuperacaoFinal);
+                return { ...grade, bimesters: calculatedBimesters, ...finalData };
+            });
+    }, [grades, student.id]);
 
     const currentUnitInfo = UNITS_DATA[student.unit] || DEFAULT_UNIT_DATA;
 
@@ -185,23 +131,23 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         if (!isEarlyChildhood) return null;
         return earlyChildhoodReports?.find(
             r => r.studentId === student.id &&
-                r.year === selectedYear &&
+                r.year === currentYear &&
                 r.semester === selectedReportSemester
         );
-    }, [isEarlyChildhood, earlyChildhoodReports, student.id, selectedYear, selectedReportSemester]);
+    }, [isEarlyChildhood, earlyChildhoodReports, student.id, currentYear, selectedReportSemester]);
 
     const studentAttendance = useMemo(() => {
-        return (liveAttendance || [])
+        return attendanceRecords
             .filter(record => record.studentStatus && record.studentStatus[student.id])
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [liveAttendance, student.id]);
+    }, [attendanceRecords, student.id]);
 
     const absencesThisYear = useMemo(() => {
         return studentAttendance.filter(record => {
             const recordDate = new Date(record.date + 'T00:00:00');
-            return recordDate.getFullYear() === selectedYear && record.studentStatus[student.id] === AttendanceStatus.ABSENT;
+            return recordDate.getFullYear() === currentYear && record.studentStatus[student.id] === AttendanceStatus.ABSENT;
         }).length;
-    }, [studentAttendance, selectedYear, student.id]);
+    }, [studentAttendance, currentYear, student.id]);
 
 
     const formatGrade = (grade: number | null | undefined) => (grade !== null && grade !== undefined && grade !== 0) ? grade.toFixed(1) : '-';
@@ -291,13 +237,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans transition-all duration-500 ease-in-out print:min-h-0 print:h-auto print:bg-white print:p-0 print:block print:overflow-visible">
             <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${currentView === 'menu' ? 'max-w-md' : 'max-w-5xl'} print:min-h-0 print:h-auto print:shadow-none print:rounded-none`}>
-
-                {/* CABEÇALHO (GRADIENTE AZUL MARINHO - Igual ao Login) */}
-                {/* CABEÇALHO (GRADIENTE AZUL MARINHO - Igual ao Login) */}
-                {/* CABEÇALHO (GRADIENTE AZUL MARINHO - Simplificado) */}
                 <div className="bg-gradient-to-br from-blue-950 to-slate-900 p-6 pb-12 shadow-md relative shrink-0 print:hidden">
                     <div className="flex flex-row justify-between items-center relative">
-                        {/* LEFT: Back Button + Mural Title */}
                         <div className="flex items-center gap-3 text-white">
                             {currentView !== 'menu' && (
                                 <button
@@ -307,7 +248,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                                 </button>
                             )}
-                            {/* Mural Content in Header - Visible on All Pages, Hidden on Print */}
                             <div className="flex items-start gap-3">
                                 <div className="bg-white/10 p-2 rounded-lg backdrop-blur-sm shrink-0">
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
@@ -324,9 +264,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             </div>
                         </div>
 
-                        {/* RIGHT: Notifications & Logout */}
                         <div className="flex items-center gap-2">
-                            {/* Notification Bell */}
                             <div className="relative">
                                 <button
                                     onClick={() => setShowNotifications(!showNotifications)}
@@ -339,8 +277,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         </span>
                                     )}
                                 </button>
-
-                                {/* Notifications Dropdown (Mobile Optimized) */}
                                 {showNotifications && (
                                     <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden ring-1 ring-black ring-opacity-5 text-left">
                                         <div className="p-3 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
@@ -380,16 +316,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     </div>
                 </div>
 
-                {/* --- STUDENT INFO BAR (Replacing Tabs - Hidden on Bulletin) --- */}
                 {currentView !== 'grades' && currentView !== 'early_childhood' && currentView !== 'financeiro' && (
                     <div className="flex flex-col border-b border-gray-100 bg-white rounded-t-3xl -mt-6 relative z-10 overflow-hidden shrink-0 shadow-sm mx-0">
                         <div className="bg-blue-50/50 py-3 px-4 md:px-6 flex items-center justify-between border-b-2 border-blue-900">
                             <div className="flex flex-col">
                                 <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Aluno(a)</span>
                                 <span className="text-sm font-bold text-blue-900 truncate max-w-[180px] leading-tight">{student.name}</span>
-                                {student.nome_responsavel && (
-                                    <span className="text-[10px] text-gray-400 font-medium truncate max-w-[180px]">Resp: {student.nome_responsavel}</span>
-                                )}
                             </div>
                             <div className="flex flex-col items-end">
                                 <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Turma</span>
@@ -402,18 +334,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     </div>
                 )}
 
-                {/* --- CONTEÚDO (SHEET BODY) --- */}
                 <div className={`p-4 md:p-6 pt-2 bg-white min-h-[500px] ${(currentView === 'grades' || currentView === 'early_childhood') ? 'rounded-t-3xl -mt-6 relative z-10 print:mt-0 print:rounded-none' : ''}`}>
 
-                    {/* --- MENU VIEW --- */}
-                    {/* --- MENU VIEW --- */}
                     {currentView === 'menu' && (
                         <div className="animate-fade-in-up flex flex-col h-full justify-between">
-
-                            {/* Content Wrapper */}
                             <div className="space-y-1">
-
-                                {/* BRANDING (Moved from Header) */}
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <div className="w-12">
@@ -424,13 +349,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         </div>
                                     </div>
                                 </div>
-
-                                {/* Welcome Context */}
                                 <div className="text-left pb-4">
                                     <p className="text-gray-500 text-sm">Selecione uma opção para visualizar.</p>
                                 </div>
-
-                                {/* Grid de Opções (2 Colunas - Style Login Grid) */}
                                 <div className="grid grid-cols-2 gap-4">
                                     <button
                                         onClick={() => setCurrentView(isEarlyChildhood ? 'early_childhood' : 'grades')}
@@ -472,7 +393,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Fale com a Escola</h3>
                                     </button>
 
-                                    {/* FINANCEIRO CARD */}
                                     <button
                                         onClick={() => setCurrentView('financeiro')}
                                         className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-600 hover:shadow-md transition-all group aspect-square"
@@ -484,14 +404,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     </button>
                                 </div>
                             </div>
-
                         </div>
                     )}
 
-                    {/* --- FINANCEIRO --- */}
                     {currentView === 'financeiro' && <FinanceiroScreen student={student} mensalidades={mensalidades} eventos={eventos} />}
 
-                    {/* --- FREQUÊNCIA --- */}
                     {currentView === 'attendance' && (
                         <div className="mb-8 print:hidden">
                             <h3 className="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2">
@@ -501,7 +418,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                                     <p className="text-gray-600 text-sm">
                                         {(() => {
-                                            // Use Helper for the Summary Bar
                                             const breakdown = getAttendanceBreakdown(studentAttendance, student.id, undefined, currentYear);
                                             const bimesterSummary = Object.entries(breakdown)
                                                 .filter(([_, data]) => data.count > 0)
@@ -536,10 +452,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     </div>
                                 </div>
 
-                                {/* DETAILED ATTENDANCE LIST (Grouped by Month) */}
                                 <div className="space-y-4">
                                     {(() => {
-                                        // Filter for Selected Bimester
                                         const bimesterRecords = studentAttendance.filter(record => {
                                             if (record.studentStatus[student.id] !== AttendanceStatus.ABSENT) return false;
                                             const [y, mStr] = record.date.split('-');
@@ -559,7 +473,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             );
                                         }
 
-                                        // Group by Month
                                         const groupedByMonth: Record<string, AttendanceRecord[]> = {};
                                         bimesterRecords.forEach(record => {
                                             const mNum = Number(record.date.split('-')[1]);
@@ -568,7 +481,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             groupedByMonth[monthName].push(record);
                                         });
 
-                                        // Sort Dates in each month
                                         Object.keys(groupedByMonth).forEach(m => {
                                             groupedByMonth[m].sort((a, b) => a.date.localeCompare(b.date));
                                         });
@@ -593,37 +505,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             </div>
                         </div>
                     )}
-                    {/* --- BOLETIM / RELATÓRIO --- */}
+
                     {(currentView === 'grades' || currentView === 'early_childhood') && (
                         <div className="animate-fade-in-up">
-                            {/* SELETOR DE ANO / TIPO DE BOLETIM */}
-                            <div className="mb-6 flex flex-col md:flex-row justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100 gap-4 print:hidden">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-blue-100 rounded-lg text-blue-900">
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                    </div>
-                                    <div>
-                                        <h4 className="text-sm font-bold text-blue-900">Visualização do Desempenho</h4>
-                                        <p className="text-[10px] text-blue-700">Selecione o ano letivo para consulta.</p>
-                                    </div>
-                                </div>
-                                <div className="flex bg-white p-1 rounded-lg shadow-inner border border-blue-200">
-                                    <button
-                                        onClick={() => setSelectedYear(2026)}
-                                        className={`px-4 py-2 rounded-md text-[10px] md:text-sm font-bold transition-all ${selectedYear === 2026 ? 'bg-blue-900 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
-                                    >
-                                        Boletim Atual (2026)
-                                    </button>
-                                    <button
-                                        onClick={() => setSelectedYear(2025)}
-                                        className={`px-4 py-2 rounded-md text-[10px] md:text-sm font-bold transition-all ${selectedYear === 2025 ? 'bg-blue-900 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
-                                    >
-                                        Resumo Médias (2025)
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* --- CABEÇALHO DO BOLETIM (COMUM A TODOS) --- */}
                             <div className="mb-8 border-b-2 border-blue-950 pb-4">
                                 <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                                     <div className="flex items-center gap-4">
@@ -667,7 +551,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 </div>
                             </div>
 
-                            {/* --- BOTÃO DOWNLOAD --- */}
                             <div className="mb-6 flex justify-end print:hidden">
                                 <Button
                                     type="button"
@@ -679,16 +562,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 </Button>
                             </div>
 
-                            {/* --- RENDERIZAÇÃO CONDICIONAL: EDUCAÇÃO INFANTIL vs FUNDAMENTAL/MÉDIO vs HISTÓRICO 2025 --- */}
-                            {selectedYear === 2025 && !isEarlyChildhood ? (
-                                <HistoricalReport2025
-                                    student={student}
-                                    grades={applyGradePatches(grades)}
-                                    unitData={currentUnitInfo}
-                                    attendanceRecords={liveAttendance}
-                                />
-                            ) : isEarlyChildhood ? (
-                                // --- VIEW EDUCAÇÃO INFANTIL ---
+                            {isEarlyChildhood ? (
                                 <div className="space-y-6">
                                     <div className="flex gap-4 mb-4 print:hidden">
                                         <button
@@ -707,7 +581,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
                                         <h3 className="text-center font-bold text-xl text-blue-950 mb-2 uppercase">Relatório - {selectedReportSemester}º Semestre</h3>
 
-                                        {/* LEGENDA */}
                                         <div className="flex flex-wrap justify-center gap-4 my-6 text-xs">
                                             <div className="flex items-center gap-2"><span className="w-3 h-3 bg-green-100 border border-green-300 rounded-sm flex-shrink-0"></span> <span className="whitespace-nowrap"><strong>D</strong> - Desenvolvido</span></div>
                                             <div className="flex items-center gap-2"><span className="w-3 h-3 bg-yellow-100 border border-yellow-300 rounded-sm flex-shrink-0"></span> <span className="whitespace-nowrap"><strong>EP</strong> - Em Processo</span></div>
@@ -754,7 +627,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     </div>
                                 </div>
                             ) : (
-                                // --- VIEW FUNDAMENTAL E MÉDIO (Notas Numéricas) ---
                                 <>
                                     <div className="overflow-x-auto pb-4 w-full print:overflow-visible print:w-full print:pb-0">
                                         <table className="min-w-[1000px] print:min-w-0 print:w-full divide-y divide-gray-200 border border-gray-300 text-sm print:text-[8px] print:leading-tight">
@@ -762,22 +634,22 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                 <tr>
                                                     <th rowSpan={2} className="px-2 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-20 md:w-32 sticky left-0 bg-blue-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[10px] md:text-sm">Disciplina</th>
                                                     {[1, 2, 3, 4].map(num => (
-                                                        <th key={num} colSpan={4} className="px-1 py-1 text-center font-bold text-gray-700 uppercase border-r border-gray-300 border-b border-gray-200 text-[10px]">
-                                                            {num}º Bimestre
+                                                        <th key={num} colSpan={4} className="px-1 py-2 text-center font-bold text-gray-700 uppercase border-r border-gray-300">
+                                                            {num}º Bim
                                                         </th>
                                                     ))}
-                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-16 text-[9px] leading-tight">Média<br />Anual</th>
-                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-red-700 uppercase border-r border-gray-300 bg-red-50 w-16 text-[9px] leading-tight">Prova<br />Final</th>
-                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-blue-950 uppercase border-r border-gray-300 bg-blue-100 w-16 text-[9px] leading-tight">Média<br />Final</th>
-                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase w-20 text-[9px]">Situação</th>
+                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-16 text-[10px] leading-tight">Média<br />Anual</th>
+                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-red-700 uppercase border-r border-gray-300 bg-red-50 w-16 text-[10px] leading-tight">Prova<br />Final</th>
+                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-blue-950 uppercase border-r border-gray-300 bg-blue-100 w-16 text-[10px] leading-tight">Média<br />Final</th>
+                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase w-20 text-[10px]">Situação</th>
                                                 </tr>
-                                                <tr className="bg-blue-50 print:bg-gray-100 text-[9px]">
+                                                <tr className="bg-blue-50 print:bg-gray-100 text-[10px]">
                                                     {[1, 2, 3, 4].map(num => (
                                                         <React.Fragment key={num}>
-                                                            <th className="px-1 py-1 text-center border-r border-gray-200 font-semibold text-gray-500" title="Nota">N{num}</th>
-                                                            <th className="px-1 py-1 text-center border-r border-gray-200 font-semibold text-gray-500" title="Recuperação">R{num}</th>
-                                                            <th className="px-1 py-1 text-center border-r border-gray-200 font-bold text-blue-900 bg-blue-50" title="Média">M{num}</th>
-                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-500" title="Faltas">F{num}</th>
+                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600" title="Nota">N{num}</th>
+                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600" title="Recuperação">R{num}</th>
+                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-bold text-blue-950 bg-blue-50" title="Média">M{num}</th>
+                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600" title="Faltas">F{num}</th>
                                                         </React.Fragment>
                                                     ))}
                                                 </tr>
@@ -787,7 +659,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                     <tr key={grade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-300">
                                                         <td className="px-2 py-2 font-bold text-gray-900 border-r border-gray-300 text-[10px] md:text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] align-top">
                                                             <span className="uppercase block leading-tight mb-1">{grade.subject}</span>
-                                                            <span className="text-[9px] text-gray-500 font-normal block italic whitespace-normal leading-tight break-words opacity-70">
+                                                            <span className="text-[9px] text-gray-500 font-normal block italic whitespace-normal leading-tight break-words">
                                                                 Prof. {getTeacherName(grade.subject)}
                                                             </span>
                                                         </td>
@@ -799,8 +671,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 if (att.discipline !== grade.subject) return acc;
                                                                 if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
                                                                     const d = new Date(att.date + 'T00:00:00');
-                                                                    if (d.getFullYear() === selectedYear) {
+                                                                    if (d.getFullYear() === currentYear) {
                                                                         const m = d.getMonth();
+
                                                                         if (bimesterNum === 1 && m >= 0 && m <= 2) return acc + 1;
                                                                         if (bimesterNum === 2 && m >= 3 && m <= 5) return acc + 1;
                                                                         if (bimesterNum === 3 && m >= 6 && m <= 8) return acc + 1;
@@ -812,28 +685,23 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                                             return (
                                                                 <React.Fragment key={key}>
-                                                                    <td className="px-1 py-2 text-center text-gray-600 border-r border-gray-100 text-[11px]">{formatGrade(bData.nota)}</td>
-                                                                    <td className="px-1 py-2 text-center text-gray-400 border-r border-gray-100 text-[11px]">{formatGrade(bData.recuperacao)}</td>
-                                                                    <td className="px-1 py-2 text-center text-blue-900 font-bold bg-blue-50/30 border-r border-gray-100 text-[11px]">{formatGrade(bData.media)}</td>
-                                                                    <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300 text-[11px] font-medium">
-                                                                        {/* Prioritize persisted field (from trigger), fallback to live calculation */}
-                                                                        {bData.faltas !== undefined && bData.faltas !== 0 ? bData.faltas : (currentAbsences || '')}
-                                                                    </td>
+                                                                    <td className="px-1 py-2 text-center text-gray-600 border-r border-gray-300 text-xs">{formatGrade(bData.nota)}</td>
+                                                                    <td className="px-1 py-2 text-center text-gray-600 border-r border-gray-300 text-xs">{formatGrade(bData.recuperacao)}</td>
+                                                                    <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs">{formatGrade(bData.media)}</td>
+                                                                    <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300 text-xs">{currentAbsences || ''}</td>
                                                                 </React.Fragment>
                                                             );
                                                         })}
-                                                        <td className="px-1 py-2 text-center font-bold text-gray-800 border-r border-gray-300 bg-gray-50/50 text-xs">{formatGrade(grade.mediaAnual)}</td>
-                                                        <td className="px-1 py-2 text-center font-bold text-red-600 border-r border-gray-300 bg-red-50/30 text-xs">{formatGrade(grade.recuperacaoFinal)}</td>
-                                                        <td className="px-1 py-2 text-center font-extrabold text-blue-950 border-r border-gray-300 bg-blue-50 text-xs">{formatGrade(grade.mediaFinal)}</td>
-                                                        <td className="px-1 py-2 text-center align-middle bg-white w-24">
-                                                            <div className="flex justify-center px-1">
-                                                                <span className={`px-2 py-0.5 rounded text-[8px] uppercase font-bold border w-full text-center ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200 shadow-sm' :
-                                                                    grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                                                        'bg-red-50 text-red-700 border-red-200'
-                                                                    }`}>
-                                                                    {grade.situacaoFinal}
-                                                                </span>
-                                                            </div>
+                                                        <td className="px-1 py-2 text-center font-bold text-gray-700 border-r border-gray-300 bg-gray-50 text-sm">{formatGrade(grade.mediaAnual)}</td>
+                                                        <td className="px-1 py-2 text-center font-bold text-red-600 border-r border-gray-300 bg-red-50 text-sm">{formatGrade(grade.recuperacaoFinal)}</td>
+                                                        <td className="px-1 py-2 text-center font-extrabold text-blue-950 border-r border-gray-300 bg-blue-50 text-sm">{formatGrade(grade.mediaFinal)}</td>
+                                                        <td className="px-1 py-2 text-center align-middle">
+                                                            <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                                grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                                                    'bg-red-50 text-red-700 border-red-200'
+                                                                }`}>
+                                                                {grade.situacaoFinal}
+                                                            </span>
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -847,7 +715,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             )}
                         </div>
                     )}
-                    {/* --- SUPORTE AO ALUNO --- */}
+
                     {currentView === 'support' && supportNeededGrades.length > 0 && (
                         <div className="mt-8 print:hidden animate-fade-in-up">
                             <h3 className="text-xl font-bold mb-4 text-gray-800 border-b border-gray-200 pb-2">
@@ -859,7 +727,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     const media = grade.mediaAnual || 0;
                                     const isLowGrade = media < 7.0 && grade.situacaoFinal !== 'Aprovado';
 
-                                    // CORREÇÃO: Verificação de segurança para bimesters
                                     const difficulties = grade.bimesters ? Object.entries(grade.bimesters)
                                         .map(([key, data]) => {
                                             const bimesterNumber = key.replace('bimester', '');
@@ -938,37 +805,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         </div>
                     )}
 
-                    {/* --- RENDERIZAÇÃO CONDICIONAL PARA SUPORTE (EMPTY STATE) --- */}
-                    {currentView === 'support' && supportNeededGrades.length === 0 && (
-                        <div className="mt-8 p-12 text-center bg-white rounded-lg shadow-sm animate-fade-in-up">
-                            <span className="text-4xl">🎉</span>
-                            <h3 className="mt-4 text-xl font-bold text-gray-800">Tudo ótimo por aqui!</h3>
-                            <p className="text-gray-500 mt-2">Você não possui notas que exigem atenção imediata. Continue assim!</p>
-                            <Button variant="secondary" onClick={() => setCurrentView('menu')} className="mt-6">Voltar ao Menu</Button>
-                        </div>
-                    )}
-
-                    {/* --- ASSINATURAS (Apenas no Boletim) --- */}
-                    {currentView === 'grades' && (
-                        <div className="hidden print:flex mt-16 pt-8 border-t border-gray-400 justify-between items-end">
-                            <div className="text-center w-64">
-                                <div className="border-b border-black mb-2"></div>
-                                <p className="text-xs uppercase font-bold">Secretaria Escolar</p>
-                            </div>
-                            <div className="text-center w-64">
-                                <div className="border-b border-black mb-2"></div>
-                                <p className="text-xs uppercase font-bold">Responsável do Aluno</p>
-                            </div>
-                        </div>
-                    )}
-
                     {currentView === 'messages' && (
                         <div className="animate-fade-in-up">
                             <MessageBox student={student} onSendMessage={onSendMessage} unitContacts={unitContacts || []} />
                         </div>
                     )}
 
-                    {/* CORREÇÃO: Modal com melhor tratamento de conteúdo */}
                     {isModalOpen && (
                         <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 print:hidden p-4">
                             <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col animate-fade-in-up">
@@ -1004,9 +846,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             </div>
                         </div>
                     )}
-
                 </div>
             </div>
-        </div >
+        </div>
     );
 };

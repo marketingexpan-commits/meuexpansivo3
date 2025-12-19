@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Student, SchoolMessage, MessageRecipient, MessageType, UnitContact, ContactRole } from '../types';
 import { Button } from './Button';
 
+import { UNITS_DATA, DEFAULT_UNIT_DATA } from '../src/constants';
+
 export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: Omit<SchoolMessage, 'id'>) => Promise<void>; unitContacts: UnitContact[]; }> = ({ student, onSendMessage, unitContacts }) => {
   const [recipient, setRecipient] = useState<MessageRecipient>(MessageRecipient.COORDINATION);
   const [messageType, setMessageType] = useState<MessageType>(MessageType.SUGGESTION);
@@ -16,30 +18,37 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
       return;
     }
 
-    // 1. Preparação Síncrona do WhatsApp (para evitar bloqueio de popup)
-    let waWindow: Window | null = null;
+    // 1. Preparação Síncrona do WhatsApp
+    // Calculamos a URL antes de qualquer async para abrir a janela imediatamente
+    // Isso evita o bloqueio de popups e a "página em branco"
     let waUrl = '';
 
     if (recipient === MessageRecipient.DIRECTION || recipient === MessageRecipient.COORDINATION) {
       const targetRole = recipient === MessageRecipient.DIRECTION ? ContactRole.DIRECTOR : ContactRole.COORDINATOR;
+      // Tenta encontrar contato específico
       const contact = unitContacts.find(c => c.unit === student.unit && c.role === targetRole);
 
-      if (contact) {
-        const waNumber = contact.phoneNumber.replace(/\D/g, '');
-        const messageText = `Olá ${contact.name}! Sou o(a) ${student.name} (${student.gradeLevel} - Unidade ${student.unit}) e acabei de deixar uma mensagem de *${messageType}* no portal escolar direcionada à ${recipient}. Conteúdo: "${content}". Poderia verificar?`;
+      // Fallback para dados da unidade
+      const unitInfo = UNITS_DATA[student.unit] || DEFAULT_UNIT_DATA;
+
+      // Prioriza o telefone do contato específico, senão usa o da unidade
+      const phoneRaw = contact ? contact.phoneNumber : unitInfo.phone;
+      const waNumber = phoneRaw.replace(/\D/g, '');
+      const contactName = contact ? contact.name : `Escola (${student.unit})`;
+
+      if (waNumber) {
+        const messageText = `Olá ${contactName}! Sou o(a) ${student.name} (${student.gradeLevel} - Unidade ${student.unit}) e acabei de deixar uma mensagem de *${messageType}* no portal escolar direcionada à ${recipient}. Conteúdo: "${content}". Poderia verificar?`;
         // Usamos api.whatsapp.com pois é mais robusto em alguns dispositivos móveis
         waUrl = `https://api.whatsapp.com/send?phone=${waNumber}&text=${encodeURIComponent(messageText)}`;
 
-        // Abre a janela IMEDIATAMENTE no evento de clique
-        waWindow = window.open('', '_blank');
-        if (waWindow) {
-          waWindow.document.write('<html><body style="font-family: sans-serif; text-align: center; padding-top: 50px;">Redirecionando para o WhatsApp...</body></html>');
-        }
+        // ABERTURA IMEDIATA DA URL FINAL
+        window.open(waUrl, '_blank');
       }
     }
 
     setIsSending(true);
     try {
+      // O envio ao banco ocorre em paralelo/background relativo à janela aberta
       await onSendMessage({
         studentId: student.id,
         studentName: student.name,
@@ -51,20 +60,15 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
         status: 'new',
       });
 
-      // 2. Redirecionamento Pós-Async
-      if (waWindow && waUrl) {
-        waWindow.location.href = waUrl;
-      }
-
       setIsSent(true);
       setContent('');
       setMessageType(MessageType.SUGGESTION);
       setRecipient(MessageRecipient.COORDINATION);
       setTimeout(() => setIsSent(false), 5000);
     } catch (error) {
-      // Se falhar o envio, fecha a janela do WhatsApp para não ficar perdida
-      if (waWindow) waWindow.close();
-      // Erro também é tratado no App.tsx (alert original)
+      console.error("Erro ao enviar mensagem interna:", error);
+      // Não fechamos janela aqui pois o usuário já está no WhatsApp (se aplicável), o que é o objetivo principal.
+      // A falha de log interno não deve impedir o contato.
     } finally {
       setIsSending(false);
     }
