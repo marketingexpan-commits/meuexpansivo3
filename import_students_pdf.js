@@ -24,8 +24,8 @@ const SUBJECTS = [
 function parseStudents(text) {
     const students = [];
     const content = text.replace(/\r/g, '').split('\n').join(' ');
-    // Regex rigorosa: busca Código Ref Nome (01|02) Sigla Turno
-    const studentRegex = /(\d{1,4})\s+(\d{1,3})\s+([A-Z\xC0-\xFF\s\n\-\.]{5,100}?)\s+(01|02)\s+(N[1-5]|[1-9][AB S]?|(?:\d+º\s+Ano))\s+(MANHA|TARDE|MATUTINO|VESPERTINO|TARDE-VESPE|TARDE-VESPERTINO|MANHÃ)/g;
+    // Regex rigorosa: busca Código Ref Nome (01|02|03) Sigla Turno
+    const studentRegex = /(\d{1,4})\s+(\d{1,3})\s+([A-Z\xC0-\xFF\s\n\-\.]{5,100}?)\s+(01|02|03)\s+(N[1-5]|[1-9][AB S]?|(?:\d+º\s+Ano))\s+(MANHA|TARDE|MATUTINO|VESPERTINO|TARDE-VESPE|TARDE-VESPERTINO|MANHÃ)/g;
 
     let match;
     while ((match = studentRegex.exec(content)) !== null) {
@@ -65,8 +65,8 @@ function translateGrade(sigla) {
 }
 
 async function startImport() {
-    console.log("Reading batch9.txt...");
-    const rawText = fs.readFileSync('batch9.txt', 'utf8');
+    console.log("Reading batch10.txt...");
+    const rawText = fs.readFileSync('batch10.txt', 'utf8');
     const parsed = parseStudents(rawText);
     console.log(`Parsed ${parsed.length} students.`);
 
