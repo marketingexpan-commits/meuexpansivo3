@@ -47,6 +47,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     const [notaRecFinal, setNotaRecFinal] = useState<number | ''>('');
     const [currentGradeData, setCurrentGradeData] = useState<GradeEntry | null>(null);
 
+    // Refs for mobile navigation
+    const gradeFormRef = React.useRef<HTMLDivElement>(null);
+    const studentListRef = React.useRef<HTMLDivElement>(null);
+    const [showScrollTop, setShowScrollTop] = useState(false);
+
     // Estados para Relatório (Educação Infantil)
     const [selectedSemester, setSelectedSemester] = useState<1 | 2>(1);
     const [currentReport, setCurrentReport] = useState<EarlyChildhoodReport | null>(null);
@@ -179,9 +184,39 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
         }
     }, [selectedStudent, selectedSemester, isEarlyChildhoodStudent, earlyChildhoodReports, selectedSubject, selectedStage, grades, reloadGradeInputState]);
 
+    // Scroll Listener for "Back to Top" button
+    useEffect(() => {
+        const listDiv = studentListRef.current;
+        if (!listDiv) return;
+
+        const handleScroll = () => {
+            if (listDiv.scrollTop > 200) {
+                setShowScrollTop(true);
+            } else {
+                setShowScrollTop(false);
+            }
+        };
+
+        listDiv.addEventListener('scroll', handleScroll);
+        return () => listDiv.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    const scrollToTop = () => {
+        if (studentListRef.current) {
+            studentListRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    };
+
     const handleStudentSelect = (student: Student) => {
         setSelectedStudent(student);
         if (!selectedSubject && teacherSubjects.length > 0) setSelectedSubject(teacherSubjects[0] as string);
+
+        // Mobile: Scroll to form when student is selected to ensure visibility
+        if (window.innerWidth < 768) {
+            setTimeout(() => {
+                gradeFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
     };
 
     const handleInputChange = (setter: React.Dispatch<React.SetStateAction<number | ''>>) => (e: React.ChangeEvent<HTMLInputElement>) => { setter(e.target.value === '' ? '' : parseFloat(e.target.value)); };
@@ -441,7 +476,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         {SCHOOL_SHIFTS_LIST.map((shift) => (<option key={shift} value={shift}>{shift}</option>))}
                                     </select>
                                 </div>
-                                <div className="flex-1 overflow-y-auto pr-2">
+                                <div ref={studentListRef} className="flex-1 overflow-y-auto pr-2 relative">
                                     <ul className="divide-y divide-gray-200">
                                         {filteredStudents.length > 0 ? (
                                             filteredStudents.map(student => (
@@ -459,10 +494,22 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                             <li className="p-4 text-center text-sm text-gray-500 italic">Nenhum aluno encontrado.</li>
                                         )}
                                     </ul>
+                                    {showScrollTop && (
+                                        <button
+                                            onClick={scrollToTop}
+                                            className="sticky bottom-4 ml-auto right-4 bg-blue-950 text-white p-2 rounded-full shadow-lg hover:bg-blue-800 transition-all z-20 w-10 h-10 flex items-center justify-center opacity-90 hover:opacity-100"
+                                            title="Voltar ao topo"
+                                            aria-label="Voltar ao topo"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                                            </svg>
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
-                            <div className="w-full md:w-2/3 p-6 border rounded-lg shadow-md bg-blue-50 overflow-y-auto max-h-[85vh]">
+                            <div ref={gradeFormRef} className="w-full md:w-2/3 p-6 border rounded-lg shadow-md bg-blue-50 overflow-y-auto max-h-[85vh]">
                                 {!selectedStudent ? (
                                     <div className="flex flex-col items-center justify-center h-64 text-gray-400">
                                         <p className="text-lg">Selecione um aluno na lista ao lado.</p>
