@@ -65,8 +65,8 @@ function translateGrade(sigla) {
 }
 
 async function startImport() {
-    console.log("Reading batch7.txt...");
-    const rawText = fs.readFileSync('batch7.txt', 'utf8');
+    console.log("Reading batch8.txt...");
+    const rawText = fs.readFileSync('batch8.txt', 'utf8');
     const parsed = parseStudents(rawText);
     console.log(`Parsed ${parsed.length} students.`);
 
