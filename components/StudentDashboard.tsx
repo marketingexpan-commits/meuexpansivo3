@@ -7,7 +7,8 @@ import { calculateBimesterMedia, calculateFinalData, UNITS_DATA, DEFAULT_UNIT_DA
 import { getStudyTips } from '../services/geminiService';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
-import { MessageBox } from './MessageBox';
+import { QRCodeSVG } from 'qrcode.react';
+import { applyGradePatches } from '../utils/dataPatch';
 import { FinanceiroScreen } from './FinanceiroScreen';
 import { HistoricalReport2025 } from './HistoricalReport2025';
 
@@ -682,7 +683,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             {selectedYear === 2025 && !isEarlyChildhood ? (
                                 <HistoricalReport2025
                                     student={student}
-                                    grades={grades}
+                                    grades={applyGradePatches(grades)}
                                     unitData={currentUnitInfo}
                                     attendanceRecords={liveAttendance}
                                 />

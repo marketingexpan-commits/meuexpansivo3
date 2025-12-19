@@ -1,5 +1,7 @@
 // src/components/TeacherDashboard.tsx
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { applyGradePatches } from '../utils/dataPatch';
 import { db } from '../firebaseConfig';
 import { Teacher, Student, GradeEntry, BimesterData, SchoolUnit, Subject, SchoolClass, AttendanceRecord, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus } from '../types';
 import { getAttendanceBreakdown, AttendanceBreakdown } from '../src/utils/attendanceUtils';
@@ -183,7 +185,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     useEffect(() => {
         if (!selectedStudent) { setCurrentGradeData(null); setCurrentReport(null); return; }
         if (isEarlyChildhoodStudent) {
-            const reportId = `${selectedStudent.id}_${selectedSemester}_${selectedYear}`;
+            const reportId = `${selectedStudent.id}_${selectedSemester}_${selectedYear} `;
             const existingReport = earlyChildhoodReports.find(r => r.id === reportId);
             if (existingReport) { setCurrentReport(existingReport); setTeacherObservations(existingReport.teacherObservations || ''); }
             else {
@@ -231,7 +233,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
         const finalData = calculateFinalData(newBimesters, newRecFinal);
 
         // CORREÇÃO: Usar ID determinístico. Como App.tsx agora garante que id = doc.id, usamos isso.
-        const standardId = `${selectedStudent.id}_${selectedSubject.replace(/\s+/g, '_')}_${selectedYear}`;
+        const standardId = `${selectedStudent.id}_${selectedSubject.replace(/\s+/g, '_')}_${selectedYear} `;
 
         const gradeToSave: GradeEntry = {
             id: standardId,
@@ -272,7 +274,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
         const studentsInClass = students.filter(s => s.unit === activeUnit && s.gradeLevel === attendanceGrade && s.schoolClass === attendanceClass);
         setAttendanceStudents(studentsInClass);
         // ID Includes Discipline now
-        const recordId = `${attendanceDate}_${activeUnit}_${attendanceGrade}_${attendanceClass}_${attendanceSubject}`;
+        const recordId = `${attendanceDate}_${activeUnit}_${attendanceGrade}_${attendanceClass}_${attendanceSubject} `;
         const existingRecord = attendanceRecords.find(r => r.id === recordId);
         if (existingRecord) { setStudentStatuses(existingRecord.studentStatus); }
         else { const defaultStatuses: Record<string, AttendanceStatus> = {}; studentsInClass.forEach(s => { defaultStatuses[s.id] = AttendanceStatus.PRESENT; }); setStudentStatuses(defaultStatuses); }
@@ -284,7 +286,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     const handleSaveAttendance = async () => {
         if (attendanceStudents.length === 0) return; setIsAttendanceSaving(true);
         // ID Includes Discipline
-        const recordId = `${attendanceDate}_${activeUnit}_${attendanceGrade}_${attendanceClass}_${attendanceSubject}`;
+        const recordId = `${attendanceDate}_${activeUnit}_${attendanceGrade}_${attendanceClass}_${attendanceSubject} `;
         const record: AttendanceRecord = {
             id: recordId,
             date: attendanceDate,
@@ -329,7 +331,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                 // 2. Identificar documento de grade
                 // FIX: Usar targetGradeYear (ano do boletim) ao inves do ano da data da chamada.
                 // Isso permite que chamadas feitas em Dez/2025 contem para o ano letivo de 2026 se selecionado.
-                const gradeId = `${student.id}_${attendanceSubject.replace(/\s+/g, '_')}_${targetGradeYear}`;
+                const gradeId = `${student.id}_${attendanceSubject.replace(/\s+/g, '_')}_${targetGradeYear} `;
                 const existingGrade = liveGrades.find(g => g.id === gradeId);
 
                 // 3. Atualizar no Firestore
@@ -362,7 +364,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                         lastUpdated: new Date().toISOString()
                     };
                     // Atualiza o bimestre correto no novo objeto
-                    (newGrade.bimesters as any)[`bimester${bimesterOffset}`].faltas = bimesterAbsences;
+                    (newGrade.bimesters as any)[`bimester${bimesterOffset} `].faltas = bimesterAbsences;
 
                     await gradeRef.set(newGrade);
                 }
@@ -422,10 +424,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
 
                     {/* TABS */}
                     <div className="flex mb-6 border-b w-full">
-                        <button onClick={() => setActiveTab('grades')} className={`flex-1 pb-3 px-1 font-semibold border-b-2 text-center transition-colors ${activeTab === 'grades' ? 'text-blue-950 border-blue-950' : 'text-gray-500 border-transparent hover:text-gray-700'}`}>
+                        <button onClick={() => setActiveTab('grades')} className={`flex - 1 pb - 3 px - 1 font - semibold border - b - 2 text - center transition - colors ${activeTab === 'grades' ? 'text-blue-950 border-blue-950' : 'text-gray-500 border-transparent hover:text-gray-700'} `}>
                             {selectedStudent && isEarlyChildhoodStudent ? 'Lançar Relatório' : 'Lançar Notas'}
                         </button>
-                        <button onClick={() => setActiveTab('attendance')} className={`flex-1 pb-3 px-1 font-semibold border-b-2 text-center transition-colors ${activeTab === 'attendance' ? 'text-blue-950 border-blue-950' : 'text-gray-500 border-transparent hover:text-gray-700'}`}>
+                        <button onClick={() => setActiveTab('attendance')} className={`flex - 1 pb - 3 px - 1 font - semibold border - b - 2 text - center transition - colors ${activeTab === 'attendance' ? 'text-blue-950 border-blue-950' : 'text-gray-500 border-transparent hover:text-gray-700'} `}>
                             Chamada Diária
                         </button>
                     </div>
@@ -454,7 +456,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                     <ul className="divide-y divide-gray-200">
                                         {filteredStudents.length > 0 ? (
                                             filteredStudents.map(student => (
-                                                <li key={student.id} className={`p-3 cursor-pointer hover:bg-blue-50 transition rounded-md mb-1 ${selectedStudent?.id === student.id ? 'bg-blue-100 border-l-4 border-blue-950 shadow-sm' : ''}`} onClick={() => handleStudentSelect(student)}>
+                                                <li key={student.id} className={`p - 3 cursor - pointer hover: bg - blue - 50 transition rounded - md mb - 1 ${selectedStudent?.id === student.id ? 'bg-blue-100 border-l-4 border-blue-950 shadow-sm' : ''} `} onClick={() => handleStudentSelect(student)}>
                                                     <span className="font-bold text-gray-900 block">{student.name}</span>
                                                     <span className="text-xs text-gray-500 block mt-1">Matrícula: {student.code}</span>
                                                     <span className="text-xs text-gray-400 block mt-0.5">{student.gradeLevel}</span>
@@ -477,7 +479,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                     <div className="animate-fade-in-up">
                                         <ClassHistoricalReport2025
                                             students={filteredStudents.length > 0 ? filteredStudents : students}
-                                            grades={liveGrades}
+                                            grades={applyGradePatches(liveGrades)}
                                             attendanceRecords={liveAttendance}
                                             unitData={UNITS_DATA[activeUnit as keyof typeof UNITS_DATA] || null}
                                         />
@@ -535,7 +537,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                                     key={status}
                                                                                     type="button"
                                                                                     onClick={() => handleCompetencyChange(field.id, comp.id, status)}
-                                                                                    className={`px-3 py-1.5 text-xs font-bold border transition-colors ${isSelected ? `bg-${color}-500 text-white border-${color}-600 z-10` : `bg-white text-gray-700 border-gray-300 hover:bg-gray-100`} first:rounded-l-lg last:rounded-r-lg`}
+                                                                                    className={`px - 3 py - 1.5 text - xs font - bold border transition - colors ${isSelected ? `bg-${color}-500 text-white border-${color}-600 z-10` : `bg-white text-gray-700 border-gray-300 hover:bg-gray-100`} first: rounded - l - lg last: rounded - r - lg`}
                                                                                 >
                                                                                     {abbrev}
                                                                                 </button>
@@ -552,7 +554,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                     <textarea value={teacherObservations} onChange={(e) => setTeacherObservations(e.target.value)} className="w-full p-3 border border-gray-300 rounded-md" rows={4} placeholder="Descreva aqui observações gerais sobre o desenvolvimento, comportamento ou conquistas do aluno(a) neste semestre..." />
                                                 </div>
                                                 <div className="flex mt-6">
-                                                    <Button type="submit" disabled={isSaving} className={`w-full py-3 shadow-md flex justify-center items-center ${isSaving ? 'opacity-70 cursor-not-allowed' : ''}`}>
+                                                    <Button type="submit" disabled={isSaving} className={`w - full py - 3 shadow - md flex justify - center items - center ${isSaving ? 'opacity-70 cursor-not-allowed' : ''} `}>
                                                         {isSaving ? 'Salvando...' : 'Salvar Relatório'}
                                                     </Button>
                                                 </div>
@@ -600,7 +602,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                             <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-6">
                                                                 <div className="flex flex-col items-center mb-3 pb-2 border-b border-blue-200 gap-2">
                                                                     <h3 className="font-bold text-lg text-blue-950 whitespace-nowrap">{getStageDisplay(selectedStage).replace('Recuperação ', '')}</h3>
-                                                                    <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${isAnnualMediaPassing ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                                                    <span className={`px - 2 py - 1 rounded text - xs font - bold uppercase ${ isAnnualMediaPassing ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' } `}>
                                                                         {currentGradeData ? (isAnnualMediaPassing ? 'NA MÉDIA' : 'ABAIXO DA MÉDIA') : 'SEM REGISTRO'}
                                                                     </span>
                                                                 </div>
@@ -625,15 +627,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                             <div className="grid grid-cols-3 gap-2 md:gap-4">
                                                                 <div className={isRecoveryMode ? "opacity-60" : ""}>
                                                                     <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Nota {isRecoveryMode && <span className="text-[10px] text-gray-500 hidden md:inline">(Leitura)</span>}</label>
-                                                                    <input type="number" step="0.1" min="0" max="10" value={nota} onChange={handleInputChange(setNota)} disabled={isRecoveryMode} className={`w-full p-2 border border-gray-300 rounded text-center font-bold text-lg ${isRecoveryMode ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`} placeholder="-" />
+                                                                    <input type="number" step="0.1" min="0" max="10" value={nota} onChange={handleInputChange(setNota)} disabled={isRecoveryMode} className={`w - full p - 2 border border - gray - 300 rounded text - center font - bold text - lg ${ isRecoveryMode ? 'bg-gray-100 cursor-not-allowed' : 'bg-white' } `} placeholder="-" />
                                                                 </div>
                                                                 <div className={!isRecoveryMode ? "opacity-60" : ""}>
                                                                     <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Rec. {!isRecoveryMode && <span className="text-[10px] text-gray-500 hidden md:inline">(Leitura)</span>}</label>
-                                                                    <input type="number" step="0.1" min="0" max="10" value={recuperacao} onChange={handleInputChange(setRecuperacao)} disabled={!isRecoveryMode} className={`w-full p-2 border border-gray-300 rounded text-center text-gray-600 ${!isRecoveryMode ? 'bg-gray-100 cursor-not-allowed' : 'bg-white font-bold'}`} placeholder="-" />
+                                                                    <input type="number" step="0.1" min="0" max="10" value={recuperacao} onChange={handleInputChange(setRecuperacao)} disabled={!isRecoveryMode} className={`w - full p - 2 border border - gray - 300 rounded text - center text - gray - 600 ${ !isRecoveryMode ? 'bg-gray-100 cursor-not-allowed' : 'bg-white font-bold' } `} placeholder="-" />
                                                                 </div>
                                                                 <div className={isRecoveryMode ? "opacity-60" : ""}>
                                                                     <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Faltas (Auto)</label>
-                                                                    <div className={`w-full p-2 border border-gray-300 rounded text-center bg-gray-100 text-gray-600 cursor-not-allowed`}>
+                                                                    <div className={`w - full p - 2 border border - gray - 300 rounded text - center bg - gray - 100 text - gray - 600 cursor - not - allowed`}>
                                                                         {selectedStage.startsWith('bimester') ? calculatedAbsences[Number(selectedStage.replace('bimester', '').replace('_rec', '')) as 1 | 2 | 3 | 4] || 0 : '-'}
                                                                     </div>
                                                                 </div>
@@ -664,7 +666,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                         </div>
 
                                                         <div className="flex">
-                                                            <Button type="submit" disabled={isSaving} className={`w-full py-3 shadow-md flex justify-center items-center ${isSaving ? 'opacity-70 cursor-not-allowed' : ''}`}>
+                                                            <Button type="submit" disabled={isSaving} className={`w - full py - 3 shadow - md flex justify - center items - center ${ isSaving ? 'opacity-70 cursor-not-allowed' : '' } `}>
                                                                 {isSaving ? 'Salvando...' : 'Salvar Lançamento'}
                                                             </Button>
                                                         </div>
@@ -692,14 +694,14 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                             <button
                                                                 type="button"
                                                                 onClick={() => setSelectedYear(2026)}
-                                                                className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${selectedYear === 2026 ? 'bg-blue-950 text-white shadow-md' : 'text-gray-500 hover:bg-gray-200'}`}
+                                                                className={`px - 4 py - 1.5 rounded - md text - xs font - bold transition - all ${ selectedYear === 2026 ? 'bg-blue-950 text-white shadow-md' : 'text-gray-500 hover:bg-gray-200' } `}
                                                             >
                                                                 2026 (Atual)
                                                             </button>
                                                             <button
                                                                 type="button"
                                                                 onClick={() => setSelectedYear(2025)}
-                                                                className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${selectedYear === 2025 ? 'bg-blue-950 text-white shadow-md' : 'text-gray-500 hover:bg-gray-200'}`}
+                                                                className={`px - 4 py - 1.5 rounded - md text - xs font - bold transition - all ${ selectedYear === 2025 ? 'bg-blue-950 text-white shadow-md' : 'text-gray-500 hover:bg-gray-200' } `}
                                                             >
                                                                 Ver Ano Anterior (2025)
                                                             </button>
@@ -732,10 +734,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                         <tr className="bg-blue-50 text-[10px]">
                                                             {[1, 2, 3, 4].map(num => (
                                                                 <React.Fragment key={num}>
-                                                                    <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-200" title={`Nota ${num}º Bimestre`}>N{num}</th>
-                                                                    <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-200" title={`Recuperação ${num}º Bimestre`}>R{num}</th>
-                                                                    <th className="px-1 py-1 text-center font-bold text-blue-900 bg-blue-50 border-r border-gray-200" title={`Média ${num}º Bimestre`}>M{num}</th>
-                                                                    <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300" title={`Faltas ${num}º Bimestre`}>F{num}</th>
+                                                                    <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-200" title={`Nota ${ num }º Bimestre`}>N{num}</th>
+                                                                    <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-200" title={`Recuperação ${ num }º Bimestre`}>R{num}</th>
+                                                                    <th className="px-1 py-1 text-center font-bold text-blue-900 bg-blue-50 border-r border-gray-200" title={`Média ${ num }º Bimestre`}>M{num}</th>
+                                                                    <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300" title={`Faltas ${ num }º Bimestre`}>F{num}</th>
                                                                 </React.Fragment>
                                                             ))}
                                                         </tr>
@@ -772,7 +774,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
 
                                                                 // Se não existe nota, criamos um placeholder para permitir exibir faltas
                                                                 const baseGrade: GradeEntry = existingGrade || {
-                                                                    id: `placeholder_${selectedStudent.id}_${subjectName}_${selectedYear}_${index}`,
+                                                                    id: `placeholder_${ selectedStudent.id }_${ subjectName }_${ selectedYear }_${ index } `,
                                                                     studentId: selectedStudent.id,
                                                                     subject: subjectName,
                                                                     year: selectedYear,
@@ -860,10 +862,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                         <td className="px-1 py-2 text-center font-bold text-red-600 bg-red-50 text-sm border-r border-gray-300">{formatGrade(displayGrade.recuperacaoFinal)}</td>
                                                                         <td className="px-1 py-2 text-center font-extrabold text-blue-950 bg-blue-50 text-sm border-r border-gray-300">{formatGrade(displayGrade.mediaFinal)}</td>
                                                                         <td className="px-1 py-2 text-center align-middle">
-                                                                            <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${displayGrade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
-                                                                                displayGrade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                                                                    'bg-red-50 text-red-700 border-red-200'
-                                                                                }`}>
+                                                                            <span className={`inline - block w - full py - 0.5 rounded text - [9px] uppercase font - bold border ${
+    displayGrade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
+    displayGrade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+        'bg-red-50 text-red-700 border-red-200'
+} `}>
                                                                                 {displayGrade.situacaoFinal}
                                                                             </span>
                                                                         </td>
@@ -965,7 +968,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                             <div>
                                                 <h4 className="font-bold text-gray-800">{student.name}</h4>
                                                 <div className="flex items-center gap-2 mt-1">
-                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${student.shift === 'Matutino' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                    <span className={`text - [10px] font - bold px - 2 py - 0.5 rounded - full ${student.shift === 'Matutino' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'} `}>
                                                         {student.shift}
                                                     </span>
                                                     {status === AttendanceStatus.PRESENT && <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">PRESENTE</span>}
@@ -995,19 +998,19 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         <div className="flex gap-2 w-full mt-2">
                                             <button
                                                 onClick={() => handleStatusChange(student.id, AttendanceStatus.PRESENT)}
-                                                className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all duration-200 border ${status === AttendanceStatus.PRESENT
-                                                    ? 'bg-green-500 text-white border-green-600 shadow-md transform scale-105'
-                                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                                                    }`}
+                                                className={`flex - 1 py - 3 rounded - lg font - bold text - sm transition - all duration - 200 border ${status === AttendanceStatus.PRESENT
+                                                        ? 'bg-green-500 text-white border-green-600 shadow-md transform scale-105'
+                                                        : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                                    } `}
                                             >
                                                 Presente
                                             </button>
                                             <button
                                                 onClick={() => handleStatusChange(student.id, AttendanceStatus.ABSENT)}
-                                                className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all duration-200 border ${status === AttendanceStatus.ABSENT
-                                                    ? 'bg-red-500 text-white border-red-600 shadow-md transform scale-105'
-                                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                                                    }`}
+                                                className={`flex - 1 py - 3 rounded - lg font - bold text - sm transition - all duration - 200 border ${status === AttendanceStatus.ABSENT
+                                                        ? 'bg-red-500 text-white border-red-600 shadow-md transform scale-105'
+                                                        : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                                    } `}
                                             >
                                                 Faltou
                                             </button>
@@ -1039,7 +1042,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-2">
                                                         <p className="font-medium text-gray-900">{student.name}</p>
-                                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${student.shift === 'Matutino' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                                                        <span className={`text - [10px] px - 2 py - 0.5 rounded - full font - bold border ${student.shift === 'Matutino' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-blue-50 text-blue-700 border-blue-200'} `}>
                                                             {student.shift}
                                                         </span>
                                                     </div>
@@ -1067,8 +1070,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                 </td>
                                                 <td className="px-6 py-4 text-center">
                                                     <div className="inline-flex rounded-md shadow-sm" role="group">
-                                                        <button type="button" onClick={() => handleStatusChange(student.id, AttendanceStatus.PRESENT)} className={`px-4 py-2 text-sm font-medium border rounded-l-lg transition-colors ${studentStatuses[student.id] === AttendanceStatus.PRESENT ? 'bg-green-500 text-white border-green-600 z-10' : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-100'}`}>Presente</button>
-                                                        <button type="button" onClick={() => handleStatusChange(student.id, AttendanceStatus.ABSENT)} className={`px-4 py-2 text-sm font-medium border rounded-r-lg transition-colors ${studentStatuses[student.id] === AttendanceStatus.ABSENT ? 'bg-red-600 text-white border-red-700 z-10' : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-100'}`}>Faltou</button>
+                                                        <button type="button" onClick={() => handleStatusChange(student.id, AttendanceStatus.PRESENT)} className={`px - 4 py - 2 text - sm font - medium border rounded - l - lg transition - colors ${studentStatuses[student.id] === AttendanceStatus.PRESENT ? 'bg-green-500 text-white border-green-600 z-10' : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-100'} `}>Presente</button>
+                                                        <button type="button" onClick={() => handleStatusChange(student.id, AttendanceStatus.ABSENT)} className={`px - 4 py - 2 text - sm font - medium border rounded - r - lg transition - colors ${studentStatuses[student.id] === AttendanceStatus.ABSENT ? 'bg-red-600 text-white border-red-700 z-10' : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-100'} `}>Faltou</button>
                                                     </div>
                                                 </td>
                                             </tr>
