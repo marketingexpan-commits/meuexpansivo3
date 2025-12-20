@@ -104,8 +104,20 @@ async function importStudents() {
     const parsed = parseStudents(rawText);
     console.log(`Found ${parsed.length} students to process.`);
 
+    // GRADE OVERRIDES: Fix known data issues manually
+    const GRADE_OVERRIDES = {
+        '85': '1ª Série - Ens.Médio'
+    };
+
     for (const data of parsed) {
-        const gradeLevel = translateGrade(data.gradeSigla);
+        let gradeLevel = translateGrade(data.gradeSigla);
+
+        // Apply Override if exists
+        if (GRADE_OVERRIDES[data.code]) {
+            console.log(`   [OVERRIDE] Fixing grade for ${data.name} (Code ${data.code}): ${gradeLevel} -> ${GRADE_OVERRIDES[data.code]}`);
+            gradeLevel = GRADE_OVERRIDES[data.code];
+        }
+
         const studentId = `student_${data.code}`;
 
         const student = {
@@ -114,7 +126,7 @@ async function importStudents() {
             name: data.name,
             password: '123',
             gradeLevel: gradeLevel,
-            gradeLevelSigla: data.gradeSigla,
+            gradeLevelSigla: data.gradeSigla, // We keep the original sigla for reference, or we could update it too if needed.
             shift: data.shift,
             schoolClass: data.schoolClass,
             unit: 'Quintas',
@@ -128,6 +140,7 @@ async function importStudents() {
             const studentRef = db.collection('students').doc(studentId);
             batch.set(studentRef, student, { merge: true });
 
+            // Check if it's infantil based on the *potentially overridden* gradeLevel
             const isInfantil = data.gradeSigla.startsWith('N') || gradeLevel.includes('Infantil');
 
             if (!isInfantil) {
