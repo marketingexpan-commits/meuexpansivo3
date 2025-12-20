@@ -91,12 +91,19 @@ function translateGrade(sigla) {
 }
 
 async function importStudents() {
-    console.log("Reading data file...");
+    console.log("Reading data files...");
     let rawText = "";
     try {
-        rawText = fs.readFileSync('quintas_data.txt', 'utf8');
+        const text1 = fs.readFileSync('quintas_data.txt', 'utf8');
+        rawText += text1 + "\n";
+
+        if (fs.existsSync('quintas_data_2.txt')) {
+            console.log("Found quintas_data_2.txt, appending...");
+            const text2 = fs.readFileSync('quintas_data_2.txt', 'utf8');
+            rawText += text2;
+        }
     } catch (err) {
-        console.error("Error reading quintas_data.txt:", err);
+        console.error("Error reading data files:", err);
         process.exit(1);
     }
 
