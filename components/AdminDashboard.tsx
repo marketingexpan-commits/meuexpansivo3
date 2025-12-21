@@ -69,6 +69,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
     const [sName, setSName] = useState('');
     const [sResponsavel, setSResponsavel] = useState(''); // Novo Campo
+    const [sEmail, setSEmail] = useState('');
+    const [sPhone, setSPhone] = useState('');
     const [sCode, setSCode] = useState('');
     const [sGrade, setSGrade] = useState(SCHOOL_GRADES_LIST[0]);
     const [sUnit, setSUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_1);
@@ -84,11 +86,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [studentFilterShift, setStudentFilterShift] = useState(''); // Novo estado para filtro de turno
     const [studentFilterUnit, setStudentFilterUnit] = useState(''); // Novo estado para filtro de unidade
 
-    // Novos Estados para Responsável e Financeiro
-    const [sCpfResponsavel, setSCpfResponsavel] = useState('');
-    const [sEmailResponsavel, setSEmailResponsavel] = useState('');
-    const [sTelefoneResponsavel, setSTelefoneResponsavel] = useState('');
-    const [sValorMensalidade, setSValorMensalidade] = useState('');
+
 
     // Estado para Financeiro
     const [financialRecords, setFinancialRecords] = useState<Mensalidade[]>([]);
@@ -159,6 +157,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         };
         fetchFinancial();
     }, [activeTab]);
+
+    // Auto-fill Financial Contact when Unit Changes
+    useEffect(() => {
+        if (activeTab === 'financial') {
+            // Find existing financial contact for the selected unit
+            const existing = unitContacts.find(c => c.unit === contactUnit && c.role === ContactRole.FINANCIAL);
+            if (existing) {
+                setEditingContactId(existing.id);
+                setContactName(existing.name);
+                setContactPhone(existing.phoneNumber);
+            } else {
+                setEditingContactId(null);
+                setContactName('');
+                setContactPhone('+55');
+            }
+        }
+    }, [contactUnit, unitContacts, activeTab]);
 
     // Derived Financial Data
     const getFinancialSummary = () => {
@@ -493,6 +508,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const filteredContacts = unitContacts.filter(c => isGeneralAdmin ? (contactUnit ? c.unit === contactUnit : true) : c.unit === adminUnit);
     const directors = filteredContacts.filter(c => c.role === ContactRole.DIRECTOR);
     const coordinators = filteredContacts.filter(c => c.role === ContactRole.COORDINATOR);
+    const financialContacts = filteredContacts.filter(c => c.role === ContactRole.FINANCIAL);
 
     const formatDate = (isoString: string, includeTime = true) => {
         const date = new Date(isoString);
@@ -514,6 +530,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setEditingStudentId(s.id);
         setSName(s.name);
         setSResponsavel(s.nome_responsavel || '');
+        setSEmail(s.email_responsavel || '');
+        setSPhone(s.telefone_responsavel || '');
         setSCode(s.code);
         setSGrade(s.gradeLevel);
         setSUnit(s.unit);
@@ -522,11 +540,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setSPass(s.password);
         setSMetodoPagamento(s.metodo_pagamento || 'Interno');
 
-        // Novos Campos
-        setSCpfResponsavel(s.cpf_responsavel || '');
-        setSEmailResponsavel(s.email_responsavel || '');
-        setSTelefoneResponsavel(s.telefone_responsavel || '');
-        setSValorMensalidade(s.valor_mensalidade ? s.valor_mensalidade.toString() : '');
+
 
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -534,14 +548,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setEditingStudentId(null);
         setSName('');
         setSResponsavel('');
+        setSEmail('');
+        setSPhone('');
         setSCode('');
         setSPass('');
 
-        // Resetar novos campos
-        setSCpfResponsavel('');
-        setSEmailResponsavel('');
-        setSTelefoneResponsavel('');
-        setSValorMensalidade('');
+
     };
     const fullHandleStudentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -551,43 +563,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         const studentData: Partial<Student> = {
             name: sName,
             nome_responsavel: sResponsavel,
+            email_responsavel: sEmail,
+            telefone_responsavel: sPhone,
             code: sCode,
             gradeLevel: sGrade,
             unit: unitToSave,
             shift: sShift,
             schoolClass: sClass,
             metodo_pagamento: sMetodoPagamento,
-            // Novos Campos
-            cpf_responsavel: sCpfResponsavel,
-            email_responsavel: sEmailResponsavel,
-            telefone_responsavel: sTelefoneResponsavel,
-            valor_mensalidade: sValorMensalidade ? parseFloat(sValorMensalidade.replace(',', '.')) : 0
+
         };
 
         if (editingStudentId) {
             const original = students.find(s => s.id === editingStudentId)!;
 
-            // ATUALIZAR MENSALIDADES PENDENTES SE O VALOR MUDOU
-            const novoValor = sValorMensalidade ? parseFloat(sValorMensalidade.replace(',', '.')) : 0;
-            if (original.valor_mensalidade !== novoValor && novoValor > 0) {
-                try {
-                    const snapshot = await db.collection('mensalidades')
-                        .where('studentId', '==', original.id)
-                        .where('status', '==', 'Pendente')
-                        .get();
 
-                    const batch = db.batch();
-                    snapshot.docs.forEach(doc => {
-                        batch.update(doc.ref, { value: novoValor });
-                    });
-                    if (!snapshot.empty) {
-                        await batch.commit();
-                        console.log(`${snapshot.size} mensalidades atualizadas.`);
-                    }
-                } catch (err) {
-                    console.error("Erro ao atualizar mensalidades:", err);
-                }
-            }
 
             onEditStudent({
                 ...original,
@@ -651,8 +641,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             };
             onAddStudent(newStudent);
             alert("Cadastrado!");
-            setSName(''); setSResponsavel(''); setSCode(''); setSPass(''); setSMetodoPagamento('Interno');
-            setSCpfResponsavel(''); setSEmailResponsavel(''); setSTelefoneResponsavel(''); setSValorMensalidade('');
+            setSName(''); setSResponsavel(''); setSEmail(''); setSPhone(''); setSCode(''); setSPass(''); setSMetodoPagamento('Interno');
         }
     };
     const initiateDeleteTeacher = (id: string) => setTeacherToDelete(id);
@@ -663,8 +652,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const handleRemoveSubject = (s: Subject) => setTSubjects(tSubjects.filter(sub => sub !== s));
 
     // Handlers de Telefone (Separados)
-    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => { if (/^[+]?[0-9]*$/.test(e.target.value)) setTPhone(e.target.value); };
-    const handleContactPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => { if (/^[+]?[0-9]*$/.test(e.target.value)) setContactPhone(e.target.value); };
+    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => { if (/^[0-9]*$/.test(e.target.value)) setTPhone(e.target.value); };
+    const handleContactPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => { if (/^[0-9]*$/.test(e.target.value)) setContactPhone(e.target.value); };
 
     // Handlers de Contatos
     const handleSaveContact = (role: ContactRole) => {
@@ -800,29 +789,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         {isGeneralAdmin && <button onClick={() => setActiveTab('admins')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeTab === 'admins' ? 'bg-purple-800 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Gerenciar Admins</button>}
                     </div>
 
-                    {activeTab === 'students' && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-1"><div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"><h2 className="text-lg font-bold text-gray-800 mb-4">{editingStudentId ? 'Editar Aluno' : 'Cadastrar Novo Aluno'}</h2><form onSubmit={fullHandleStudentSubmit} className="space-y-4"><div><label className="text-sm font-medium">Nome</label><input type="text" value={sName} onChange={e => setSName(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Responsável</label><input type="text" value={sResponsavel} onChange={e => setSResponsavel(e.target.value)} className="w-full p-2 border rounded" placeholder="Nome do pai ou mãe" /></div><div><label className="text-sm font-medium">Código</label><input type="text" value={sCode} onChange={e => setSCode(e.target.value)} required className="w-full p-2 border rounded" /></div>
+                    {activeTab === 'students' && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-1"><div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"><h2 className="text-lg font-bold text-gray-800 mb-4">{editingStudentId ? 'Editar Aluno' : 'Cadastrar Novo Aluno'}</h2><form onSubmit={fullHandleStudentSubmit} className="space-y-4"><div><label className="text-sm font-medium">Nome</label><input type="text" value={sName} onChange={e => setSName(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Código</label><input type="text" value={sCode} onChange={e => setSCode(e.target.value)} required className="w-full p-2 border rounded" /></div>
                         <div><label className="text-sm font-medium">Série</label><select value={sGrade} onChange={e => setSGrade(e.target.value)} className="w-full p-2 border rounded">{SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}</select></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">Turma</label><select value={sClass} onChange={e => setSClass(e.target.value as SchoolClass)} className="w-full p-2 border rounded">{SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}</select></div><div><label className="text-sm font-medium">Turno</label><select value={sShift} onChange={e => setSShift(e.target.value as SchoolShift)} className="w-full p-2 border rounded">{SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{s}</option>)}</select></div></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">Unidade</label>{isGeneralAdmin ? (<select value={sUnit} onChange={e => setSUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}</div><div><label className="text-sm font-medium text-blue-700 font-bold">Método Pagamento</label><select value={sMetodoPagamento} onChange={e => setSMetodoPagamento(e.target.value as 'Isaac' | 'Interno')} className="w-full p-2 border-2 border-blue-200 rounded font-semibold text-blue-900 focus:border-blue-500"><option value="Interno">Sistema Interno</option><option value="Isaac">Parceiro Isaac</option></select></div></div>
 
-                        {/* NOVOS CAMPOS DO RESPONSÁVEL FINANCEIRO */}
-                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-100 space-y-3">
-                            <h4 className="font-bold text-blue-900 text-sm border-b border-blue-200 pb-1 mb-2">Dados do Responsável & Financeiro</h4>
-                            <div><label className="text-sm font-medium">CPF do Responsável</label><input type="text" value={sCpfResponsavel} onChange={e => setSCpfResponsavel(e.target.value)} className="w-full p-2 border rounded" placeholder="000.000.000-00" /></div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div><label className="text-sm font-medium">Email</label><input type="email" value={sEmailResponsavel} onChange={e => setSEmailResponsavel(e.target.value)} className="w-full p-2 border rounded" placeholder="email@exemplo.com" /></div>
-                                <div><label className="text-sm font-medium">Telefone</label><input type="text" value={sTelefoneResponsavel} onChange={e => setSTelefoneResponsavel(e.target.value)} className="w-full p-2 border rounded" placeholder="(84) 99999-9999" /></div>
-                            </div>
-                            <div>
-                                <label className="text-sm font-bold text-green-700">Valor Mensalidade (R$)</label>
-                                <input
-                                    type="text"
-                                    value={sValorMensalidade}
-                                    onChange={e => setSValorMensalidade(e.target.value)}
-                                    className="w-full p-2 border-2 border-green-200 rounded font-bold text-green-900 focus:ring-green-500 focus:border-green-500"
-                                    placeholder="0.00"
-                                />
-                                <p className="text-[10px] text-gray-500 mt-1">Este valor será aplicado às mensalidades pendentes deste aluno.</p>
-                            </div>
+                        <div><label className="text-sm font-medium">Responsável Financeiro</label><input type="text" value={sResponsavel} onChange={e => setSResponsavel(e.target.value)} className="w-full p-2 border rounded" placeholder="Nome do responsável financeiro" /></div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div><label className="text-sm font-medium">E-mail</label><input type="email" value={sEmail} onChange={e => setSEmail(e.target.value)} className="w-full p-2 border rounded" placeholder="email@exemplo.com" /></div>
+                            <div><label className="text-sm font-medium">Telefone</label><input type="tel" value={sPhone} onChange={e => { if (/^[0-9]*$/.test(e.target.value)) setSPhone(e.target.value); }} className="w-full p-2 border rounded" placeholder="Apenas números" maxLength={15} /></div>
                         </div>
+
+
 
                         <div><label className="text-sm font-medium">Senha</label>
                             <div className="flex gap-2 relative"><input type={showStudentPassword ? "text" : "password"} value={sPass} onChange={e => setSPass(e.target.value)} className="w-full p-2 border rounded" required={!editingStudentId} /><button type="button" onClick={() => setShowStudentPassword(!showStudentPassword)} className="absolute right-16 top-2 text-gray-500">{showStudentPassword ? <EyeOffIcon /> : <EyeIcon />}</button><button type="button" onClick={handleGenerateStudentPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button></div><p className="text-xs text-gray-500 mt-1">Senha automática (8 caracteres).</p></div><Button type="submit" className="w-full">{editingStudentId ? 'Salvar' : 'Cadastrar'}</Button></form></div></div>
@@ -1027,6 +1003,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             <Button onClick={() => handleSaveContact(ContactRole.COORDINATOR)} className="w-full bg-orange-600 hover:bg-orange-700">
                                                 Salvar Coord.
                                             </Button>
+                                            <Button onClick={() => handleSaveContact(ContactRole.FINANCIAL)} className="w-full bg-green-600 hover:bg-green-700 col-span-2">
+                                                Salvar Financeiro
+                                            </Button>
                                         </div>
                                     </div>
                                 </div>
@@ -1093,6 +1072,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         <div className="p-8 text-center text-gray-400 italic">Nenhum coordenador cadastrado para esta seleção.</div>
                                     )}
                                 </div>
+
+                                {/* FINANCEIRO */}
+                                <div className="bg-white rounded-xl shadow-sm border border-green-200 overflow-x-auto mt-6">
+                                    <div className="p-4 bg-green-50 border-b border-green-100 flex justify-between items-center min-w-[500px]">
+                                        <h3 className="font-bold text-green-900 flex items-center gap-2">
+                                            <span className="text-xl">💰</span> Setor Financeiro
+                                        </h3>
+                                        <span className="text-xs font-semibold bg-green-200 text-green-800 px-2 py-1 rounded-full">{financialContacts.length} cadastrados</span>
+                                    </div>
+                                    {financialContacts.length > 0 ? (
+                                        <table className="min-w-full text-sm text-left">
+                                            <thead className="bg-gray-50 text-gray-500"><tr><th className="p-3">Nome</th><th className="p-3">Telefone</th><th className="p-3">Unidade</th><th className="p-3 text-right">Ação</th></tr></thead>
+                                            <tbody>
+                                                {financialContacts.map(c => (
+                                                    <tr key={c.id} className="border-b last:border-0 hover:bg-gray-50">
+                                                        <td className="p-3 font-medium">{c.name}</td>
+                                                        <td className="p-3 font-mono text-gray-600">{c.phoneNumber}</td>
+                                                        <td className="p-3"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{c.unit}</span></td>
+                                                        <td className="p-3 text-right flex justify-end gap-2">
+                                                            <button onClick={() => startEditingContact(c)} className="text-blue-950 hover:underline text-xs font-bold px-2 py-1">Editar</button>
+                                                            <button onClick={() => onDeleteUnitContact && onDeleteUnitContact(c.id)} className="text-red-600 hover:text-red-800 text-xs font-bold bg-red-50 px-2 py-1 rounded border border-red-100">Remover</button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    ) : (
+                                        <div className="p-8 text-center text-gray-400 italic">Nenhum contato financeiro cadastrado para esta seleção.</div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     )}
@@ -1111,7 +1120,78 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     )}
 
                     {activeTab === 'financial' && (
-                        <div className="space-y-6 animate-fade-in-up">
+                        <div className="space-y-8 animate-fade-in-up">
+                            {/* CONFIGURAÇÃO DO SETOR FINANCEIRO (NOVO) */}
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-blue-200">
+                                <h2 className="text-lg font-bold text-blue-900 mb-4 flex items-center gap-2">
+                                    <span>⚙️</span> Configuração de Contato (WhatsApp)
+                                </h2>
+                                <p className="text-sm text-gray-500 mb-6">
+                                    Defina aqui o número de WhatsApp que receberá os comprovantes de pagamento desta unidade.
+                                    Este número será acionado automaticamente pelo App do Aluno.
+                                </p>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-1 block">Unidade</label>
+                                        {isGeneralAdmin ? (
+                                            <select
+                                                value={contactUnit}
+                                                onChange={e => {
+                                                    const unit = e.target.value as SchoolUnit;
+                                                    setContactUnit(unit);
+                                                    // Auto-fill existing contact
+                                                    const existing = unitContacts.find(c => c.unit === unit && c.role === ContactRole.FINANCIAL);
+                                                    if (existing) {
+                                                        setEditingContactId(existing.id);
+                                                        setContactName(existing.name);
+                                                        setContactPhone(existing.phoneNumber);
+                                                    } else {
+                                                        setEditingContactId(null);
+                                                        setContactName('');
+                                                        setContactPhone('+55');
+                                                    }
+                                                }}
+                                                className="w-full p-2.5 border rounded-lg bg-gray-50"
+                                            >
+                                                {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}
+                                            </select>
+                                        ) : (
+                                            <div className="p-2.5 bg-gray-100 rounded-lg text-gray-600 font-medium border border-gray-200">{adminUnit}</div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-1 block">Nome do Responsável</label>
+                                        <input
+                                            type="text"
+                                            value={contactName}
+                                            onChange={e => setContactName(e.target.value)}
+                                            className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            placeholder="Ex: Financeiro Central"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-1 block">WhatsApp (Com DDD)</label>
+                                        <input
+                                            type="text"
+                                            value={contactPhone}
+                                            onChange={handleContactPhoneChange}
+                                            className="w-full p-2.5 border rounded-lg font-mono text-gray-700"
+                                            placeholder="5584999999999"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="mt-4 flex justify-end">
+                                    {/* Use generic Save Contact but force role FINANCIAL */}
+                                    <Button
+                                        onClick={() => handleSaveContact(ContactRole.FINANCIAL)}
+                                        className="bg-green-600 hover:bg-green-700 text-white px-8 py-2.5 rounded-lg shadow-sm flex items-center gap-2"
+                                    >
+                                        <span>💾</span> {editingContactId ? 'Atualizar Contato' : 'Salvar Contato'}
+                                    </Button>
+                                </div>
+                            </div>
+
                             <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                                 <div>
                                     <h2 className="text-xl font-bold text-gray-800">Conciliação Financeira</h2>

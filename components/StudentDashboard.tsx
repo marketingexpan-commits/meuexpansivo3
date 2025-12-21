@@ -407,7 +407,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         </div>
                     )}
 
-                    {currentView === 'financeiro' && <FinanceiroScreen student={student} mensalidades={mensalidades} eventos={eventos} />}
+                    {currentView === 'financeiro' && <FinanceiroScreen student={student} mensalidades={mensalidades} eventos={eventos} unitContacts={unitContacts} />}
 
                     {currentView === 'attendance' && (
                         <div className="mb-8 print:hidden">

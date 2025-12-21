@@ -1,30 +1,39 @@
-import React, { useState } from 'react';
-import { Student, Mensalidade, EventoFinanceiro } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Student, Mensalidade, EventoFinanceiro, UnitContact, ContactRole } from '../types';
 import { Button } from './Button';
 
 interface FinanceiroScreenProps {
     student: Student;
     mensalidades: Mensalidade[];
     eventos: EventoFinanceiro[];
+    unitContacts?: UnitContact[];
 }
 
 type PaymentMethod = 'pix' | 'debito' | 'credito' | 'boleto';
 
-export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, mensalidades, eventos = [] }) => {
+export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, mensalidades, eventos = [], unitContacts = [] }) => {
     // Lógica de Filtro
-    const studentMensalidades = mensalidades.filter(m => m.studentId === student.id);
-    const studentEventos = eventos.filter(e => e.studentId === student.id);
+    // Lógica de Filtro
+    const studentMensalidades = useMemo(() => mensalidades.filter(m => m.studentId === student.id), [mensalidades, student.id]);
+    const studentEventos = useMemo(() => eventos.filter(e => e.studentId === student.id), [eventos, student.id]);
     const isIsaac = student.metodo_pagamento === 'Isaac';
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'mensalidades' | 'eventos'>('mensalidades');
+
     const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('pix');
     const [selectedInstallments, setSelectedInstallments] = useState<number>(1);
     const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
     const [eventQuantities, setEventQuantities] = useState<Record<string, number>>({});
+    const [cpfInput, setCpfInput] = useState('');
+    const [nameInput, setNameInput] = useState('');
+    const [phoneInput, setPhoneInput] = useState('');
+    const [emailInput, setEmailInput] = useState('');
+    const [isCpfModalOpen, setIsCpfModalOpen] = useState(false);
+    const [isPaymentConfirmed, setIsPaymentConfirmed] = useState(false);
 
     // Inicializar quantidades para eventos
-    React.useEffect(() => {
+    useEffect(() => {
         const initialQuants: Record<string, number> = {};
         eventos.forEach(e => {
             initialQuants[e.id] = 1;
@@ -32,8 +41,10 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
         setEventQuantities(initialQuants);
     }, [eventos]);
 
+
+
     // Reset installments and selection when tab or method changes
-    React.useEffect(() => {
+    useEffect(() => {
         setSelectedInstallments(1);
         if (activeTab === 'mensalidades') {
             setSelectedEventIds([]);
@@ -56,6 +67,8 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
     const totalSelectedValue = studentEventos
         .filter(e => selectedEventIds.includes(e.id))
         .reduce((acc, e) => acc + (e.value * (eventQuantities[e.id] || 1)), 0);
+
+
 
     const getStatusStyle = (status: Mensalidade['status']) => {
         switch (status) {
@@ -112,7 +125,16 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             alert('Por favor, selecione ao menos um evento para prosseguir');
             return;
         }
-        setIsModalOpen(true);
+        if (selectedMethod === 'pix') {
+            // Security: Always start empty to force verification/entry
+            setCpfInput('');
+            setNameInput('');
+            setPhoneInput('');
+            setEmailInput('');
+            setIsCpfModalOpen(true);
+        } else {
+            setIsModalOpen(true);
+        }
     };
 
     if (isIsaac) {
@@ -139,36 +161,119 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
         );
     }
 
-    const [pixData, setPixData] = useState<{ url: string, pixText: string, qrCodeImage?: string } | null>(null);
+    const [selectedMensalidades, setSelectedMensalidades] = useState<string[]>([]);
+
+    // Initialize selectedMensalidades with all pending/overdue on load or when data changes
+    // Initialize selectedMensalidades with all pending/overdue on load or when data changes
+    // Initialize selectedMensalidades
+    useEffect(() => {
+        // Default: No items selected
+        setSelectedMensalidades([]);
+    }, [studentMensalidades]);
+
+    const toggleMensalidadeSelection = (id: string) => {
+        setSelectedMensalidades(prev =>
+            prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+        );
+    };
+
+    const totalMensalidadesValue = studentMensalidades
+        .filter(m => selectedMensalidades.includes(m.id))
+        .reduce((acc, m) => acc + m.value, 0);
+
+    const [pixData, setPixData] = useState<{ url: string, pixText: string, qrCodeImage?: string, publicUrl?: string } | null>(null);
     const [isLoadingPix, setIsLoadingPix] = useState(false);
 
-    const handleCreatePixCharge = async () => {
+    // Check for payment confirmation
+    useEffect(() => {
+        if (!isModalOpen || !pixData) return;
+
+        // Check if selected items are now paid
+        if (activeTab === 'mensalidades') {
+            const allSelectedPaid = selectedMensalidades.every(id => {
+                const m = studentMensalidades.find(sm => sm.id === id);
+                return m && m.status === 'Pago';
+            });
+            if (allSelectedPaid && selectedMensalidades.length > 0) {
+                setIsPaymentConfirmed(true);
+            }
+        }
+    }, [studentMensalidades, selectedMensalidades, isModalOpen, pixData, activeTab]);
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setPixData(null);
+        setIsPaymentConfirmed(false);
+        // Reset Inputs
+        setCpfInput('');
+        setNameInput('');
+        setPhoneInput('');
+        setEmailInput('');
+        setIsCpfModalOpen(false);
+    };
+
+    const handleCreatePixCharge = async (cpfOverride?: string, nameOverride?: string, phoneOverride?: string, emailOverride?: string) => {
         setIsLoadingPix(true);
+        console.log("FinanceiroScreen: handleCreatePixCharge chamado.", { cpfOverride, nameOverride, phoneOverride, emailOverride, cpfInputState: cpfInput });
+
         try {
-            const amount = calculateValue(totalSelectedValue || (activeTab === 'mensalidades' ? studentMensalidades.reduce((acc, m) => acc + (m.status !== 'Pago' ? m.value : 0), 0) : 0), activeTab === 'mensalidades' ? 'mensalidade' : 'evento');
+            const amount = calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento');
 
             // NOTE: In a real production environment, this call should be made from a backend server
-            // to keep the API Token secure. We are doing it client-side for demonstration/MVP purposes 
-            // as requested.
-            // Fix TS Error: Access env safely
             const token = (import.meta as any).env.VITE_ABACATE_PAY_TOKEN;
-
             if (!token) {
                 alert("Erro de configuração: Token VITE_ABACATE_PAY_TOKEN não encontrado no arquivo .env");
                 return;
             }
 
-            // 1. CPF Validation (Strict)
-            let cpf = student.cpf_responsavel?.replace(/\D/g, '');
-            if (!cpf || cpf.length !== 11) {
-                alert("Para gerar o Pix, é necessário que o CPF do responsável esteja cadastrado. Por favor, atualize o cadastro do aluno.");
+            // 1. Capture Data (Arg -> State -> Student Record)
+            // Prioritize typed input: Args > State > Fallback
+            // Note: User requested strict use of TYPED data from Modal for Name/CPF.
+            const rawCpf = cpfOverride || cpfInput || student.cpf_responsavel;
+            const rawName = nameOverride || nameInput || student.nome_responsavel || student.name;
+            const rawPhone = phoneOverride || phoneInput || student.telefone_responsavel;
+            const rawEmail = emailOverride || emailInput || student.email_responsavel;
+
+            // 2. Limpeza de Caracteres (Obrigatório: Apenas números)
+            if (!rawCpf || !rawName || !rawPhone || !rawEmail) {
+                alert("Dados incompletos. Nome, CPF, Telefone e Email são obrigatórios para o Pix.");
+                setIsLoadingPix(false);
+                return;
+            }
+            const cleanCpf = rawCpf.toString().replace(/\D/g, '');
+            const cleanPhone = rawPhone.toString().replace(/\D/g, '');
+            const cleanEmail = rawEmail.trim();
+
+            // Validação de comprimento (11 dígitos para CPF)
+            if (cleanCpf.length !== 11) {
+                alert(`CPF inválido (${cleanCpf}). O CPF deve conter exatamente 11 números.`);
+                setIsLoadingPix(false);
+                return;
+            }
+            if (cleanPhone.length < 10) {
+                alert(`Telefone inválido (${cleanPhone}). Inclua o DDD.`);
                 setIsLoadingPix(false);
                 return;
             }
 
-            console.log("Iniciando Pix...", { amount, cpf });
+            console.log("FinanceiroScreen: Payload Preparado", {
+                amount: Math.round(amount * 100),
+                descriptionSize: 50, // Truncado na API
+                customer: {
+                    name: rawName,
+                    taxId: cleanCpf, // Mapeado para field taxId conforme solicitado
+                    cellphone: cleanPhone,
+                    email: cleanEmail
+                }
+            });
 
-            // 2. Call Abacate Pay API (via Proxy)
+            const activeItems = activeTab === 'mensalidades'
+                ? studentMensalidades.filter(m => selectedMensalidades.includes(m.id)).map(m => m.month).join(', ')
+                : studentEventos.filter(e => selectedEventIds.includes(e.id)).map(e => e.description).join(', ');
+
+            // Detailed Description Format: "Name (Code) | Grade - Class - Shift | Unit | Months/Items"
+            const description = `${student.name} (${student.id}) | ${student.gradeLevel} - ${student.schoolClass} - ${student.shift} | ${student.unit} | ${activeItems.substring(0, 30)}`;
+
             const response = await fetch('/api/abacate/pixQrCode/create', {
                 method: 'POST',
                 headers: {
@@ -176,15 +281,30 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    amount: Math.round(amount * 100) // Value in centavos, simplified as requested
+                    amount: Math.round(amount * 100),
+                    description: description,
+                    customer: {
+                        name: rawName,
+                        taxId: cleanCpf,
+                        cellphone: cleanPhone,
+                        email: cleanEmail
+                    },
+                    products: [
+                        {
+                            externalId: `mensalidades_${student.id}`,
+                            name: "Mensalidades Escolares",
+                            quantity: 1,
+                            value: Math.round(amount * 100)
+                        }
+                    ]
                 })
             });
 
             const data = await response.json();
 
             if (data.error) {
-                console.error("Abacate Pay Error:", data.error);
-                throw new Error(data.error.message || "Erro ao gerar Cobrança");
+                console.error("Abacate Pay API Error:", data.error);
+                throw new Error(data.error.message || JSON.stringify(data.error));
             }
 
             // 3. Handle Response (brCode & brCodeBase64)
@@ -195,15 +315,17 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             }
 
             setPixData({
-                url: pixInfo.brCode,
+                url: pixInfo.checkoutUrl || pixInfo.billingUrl || pixInfo.url, // Correctly capture the payment URL
                 pixText: pixInfo.brCode,
-                qrCodeImage: pixInfo.brCodeBase64
+                qrCodeImage: pixInfo.brCodeBase64,
+                publicUrl: pixInfo.publicUrl || pixInfo.url
             });
+            setIsModalOpen(true); // Ensure modal is open to show QR
 
         } catch (error: any) {
-            console.error("Erro ao gerar Pix:", error);
+            console.error("Erro ao gerar Pix (Catch):", error);
             const msg = error?.message || "Erro desconhecido";
-            alert(`Erro ao conectar com Abacate Pay: ${msg}. Verifique o console.`);
+            alert(`Erro ao conectar com Abacate Pay: ${msg}. Verifique o console para detalhes.`);
         } finally {
             setIsLoadingPix(false);
         }
@@ -335,11 +457,9 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                     <table className="w-full text-left">
                         <thead className="bg-gray-50 border-b border-gray-100">
                             <tr>
+                                <th className="px-6 py-4 w-10"></th>
                                 {activeTab === 'eventos' && (
-                                    <>
-                                        <th className="px-6 py-4 w-10"></th>
-                                        <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider w-32">Quantidade</th>
-                                    </>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider w-32">Quantidade</th>
                                 )}
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">{activeTab === 'mensalidades' ? 'Mês' : 'Descrição'}</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Valor Atualizado</th>
@@ -352,6 +472,16 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                 studentMensalidades.length > 0 ? (
                                     studentMensalidades.sort((a, b) => b.dueDate.localeCompare(a.dueDate)).map((m) => (
                                         <tr key={m.id} className="hover:bg-gray-50/50 transition-colors">
+                                            <td className="px-6 py-4">
+                                                {m.status !== 'Pago' && (
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedMensalidades.includes(m.id)}
+                                                        onChange={() => toggleMensalidadeSelection(m.id)}
+                                                        className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                    />
+                                                )}
+                                            </td>
                                             <td className="px-6 py-4 font-bold text-gray-800">{m.month}</td>
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col">
@@ -369,7 +499,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={4} className="px-6 py-12 text-center text-gray-400 italic">
+                                        <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">
                                             Nenhuma mensalidade encontrada.
                                         </td>
                                     </tr>
@@ -441,7 +571,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             </div>
 
             <div className="flex justify-end">
-                <Button onClick={selectedMethod === 'pix' ? handleCreatePixCharge : handlePaymentClick} disabled={isLoadingPix} className={`flex items-center gap-2 ${isLoadingPix ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                <Button onClick={handlePaymentClick} disabled={isLoadingPix} className={`flex items-center gap-2 ${isLoadingPix ? 'opacity-50 cursor-not-allowed' : ''}`}>
                     {isLoadingPix ? (
                         <>
                             <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -455,7 +585,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2z" />
                             </svg>
-                            Pagar R$ {calculateValue(totalSelectedValue || (activeTab === 'mensalidades' ? studentMensalidades.reduce((acc, m) => acc + (m.status !== 'Pago' ? m.value : 0), 0) : 0), activeTab === 'mensalidades' ? 'mensalidade' : 'evento').toFixed(2).replace('.', ',')} com {
+                            Pagar R$ {calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento').toFixed(2).replace('.', ',')} com {
                                 selectedMethod === 'pix' ? 'Pix' :
                                     selectedMethod === 'debito' ? 'Cartão Débito' :
                                         selectedMethod === 'credito' ? 'Cartão Crédito' :
@@ -481,33 +611,81 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                         {pixData ? (
                             <>
                                 <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mx-auto text-3xl">💠</div>
-                                {pixData.qrCodeImage ? (
+                                {pixData.qrCodeImage && !isPaymentConfirmed ? (
                                     <div className="flex justify-center my-4">
                                         <img src={pixData.qrCodeImage} alt="QR Code Pix" className="w-48 h-48" />
                                     </div>
                                 ) : null}
-                                <h4 className="text-xl font-bold text-gray-900">Pagamento via Pix</h4>
-                                <p className="text-sm text-gray-600">Utilize o link abaixo para concluir o pagamento.</p>
 
-                                <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                                    <p className="text-xs font-bold text-gray-500 mb-2 uppercase">Código Pix (Copia e Cola)</p>
-                                    <div className="break-all text-gray-800 text-xs font-mono bg-white p-2 rounded border border-gray-100 overflow-y-auto max-h-20">
-                                        {pixData.pixText}
+                                {isPaymentConfirmed ? (
+                                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto text-3xl mb-4">✅</div>
+                                ) : null}
+
+                                <h4 className="text-xl font-bold text-gray-900">{isPaymentConfirmed ? 'Pagamento Confirmado!' : 'Pagamento via Pix'}</h4>
+                                <p className="text-sm text-gray-600">
+                                    {isPaymentConfirmed
+                                        ? 'O pagamento foi identificado com sucesso.'
+                                        : 'Utilize o link abaixo para concluir o pagamento.'}
+                                </p>
+
+                                {!isPaymentConfirmed && (
+                                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                        <p className="text-xs font-bold text-gray-500 mb-2 uppercase">Código Pix (Copia e Cola)</p>
+                                        <div className="break-all text-gray-800 text-xs font-mono bg-white p-2 rounded border border-gray-100 overflow-y-auto max-h-20">
+                                            {pixData.pixText}
+                                        </div>
+                                        <button
+                                            onClick={() => navigator.clipboard.writeText(pixData.pixText).then(() => alert("Código copiado!"))}
+                                            className="mt-2 text-blue-600 text-xs font-bold underline cursor-pointer hover:text-blue-800"
+                                        >
+                                            Copiar Código
+                                        </button>
                                     </div>
-                                    <button
-                                        onClick={() => navigator.clipboard.writeText(pixData.pixText).then(() => alert("Código copiado!"))}
-                                        className="mt-2 text-blue-600 text-xs font-bold underline cursor-pointer hover:text-blue-800"
-                                    >
-                                        Copiar Código
-                                    </button>
-                                </div>
+                                )}
 
-                                <Button onClick={() => window.open(pixData.url, '_blank')} className="w-full bg-teal-600 hover:bg-teal-700">
-                                    Abrir Pagamento
-                                </Button>
-                                <Button onClick={() => setPixData(null)} variant="secondary" className="w-full">
+                                {!isPaymentConfirmed && (
+                                    <Button
+                                        onClick={() => {
+                                            if (pixData.url) {
+                                                window.open(pixData.url, '_blank');
+                                            } else {
+                                                alert("Link de pagamento não disponível.");
+                                            }
+                                        }}
+                                        className="w-full bg-teal-600 hover:bg-teal-700"
+                                    >
+                                        Abrir Pagamento
+                                    </Button>
+                                )}
+                                <Button onClick={handleCloseModal} variant="secondary" className="w-full">
                                     Fechar
                                 </Button>
+
+                                {/* WhatsApp Button - Conditional Display */}
+                                {isPaymentConfirmed && (() => {
+                                    const finContact = unitContacts.find(c => c.unit === student.unit && c.role === ContactRole.FINANCIAL);
+                                    if (finContact) {
+                                        const cleanPhone = finContact.phoneNumber.replace(/\D/g, '');
+                                        const finalPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+
+                                        const message = encodeURIComponent(
+                                            `Olá! Segue comprovante.\n\n` +
+                                            `*Aluno:* ${student.name}\n` +
+                                            `*Série:* ${student.gradeLevel} - ${student.schoolClass}\n` +
+                                            `*Unidade:* ${student.unit}\n` +
+                                            `*Valor:* R$ ${calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento').toFixed(2).replace('.', ',')}\n\n` +
+                                            `*Código Pix:* ${pixData.pixText.substring(0, 20)}...\n\n` +
+                                            `*Link do Recibo:* ${pixData.publicUrl || pixData.url || 'N/A'}`
+                                        );
+                                        return (
+                                            <Button onClick={() => window.open(`https://wa.me/${finalPhone}?text=${message}`, '_blank')} className="w-full bg-green-500 hover:bg-green-600 flex items-center justify-center gap-2">
+                                                <span>📱</span> Enviar Comprovante p/ Financeiro
+                                            </Button>
+                                        );
+                                    }
+                                    return null;
+                                })()}
+
                             </>
                         ) : (
                             <>
@@ -528,7 +706,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                         }):</strong></p>
                                         <ul className="list-disc list-inside space-y-1 text-xs border-b pb-2 mb-2">
                                             {activeTab === 'mensalidades' ? (
-                                                studentMensalidades.filter(m => m.status !== 'Pago').map(m => (
+                                                studentMensalidades.filter(m => selectedMensalidades.includes(m.id)).map(m => (
                                                     <li key={m.id}>{m.month}: R$ {calculateValue(m.value, 'mensalidade').toFixed(2).replace('.', ',')}</li>
                                                 ))
                                             ) : (
@@ -542,7 +720,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                         </ul>
                                         <p className="text-lg font-bold text-blue-950 flex justify-between items-center">
                                             <span>Total:</span>
-                                            <span>R$ {calculateValue(totalSelectedValue || (activeTab === 'mensalidades' ? studentMensalidades.reduce((acc, m) => acc + (m.status !== 'Pago' ? m.value : 0), 0) : 0), activeTab === 'mensalidades' ? 'mensalidade' : 'evento').toFixed(2).replace('.', ',')}</span>
+                                            <span>R$ {calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento').toFixed(2).replace('.', ',')}</span>
                                         </p>
                                         <p className="text-blue-900 font-bold border-t pt-2 mt-2">Por enquanto, realize o pagamento na secretaria.</p>
                                     </div>
@@ -552,7 +730,96 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                         )}
                     </div>
                 </div>
-            )}
-        </div>
+            )
+            }
+
+
+            {/* MODAL DE INPUT DE CPF (NOVO) */}
+            {
+                isCpfModalOpen && (
+                    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                        <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-scale-in">
+                            <h3 className="text-lg font-bold text-gray-800 mb-2">Dados do Pagador</h3>
+                            <p className="text-sm text-gray-500 mb-4">Confirme as informações para registro do Pix.</p>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome Completo</label>
+                                    <input
+                                        type="text"
+                                        value={nameInput}
+                                        onChange={(e) => setNameInput(e.target.value)}
+                                        className="w-full p-2 border border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-blue-500 outline-none"
+                                        placeholder="Nome do Responsável"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">CPF (Apenas números)</label>
+                                    <input
+                                        type="text"
+                                        value={cpfInput}
+                                        onChange={(e) => setCpfInput(e.target.value.replace(/\D/g, '').substring(0, 11))}
+                                        className="w-full p-2 border border-gray-300 rounded-lg font-mono text-center tracking-widest focus:ring-2 focus:ring-blue-500 outline-none"
+                                        placeholder="000.000.000-00"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Telefone (c/ DDD)</label>
+                                    <input
+                                        type="tel"
+                                        value={phoneInput}
+                                        onChange={(e) => setPhoneInput(e.target.value.replace(/\D/g, ''))}
+                                        className="w-full p-2 border border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-blue-500 outline-none"
+                                        placeholder="84999999999"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">E-mail</label>
+                                    <input
+                                        type="email"
+                                        value={emailInput}
+                                        onChange={(e) => setEmailInput(e.target.value)}
+                                        className="w-full p-2 border border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-blue-500 outline-none"
+                                        placeholder="email@exemplo.com"
+                                    />
+                                </div>
+
+                                <div className="flex gap-2 pt-2">
+                                    <Button onClick={() => setIsCpfModalOpen(false)} variant="secondary" className="w-1/2">
+                                        Cancelar
+                                    </Button>
+                                    <Button
+                                        onClick={() => {
+                                            if (!nameInput || nameInput.trim().length < 3) {
+                                                alert("Nome inválido ou curto demais.");
+                                                return;
+                                            }
+                                            if (cpfInput.length < 11) {
+                                                alert("CPF incompleto.");
+                                                return;
+                                            }
+                                            if (!phoneInput || phoneInput.length < 10) {
+                                                alert("Telefone inválido.");
+                                                return;
+                                            }
+                                            if (!emailInput || !emailInput.includes('@')) {
+                                                alert("Email inválido.");
+                                                return;
+                                            }
+                                            setIsCpfModalOpen(false);
+                                            handleCreatePixCharge(cpfInput, nameInput, phoneInput, emailInput);
+                                        }}
+                                        className="w-1/2 bg-blue-600 hover:bg-blue-700"
+                                        disabled={cpfInput.length < 11}
+                                    >
+                                        Gerar Pix
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 };

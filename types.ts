@@ -161,7 +161,8 @@ export interface EarlyChildhoodReport {
 // --- NOVOS TIPOS PARA CONTATOS DE LIDERANÇA ---
 export enum ContactRole {
   DIRECTOR = 'DIRETOR',
-  COORDINATOR = 'COORDENADOR'
+  COORDINATOR = 'COORDENADOR',
+  FINANCIAL = 'FINANCEIRO'
 }
 
 export interface UnitContact {
