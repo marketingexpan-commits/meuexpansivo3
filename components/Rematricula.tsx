@@ -8,10 +8,12 @@ interface RematriculaProps {
     students: Student[];
     grades: GradeEntry[];
     onRefresh: () => Promise<void>;
+    currentAdminUnit?: SchoolUnit; // Nova prop opcional
 }
 
-export const Rematricula: React.FC<RematriculaProps> = ({ students, grades, onRefresh }) => {
-    const [selectedUnit, setSelectedUnit] = useState<SchoolUnit | ''>('');
+export const Rematricula: React.FC<RematriculaProps> = ({ students, grades, onRefresh, currentAdminUnit }) => {
+    // Se houver currentAdminUnit, usamos ela como estado inicial e imutável
+    const [selectedUnit, setSelectedUnit] = useState<SchoolUnit | ''>(currentAdminUnit || '');
     const [selectedGrade, setSelectedGrade] = useState<string>('');
     const [selectedClass, setSelectedClass] = useState<SchoolClass | ''>('');
     const [searchTerm, setSearchTerm] = useState('');
@@ -51,7 +53,10 @@ export const Rematricula: React.FC<RematriculaProps> = ({ students, grades, onRe
 
     const filteredStudents = useMemo(() => {
         return students.filter(s => {
+            // Se currentAdminUnit existir, força o filtro por ela (redundância de segurança)
+            if (currentAdminUnit && s.unit !== currentAdminUnit) return false;
             if (selectedUnit && s.unit !== selectedUnit) return false;
+
             if (selectedGrade && s.gradeLevel !== selectedGrade) return false;
             if (selectedClass && s.schoolClass !== selectedClass) return false;
             if (searchTerm) {
@@ -60,7 +65,7 @@ export const Rematricula: React.FC<RematriculaProps> = ({ students, grades, onRe
             }
             return true;
         });
-    }, [students, selectedUnit, selectedGrade, selectedClass, searchTerm]);
+    }, [students, selectedUnit, selectedGrade, selectedClass, searchTerm, currentAdminUnit]);
 
     const handleGradeChange = (studentId: string, newGrade: string) => {
         setDestinationGrades(prev => ({ ...prev, [studentId]: newGrade }));
@@ -153,14 +158,20 @@ export const Rematricula: React.FC<RematriculaProps> = ({ students, grades, onRe
                 </div>
                 <div>
                     <label className="block text-xs font-bold text-blue-900 uppercase mb-1">Unidade</label>
-                    <select
-                        value={selectedUnit}
-                        onChange={e => setSelectedUnit(e.target.value as SchoolUnit)}
-                        className="w-full p-2 rounded-lg border border-blue-200 text-sm focus:ring-2 focus:ring-blue-500"
-                    >
-                        <option value="">Todas as Unidades</option>
-                        {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}
-                    </select>
+                    {currentAdminUnit ? (
+                        <div className="w-full p-2 rounded-lg border border-blue-200 bg-blue-100 text-blue-900 font-semibold text-sm">
+                            {currentAdminUnit}
+                        </div>
+                    ) : (
+                        <select
+                            value={selectedUnit}
+                            onChange={e => setSelectedUnit(e.target.value as SchoolUnit)}
+                            className="w-full p-2 rounded-lg border border-blue-200 text-sm focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="">Todas as Unidades</option>
+                            {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}
+                        </select>
+                    )}
                 </div>
                 <div>
                     <label className="block text-xs font-bold text-blue-900 uppercase mb-1">Série Atual (2025)</label>
