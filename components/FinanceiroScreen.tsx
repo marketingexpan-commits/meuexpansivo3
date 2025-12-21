@@ -147,6 +147,26 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                 </h3>
             </div>
 
+            {/* CARD DE DADOS DO PAGADOR/RESPONSÁVEL */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Responsável Financeiro</h4>
+                    <p className="font-bold text-lg text-blue-950">{student.nome_responsavel || student.name}</p>
+                    <p className="text-sm text-gray-600 flex items-center gap-2">
+                        <span>CPF: {student.cpf_responsavel || 'Não cadastrado'}</span>
+                    </p>
+                </div>
+                <div className="flex flex-col gap-1 md:items-end md:text-right">
+                    <div className="bg-blue-50 px-3 py-1 rounded-full w-fit">
+                        <span className="text-xs font-bold text-blue-800">Mensalidade Base: R$ {student.valor_mensalidade ? student.valor_mensalidade.toFixed(2).replace('.', ',') : '???'}</span>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-2">
+                        Contato: {student.telefone_responsavel || 'Não informado'} <br />
+                        Email: {student.email_responsavel || 'Não informado'}
+                    </p>
+                </div>
+            </div>
+
             {/* Abas */}
             <div className="flex p-1 bg-gray-100 rounded-xl max-w-md">
                 <button
@@ -379,6 +399,11 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                         <div className="space-y-4">
                             <h4 className="text-xl font-bold text-gray-900">Novo Sistema de Pagamentos</h4>
                             <div className="text-sm text-gray-600 text-left space-y-3 bg-gray-50 p-4 rounded-xl">
+                                <div className="border-b pb-2 mb-2">
+                                    <p className="text-xs font-bold text-gray-500 uppercase">Pagador</p>
+                                    <p className="font-bold text-gray-800">{student.nome_responsavel || student.name}</p>
+                                    <p className="text-xs text-gray-500">CPF: {student.cpf_responsavel || '---'}</p>
+                                </div>
                                 <p><strong>Resumo do Pagamento ({
                                     selectedMethod === 'pix' ? 'Pix' :
                                         selectedMethod === 'debito' ? 'Débito' :

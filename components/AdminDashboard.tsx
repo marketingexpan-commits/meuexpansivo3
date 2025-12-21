@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
-import { Admin, Student, Teacher, SchoolUnit, Subject, SchoolShift, SchoolClass, SchoolMessage, MessageType, MessageRecipient, AttendanceRecord, AttendanceStatus, UnitContact, ContactRole, GradeEntry } from '../types';
+import { Admin, Student, Teacher, SchoolUnit, Subject, SchoolShift, SchoolClass, SchoolMessage, MessageType, MessageRecipient, AttendanceRecord, AttendanceStatus, UnitContact, ContactRole, GradeEntry, Mensalidade } from '../types';
 import { SCHOOL_UNITS_LIST, SUBJECT_LIST, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST, SCHOOL_GRADES_LIST, SCHOOL_LOGO_URL } from '../constants';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
@@ -84,6 +84,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [studentFilterShift, setStudentFilterShift] = useState(''); // Novo estado para filtro de turno
     const [studentFilterUnit, setStudentFilterUnit] = useState(''); // Novo estado para filtro de unidade
 
+    // Novos Estados para Responsável e Financeiro
+    const [sCpfResponsavel, setSCpfResponsavel] = useState('');
+    const [sEmailResponsavel, setSEmailResponsavel] = useState('');
+    const [sTelefoneResponsavel, setSTelefoneResponsavel] = useState('');
+    const [sValorMensalidade, setSValorMensalidade] = useState('');
+
+    // Estado para Financeiro
+    const [financialRecords, setFinancialRecords] = useState<Mensalidade[]>([]);
+    const [loadingFinancial, setLoadingFinancial] = useState(false);
+    const [financialFilterUnit, setFinancialFilterUnit] = useState<string>('');
+
     const [editingTeacherId, setEditingTeacherId] = useState<string | null>(null);
     const [tName, setTName] = useState('');
     const [tCpf, setTCpf] = useState('');
@@ -127,6 +138,60 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [accessLogs, setAccessLogs] = useState<any[]>([]);
     const [logFilter, setLogFilter] = useState<'today' | 'week' | 'month'>('today');
     const [logProfileFilter, setLogProfileFilter] = useState<'all' | 'admin' | 'teacher' | 'student'>('all');
+
+    useEffect(() => {
+        // Fetch financial records when tab is active
+        const fetchFinancial = async () => {
+            if (activeTab === 'financial') {
+                setLoadingFinancial(true);
+                try {
+                    const snapshot = await db.collection('mensalidades')
+                        .where('status', '==', 'Pago')
+                        .get();
+                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Mensalidade));
+                    setFinancialRecords(data);
+                } catch (error) {
+                    console.error("Error fetching financial records:", error);
+                } finally {
+                    setLoadingFinancial(false);
+                }
+            }
+        };
+        fetchFinancial();
+    }, [activeTab]);
+
+    // Derived Financial Data
+    const getFinancialSummary = () => {
+        let totalGeneral = 0;
+        let totalUnit = 0;
+        const recordsByUnit: Record<string, number> = {};
+
+        financialRecords.forEach(rec => {
+            const student = students.find(s => s.id === rec.studentId);
+            if (student) {
+                totalGeneral += rec.value;
+                const u = student.unit;
+                recordsByUnit[u] = (recordsByUnit[u] || 0) + rec.value;
+
+                // Filter logic
+                if (financialFilterUnit) {
+                    if (u === financialFilterUnit) {
+                        totalUnit += rec.value;
+                    }
+                } else if (adminUnit) {
+                    if (u === adminUnit) {
+                        totalUnit += rec.value;
+                    }
+                }
+            }
+        });
+
+        const displayTotal = (isGeneralAdmin && !financialFilterUnit) ? totalGeneral : (isGeneralAdmin && financialFilterUnit ? (recordsByUnit[financialFilterUnit] || 0) : (recordsByUnit[adminUnit!] || 0));
+
+        return { totalGeneral, displayTotal, recordsByUnit };
+    };
+
+    const { totalGeneral, displayTotal, recordsByUnit } = getFinancialSummary();
     const [logUnitFilter, setLogUnitFilter] = useState<string>('all');  // Novo estado
     const [isLoadingLogs, setIsLoadingLogs] = useState(false);
     const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState(false);
@@ -445,9 +510,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const startEditingAdmin = (adm: Admin) => { setEditingAdminId(adm.id); setAName(adm.name); setAUser(adm.username); setAUnit(adm.unit!); setAPass(adm.password); };
     const initiateDeleteAdmin = (id: string) => setAdminToDelete(id);
     const initiateDeleteStudent = (id: string) => setStudentToDelete(id);
-    const startEditingStudent = (s: Student) => { setEditingStudentId(s.id); setSName(s.name); setSResponsavel(s.nome_responsavel || ''); setSCode(s.code); setSGrade(s.gradeLevel); setSUnit(s.unit); setSShift(s.shift); setSClass(s.schoolClass); setSPass(s.password); setSMetodoPagamento(s.metodo_pagamento || 'Interno'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
-    const cancelEditingStudent = () => { setEditingStudentId(null); setSName(''); setSResponsavel(''); setSCode(''); setSPass(''); };
-    const fullHandleStudentSubmit = (e: React.FormEvent) => {
+    const startEditingStudent = (s: Student) => {
+        setEditingStudentId(s.id);
+        setSName(s.name);
+        setSResponsavel(s.nome_responsavel || '');
+        setSCode(s.code);
+        setSGrade(s.gradeLevel);
+        setSUnit(s.unit);
+        setSShift(s.shift);
+        setSClass(s.schoolClass);
+        setSPass(s.password);
+        setSMetodoPagamento(s.metodo_pagamento || 'Interno');
+
+        // Novos Campos
+        setSCpfResponsavel(s.cpf_responsavel || '');
+        setSEmailResponsavel(s.email_responsavel || '');
+        setSTelefoneResponsavel(s.telefone_responsavel || '');
+        setSValorMensalidade(s.valor_mensalidade ? s.valor_mensalidade.toString() : '');
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    const cancelEditingStudent = () => {
+        setEditingStudentId(null);
+        setSName('');
+        setSResponsavel('');
+        setSCode('');
+        setSPass('');
+
+        // Resetar novos campos
+        setSCpfResponsavel('');
+        setSEmailResponsavel('');
+        setSTelefoneResponsavel('');
+        setSValorMensalidade('');
+    };
+    const fullHandleStudentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const unitToSave = isGeneralAdmin ? sUnit : adminUnit!;
 
@@ -460,27 +556,55 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             unit: unitToSave,
             shift: sShift,
             schoolClass: sClass,
-            metodo_pagamento: sMetodoPagamento
+            metodo_pagamento: sMetodoPagamento,
+            // Novos Campos
+            cpf_responsavel: sCpfResponsavel,
+            email_responsavel: sEmailResponsavel,
+            telefone_responsavel: sTelefoneResponsavel,
+            valor_mensalidade: sValorMensalidade ? parseFloat(sValorMensalidade.replace(',', '.')) : 0
         };
 
         if (editingStudentId) {
             const original = students.find(s => s.id === editingStudentId)!;
+
+            // ATUALIZAR MENSALIDADES PENDENTES SE O VALOR MUDOU
+            const novoValor = sValorMensalidade ? parseFloat(sValorMensalidade.replace(',', '.')) : 0;
+            if (original.valor_mensalidade !== novoValor && novoValor > 0) {
+                try {
+                    const snapshot = await db.collection('mensalidades')
+                        .where('studentId', '==', original.id)
+                        .where('status', '==', 'Pendente')
+                        .get();
+
+                    const batch = db.batch();
+                    snapshot.docs.forEach(doc => {
+                        batch.update(doc.ref, { value: novoValor });
+                    });
+                    if (!snapshot.empty) {
+                        await batch.commit();
+                        console.log(`${snapshot.size} mensalidades atualizadas.`);
+                    }
+                } catch (err) {
+                    console.error("Erro ao atualizar mensalidades:", err);
+                }
+            }
+
             onEditStudent({
                 ...original,
                 ...studentData,
                 password: sPass.trim() ? sPass : original.password
             } as Student);
-            alert("Atualizado!");
+            alert("Aluno atualizado com sucesso!");
             cancelEditingStudent();
         } else {
-            // New student with legacy fields initialization
+            // New student
             const newStudent: Student = {
                 id: `student-${Date.now()}`,
                 ...studentData as Student,
                 password: sPass,
                 isBlocked: false,
 
-                // Legacy fields initialization (prevendo estrutura do sistema antigo)
+                // Legacy fields initialization
                 numero_inscricao: "",
                 data_inicio: new Date().toLocaleDateString('pt-BR'),
                 cpf_aluno: "",
@@ -520,8 +644,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 // Family
                 nome_pai: "",
                 nome_mae: "",
-                nome_responsavel: "",
-                cpf_responsavel: "",
 
                 // Structural
                 ficha_saude: {},
@@ -530,6 +652,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             onAddStudent(newStudent);
             alert("Cadastrado!");
             setSName(''); setSResponsavel(''); setSCode(''); setSPass(''); setSMetodoPagamento('Interno');
+            setSCpfResponsavel(''); setSEmailResponsavel(''); setSTelefoneResponsavel(''); setSValorMensalidade('');
         }
     };
     const initiateDeleteTeacher = (id: string) => setTeacherToDelete(id);
@@ -671,11 +794,37 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <button onClick={() => setActiveTab('rematricula')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap flex items-center gap-2 ${activeTab === 'rematricula' ? 'bg-green-700 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>
                             <span>🎓</span> Rematrícula 2026
                         </button>
+                        <button onClick={() => setActiveTab('financial')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap flex items-center gap-2 ${activeTab === 'financial' ? 'bg-yellow-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>
+                            <span>💰</span> Financeiro
+                        </button>
                         {isGeneralAdmin && <button onClick={() => setActiveTab('admins')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeTab === 'admins' ? 'bg-purple-800 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Gerenciar Admins</button>}
                     </div>
 
                     {activeTab === 'students' && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-1"><div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"><h2 className="text-lg font-bold text-gray-800 mb-4">{editingStudentId ? 'Editar Aluno' : 'Cadastrar Novo Aluno'}</h2><form onSubmit={fullHandleStudentSubmit} className="space-y-4"><div><label className="text-sm font-medium">Nome</label><input type="text" value={sName} onChange={e => setSName(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Responsável</label><input type="text" value={sResponsavel} onChange={e => setSResponsavel(e.target.value)} className="w-full p-2 border rounded" placeholder="Nome do pai ou mãe" /></div><div><label className="text-sm font-medium">Código</label><input type="text" value={sCode} onChange={e => setSCode(e.target.value)} required className="w-full p-2 border rounded" /></div>
-                        <div><label className="text-sm font-medium">Série</label><select value={sGrade} onChange={e => setSGrade(e.target.value)} className="w-full p-2 border rounded">{SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}</select></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">Turma</label><select value={sClass} onChange={e => setSClass(e.target.value as SchoolClass)} className="w-full p-2 border rounded">{SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}</select></div><div><label className="text-sm font-medium">Turno</label><select value={sShift} onChange={e => setSShift(e.target.value as SchoolShift)} className="w-full p-2 border rounded">{SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{s}</option>)}</select></div></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">Unidade</label>{isGeneralAdmin ? (<select value={sUnit} onChange={e => setSUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}</div><div><label className="text-sm font-medium text-blue-700 font-bold">Método Pagamento</label><select value={sMetodoPagamento} onChange={e => setSMetodoPagamento(e.target.value as 'Isaac' | 'Interno')} className="w-full p-2 border-2 border-blue-200 rounded font-semibold text-blue-900 focus:border-blue-500"><option value="Interno">Sistema Interno</option><option value="Isaac">Parceiro Isaac</option></select></div></div><div><label className="text-sm font-medium">Senha</label>
+                        <div><label className="text-sm font-medium">Série</label><select value={sGrade} onChange={e => setSGrade(e.target.value)} className="w-full p-2 border rounded">{SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}</select></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">Turma</label><select value={sClass} onChange={e => setSClass(e.target.value as SchoolClass)} className="w-full p-2 border rounded">{SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}</select></div><div><label className="text-sm font-medium">Turno</label><select value={sShift} onChange={e => setSShift(e.target.value as SchoolShift)} className="w-full p-2 border rounded">{SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{s}</option>)}</select></div></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">Unidade</label>{isGeneralAdmin ? (<select value={sUnit} onChange={e => setSUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}</div><div><label className="text-sm font-medium text-blue-700 font-bold">Método Pagamento</label><select value={sMetodoPagamento} onChange={e => setSMetodoPagamento(e.target.value as 'Isaac' | 'Interno')} className="w-full p-2 border-2 border-blue-200 rounded font-semibold text-blue-900 focus:border-blue-500"><option value="Interno">Sistema Interno</option><option value="Isaac">Parceiro Isaac</option></select></div></div>
+
+                        {/* NOVOS CAMPOS DO RESPONSÁVEL FINANCEIRO */}
+                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-100 space-y-3">
+                            <h4 className="font-bold text-blue-900 text-sm border-b border-blue-200 pb-1 mb-2">Dados do Responsável & Financeiro</h4>
+                            <div><label className="text-sm font-medium">CPF do Responsável</label><input type="text" value={sCpfResponsavel} onChange={e => setSCpfResponsavel(e.target.value)} className="w-full p-2 border rounded" placeholder="000.000.000-00" /></div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div><label className="text-sm font-medium">Email</label><input type="email" value={sEmailResponsavel} onChange={e => setSEmailResponsavel(e.target.value)} className="w-full p-2 border rounded" placeholder="email@exemplo.com" /></div>
+                                <div><label className="text-sm font-medium">Telefone</label><input type="text" value={sTelefoneResponsavel} onChange={e => setSTelefoneResponsavel(e.target.value)} className="w-full p-2 border rounded" placeholder="(84) 99999-9999" /></div>
+                            </div>
+                            <div>
+                                <label className="text-sm font-bold text-green-700">Valor Mensalidade (R$)</label>
+                                <input
+                                    type="text"
+                                    value={sValorMensalidade}
+                                    onChange={e => setSValorMensalidade(e.target.value)}
+                                    className="w-full p-2 border-2 border-green-200 rounded font-bold text-green-900 focus:ring-green-500 focus:border-green-500"
+                                    placeholder="0.00"
+                                />
+                                <p className="text-[10px] text-gray-500 mt-1">Este valor será aplicado às mensalidades pendentes deste aluno.</p>
+                            </div>
+                        </div>
+
+                        <div><label className="text-sm font-medium">Senha</label>
                             <div className="flex gap-2 relative"><input type={showStudentPassword ? "text" : "password"} value={sPass} onChange={e => setSPass(e.target.value)} className="w-full p-2 border rounded" required={!editingStudentId} /><button type="button" onClick={() => setShowStudentPassword(!showStudentPassword)} className="absolute right-16 top-2 text-gray-500">{showStudentPassword ? <EyeOffIcon /> : <EyeIcon />}</button><button type="button" onClick={handleGenerateStudentPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button></div><p className="text-xs text-gray-500 mt-1">Senha automática (8 caracteres).</p></div><Button type="submit" className="w-full">{editingStudentId ? 'Salvar' : 'Cadastrar'}</Button></form></div></div>
 
                         <div className="lg:col-span-2">
@@ -959,6 +1108,102 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 // but Firestore is real-time.
                             }}
                         />
+                    )}
+
+                    {activeTab === 'financial' && (
+                        <div className="space-y-6 animate-fade-in-up">
+                            <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-800">Conciliação Financeira</h2>
+                                    <p className="text-sm text-gray-500">Acompanhamento de receitas via Mensalidades</p>
+                                </div>
+                                <div className="flex gap-4 items-center flex-wrap md:flex-nowrap">
+                                    {isGeneralAdmin && (
+                                        <select
+                                            value={financialFilterUnit}
+                                            onChange={(e) => setFinancialFilterUnit(e.target.value)}
+                                            className="p-2 border rounded-lg bg-gray-50 text-gray-700 font-medium"
+                                        >
+                                            <option value="">Todas as Unidades</option>
+                                            {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}
+                                        </select>
+                                    )}
+                                    <div className="bg-green-100 px-6 py-3 rounded-xl border border-green-200 text-right min-w-[200px] flex-grow md:flex-grow-0">
+                                        <p className="text-xs font-bold text-green-800 uppercase tracking-wider">Receita Total {financialFilterUnit ? `(${financialFilterUnit})` : (isGeneralAdmin ? '(Geral)' : `(${adminUnit})`)}</p>
+                                        <p className="text-2xl font-bold text-green-900">R$ {displayTotal.toFixed(2).replace('.', ',')}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                <div className="p-6 border-b border-gray-100">
+                                    <h3 className="font-bold text-gray-700">Transações Recentes (Status: Pago)</h3>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left min-w-[600px]">
+                                        <thead className="bg-gray-50 border-b border-gray-100">
+                                            <tr>
+                                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Data</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Aluno / Mãe</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Unidade</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Referência</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase text-right">Valor</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-50">
+                                            {financialRecords.length > 0 ? (
+                                                financialRecords
+                                                    .filter(rec => {
+                                                        const s = students.find(st => st.id === rec.studentId);
+                                                        if (!s) return false;
+                                                        // Filter logic for table
+                                                        if (isGeneralAdmin) {
+                                                            return financialFilterUnit ? s.unit === financialFilterUnit : true;
+                                                        } else {
+                                                            return s.unit === adminUnit;
+                                                        }
+                                                    })
+                                                    .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
+                                                    .slice(0, 50)
+                                                    .map(rec => {
+                                                        const s = students.find(st => st.id === rec.studentId);
+                                                        return (
+                                                            <tr key={rec.id} className="hover:bg-gray-50/50">
+                                                                <td className="px-6 py-4 text-sm text-gray-600">
+                                                                    {new Date(rec.lastUpdated).toLocaleDateString('pt-BR')}
+                                                                </td>
+                                                                <td className="px-6 py-4">
+                                                                    <div className="flex flex-col">
+                                                                        <span className="font-bold text-gray-800 text-sm">{s?.name || 'Aluno Excluído'}</span>
+                                                                        <span className="text-xs text-gray-500">{s?.nome_responsavel || 'Resp. N/A'}</span>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-6 py-4 text-sm">
+                                                                    <span className="bg-blue-50 text-blue-800 text-xs px-2 py-1 rounded font-medium">
+                                                                        {s?.unit || '-'}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-6 py-4 text-sm text-gray-600">
+                                                                    {rec.month}
+                                                                </td>
+                                                                <td className="px-6 py-4 text-sm font-bold text-green-700 text-right">
+                                                                    R$ {rec.value.toFixed(2).replace('.', ',')}
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">
+                                                        {loadingFinancial ? "Carregando transações..." : "Nenhum pagamento registrado encontrado."}
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
                     )}
 
                 </div>

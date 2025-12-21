@@ -238,6 +238,11 @@ export interface Student {
   nome_mae?: string;
   nome_responsavel?: string;
   cpf_responsavel?: string;
+  email_responsavel?: string; // Novo
+  telefone_responsavel?: string; // Novo
+
+  // Financeiro
+  valor_mensalidade?: number; // Novo
 
   // Estruturais / Flags
   ficha_saude?: any;
