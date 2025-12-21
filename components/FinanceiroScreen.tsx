@@ -139,6 +139,76 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
         );
     }
 
+    const [pixData, setPixData] = useState<{ url: string, pixText: string, qrCodeImage?: string } | null>(null);
+    const [isLoadingPix, setIsLoadingPix] = useState(false);
+
+    const handleCreatePixCharge = async () => {
+        setIsLoadingPix(true);
+        try {
+            const amount = calculateValue(totalSelectedValue || (activeTab === 'mensalidades' ? studentMensalidades.reduce((acc, m) => acc + (m.status !== 'Pago' ? m.value : 0), 0) : 0), activeTab === 'mensalidades' ? 'mensalidade' : 'evento');
+
+            // NOTE: In a real production environment, this call should be made from a backend server
+            // to keep the API Token secure. We are doing it client-side for demonstration/MVP purposes 
+            // as requested.
+            // Fix TS Error: Access env safely
+            const token = (import.meta as any).env.VITE_ABACATE_PAY_TOKEN;
+
+            if (!token) {
+                alert("Erro de configuração: Token VITE_ABACATE_PAY_TOKEN não encontrado no arquivo .env");
+                return;
+            }
+
+            // 1. CPF Validation (Strict)
+            let cpf = student.cpf_responsavel?.replace(/\D/g, '');
+            if (!cpf || cpf.length !== 11) {
+                alert("Para gerar o Pix, é necessário que o CPF do responsável esteja cadastrado. Por favor, atualize o cadastro do aluno.");
+                setIsLoadingPix(false);
+                return;
+            }
+
+            console.log("Iniciando Pix...", { amount, cpf });
+
+            // 2. Call Abacate Pay API (via Proxy)
+            const response = await fetch('/api/abacate/pixQrCode/create', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    amount: Math.round(amount * 100) // Value in centavos, simplified as requested
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                console.error("Abacate Pay Error:", data.error);
+                throw new Error(data.error.message || "Erro ao gerar Cobrança");
+            }
+
+            // 3. Handle Response (brCode & brCodeBase64)
+            const pixInfo = data.data || data;
+
+            if (!pixInfo.brCode) {
+                throw new Error("BR Code não retornado pela API.");
+            }
+
+            setPixData({
+                url: pixInfo.brCode,
+                pixText: pixInfo.brCode,
+                qrCodeImage: pixInfo.brCodeBase64
+            });
+
+        } catch (error: any) {
+            console.error("Erro ao gerar Pix:", error);
+            const msg = error?.message || "Erro desconhecido";
+            alert(`Erro ao conectar com Abacate Pay: ${msg}. Verifique o console.`);
+        } finally {
+            setIsLoadingPix(false);
+        }
+    };
+
     return (
         <div className="animate-fade-in-up space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -371,16 +441,28 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             </div>
 
             <div className="flex justify-end">
-                <Button onClick={handlePaymentClick} className="flex items-center gap-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    Pagar R$ {calculateValue(totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento').toFixed(2).replace('.', ',')} com {
-                        selectedMethod === 'pix' ? 'Pix' :
-                            selectedMethod === 'debito' ? 'Cartão Débito' :
-                                selectedMethod === 'credito' ? 'Cartão Crédito' :
-                                    'Boleto Bancário'
-                    }
+                <Button onClick={selectedMethod === 'pix' ? handleCreatePixCharge : handlePaymentClick} disabled={isLoadingPix} className={`flex items-center gap-2 ${isLoadingPix ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    {isLoadingPix ? (
+                        <>
+                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Gerando Pix...
+                        </>
+                    ) : (
+                        <>
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            Pagar R$ {calculateValue(totalSelectedValue || (activeTab === 'mensalidades' ? studentMensalidades.reduce((acc, m) => acc + (m.status !== 'Pago' ? m.value : 0), 0) : 0), activeTab === 'mensalidades' ? 'mensalidade' : 'evento').toFixed(2).replace('.', ',')} com {
+                                selectedMethod === 'pix' ? 'Pix' :
+                                    selectedMethod === 'debito' ? 'Cartão Débito' :
+                                        selectedMethod === 'credito' ? 'Cartão Crédito' :
+                                            'Boleto Bancário'
+                            }
+                        </>
+                    )}
                 </Button>
             </div>
 
@@ -391,47 +473,83 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                 </p>
             </div>
 
-            {/* Modal "Em Breve" Refinado */}
-            {isModalOpen && (
+            {/* Modal de Pagamento & PIX */}
+            {(isModalOpen || pixData) && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
                     <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-scale-in text-center space-y-6">
-                        <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto text-3xl">🚀</div>
-                        <div className="space-y-4">
-                            <h4 className="text-xl font-bold text-gray-900">Novo Sistema de Pagamentos</h4>
-                            <div className="text-sm text-gray-600 text-left space-y-3 bg-gray-50 p-4 rounded-xl">
-                                <div className="border-b pb-2 mb-2">
-                                    <p className="text-xs font-bold text-gray-500 uppercase">Pagador</p>
-                                    <p className="font-bold text-gray-800">{student.nome_responsavel || student.name}</p>
-                                    <p className="text-xs text-gray-500">CPF: {student.cpf_responsavel || '---'}</p>
+
+                        {pixData ? (
+                            <>
+                                <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mx-auto text-3xl">💠</div>
+                                {pixData.qrCodeImage ? (
+                                    <div className="flex justify-center my-4">
+                                        <img src={pixData.qrCodeImage} alt="QR Code Pix" className="w-48 h-48" />
+                                    </div>
+                                ) : null}
+                                <h4 className="text-xl font-bold text-gray-900">Pagamento via Pix</h4>
+                                <p className="text-sm text-gray-600">Utilize o link abaixo para concluir o pagamento.</p>
+
+                                <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                    <p className="text-xs font-bold text-gray-500 mb-2 uppercase">Código Pix (Copia e Cola)</p>
+                                    <div className="break-all text-gray-800 text-xs font-mono bg-white p-2 rounded border border-gray-100 overflow-y-auto max-h-20">
+                                        {pixData.pixText}
+                                    </div>
+                                    <button
+                                        onClick={() => navigator.clipboard.writeText(pixData.pixText).then(() => alert("Código copiado!"))}
+                                        className="mt-2 text-blue-600 text-xs font-bold underline cursor-pointer hover:text-blue-800"
+                                    >
+                                        Copiar Código
+                                    </button>
                                 </div>
-                                <p><strong>Resumo do Pagamento ({
-                                    selectedMethod === 'pix' ? 'Pix' :
-                                        selectedMethod === 'debito' ? 'Débito' :
-                                            selectedMethod === 'credito' ? 'Crédito' :
-                                                'Boleto'
-                                }):</strong></p>
-                                <ul className="list-disc list-inside space-y-1 text-xs border-b pb-2 mb-2">
-                                    {activeTab === 'mensalidades' ? (
-                                        studentMensalidades.filter(m => m.status !== 'Pago').map(m => (
-                                            <li key={m.id}>{m.month}: R$ {calculateValue(m.value, 'mensalidade').toFixed(2).replace('.', ',')}</li>
-                                        ))
-                                    ) : (
-                                        studentEventos.filter(e => selectedEventIds.includes(e.id)).map(e => (
-                                            <li key={e.id}>
-                                                {eventQuantities[e.id] > 1 ? `${eventQuantities[e.id]}x ` : ''}
-                                                {e.description}: R$ {calculateValue(e.value * (eventQuantities[e.id] || 1), 'evento').toFixed(2).replace('.', ',')}
-                                            </li>
-                                        ))
-                                    )}
-                                </ul>
-                                <p className="text-lg font-bold text-blue-950 flex justify-between items-center">
-                                    <span>Total:</span>
-                                    <span>R$ {calculateValue(totalSelectedValue || (activeTab === 'mensalidades' ? studentMensalidades.reduce((acc, m) => acc + (m.status !== 'Pago' ? m.value : 0), 0) : 0), activeTab === 'mensalidades' ? 'mensalidade' : 'evento').toFixed(2).replace('.', ',')}</span>
-                                </p>
-                                <p className="text-blue-900 font-bold border-t pt-2 mt-2">Por enquanto, realize o pagamento na secretaria.</p>
-                            </div>
-                        </div>
-                        <Button onClick={() => setIsModalOpen(false)} className="w-full">Entendi</Button>
+
+                                <Button onClick={() => window.open(pixData.url, '_blank')} className="w-full bg-teal-600 hover:bg-teal-700">
+                                    Abrir Pagamento
+                                </Button>
+                                <Button onClick={() => setPixData(null)} variant="secondary" className="w-full">
+                                    Fechar
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto text-3xl">🚀</div>
+                                <div className="space-y-4">
+                                    <h4 className="text-xl font-bold text-gray-900">Novo Sistema de Pagamentos</h4>
+                                    <div className="text-sm text-gray-600 text-left space-y-3 bg-gray-50 p-4 rounded-xl">
+                                        <div className="border-b pb-2 mb-2">
+                                            <p className="text-xs font-bold text-gray-500 uppercase">Pagador</p>
+                                            <p className="font-bold text-gray-800">{student.nome_responsavel || student.name}</p>
+                                            <p className="text-xs text-gray-500">CPF: {student.cpf_responsavel || '---'}</p>
+                                        </div>
+                                        <p><strong>Resumo do Pagamento ({
+                                            selectedMethod === 'pix' ? 'Pix' :
+                                                selectedMethod === 'debito' ? 'Débito' :
+                                                    selectedMethod === 'credito' ? 'Crédito' :
+                                                        'Boleto'
+                                        }):</strong></p>
+                                        <ul className="list-disc list-inside space-y-1 text-xs border-b pb-2 mb-2">
+                                            {activeTab === 'mensalidades' ? (
+                                                studentMensalidades.filter(m => m.status !== 'Pago').map(m => (
+                                                    <li key={m.id}>{m.month}: R$ {calculateValue(m.value, 'mensalidade').toFixed(2).replace('.', ',')}</li>
+                                                ))
+                                            ) : (
+                                                studentEventos.filter(e => selectedEventIds.includes(e.id)).map(e => (
+                                                    <li key={e.id}>
+                                                        {eventQuantities[e.id] > 1 ? `${eventQuantities[e.id]}x ` : ''}
+                                                        {e.description}: R$ {calculateValue(e.value * (eventQuantities[e.id] || 1), 'evento').toFixed(2).replace('.', ',')}
+                                                    </li>
+                                                ))
+                                            )}
+                                        </ul>
+                                        <p className="text-lg font-bold text-blue-950 flex justify-between items-center">
+                                            <span>Total:</span>
+                                            <span>R$ {calculateValue(totalSelectedValue || (activeTab === 'mensalidades' ? studentMensalidades.reduce((acc, m) => acc + (m.status !== 'Pago' ? m.value : 0), 0) : 0), activeTab === 'mensalidades' ? 'mensalidade' : 'evento').toFixed(2).replace('.', ',')}</span>
+                                        </p>
+                                        <p className="text-blue-900 font-bold border-t pt-2 mt-2">Por enquanto, realize o pagamento na secretaria.</p>
+                                    </div>
+                                </div>
+                                <Button onClick={() => setIsModalOpen(false)} className="w-full">Entendi</Button>
+                            </>
+                        )}
                     </div>
                 </div>
             )}
