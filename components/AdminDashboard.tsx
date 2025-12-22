@@ -29,9 +29,14 @@ interface AdminDashboardProps {
     onEditAdmin?: (admin: Admin) => void;
     onDeleteAdmin?: (id: string) => void;
     onUpdateMessageStatus: (messageId: string, status: 'new' | 'read') => Promise<void>;
-    onAddUnitContact?: (contact: UnitContact) => void; // Nova prop
-    onEditUnitContact?: (contact: UnitContact) => void; // Nova prop para edição
-    onDeleteUnitContact?: (id: string) => void; // Nova prop
+    onAddUnitContact?: (contact: UnitContact) => void;
+    onEditUnitContact?: (contact: UnitContact) => void;
+    onDeleteUnitContact?: (id: string) => void;
+    onGenerateFees?: () => Promise<void>; // Nova prop
+    onGenerateIndividualFees?: (student: Student) => Promise<void>; // Nova prop individual
+    onFixDuplicates?: () => Promise<void>; // Nova prop para correção
+    onResetFees?: (studentId: string) => Promise<void>; // Nova prop para reset
+    mensalidades?: Mensalidade[]; // Nova prop
     onLogout: () => void;
 }
 
@@ -58,17 +63,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     onAddUnitContact,
     onEditUnitContact,
     onDeleteUnitContact,
+
+    onGenerateFees,
+    onGenerateIndividualFees,
+    onFixDuplicates,
+    onResetFees,
+    mensalidades = [],
     onLogout
 }) => {
-    const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'admins' | 'messages' | 'attendance' | 'contacts' | 'rematricula'>('students');
+    const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'admins' | 'messages' | 'attendance' | 'contacts' | 'rematricula' | 'financial'>('students');
 
     const adminUnit = admin.unit;
     const isGeneralAdmin = !adminUnit;
 
     // --- ESTADOS GERAIS ---
+    const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+
+    // STATES PARA FINANCEIRO INDIVIDUAL
+    const [isFinancialModalOpen, setIsFinancialModalOpen] = useState(false);
+    const [selectedStudentForFinancial, setSelectedStudentForFinancial] = useState<Student | null>(null);
+
     const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
     const [sName, setSName] = useState('');
     const [sResponsavel, setSResponsavel] = useState(''); // Novo Campo
+    const [sValorMensalidade, setSValorMensalidade] = useState(''); // Novo Campo Valor
     const [sEmail, setSEmail] = useState('');
     const [sPhone, setSPhone] = useState('');
     const [sCode, setSCode] = useState('');
@@ -92,6 +110,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [financialRecords, setFinancialRecords] = useState<Mensalidade[]>([]);
     const [loadingFinancial, setLoadingFinancial] = useState(false);
     const [financialFilterUnit, setFinancialFilterUnit] = useState<string>('');
+
+    // NEW STATES FOR GENERAL HISTORY
+    const [historyFilterUnit, setHistoryFilterUnit] = useState<string>('');
+    const [historyFilterMonth, setHistoryFilterMonth] = useState<string>(new Date().toISOString().substring(0, 7)); // YYYY-MM
 
     const [editingTeacherId, setEditingTeacherId] = useState<string | null>(null);
     const [tName, setTName] = useState('');
@@ -132,7 +154,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [dailyLoginsCount, setDailyLoginsCount] = useState<number | null>(null);
     const [loginPageViews, setLoginPageViews] = useState<number | null>(null);
     const [loginPageViewsToday, setLoginPageViewsToday] = useState<number | null>(null);
-    const [isLogModalOpen, setIsLogModalOpen] = useState(false);
     const [accessLogs, setAccessLogs] = useState<any[]>([]);
     const [logFilter, setLogFilter] = useState<'today' | 'week' | 'month'>('today');
     const [logProfileFilter, setLogProfileFilter] = useState<'all' | 'admin' | 'teacher' | 'student'>('all');
@@ -538,7 +559,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setSShift(s.shift);
         setSClass(s.schoolClass);
         setSPass(s.password);
+        setSPass(s.password);
         setSMetodoPagamento(s.metodo_pagamento || 'Interno');
+        setSValorMensalidade(s.valor_mensalidade ? s.valor_mensalidade.toString() : '');
 
 
 
@@ -551,7 +574,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setSEmail('');
         setSPhone('');
         setSCode('');
+        setSCode('');
         setSPass('');
+        setSValorMensalidade('');
 
 
     };
@@ -570,9 +595,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             unit: unitToSave,
             shift: sShift,
             schoolClass: sClass,
+
             metodo_pagamento: sMetodoPagamento,
+            valor_mensalidade: sValorMensalidade ? parseFloat(sValorMensalidade.replace(',', '.')) : 0,
 
         };
+
+        // Finanical Value Validation
+        if (studentData.valor_mensalidade! > 0 && studentData.valor_mensalidade! < 1) {
+            alert('O valor mínimo para cobrança é de R$ 1,00 devido às regras do processador de pagamentos');
+            return;
+        }
 
         if (editingStudentId) {
             const original = students.find(s => s.id === editingStudentId)!;
@@ -641,7 +674,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             };
             onAddStudent(newStudent);
             alert("Cadastrado!");
-            setSName(''); setSResponsavel(''); setSEmail(''); setSPhone(''); setSCode(''); setSPass(''); setSMetodoPagamento('Interno');
+            onAddStudent(newStudent);
+            // alert("Cadastrado!");
+            // setSName(''); setSResponsavel(''); setSEmail(''); setSPhone(''); setSCode(''); setSPass(''); setSMetodoPagamento('Interno'); setSValorMensalidade('');
+
+            // Workflow de Agilidade: Entrar em modo de edição
+            alert("Aluno cadastrado com sucesso! \nVocê agora pode gerar o carnê clicando no botão 'Gerar Carnê 2026'.");
+            startEditingStudent(newStudent);
         }
     };
     const initiateDeleteTeacher = (id: string) => setTeacherToDelete(id);
@@ -793,6 +832,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <div><label className="text-sm font-medium">Série</label><select value={sGrade} onChange={e => setSGrade(e.target.value)} className="w-full p-2 border rounded">{SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}</select></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">Turma</label><select value={sClass} onChange={e => setSClass(e.target.value as SchoolClass)} className="w-full p-2 border rounded">{SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}</select></div><div><label className="text-sm font-medium">Turno</label><select value={sShift} onChange={e => setSShift(e.target.value as SchoolShift)} className="w-full p-2 border rounded">{SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{s}</option>)}</select></div></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">Unidade</label>{isGeneralAdmin ? (<select value={sUnit} onChange={e => setSUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}</div><div><label className="text-sm font-medium text-blue-700 font-bold">Método Pagamento</label><select value={sMetodoPagamento} onChange={e => setSMetodoPagamento(e.target.value as 'Isaac' | 'Interno')} className="w-full p-2 border-2 border-blue-200 rounded font-semibold text-blue-900 focus:border-blue-500"><option value="Interno">Sistema Interno</option><option value="Isaac">Parceiro Isaac</option></select></div></div>
 
                         <div><label className="text-sm font-medium">Responsável Financeiro</label><input type="text" value={sResponsavel} onChange={e => setSResponsavel(e.target.value)} className="w-full p-2 border rounded" placeholder="Nome do responsável financeiro" /></div>
+                        <div><label className="text-sm font-medium font-bold text-green-700">Valor da Mensalidade (R$)</label><input type="number" step="0.01" value={sValorMensalidade} onChange={e => setSValorMensalidade(e.target.value)} className="w-full p-2 border rounded font-bold text-green-800" placeholder="0.00" /></div>
                         <div className="grid grid-cols-2 gap-2">
                             <div><label className="text-sm font-medium">E-mail</label><input type="email" value={sEmail} onChange={e => setSEmail(e.target.value)} className="w-full p-2 border rounded" placeholder="email@exemplo.com" /></div>
                             <div><label className="text-sm font-medium">Telefone</label><input type="tel" value={sPhone} onChange={e => { if (/^[0-9]*$/.test(e.target.value)) setSPhone(e.target.value); }} className="w-full p-2 border rounded" placeholder="Apenas números" maxLength={15} /></div>
@@ -801,7 +841,55 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
 
                         <div><label className="text-sm font-medium">Senha</label>
-                            <div className="flex gap-2 relative"><input type={showStudentPassword ? "text" : "password"} value={sPass} onChange={e => setSPass(e.target.value)} className="w-full p-2 border rounded" required={!editingStudentId} /><button type="button" onClick={() => setShowStudentPassword(!showStudentPassword)} className="absolute right-16 top-2 text-gray-500">{showStudentPassword ? <EyeOffIcon /> : <EyeIcon />}</button><button type="button" onClick={handleGenerateStudentPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button></div><p className="text-xs text-gray-500 mt-1">Senha automática (8 caracteres).</p></div><Button type="submit" className="w-full">{editingStudentId ? 'Salvar' : 'Cadastrar'}</Button></form></div></div>
+                            <div className="flex gap-2 relative"><input type={showStudentPassword ? "text" : "password"} value={sPass} onChange={e => setSPass(e.target.value)} className="w-full p-2 border rounded" required={!editingStudentId} /><button type="button" onClick={() => setShowStudentPassword(!showStudentPassword)} className="absolute right-16 top-2 text-gray-500">{showStudentPassword ? <EyeOffIcon /> : <EyeIcon />}</button><button type="button" onClick={handleGenerateStudentPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button></div><p className="text-xs text-gray-500 mt-1">Senha automática (8 caracteres).</p></div>
+
+                        <div className="flex gap-2">
+                            <Button type="submit" className="w-full flex-1">{editingStudentId ? 'Salvar Alterações' : 'Cadastrar Aluno'}</Button>
+                            {editingStudentId && onGenerateIndividualFees && (
+                                <button
+
+                                    type="button"
+                                    onClick={() => {
+                                        // Construct student from form data to ensure we have the latest value (even if not synced yet)
+                                        const formStudent: Student = {
+                                            id: editingStudentId,
+                                            name: sName,
+                                            valor_mensalidade: sValorMensalidade ? parseFloat(sValorMensalidade.replace(',', '.')) : 0,
+                                            // Fill other required fields with defaults or current form values to satisfy type
+                                            code: sCode,
+                                            gradeLevel: sGrade,
+                                            schoolClass: sClass,
+                                            shift: sShift,
+                                            unit: isGeneralAdmin ? sUnit : (adminUnit || SchoolUnit.UNIT_1), // Ensure unit is present
+                                            // Legacy/Optional fields can be partial/dummy if not used by fee generator, 
+                                            // but best to try finding original to keep data clean if possible.
+                                            ...(students.find(s => s.id === editingStudentId) || {} as any)
+                                        };
+
+                                        // Override with form values specifically for the critical fields
+                                        formStudent.valor_mensalidade = sValorMensalidade ? parseFloat(sValorMensalidade.replace(',', '.')) : 0;
+                                        formStudent.name = sName;
+
+                                        if (onGenerateIndividualFees) onGenerateIndividualFees(formStudent);
+                                    }}
+                                    className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded transition-colors flex items-center justify-center gap-2"
+                                    title="Gera o carnê de 2026 com o valor atual do formulário"
+                                >
+                                    <span>💰</span> Gerar Carnê 2026
+                                </button>
+                            )}
+                            {editingStudentId && onResetFees && (
+                                <button
+                                    type="button"
+                                    onClick={() => onResetFees!(editingStudentId)}
+                                    className="bg-red-100 text-red-600 px-4 py-2 rounded font-bold hover:bg-red-200 transition flex items-center gap-2 border border-red-200"
+                                    title="ATENÇÃO: Apaga TODAS as mensalidades de 2026 (inclusive pagas) para recomeçar."
+                                >
+                                    <span>🗑️</span> Reset
+                                </button>
+                            )}
+                        </div>
+                    </form></div></div>
 
                         <div className="lg:col-span-2">
                             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -862,7 +950,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 <div className="overflow-x-auto">
                                     <table className="w-full min-w-[600px] text-sm text-left">
                                         <thead className="bg-gray-50 text-gray-500 uppercase text-xs"><tr><th className="p-3">Nome</th><th className="p-3">Código</th><th className="p-3">Unidade</th><th className="p-3">Ações</th></tr></thead>
-                                        <tbody>{filteredStudents.map(s => (<tr key={s.id} className="border-b hover:bg-gray-50"><td className="p-3 font-medium text-gray-800">{s.name}{s.isBlocked && <span className="ml-2 bg-red-100 text-red-700 text-[9px] font-bold px-2 py-0.5 rounded-full">BLOQUEADO</span>}</td><td className="p-3 font-mono text-gray-600">{s.code}</td><td className="p-3">{s.unit}</td><td className="p-3 flex gap-3 text-xs font-medium"><button onClick={() => startEditingStudent(s)} className="text-blue-950 hover:underline">Editar</button><button onClick={() => onToggleBlockStudent(s.id)} className={`hover:underline ${s.isBlocked ? 'text-green-600' : 'text-yellow-600'}`}>{s.isBlocked ? 'Desbloquear' : 'Bloquear'}</button><button onClick={() => initiateDeleteStudent(s.id)} className="text-red-600 hover:underline">Excluir</button></td></tr>))}</tbody>
+                                        <tbody>{filteredStudents.map(s => (<tr key={s.id} className="border-b hover:bg-gray-50"><td className="p-3 font-medium text-gray-800">{s.name}{s.isBlocked && <span className="ml-2 bg-red-100 text-red-700 text-[9px] font-bold px-2 py-0.5 rounded-full">BLOQUEADO</span>}</td><td className="p-3 font-mono text-gray-600">{s.code}</td><td className="p-3">{s.unit}</td><td className="p-3 flex gap-3 text-xs font-medium">
+                                            <button onClick={() => { setSelectedStudentForFinancial(s); setIsFinancialModalOpen(true); }} className="text-green-700 bg-green-50 px-2 py-1 rounded hover:bg-green-100 border border-green-200">💲 Fin.</button>
+                                            <button onClick={() => startEditingStudent(s)} className="text-blue-950 hover:underline">Editar</button><button onClick={() => onToggleBlockStudent(s.id)} className={`hover:underline ${s.isBlocked ? 'text-green-600' : 'text-yellow-600'}`}>{s.isBlocked ? 'Desbloquear' : 'Bloquear'}</button><button onClick={() => initiateDeleteStudent(s.id)} className="text-red-600 hover:underline">Excluir</button></td></tr>))}</tbody>
                                     </table>
                                 </div>
                             </div>
@@ -966,6 +1056,99 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
                     )}
 
+                    {/* MODAL FINANCEIRO INDIVIDUAL */}
+                    {isFinancialModalOpen && selectedStudentForFinancial && (
+                        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-gray-900 bg-opacity-70 backdrop-blur-sm animate-fade-in">
+                            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl h-auto max-h-[90vh] flex flex-col overflow-hidden">
+                                <div className="flex justify-between items-center p-4 bg-gradient-to-r from-green-600 to-teal-600 text-white">
+                                    <div>
+                                        <h2 className="text-xl font-bold flex items-center gap-2">💲 Gestão Financeira</h2>
+                                        <p className="text-xs opacity-90">{selectedStudentForFinancial.name} ({selectedStudentForFinancial.gradeLevel} - {selectedStudentForFinancial.schoolClass})</p>
+                                    </div>
+                                    <button onClick={() => setIsFinancialModalOpen(false)} className="text-white/80 hover:text-white hover:bg-white/20 p-2 rounded-full transition-colors">
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    </button>
+                                </div>
+
+
+
+                                {/* GRID VIEW FOR ADMIN (REPLACES LIST) */}
+                                <div className="p-6 bg-gray-50 flex-1 overflow-y-auto">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                        {mensalidades
+                                            .filter(m => m.studentId === selectedStudentForFinancial.id)
+                                            .sort((a, b) => {
+                                                const monthsOrder: { [key: string]: number } = { 'Janeiro': 1, 'Fevereiro': 2, 'Março': 3, 'Abril': 4, 'Maio': 5, 'Junho': 6, 'Julho': 7, 'Agosto': 8, 'Setembro': 9, 'Outubro': 10, 'Novembro': 11, 'Dezembro': 12 };
+                                                const [ma, ya] = a.month.split('/');
+                                                const [mb, yb] = b.month.split('/');
+                                                if (ya !== yb) return parseInt(ya) - parseInt(yb);
+                                                return monthsOrder[ma] - monthsOrder[mb];
+                                            })
+                                            .map(fee => (
+                                                <div key={fee.id} className={`bg-white p-4 rounded-xl border-2 flex flex-col gap-2 shadow-sm ${fee.status === 'Pago' ? 'border-green-200' : (fee.status === 'Atrasado' ? 'border-red-200' : 'border-yellow-200')}`}>
+                                                    <div className="flex justify-between items-start">
+                                                        <span className="font-bold text-gray-800">{fee.month}</span>
+                                                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${fee.status === 'Pago' ? 'bg-green-100 text-green-700' : (fee.status === 'Atrasado' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700')}`}>
+                                                            {fee.status}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="mt-auto">
+                                                        <p className="text-lg font-bold text-gray-900">R$ {fee.value.toFixed(2)}</p>
+                                                        <p className="text-xs text-gray-500">Venc: {new Date(fee.dueDate).toLocaleDateString('pt-BR')}</p>
+                                                        {fee.paymentDate && <p className="text-xs text-green-700 font-bold">Pago: {new Date(fee.paymentDate).toLocaleDateString('pt-BR')}</p>}
+                                                    </div>
+
+                                                    <div className="pt-3 mt-3 border-t border-gray-100 grid grid-cols-1 gap-2">
+                                                        {fee.status === 'Pago' ? (
+                                                            <button
+                                                                onClick={async () => {
+                                                                    if (!window.confirm("Admin: Desfazer pagamento?")) return;
+                                                                    try {
+                                                                        await db.collection('mensalidades').doc(fee.id).update({
+                                                                            status: 'Pendente',
+                                                                            paymentDate: null,
+                                                                            receiptUrl: null,
+                                                                            lastUpdated: new Date().toISOString()
+                                                                        });
+                                                                    } catch (e) { alert("Erro."); }
+                                                                }}
+                                                                className="py-1 text-xs font-bold text-gray-500 bg-gray-100 hover:bg-red-50 hover:text-red-600 rounded"
+                                                            >
+                                                                Desfazer
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                onClick={async () => {
+                                                                    if (!window.confirm("Admin: Confirmar recebimento manual?")) return;
+                                                                    try {
+                                                                        await db.collection('mensalidades').doc(fee.id).update({
+                                                                            status: 'Pago',
+                                                                            paymentDate: new Date().toISOString(),
+                                                                            lastUpdated: new Date().toISOString()
+                                                                        });
+                                                                    } catch (e) { alert("Erro."); }
+                                                                }}
+                                                                className="py-1 text-xs font-bold text-white bg-green-600 hover:bg-green-700 rounded shadow-sm"
+                                                            >
+                                                                Receber Manual
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        }
+                                        {mensalidades.filter(m => m.studentId === selectedStudentForFinancial.id).length === 0 && (
+                                            <div className="col-span-3 text-center py-10 text-gray-400">
+                                                Nenhum registro financeiro para este ano.
+                                            </div>
+                                        )}
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
 
                     {/* --- CONTEÚDO GESTÃO DE CONTATOS (NOVA ABA) --- */}
@@ -1215,6 +1398,92 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 </div>
                             </div>
 
+                            {/* --- HISTÓRICO GERAL (DEMANDA RECEBIDA) --- */}
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-purple-200">
+                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                                    <div>
+                                        <h2 className="text-xl font-bold text-purple-900 flex items-center gap-2">
+                                            <span>📅</span> Histórico Geral de Faturamento
+                                        </h2>
+                                        <p className="text-sm text-gray-500">Visualize o total arrecadado por mês e unidade.</p>
+                                    </div>
+
+                                    {/* BUTTON: GERAR CARNÊS 2026 */}
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={onGenerateFees}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow flex items-center gap-2 text-sm transition-transform hover:scale-105"
+                                        >
+                                            <span>⚙️</span> Gerar Carnês 2026 (Todos)
+                                        </button>
+                                        {onFixDuplicates && (
+                                            <button
+                                                onClick={onFixDuplicates}
+                                                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow flex items-center gap-2 text-sm transition-transform hover:scale-105"
+                                                title="Corrige nomes de meses (ex: Janeiro -> Janeiro/2026) e remove duplicatas (priorizando Pagos)"
+                                            >
+                                                <span>🧹</span> Corrigir Duplicidades
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end bg-gray-50 p-4 rounded-lg border border-gray-100">
+                                    <div className="w-full">
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Unidade (Obrigatório)</label>
+                                        <select
+                                            value={historyFilterUnit}
+                                            onChange={e => setHistoryFilterUnit(e.target.value)}
+                                            className="w-full p-2.5 border border-gray-300 rounded-lg bg-white"
+                                        >
+                                            <option value="">Selecione uma Unidade...</option>
+                                            {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="w-full">
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Mês de Referência</label>
+                                        <input
+                                            type="month"
+                                            value={historyFilterMonth}
+                                            onChange={e => setHistoryFilterMonth(e.target.value)}
+                                            className="w-full p-2.5 border border-gray-300 rounded-lg bg-white"
+                                        />
+                                    </div>
+                                    <div className="w-full">
+                                        <div className="bg-purple-100 p-2.5 rounded-lg border border-purple-200 text-center mx-auto">
+                                            <p className="text-xs font-bold text-purple-800 uppercase">Faturamento Filtrado</p>
+                                            <p className="text-xl font-bold text-purple-900">
+                                                {(() => {
+                                                    if (!historyFilterUnit || !historyFilterMonth) return '---';
+
+                                                    // Convert YYYY-MM to Month Name/Year potentially, OR check paymentDate
+                                                    // Requirment: "Faturamento consolidado... Month/Unit"
+                                                    // Logic: Sum 'value' of all 'Pago' records where:
+                                                    // 1. Student Unit == filterUnit
+                                                    // 2. PaymentDate falls in FilterMonth (YYYY-MM)
+
+                                                    const total = financialRecords.reduce((acc, rec) => {
+                                                        const s = students.find(st => st.id === rec.studentId);
+                                                        if (!s || s.unit !== historyFilterUnit) return acc;
+
+                                                        // Check payment date
+                                                        if (!rec.paymentDate) return acc;
+                                                        const pDate = rec.paymentDate.substring(0, 7); // YYYY-MM
+
+                                                        if (pDate === historyFilterMonth) {
+                                                            return acc + rec.value;
+                                                        }
+                                                        return acc;
+                                                    }, 0);
+
+                                                    return `R$ ${total.toFixed(2).replace('.', ',')}`;
+                                                })()}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                                 <div className="p-6 border-b border-gray-100">
                                     <h3 className="font-bold text-gray-700">Transações Recentes (Status: Pago)</h3>
@@ -1227,6 +1496,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Aluno / Mãe</th>
                                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Unidade</th>
                                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Referência</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase text-center">Recibo</th>
                                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase text-right">Valor</th>
                                             </tr>
                                         </thead>
@@ -1235,12 +1505,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 financialRecords
                                                     .filter(rec => {
                                                         const s = students.find(st => st.id === rec.studentId);
-                                                        if (!s) return false;
-                                                        // Filter logic for table
                                                         if (isGeneralAdmin) {
-                                                            return financialFilterUnit ? s.unit === financialFilterUnit : true;
+                                                            return financialFilterUnit ? s?.unit === financialFilterUnit : true;
                                                         } else {
-                                                            return s.unit === adminUnit;
+                                                            return s?.unit === adminUnit;
                                                         }
                                                     })
                                                     .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
@@ -1254,7 +1522,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                                 </td>
                                                                 <td className="px-6 py-4">
                                                                     <div className="flex flex-col">
-                                                                        <span className="font-bold text-gray-800 text-sm">{s?.name || 'Aluno Excluído'}</span>
+                                                                        <button onClick={() => { if (s) { setSelectedStudentForFinancial(s); setIsFinancialModalOpen(true); } }} className="font-bold text-gray-800 text-sm hover:text-blue-600 hover:underline text-left">
+                                                                            {s?.name || 'Aluno Excluído'}
+                                                                        </button>
                                                                         <span className="text-xs text-gray-500">{s?.nome_responsavel || 'Resp. N/A'}</span>
                                                                     </div>
                                                                 </td>
@@ -1265,6 +1535,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                                 </td>
                                                                 <td className="px-6 py-4 text-sm text-gray-600">
                                                                     {rec.month}
+                                                                </td>
+                                                                <td className="px-6 py-4 text-center">
+                                                                    {rec.receiptUrl ? (
+                                                                        <a
+                                                                            href={rec.receiptUrl}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            title="Ver Comprovante Oficial"
+                                                                            className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-800 transition-colors"
+                                                                        >
+                                                                            📄
+                                                                        </a>
+                                                                    ) : (
+                                                                        <span className="text-gray-300 text-xs" title="Sem recibo disponível">-</span>
+                                                                    )}
                                                                 </td>
                                                                 <td className="px-6 py-4 text-sm font-bold text-green-700 text-right">
                                                                     R$ {rec.value.toFixed(2).replace('.', ',')}
@@ -1285,7 +1570,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             </div>
                         </div>
                     )}
-
                 </div>
             </div>
 

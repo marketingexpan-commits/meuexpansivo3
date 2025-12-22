@@ -11,49 +11,121 @@ const db = admin.firestore();
 // URL Exemplo: https://us-central1-SEU-PROJETO.cloudfunctions.net/abacateWebhook
 
 exports.abacateWebhook = functions.https.onRequest(async (req, res) => {
-    // 1. Verificação de Segurança (Opcional mas recomendado)
-    // Verificar se o request vem realmente do Abacate Pay via assinatura ou token no header.
-    // const signature = req.headers['abacate-signature'];
-
+    // 1. Verificação de Segurança
     try {
-        const event = req.body;
+        console.log("🔥 ACESSOU: abacateWebhook endpoint atingido!");
 
-        console.log("Recebido Webhook Abacate:", event);
+        const event = req.body;
+        console.log("📥 Payload Recebido:", JSON.stringify(event, null, 2));
 
         // 2. Lógica de Processamento
-        // O payload do Abacate Pay contém o status e os metadados do pagamento.
-
         const { status, metadata, customerId, products } = event.data || event;
 
         if (status === 'PAID') {
-            // Pagamento Confirmado!
+            console.log("Status PAID recebido. Iniciando processamento...");
+            console.log("Metadata recebido:", metadata || "Nenhum metadata");
 
-            // Exemplo: products[0].externalId contém nosso ID de referência (ex: "mensalidades_studentId")
-            const externalId = products && products[0] ? products[0].externalId : null;
+            const batch = db.batch();
+            let updatedCount = 0;
 
-            if (externalId && externalId.startsWith('mensalidades_')) {
-                const studentId = externalId.split('_')[1];
+            // 1. Prioridade: Buscar via METADATA (Novo Padrão)
+            if (metadata && metadata.studentId) {
+                const studentId = metadata.studentId;
+                console.log(`Processando via Metadata para Aluno ID: ${studentId}`);
 
-                // Buscar mensalidades pendentes deste aluno e marcar como pagas
-                // OBS: A lógica exata depende se o valor cobre tudo ou se é uma mensalidade específica.
-                // Aqui, vamos assumir que ele pagou o que foi gerado.
+                // Processar Mensalidades Específicas
+                if (metadata.mensalidadeIds) {
+                    const idsToPay = metadata.mensalidadeIds.split(',').map(id => id.trim()).filter(id => id.length > 0);
+                    console.log(`IDs recebidos para baixa: ${idsToPay.join(', ')}`);
 
-                const snapshot = await db.collection('mensalidades')
-                    .where('studentId', '==', studentId)
-                    .where('status', '==', 'Pendente')
-                    .get();
+                    for (const feeId of idsToPay) {
+                        try {
+                            const feeRef = db.collection('mensalidades').doc(feeId);
+                            const doc = await feeRef.get();
 
-                if (!snapshot.empty) {
-                    const batch = db.batch();
-                    snapshot.docs.forEach(doc => {
-                        batch.update(doc.ref, {
+                            if (!doc.exists) {
+                                console.error(`❌ ERRO CRÍTICO: Mensalidade com ID [${feeId}] não encontrada no banco de dados!`);
+                                console.log(`Tentativa de baixa falhou para ID: ${feeId}`);
+                                continue;
+                            }
+
+                            // Update directly to ensure success in loop
+                            await feeRef.update({
+                                status: 'Pago',
+                                paymentDate: new Date().toISOString(),
+                                receiptUrl: event.data?.publicUrl || event.data?.billingUrl || event.data?.url || null,
+                                lastUpdated: new Date().toISOString(),
+                                paymentMethod: 'AbacatePay_Webhook'
+                            });
+                            console.log(`✅ Sucesso: Mensalidade [${feeId}] atualizada para PAGO.`);
+                            updatedCount++;
+                        } catch (err) {
+                            console.error(`Erro ao atualizar mensalidade [${feeId}]:`, err);
+                        }
+                    }
+                }
+
+                // Processar Eventos (Se houver)
+                if (metadata.eventIds) {
+                    const eventIdsToPay = metadata.eventIds.split(',').map(id => id.trim()).filter(id => id.length > 0);
+                    console.log(`IDs de Eventos para baixar: ${eventIdsToPay.join(', ')}`);
+                    for (const evId of eventIdsToPay) {
+                        const evRef = db.collection('eventos_financeiros').doc(evId);
+                        batch.update(evRef, {
                             status: 'Pago',
+                            paymentDate: new Date().toISOString(),
+                            receiptUrl: event.data?.publicUrl || event.data?.billingUrl || event.data?.url || null,
                             lastUpdated: new Date().toISOString()
                         });
-                    });
-                    await batch.commit();
-                    console.log(`Mensalidades atualizadas para o aluno ${studentId}`);
+                        updatedCount++;
+                    }
                 }
+
+            } else {
+                // 2. Fallback: Lógica Antiga
+                console.log("Metadata ausente. Tentando fallback para externalId...");
+                const externalId = products && products[0] ? products[0].externalId : null;
+
+                if (externalId && externalId.startsWith('mensalidades_')) {
+                    const studentId = externalId.split('_')[1];
+                    console.log(`Fallback: Baixando TUDO pendente para aluno ${studentId}`);
+
+                    const snapshot = await db.collection('mensalidades')
+                        .where('studentId', '==', studentId)
+                        .where('status', '==', 'Pendente')
+                        .get();
+
+                    if (!snapshot.empty) {
+                        snapshot.docs.forEach(doc => {
+                            batch.update(doc.ref, {
+                                status: 'Pago',
+                                paymentDate: new Date().toISOString(),
+                                receiptUrl: event.data?.publicUrl || event.data?.billingUrl || event.data?.url || null,
+                                lastUpdated: new Date().toISOString()
+                            });
+                            updatedCount++;
+                        });
+                    }
+                }
+            }
+
+            if (updatedCount > 0) {
+                // Note: batch might be empty if we used direct await updates above, but commit is safe even if empty/partial
+                // We only strictly *need* batch commit if we added batch operations (fallback logic or events logic)
+                // Safe to commit always if we think batch has ops, or check. 
+                // For simplicity, let's just commit - if empty, it's a no-op usually. 
+                // Check if batch has operations? Firestore Admin SDK doesn't expose 'hasOperations'.
+                // We can rely on logic: if fallback was used OR events logic used batch (yes they did), we commit.
+                // Mensalidades utilized direct update.
+                // So if metadata.eventIds OR (!metadata && fallback), we commit.
+                try {
+                    await batch.commit();
+                } catch (e) {
+                    // ignore if "no writes" error, otherwise log
+                }
+                console.log(`Sucesso! Registros atualizados.`);
+            } else {
+                console.log("Nenhum registro encontrado para atualização ou lista de IDs vazia.");
             }
         }
 

@@ -20,6 +20,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'mensalidades' | 'eventos'>('mensalidades');
+    const [historyMode, setHistoryMode] = useState(false); // Toggle between Pending and History view
 
     const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('pix');
     const [selectedInstallments, setSelectedInstallments] = useState<number>(1);
@@ -43,11 +44,12 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
 
 
 
-    // Reset installments and selection when tab or method changes
+    // Reset installments and selection when tab changes
     useEffect(() => {
         setSelectedInstallments(1);
         if (activeTab === 'mensalidades') {
             setSelectedEventIds([]);
+            // Ensure we are in pending mode when switching back, or keep user preference? Let's keep preference.
         }
     }, [activeTab, selectedMethod]);
 
@@ -125,6 +127,10 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             alert('Por favor, selecione ao menos um evento para prosseguir');
             return;
         }
+        if (activeTab === 'mensalidades' && selectedMensalidades.length === 0) {
+            alert('Por favor, selecione ao menos uma mensalidade para prosseguir');
+            return;
+        }
         if (selectedMethod === 'pix') {
             // Security: Always start empty to force verification/entry
             setCpfInput('');
@@ -167,8 +173,16 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
     // Initialize selectedMensalidades with all pending/overdue on load or when data changes
     // Initialize selectedMensalidades
     useEffect(() => {
-        // Default: No items selected
-        setSelectedMensalidades([]);
+        // Default: Auto-select earliest pending for convenience/UX (Fixes R$ 0,00 display)
+        const pending = studentMensalidades
+            .filter(m => m.status !== 'Pago')
+            .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+
+        if (pending.length > 0) {
+            setSelectedMensalidades([pending[0].id]);
+        } else {
+            setSelectedMensalidades([]);
+        }
     }, [studentMensalidades]);
 
     const toggleMensalidadeSelection = (id: string) => {
@@ -288,6 +302,12 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                         taxId: cleanCpf,
                         cellphone: cleanPhone,
                         email: cleanEmail
+                    },
+                    metadata: {
+                        studentId: student.id,
+                        mensalidadeIds: activeTab === 'mensalidades' ? selectedMensalidades.join(',') : '',
+                        eventIds: activeTab === 'eventos' ? selectedEventIds.join(',') : '',
+                        generatedBy: 'SystemWebhookFix'
                     },
                     products: [
                         {
@@ -469,41 +489,136 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {activeTab === 'mensalidades' ? (
-                                studentMensalidades.length > 0 ? (
-                                    studentMensalidades.sort((a, b) => b.dueDate.localeCompare(a.dueDate)).map((m) => (
-                                        <tr key={m.id} className="hover:bg-gray-50/50 transition-colors">
-                                            <td className="px-6 py-4">
-                                                {m.status !== 'Pago' && (
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedMensalidades.includes(m.id)}
-                                                        onChange={() => toggleMensalidadeSelection(m.id)}
-                                                        className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                                    />
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 font-bold text-gray-800">{m.month}</td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col">
-                                                    <span className="text-xs text-gray-400 line-through">R$ {m.value.toFixed(2).replace('.', ',')}</span>
-                                                    <span className="font-bold text-blue-900">R$ {calculateValue(m.value, 'mensalidade').toFixed(2).replace('.', ',')}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-gray-600">{formatDate(m.dueDate)}</td>
-                                            <td className="px-6 py-4 text-center">
-                                                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusStyle(m.status)}`}>
-                                                    {m.status}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
+                                <>
+                                    {/* MENSALIDADES TAB HEADER / TOGGLE */}
                                     <tr>
-                                        <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">
-                                            Nenhuma mensalidade encontrada.
+                                        <td colSpan={5} className="p-4 bg-gray-50">
+                                            <div className="flex gap-2 justify-center sm:justify-start">
+                                                <button
+                                                    onClick={() => setHistoryMode(false)}
+                                                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${!historyMode ? 'bg-blue-950 text-white shadow' : 'bg-white text-gray-600 hover:bg-gray-100'}`}
+                                                >
+                                                    A Pagar
+                                                </button>
+                                                <button
+                                                    onClick={() => setHistoryMode(true)}
+                                                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${historyMode ? 'bg-blue-950 text-white shadow' : 'bg-white text-gray-600 hover:bg-gray-100'}`}
+                                                >
+                                                    Histórico 2026
+                                                </button>
+                                            </div>
+                                            {/* INFO LOCK MESSAGE */}
+                                            {!historyMode && (
+                                                <div className="mt-3 text-xs text-orange-700 bg-orange-50 border border-orange-100 p-2 rounded flex items-center gap-2">
+                                                    <span>🔒</span>
+                                                    <span>Pagamento Cronológico: Você deve quitar a mensalidade mais antiga antes de avançar para as próximas.</span>
+                                                </div>
+                                            )}
                                         </td>
                                     </tr>
-                                )
+
+                                    {/* CONTENT */}
+                                    {historyMode ? (
+                                        // VIEW: HISTÓRICO (GRID)
+                                        <tr>
+                                            <td colSpan={5} className="p-6">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                                    {studentMensalidades
+                                                        .sort((a, b) => {
+                                                            // Sort by Month Index for Calendar View
+                                                            const monthsOrder: { [key: string]: number } = { 'Janeiro': 1, 'Fevereiro': 2, 'Março': 3, 'Abril': 4, 'Maio': 5, 'Junho': 6, 'Julho': 7, 'Agosto': 8, 'Setembro': 9, 'Outubro': 10, 'Novembro': 11, 'Dezembro': 12 };
+                                                            const [ma, ya] = a.month.split('/');
+                                                            const [mb, yb] = b.month.split('/');
+                                                            return monthsOrder[ma] - monthsOrder[mb];
+                                                        })
+                                                        .map(m => (
+                                                            <div key={m.id} className={`relative p-4 rounded-xl border-2 flex flex-col gap-2 ${m.status === 'Pago' ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100 grayscale opacity-70'}`}>
+                                                                <div className="flex justify-between items-start">
+                                                                    <span className="font-bold text-gray-800">{m.month}</span>
+                                                                    {m.status === 'Pago' && <span className="text-xl">✅</span>}
+                                                                </div>
+                                                                <div className="mt-auto">
+                                                                    <p className="text-sm text-gray-600">Valor: <span className="font-bold">R$ {m.value.toFixed(2)}</span></p>
+                                                                    <p className="text-xs text-gray-500">Venc: {formatDate(m.dueDate)}</p>
+                                                                    {m.paymentDate && <p className="text-xs text-green-700 font-bold mt-1">Pago em: {formatDate(m.paymentDate)}</p>}
+                                                                    {m.receiptUrl && <a href={m.receiptUrl} target="_blank" rel="noopener noreferrer" className="block mt-1 text-xs text-blue-600 underline hover:text-blue-800">Ver Recibo</a>}
+                                                                </div>
+                                                                {/* Recibo ou Status */}
+                                                                <div className="mt-2 pt-2 border-t border-gray-100">
+                                                                    {m.status === 'Pago' ? (
+                                                                        <span className="text-xs font-bold text-green-600 uppercase tracking-wider">Pago</span>
+                                                                    ) : (
+                                                                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{m.status}</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        // VIEW: A PAGAR (TABLE WITH LOCK)
+                                        (() => {
+                                            // Logic to find oldest pending
+                                            // Sort by Date Ascending
+                                            const sortedPending = [...studentMensalidades]
+                                                .filter(m => m.status !== 'Pago')
+                                                .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+
+                                            const oldestPendingId = sortedPending.length > 0 ? sortedPending[0].id : null;
+
+                                            // Render only Pending/Late items in this list, sorted by DueDate
+                                            const displayList = sortedPending;
+
+                                            return displayList.length > 0 ? (
+                                                displayList.map((m) => {
+                                                    const isLocked = m.id !== oldestPendingId;
+                                                    return (
+                                                        <tr key={m.id} className={`transition-colors ${isLocked ? 'bg-gray-50 opacity-60' : 'hover:bg-blue-50/30'}`}>
+                                                            <td className="px-6 py-4">
+                                                                <div className="flex items-center gap-3">
+                                                                    {isLocked ? (
+                                                                        <div className="w-5 h-5 flex items-center justify-center text-gray-400" title="Quite os meses anteriores primeiro">
+                                                                            🔒
+                                                                        </div>
+                                                                    ) : (
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={selectedMensalidades.includes(m.id)}
+                                                                            onChange={() => toggleMensalidadeSelection(m.id)}
+                                                                            className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                                        />
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4 font-bold text-gray-800">{m.month}</td>
+                                                            <td className="px-6 py-4">
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-xs text-gray-400 line-through">R$ {m.value.toFixed(2).replace('.', ',')}</span>
+                                                                    <span className="font-bold text-blue-900">R$ {calculateValue(m.value, 'mensalidade').toFixed(2).replace('.', ',')}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-gray-600">{formatDate(m.dueDate)}</td>
+                                                            <td className="px-6 py-4 text-center">
+                                                                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusStyle(m.status)}`}>
+                                                                    {m.status}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">
+                                                        <span className="text-4xl block mb-2">🎉</span>
+                                                        Parabéns! Você está em dia com todas as mensalidades.
+                                                        <button onClick={() => setHistoryMode(true)} className="block mx-auto mt-2 text-blue-600 underline text-sm">Ver Histórico</button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })()
+                                    )}
+                                </>
                             ) : (
                                 studentEventos.length > 0 ? (
                                     studentEventos.sort((a, b) => b.dueDate.localeCompare(a.dueDate)).map((e) => {

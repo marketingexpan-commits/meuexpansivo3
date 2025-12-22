@@ -432,7 +432,336 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAddStudent = async (newStudent: Student) => { try { await db.collection('students').doc(newStudent.id).set(newStudent); } catch (e) { if (ALLOW_MOCK_LOGIN) setStudents(prev => [...prev, newStudent]); } };
+  /* --- FUNÇÃO DE GERAÇÃO DE MENSALIDADES --- */
+  const generate2026Fees = (student: Student, batch: firebase.firestore.WriteBatch, excludedMonths: string[] = []) => {
+    const months = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+    const year = 2026;
+    const value = student.valor_mensalidade || 0;
+
+    months.forEach((month, index) => {
+      const monthStr = `${month}/${year}`;
+      if (excludedMonths.includes(monthStr)) return; // Pula meses pagos/existentes solicitados
+
+      const monthNum = index + 1;
+      const dueDate = `${year}-${monthNum.toString().padStart(2, '0')}-10`; // Vencimento dia 10
+      const feeId = `fee-${student.id}-${year}-${monthNum}`;
+
+      const newFee: Mensalidade = {
+        id: feeId,
+        studentId: student.id,
+        month: monthStr,
+        value: value,
+        dueDate: dueDate,
+        status: 'Pendente',
+        lastUpdated: new Date().toISOString()
+      };
+
+      const feeRef = db.collection('mensalidades').doc(feeId);
+      batch.set(feeRef, newFee);
+    });
+  };
+
+  const handleGenerateIndividualFees = async (student: Student) => {
+    if (!student.valor_mensalidade || student.valor_mensalidade <= 0) {
+      alert(`Erro: O aluno ${student.name} não possui valor de mensalidade definido ou é zero.`);
+      return;
+    }
+
+    if (student.valor_mensalidade < 1) {
+      alert('O valor mínimo para cobrança é de R$ 1,00 devido às regras do processador de pagamentos');
+      return;
+    }
+
+    // Check for existing fees locally
+    // Filter for 2026 fees specifically
+    const existingFees2026 = mensalidades.filter(m => m.studentId === student.id && m.month.includes('/2026'));
+
+    // Check for Paid fees
+    const paidFees = existingFees2026.filter(m => m.status === 'Pago');
+    const pendingFees = existingFees2026.filter(m => m.status !== 'Pago');
+
+    if (paidFees.length > 0) {
+      // Warning if Paid fees exist
+      const confirmWithPaid = window.confirm(
+        `ATENÇÃO: Este aluno possui ${paidFees.length} mensalidade(s) PAGA(S) em 2026.\n` +
+        `O sistema manterá as pagas e recriará as pendentes com o novo valor.\n\n` +
+        `Deseja continuar?`
+      );
+      if (!confirmWithPaid) return;
+    } else if (existingFees2026.length > 0) {
+      // Only Pending fees exist - Automatic Cleanup (as requested "Cleaning Preventive")
+      // We do not need a confirmation here anymore because the user clicked "Gerar Carnê" to fix/create.
+      // But to be safe on a "destructive" action that acts implicitly, a small toast would be nice, but here just do it.
+      // Actually, user said: "Limpeza Preventiva: Antes de criar... deletar automaticamente... para ID de aluno."
+      // So we proceed.
+    }
+
+    if (existingFees2026.length > 0 || !window.confirm(`Confirma a geração do carnê de 2026 para ${student.name}?\nValor: R$ ${student.valor_mensalidade.toFixed(2)}`)) {
+      // If we are in the "Update/Cleanup" path, we skip the basic generation confirm or reuse it?
+      // Simplification: If updating existing, we already confirmed (if paid) or we just do it (if pending). 
+      // Let's rely on the button click + Paid confirm.
+      // For fresh generation, keep the confirm.
+      if (existingFees2026.length === 0 && !window.confirm(`Confirma a geração do carnê de 2026 para ${student.name}?\nValor: R$ ${student.valor_mensalidade.toFixed(2)}`)) return;
+    }
+
+    try {
+      const batch = db.batch();
+
+      // 1. Delete ALL Pending fees (Cleanup)
+      let deletedCount = 0;
+      for (const fee of pendingFees) {
+        const feeRef = db.collection('mensalidades').doc(fee.id);
+        batch.delete(feeRef);
+        deletedCount++;
+      }
+
+      // 2. Generate fees, EXCLUDING the months that are already Paid
+      const paidMonths = paidFees.map(m => m.month);
+      generate2026Fees(student, batch, paidMonths);
+
+      await batch.commit();
+
+      if (existingFees2026.length > 0) {
+        alert(`Carnê atualizado com sucesso! ${deletedCount} pendentes recriadas. ${paidFees.length} pagas mantidas.`);
+      } else {
+        alert(`Carnê de 12 meses gerado com sucesso para ${student.name}`);
+      }
+
+    } catch (error) {
+      console.error("Erro ao gerar/atualizar carnê:", error);
+      alert("Erro ao processar. Verifique o console.");
+    }
+    // Return early to avoid falling through to old logic
+    return;
+
+
+  };
+
+  const handleFixDuplicateFees = async () => {
+    if (!window.confirm("Isso irá normalizar nomes de meses (ex: 'Janeiro' -> 'Janeiro/2026') e remover duplicatas (mantendo Pagos sobre Pendentes, e valores atuais sobre antigos). Continuar?")) return;
+
+    try {
+      const batch = db.batch();
+      let updatesCount = 0;
+      let deletesCount = 0;
+      const fixedStudentNames = new Set<string>();
+
+      // 1. Normalization & Grouping
+      const studentMonthMap = new Map<string, Mensalidade[]>();
+
+      for (const fee of mensalidades) {
+        let needsUpdate = false;
+        let currentMonth = fee.month;
+
+        // Fix Name: "Janeiro" -> "Janeiro/2026" if due in 2026
+        if (!currentMonth.includes('/') && fee.dueDate.includes('2026')) {
+          currentMonth = `${currentMonth}/2026`;
+          const feeRef = db.collection('mensalidades').doc(fee.id);
+          // We update the doc in batch, but for grouping logic below we use the NEW name
+          batch.update(feeRef, { month: currentMonth });
+          updatesCount++;
+          needsUpdate = true;
+        }
+
+        const key = `${fee.studentId}-${currentMonth}`;
+        if (!studentMonthMap.has(key)) {
+          studentMonthMap.set(key, []);
+        }
+        // Push a copy with potentially updated month for logic
+        studentMonthMap.get(key)!.push({ ...fee, month: currentMonth });
+      }
+
+      // 2. Deduplication
+      for (const [key, fees] of studentMonthMap.entries()) {
+        if (fees.length > 1) {
+          const studentId = fees[0].studentId;
+          const student = students.find(s => s.id === studentId);
+          const studentName = student?.name || "Desconhecido";
+
+          // Check if any is Paid
+          const paidFee = fees.find(f => f.status === 'Pago');
+
+          if (paidFee) {
+            // If we have a Paid fee, delete ALL Pending duplicates
+            for (const f of fees) {
+              if (f.status !== 'Pago') {
+                const feeRef = db.collection('mensalidades').doc(f.id);
+                batch.delete(feeRef);
+                deletesCount++;
+                fixedStudentNames.add(studentName);
+              } else if (f.id !== paidFee.id) {
+                console.warn(`Duplicate PAID fees for ${studentName} (${key})`, fees);
+              }
+            }
+          } else {
+            // Multiple Pending fees? Use smart attributes to decide which to keep.
+            // Priority 1: Match current student monthly fee (if available)
+            let bestFeeIndex = 0;
+            if (student && student.valor_mensalidade) {
+              const exactMatchIndex = fees.findIndex(f => Math.abs(f.value - student.valor_mensalidade!) < 0.01);
+              if (exactMatchIndex !== -1) {
+                bestFeeIndex = exactMatchIndex;
+              } else {
+                // Sort by lastUpdated desc
+                fees.sort((a, b) => (b.lastUpdated || '').localeCompare(a.lastUpdated || ''));
+                bestFeeIndex = 0;
+              }
+            } else {
+              // Fallback: Latest lastUpdated
+              fees.sort((a, b) => (b.lastUpdated || '').localeCompare(a.lastUpdated || ''));
+              bestFeeIndex = 0;
+            }
+
+            // Delete others
+            // CAUTION: If we sorted above (fees.sort), indices changed.
+            // If we found exactMatchIndex BEFORE sort, and then sorted, index is wrong.
+            // Wait, the logic above is: if exactMatchIndex found, we set bestFeeIndex. But we DID NOT SORT in that branch.
+            // If we went to else, we sorted and set index 0. Correct.
+
+            // However, fees array references the objects. 
+            const keep = fees[bestFeeIndex];
+
+            for (let i = 0; i < fees.length; i++) {
+              if (fees[i].id !== keep.id) { // explicit ID check is safer than index if we didn't sort
+                const feeRef = db.collection('mensalidades').doc(fees[i].id);
+                batch.delete(feeRef);
+                deletesCount++;
+                fixedStudentNames.add(studentName);
+              }
+            }
+          }
+        }
+      }
+
+      if (updatesCount > 0 || deletesCount > 0) {
+        await batch.commit();
+        const namesList = Array.from(fixedStudentNames);
+        const namesMsg = namesList.length > 10
+          ? namesList.slice(0, 10).join(', ') + ` e mais ${namesList.length - 10} alunos.`
+          : namesList.join(', ');
+
+        alert(`Concluído! \n- ${updatesCount} nomes de meses normalizados.\n- ${deletesCount} duplicatas removidas.\n\nAlunos corrigidos: ${namesMsg}`);
+        console.log("Alunos com duplicidades corrigidas:", namesList);
+      } else {
+        alert("Nenhuma duplicidade ou erro de nome encontrado. O banco de dados está limpo!");
+      }
+
+    } catch (error) {
+      console.error("Erro ao corrigir duplicatas:", error);
+      alert("Erro ao executar correção. Verifique o console.");
+    }
+  };
+
+  const handleResetStudentFees = async (studentId: string) => {
+    const student = students.find(s => s.id === studentId);
+    if (!student) return;
+
+    // Confirmação Dupla
+    if (!window.confirm(`ATENÇÃO: Você está prestes a EXCLUIR TODAS as mensalidades de 2026 do aluno ${student.name}, INCLUINDO AS PAGAS.\n\nIsso é irreversível e geralmente usado apenas para correção de erros graves ou testes.\n\nDeseja continuar?`)) return;
+
+    const userInput = prompt(`Para confirmar, digite o nome do aluno: ${student.name}`);
+    if (userInput !== student.name) {
+      alert("Nome incorreto. Operação cancelada.");
+      return;
+    }
+
+    try {
+      const batch = db.batch();
+
+      const feesToDelete = mensalidades.filter(m => m.studentId === student.id && (m.month.includes('2026') || m.dueDate.includes('2026')));
+
+      if (feesToDelete.length === 0) {
+        alert("Nenhuma mensalidade de 2026 encontrada para este aluno.");
+        return;
+      }
+
+      feesToDelete.forEach(fee => {
+        const ref = db.collection('mensalidades').doc(fee.id);
+        batch.delete(ref);
+      });
+
+      await batch.commit();
+      alert(`Sucesso! ${feesToDelete.length} mensalidades de 2026 foram removidas do aluno ${student.name}. Agora você pode gerar um novo carnê.`);
+
+    } catch (error) {
+      console.error("Erro ao resetar financeiro:", error);
+      alert("Erro ao executar reset.");
+    }
+  };
+
+  const handleGenerate2026FeesForAll = async () => {
+    if (!window.confirm("ATENÇÃO: Isso irá gerar 12 mensalidades (Jan-Dez 2026) para TODOS os alunos que ainda não possuem carnê de 2026. Deseja continuar?")) return;
+
+    // setIsLoading(true) - se houvesse estado global de loading
+    try {
+      const batch = db.batch();
+      let count = 0;
+
+      // Filtra alunos que já têm mensalidades (otimização básica) ou checa na hora
+      // Para simplificar e garantir, vamos iterar todos e verificar se já existe a mensalidade de Janeiro/2026
+      // Se não existir, gera o ano todo.
+
+      const skippedStudents: string[] = [];
+
+      for (const student of students) {
+        // Verifica se já existe mensalidade de Janeiro 2026 para este aluno localmente para evitar reads excessivos
+        const existingFee = mensalidades.find(m => m.studentId === student.id && m.month === 'Janeiro/2026');
+
+        if (!existingFee) {
+          if (!student.valor_mensalidade || student.valor_mensalidade <= 0) {
+            skippedStudents.push(student.name);
+            continue;
+          }
+          generate2026Fees(student, batch);
+          count++;
+        }
+      }
+
+      if (count > 0) {
+        await batch.commit();
+        let msg = `Sucesso! Carnês de 2026 gerados para ${count} alunos.`;
+        if (skippedStudents.length > 0) {
+          msg += `\n\nATENÇÃO: ${skippedStudents.length} alunos foram pulados pois não possuem valor de mensalidade definido:\n- ${skippedStudents.join('\n- ')}`;
+        }
+        alert(msg);
+      } else {
+        if (skippedStudents.length > 0) {
+          alert(`Nenhum carnê gerado. ${skippedStudents.length} alunos foram pulados por falta de valor definido:\n- ${skippedStudents.join('\n- ')}`);
+        } else {
+          alert("Todos os alunos elegíveis já possuem mensalidades para 2026.");
+        }
+      }
+
+    } catch (error) {
+      console.error("Erro ao gerar mensalidades em massa:", error);
+      alert("Erro ao processar. Verifique o console.");
+    }
+  };
+
+  const handleAddStudent = async (newStudent: Student) => {
+    try {
+      const batch = db.batch();
+
+      // 1. Salva o Aluno
+      const studentRef = db.collection('students').doc(newStudent.id);
+      batch.set(studentRef, newStudent);
+
+      // 2. Financeiro removido da geração automática. Deve ser feito manualmente no Editar.
+      // generate2026Fees(newStudent, batch); - DESATIVADO A PEDIDO DO HOST
+
+      await batch.commit();
+
+    } catch (e) {
+      if (ALLOW_MOCK_LOGIN) {
+        setStudents(prev => [...prev, newStudent]);
+        // Mock generation local (simplificado, apenas adiciona no estado se quiser, mas foco é persistência)
+        alert("Aluno salvo (Mock). Financeiro simulado não persistido.");
+      }
+    }
+  };
   const handleEditStudent = async (updatedStudent: Student) => { try { await db.collection('students').doc(updatedStudent.id).set(updatedStudent); } catch (e) { if (ALLOW_MOCK_LOGIN) setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s)); } };
   const handleDeleteStudent = async (studentId: string) => { try { await db.collection('students').doc(studentId).delete(); } catch (e) { if (ALLOW_MOCK_LOGIN) setStudents(prev => prev.filter(s => s.id !== studentId)); } };
   const handleToggleBlockStudent = async (studentId: string) => {
@@ -528,6 +857,11 @@ const App: React.FC = () => {
           onAddUnitContact={handleAddUnitContact}
           onEditUnitContact={handleEditUnitContact}
           onDeleteUnitContact={handleDeleteUnitContact}
+          onGenerateFees={handleGenerate2026FeesForAll}
+          onGenerateIndividualFees={handleGenerateIndividualFees}
+          onFixDuplicates={handleFixDuplicateFees}
+          onResetFees={handleResetStudentFees}
+          mensalidades={mensalidades} // Passando mensalidades para admin geral calcular totais
           onLogout={handleLogout}
         />
         <BackToTopButton />

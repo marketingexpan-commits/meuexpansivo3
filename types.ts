@@ -113,6 +113,8 @@ export interface Mensalidade {
   dueDate: string;
   status: 'Pago' | 'Pendente' | 'Atrasado';
   lastUpdated: string;
+  paymentDate?: string;
+  receiptUrl?: string;
 }
 
 export interface EventoFinanceiro {
