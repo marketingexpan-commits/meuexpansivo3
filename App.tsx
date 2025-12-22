@@ -261,15 +261,30 @@ const App: React.FC = () => {
   };
 
   const handleStudentLogin = (code: string, pass: string) => {
-    let student = students.find(s => s.code === code);
-    if (!student && ALLOW_MOCK_LOGIN && students.length === 0) student = MOCK_STUDENTS.find(s => s.code === code);
-    if (student) {
-      if (student.password === pass) {
-        if (student.isBlocked) { setLoginError('Acesso negado. Entre em contato com a secretaria.'); return; }
-        setSession({ role: UserRole.STUDENT, user: student }); setLoginError('');
-        logAccess(student.id);
-      } else { setLoginError('Senha incorreta.'); }
-    } else { setLoginError('Código de aluno não encontrado.'); }
+    // Busca por Combinação: Buscar todos os documentos que correspondam ao código
+    let potentialStudents = students.filter(s => s.code === code);
+
+    // Mock Fallback
+    if (potentialStudents.length === 0 && ALLOW_MOCK_LOGIN && students.length === 0) {
+      potentialStudents = MOCK_STUDENTS.filter(s => s.code === code);
+    }
+
+    if (potentialStudents.length > 0) {
+      // Validação Dinâmica: Percorrer lista e verificar qual possui senha correspondente
+      const matchedStudent = potentialStudents.find(s => s.password === pass);
+
+      if (matchedStudent) {
+        // Login Transparente: Logar no perfil correto
+        if (matchedStudent.isBlocked) { setLoginError('Acesso negado. Entre em contato com a secretaria.'); return; }
+        setSession({ role: UserRole.STUDENT, user: matchedStudent }); setLoginError('');
+        logAccess(matchedStudent.id);
+      } else {
+        // Tratamento de Erro: Código existe mas senha não bate com nenhum
+        setLoginError('Código ou senha incorretos');
+      }
+    } else {
+      setLoginError('Código ou senha incorretos');
+    }
   };
 
   const handleTeacherLogin = (cpf: string, pass: string, unit?: string) => {
