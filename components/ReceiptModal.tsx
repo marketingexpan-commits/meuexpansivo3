@@ -195,13 +195,35 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
             doc.text(getPaymentMethodLabel(receiptData.paymentMethod), rightX, y, { align: "right" });
 
             y += 8;
-            // Status
+            // Status Badge
             doc.setFont("helvetica", "normal");
             doc.setTextColor(107, 114, 128);
             doc.text("Status:", leftX, y);
+
+            // Badge Geometry
+            const badgeWidth = 26;
+            const badgeHeight = 7;
+            const badgeX = rightX - badgeWidth;
+            const badgeY = y - 5; // Adjust Y to center text
+
+            // Draw Badge
+            doc.setDrawColor(34, 197, 94); // Green-500
+            doc.setFillColor(220, 252, 231); // Green-100 (Light background)
+            doc.roundedRect(badgeX, badgeY, badgeWidth, badgeHeight, 1.5, 1.5, 'FD'); // Fill and Draw
+
+            // Text "PAGO" inside Badge
             doc.setFont("helvetica", "bold");
-            doc.setTextColor(22, 163, 74); // Green-600
-            doc.text("PAGO [OK]", rightX, y, { align: "right" });
+            doc.setFontSize(9);
+            doc.setTextColor(21, 128, 61); // Green-700
+            doc.text("PAGO", badgeX + 3, badgeY + 4.8);
+
+            // Simple Checkmark Icon
+            const checkX = badgeX + 17;
+            const checkY = badgeY + 3;
+            doc.setDrawColor(21, 128, 61); // Green-700
+            doc.setLineWidth(0.5);
+            doc.line(checkX, checkY + 1.5, checkX + 1.5, checkY + 3);   // Short leg
+            doc.line(checkX + 1.5, checkY + 3, checkX + 4.5, checkY - 1); // Long leg
 
             y += 12;
             // Dashed Divider
@@ -215,7 +237,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
             doc.setFontSize(14);
             doc.setTextColor(0, 0, 0);
             doc.setFont("helvetica", "bold");
-            doc.text("VALOR TOTAL", leftX, y);
+            doc.text("VALOR PAGO", leftX, y); // Changed from VALOR TOTAL
 
             doc.setFontSize(18);
             doc.text(`R$ ${receiptData.value.toFixed(2).replace('.', ',')}`, rightX, y, { align: "right" });
