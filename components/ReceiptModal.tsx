@@ -73,28 +73,14 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
             // Generate filename unique
             const filename = `comprovante_${student.name.replace(/\s+/g, '_')}_${receiptData?.month.replace('/', '-')}.pdf`;
 
-            // --- TENTATIVA 1: COMPARTILHAMENTO NATIVO (Mobile) ---
-            if (navigator.share) {
-                const blob = pdf.output('blob');
-                const file = new File([blob], filename, { type: 'application/pdf' });
-
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({
-                        files: [file],
-                        title: 'Comprovante de Pagamento',
-                        text: `Comprovante - ${student.name} (${receiptData?.month})`
-                    });
-                    return; // Sucesso, encerra aqui.
-                }
-            }
-
-            // --- TENTATIVA 2: FALLBACK (Desktop / Navegadores sem suporte) ---
             // Salva o PDF
             pdf.save(filename);
 
             // Abre WhatsApp se houver número, com instruções
             if (whatsappNumber) {
                 const phone = whatsappNumber.replace(/\D/g, '');
+
+                // Mensagem detalhada com VALOR explícito
                 const message = `*COMPROVANTE DE PAGAMENTO*\n\n` +
                     `*Beneficiário:* Expansivo - Rede de Ensino (Uni. ${unitName})\n` +
                     `*Pagador:* ${student.nome_responsavel || student.name}\n\n` +
@@ -104,12 +90,17 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
                     `*Referência:* ${receiptData?.month}\n` +
                     `*Valor:* R$ ${receiptData?.value.toFixed(2).replace('.', ',')}\n` +
                     `*Status:* ${receiptData?.status === 'Pago' ? 'PAGO [OK]' : receiptData?.status}\n\n` +
-                    `_Segue o comprovante em anexo._`;
+                    `_O arquivo PDF do comprovante foi baixado no seu celular. Por favor, anexe-o aqui._ 📎`;
 
                 const url = `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`;
 
-                alert("📥 PDF Baixado!\n\nSeu navegador não permite envio direto.\n1. O PDF foi salvo na sua pasta de Downloads.\n2. O WhatsApp abrirá em seguida.\n3. Por favor, anexe o arquivo manualmente.");
-                window.open(url, '_blank');
+                // Alerta explicativo antes de abrir o WhatsApp
+                alert("✅ PDF Baixado!\n\n1. O WhatsApp do Financeiro abrirá agora.\n2. O recibo PDF já está no seu celular (Downloads).\n3. Clique no clipe (📎) e anexe o arquivo para enviar.");
+
+                // Timeout para garantir que o download começou
+                setTimeout(() => {
+                    window.open(url, '_blank');
+                }, 1000);
             }
 
         } catch (error) {
