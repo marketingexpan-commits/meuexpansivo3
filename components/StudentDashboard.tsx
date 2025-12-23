@@ -767,6 +767,36 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                 {statusConfig.badge && <span className={`${statusConfig.badgeColor} text-xs font-bold px-2 py-1 rounded`}>{statusConfig.badge}</span>}
                                             </div>
 
+                                            {(() => {
+                                                if (difficulties.length > 0) return null;
+                                                const relevantBimesters = grade.bimesters ? Object.entries(grade.bimesters)
+                                                    .filter(([key, data]) => {
+                                                        const bData = data as BimesterData;
+                                                        if (bData.media === undefined || bData.media === null) return false;
+
+                                                        // Filter based on the status category
+                                                        if (isLowGrade) return bData.media < 7.0;
+                                                        if (media >= 7.0 && media <= 8.5) return bData.media >= 7.0 && bData.media <= 8.5;
+                                                        if (media > 8.5) return bData.media > 8.5;
+
+                                                        return false;
+                                                    })
+                                                    .map(([key]) => key.replace('bimester', ''))
+                                                    .sort() : [];
+
+                                                if (relevantBimesters.length === 0) return null;
+
+                                                const lastBimester = relevantBimesters[relevantBimesters.length - 1];
+
+                                                return (
+                                                    <div className="mb-3">
+                                                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                                                            Referência: <span className="text-gray-700">{lastBimester}º Bimestre</span>
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })()}
+
                                             <div className="mb-4 space-y-3 flex-grow">
                                                 {difficulties.map(d => (
                                                     <div key={d.bimester} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
