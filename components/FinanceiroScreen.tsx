@@ -813,6 +813,39 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                     </button>
                                                 </div>
                                                 <Button onClick={handleCloseModal} variant="secondary" className="w-full">Fechar e Aguardar</Button>
+
+                                                {/* BUTTON: VERIFY MANUALLY (PIX) */}
+                                                <div className="mt-4 pt-4 border-t border-gray-100">
+                                                    <p className="text-xs text-gray-500 mb-2">O status ainda não mudou?</p>
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (!paymentResult?.id) return;
+                                                            const btn = document.getElementById('btn-verify-status-pix');
+                                                            if (btn) btn.innerText = "Verificando...";
+                                                            try {
+                                                                const response = await fetch('https://us-central1-meu-expansivo-app.cloudfunctions.net/verifyPaymentStatus', {
+                                                                    method: 'POST',
+                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                    body: JSON.stringify({ paymentId: paymentResult.id })
+                                                                });
+                                                                const data = await response.json();
+                                                                if (data.status === 'approved') {
+                                                                    setPaymentResult((prev: any) => ({ ...prev, status: 'approved' }));
+                                                                } else {
+                                                                    alert(`Status do Pagamento: ${data.status}. Aguarde mais alguns instantes.`);
+                                                                }
+                                                            } catch (e) {
+                                                                alert("Erro ao verificar. Tente recarregar a página.");
+                                                            } finally {
+                                                                if (btn) btn.innerText = "🔄 Já paguei? Verificar agora";
+                                                            }
+                                                        }}
+                                                        id="btn-verify-status-pix"
+                                                        className="text-xs font-bold text-gray-400 hover:text-blue-600 underline"
+                                                    >
+                                                        🔄 Já paguei? Verificar agora
+                                                    </button>
+                                                </div>
                                             </>
                                         )}
                                         {/* BOLETO UI: Check for pending/in_process status AND boleto payment method or external resource URL */}
@@ -848,6 +881,40 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                 )}
 
                                                 <Button onClick={handleCloseModal} variant="secondary" className="w-full mt-2">Fechar e Aguardar</Button>
+
+                                                {/* BUTTON: VERIFY MANUALLY (BOLETO) */}
+                                                <div className="mt-4 pt-4 border-t border-gray-100">
+                                                    <p className="text-xs text-gray-500 mb-2">O status ainda não mudou?</p>
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (!paymentResult?.id) return;
+                                                            const btn = document.getElementById('btn-verify-status-boleto');
+                                                            if (btn) btn.innerText = "Verificando...";
+                                                            try {
+                                                                const response = await fetch('https://us-central1-meu-expansivo-app.cloudfunctions.net/verifyPaymentStatus', {
+                                                                    method: 'POST',
+                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                    body: JSON.stringify({ paymentId: paymentResult.id })
+                                                                });
+                                                                const data = await response.json();
+                                                                if (data.status === 'approved') {
+                                                                    alert("Pagamento Confirmado! O sistema foi atualizado.");
+                                                                    setPaymentResult(null); // Close modal
+                                                                } else {
+                                                                    alert(`Status do Pagamento: ${data.status}. Aguarde mais alguns instantes.`);
+                                                                }
+                                                            } catch (e) {
+                                                                alert("Erro ao verificar. Tente recarregar a página.");
+                                                            } finally {
+                                                                if (btn) btn.innerText = "🔄 Já paguei? Verificar agora";
+                                                            }
+                                                        }}
+                                                        id="btn-verify-status-boleto"
+                                                        className="text-xs font-bold text-gray-400 hover:text-blue-600 underline"
+                                                    >
+                                                        🔄 Já paguei? Verificar agora
+                                                    </button>
+                                                </div>
                                             </>
                                         )}
                                         {paymentResult.status === 'rejected' && (
@@ -906,44 +973,19 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome Completo</label>
-                                    <input
-                                        type="text"
-                                        value={nameInput}
-                                        onChange={(e) => setNameInput(e.target.value)}
-                                        className="w-full p-2 border border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-blue-500 outline-none"
-                                        placeholder="Nome do Responsável"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">CPF (Apenas números)</label>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">CPF do Responsável (Apenas números)</label>
                                     <input
                                         type="text"
                                         value={cpfInput}
                                         onChange={(e) => setCpfInput(e.target.value.replace(/\D/g, '').substring(0, 11))}
-                                        className="w-full p-2 border border-gray-300 rounded-lg font-mono text-center tracking-widest focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full p-3 border-2 border-blue-100 rounded-xl font-mono text-center text-xl tracking-widest focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all"
                                         placeholder="000.000.000-00"
+                                        autoFocus
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Telefone (c/ DDD)</label>
-                                    <input
-                                        type="tel"
-                                        value={phoneInput}
-                                        onChange={(e) => setPhoneInput(e.target.value.replace(/\D/g, ''))}
-                                        className="w-full p-2 border border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-blue-500 outline-none"
-                                        placeholder="84999999999"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">E-mail</label>
-                                    <input
-                                        type="email"
-                                        value={emailInput}
-                                        onChange={(e) => setEmailInput(e.target.value)}
-                                        className="w-full p-2 border border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-blue-500 outline-none"
-                                        placeholder="email@exemplo.com"
-                                    />
+
+                                <div className="text-xs text-center text-gray-400">
+                                    <p>Pagador: <span className="font-bold text-gray-600">{student.nome_responsavel || student.name}</span></p>
                                 </div>
 
                                 <div className="flex gap-2 pt-2">
@@ -952,26 +994,20 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                     </Button>
                                     <Button
                                         onClick={() => {
-                                            if (!nameInput || nameInput.trim().length < 3) {
-                                                alert("Nome inválido ou curto demais.");
-                                                return;
-                                            }
                                             if (cpfInput.length < 11) {
                                                 alert("CPF incompleto.");
                                                 return;
                                             }
-                                            if (!phoneInput || phoneInput.length < 10) {
-                                                alert("Telefone inválido.");
-                                                return;
-                                            }
-                                            if (!emailInput || !emailInput.includes('@')) {
-                                                alert("Email inválido.");
-                                                return;
-                                            }
+
+                                            // Autofill other data from student record
+                                            const payerName = student.nome_responsavel || student.name;
+                                            const payerPhone = student.telefone ? student.telefone.replace(/\D/g, '') : '84999999999'; // Fallback phone
+                                            const payerEmail = student.email || 'financeiro@meuexpansivo.com.br'; // Fallback email (required by MP)
+
                                             setIsCpfModalOpen(false);
-                                            handleCreatePayment(cpfInput, nameInput, phoneInput, emailInput);
+                                            handleCreatePayment(cpfInput, payerName, payerPhone, payerEmail);
                                         }}
-                                        className="w-1/2 bg-blue-600 hover:bg-blue-700"
+                                        className="w-1/2 bg-blue-600 hover:bg-blue-700 font-bold py-3"
                                         disabled={cpfInput.length < 11}
                                     >
                                         Ir para Pagamento

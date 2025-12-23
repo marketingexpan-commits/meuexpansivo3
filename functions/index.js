@@ -175,3 +175,57 @@ exports.processMercadoPagoPayment = functions.https.onRequest((req, res) => {
         }
     });
 });
+
+// --------------------------------------------------------
+// 4. VERIFY PAYMENT STATUS (Endpoint para verificação manual)
+// --------------------------------------------------------
+exports.verifyPaymentStatus = functions.https.onRequest((req, res) => {
+    cors(req, res, async () => {
+        try {
+            const { paymentId } = req.body;
+            if (!paymentId) return res.status(400).json({ error: 'paymentId is required' });
+
+            console.log("🔍 Verificando status do pagamento:", paymentId);
+
+            const payment = new Payment(client);
+            const paymentInfo = await payment.get({ id: paymentId });
+
+            const status = paymentInfo.status;
+            const externalRef = paymentInfo.external_reference;
+            const metadata = paymentInfo.metadata;
+
+            console.log(`📊 Status atual no MP: ${status}`);
+
+            if (status === 'approved') {
+                // Lógica de Baixa (Re-used)
+                if (externalRef && externalRef.includes('student_') === false) {
+                    const feeIds = externalRef.split(',').map(id => id.trim()).filter(id => id.length > 0);
+                    for (const feeId of feeIds) {
+                        try {
+                            await db.collection('mensalidades').doc(feeId).update({
+                                status: 'Pago',
+                                paymentDate: new Date().toISOString(),
+                                paymentMethod: 'MercadoPago_ManualVerify',
+                                lastUpdated: new Date().toISOString(),
+                                receiptUrl: `https://www.mercadopago.com.br/activities/${paymentId}`
+                            });
+                            console.log(`✅ [Verify] Mensalidade ${feeId} baixada.`);
+                        } catch (err) {
+                            console.error(`❌ [Verify] Erro ao atualizar mensalidade ${feeId}:`, err);
+                        }
+                    }
+                }
+            }
+
+            res.status(200).json({
+                status: status,
+                id: paymentId,
+                updated: status === 'approved'
+            });
+
+        } catch (error) {
+            console.error("❌ Erro ao verificar pagamento:", error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+});
