@@ -84,7 +84,7 @@ export const ValidateReceipt: React.FC = () => {
         <div className="min-h-screen bg-gray-100 flex flex-col relative overflow-hidden font-sans">
 
             {/* App Download Banner */}
-            <div className="bg-blue-900 text-white p-3 shadow-md z-20 relative">
+            <div className="bg-[#000035] text-white p-3 shadow-md z-20 relative">
                 <div className="max-w-md mx-auto flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                         <div className="bg-white/10 p-1.5 rounded-lg">
@@ -95,7 +95,7 @@ export const ValidateReceipt: React.FC = () => {
                             <p className="text-sm font-bold leading-tight">Baixe o App Meu Expansivo</p>
                         </div>
                     </div>
-                    <button className="bg-white text-blue-900 text-xs font-bold px-4 py-2 rounded-full shadow hover:bg-gray-100 transition whitespace-nowrap">
+                    <button className="bg-white text-[#000035] text-xs font-bold px-4 py-2 rounded-full shadow hover:bg-gray-100 transition whitespace-nowrap">
                         BAIXAR AGORA
                     </button>
                 </div>
