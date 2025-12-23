@@ -2,8 +2,9 @@ import React from 'react';
 import { Student, Mensalidade } from '../types';
 import { SchoolLogo } from './SchoolLogo';
 import { Button } from './Button';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas'; // Kept for possible legacy fallbacks if needed, but primary logic changes
 import { jsPDF } from 'jspdf';
+import { SCHOOL_LOGO_URL } from '../constants'; // Import logo URL
 
 interface ReceiptModalProps {
     isOpen: boolean;
@@ -44,91 +45,189 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
     };
 
     const handleShare = async () => {
-        const input = document.getElementById('receipt-modal-content');
-        if (!input) return;
-
-        // Create a wrapper to render the clone "on screen" but invisible
-        const wrapper = document.createElement('div');
-        wrapper.style.position = 'fixed';
-        wrapper.style.top = '0';
-        wrapper.style.left = '0';
-        wrapper.style.width = '600px'; // Approx A4 proportional width for mobile check
-        wrapper.style.zIndex = '-9999'; // Behind everything
-        wrapper.style.opacity = '0';    // Invisible
-        wrapper.style.pointerEvents = 'none';
-        wrapper.style.background = '#ffffff';
-
-        // Clone the element
-        const clone = input.cloneNode(true) as HTMLElement;
-
-        // Remove classes that might interfere (animations, responsive width constraints)
-        clone.classList.remove('animate-scale-in', 'max-h-[90vh]', 'overflow-y-auto', 'w-[95%]', 'sm:w-full');
-
-        // Enforce styles for full capture
-        clone.style.transform = 'none';
-        clone.style.animation = 'none';
-        clone.style.transition = 'none';
-        clone.style.maxHeight = 'none';
-        clone.style.height = 'auto'; // Let content grow
-        clone.style.overflow = 'visible';
-        clone.style.width = '100% !important'; // Fill wrapper
-        clone.style.maxWidth = 'none';
-        clone.style.boxShadow = 'none';
-        clone.style.border = 'none';
-        clone.style.margin = '0';
-        clone.style.position = 'static'; // Flow normally in wrapper
-
-        // Hide buttons in the clone
-        const buttons = clone.querySelectorAll('.no-print');
-        buttons.forEach((el) => (el as HTMLElement).style.display = 'none');
-
-        // Append to wrapper, then to body
-        wrapper.appendChild(clone);
-        document.body.appendChild(wrapper);
-
         try {
-            // Short wait to ensure layout is calculated
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            const canvas = await html2canvas(clone, {
-                scale: 2,
-                backgroundColor: '#ffffff',
-                useCORS: true,
-                logging: false,
-                width: wrapper.scrollWidth,  // Use wrapper width explicit
-                height: wrapper.scrollHeight, // Use wrapper height explicit
-                windowWidth: wrapper.scrollWidth,
-                windowHeight: wrapper.scrollHeight,
-                scrollX: 0,
-                scrollY: 0,
-                x: 0,
-                y: 0
-            });
-
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF({
+            const doc = new jsPDF({
                 orientation: 'portrait',
                 unit: 'mm',
                 format: 'a4'
             });
 
-            const imgWidth = 210;
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            const pageWidth = doc.internal.pageSize.getWidth(); // 210mm
 
-            pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+            // --- 1. Load Logo ---
+            // Load the logo asynchronously to ensure it's ready for the PDF
+            const logoUrl = SCHOOL_LOGO_URL;
+            const logoImg = new Image();
+            logoImg.crossOrigin = "Anonymous";
+            logoImg.src = logoUrl;
+
+            await new Promise((resolve) => {
+                logoImg.onload = resolve;
+                logoImg.onerror = () => {
+                    console.warn("Logo failed to load for PDF");
+                    resolve(null);
+                };
+            });
+
+            // --- 2. Build Receipt Content ---
+
+            // Logo (Centered)
+            const logoWidth = 35;
+            const logoHeight = (logoImg.height * logoWidth) / logoImg.width;
+            const logoX = (pageWidth - logoWidth) / 2;
+            doc.addImage(logoImg, 'PNG', logoX, 15, logoWidth, logoHeight);
+
+            // Title
+            let y = 15 + logoHeight + 10;
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(22);
+            doc.setTextColor(33, 41, 52); // Dark
+            doc.text("COMPROVANTE", pageWidth / 2, y, { align: "center" });
+
+            // Date
+            y += 7;
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(10);
+            doc.setTextColor(107, 114, 128); // Gray
+            doc.text(new Date(receiptData.paymentDate || new Date()).toLocaleString(), pageWidth / 2, y, { align: "center" });
+
+            // Divider
+            y += 8;
+            doc.setDrawColor(229, 231, 235); // Gray-200
+            doc.line(20, y, pageWidth - 20, y);
+
+            // Details Section
+            y += 15;
+            const leftX = 20;
+            const rightX = pageWidth - 20;
+
+            // Beneficiary
+            doc.setFontSize(9);
+            doc.setTextColor(107, 114, 128);
+            doc.text("BENEFICIÁRIO", leftX, y);
+
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont("helvetica", "bold");
+            doc.text("Expansivo - Rede de Ensino", rightX, y, { align: "right" });
+
+            y += 5;
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "normal");
+            doc.text(`UNI. ${unitName.toUpperCase()}`, rightX, y, { align: "right" });
+
+            y += 5;
+            doc.setFontSize(8);
+            doc.setTextColor(156, 163, 175); // Gray-400
+            doc.text(`CNPJ: ${cnpj}`, rightX, y, { align: "right" });
+
+            y += 15; // Spacer
+
+            // Payer
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(107, 114, 128);
+            doc.text("PAGADOR", leftX, y);
+
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont("helvetica", "bold");
+            doc.text((student.nome_responsavel || student.name).toUpperCase(), rightX, y, { align: "right" });
+
+            y += 15;
+
+            // Student Info Box (Rounded Rect)
+            const boxTop = y;
+            const boxHeight = 28;
+            doc.setFillColor(249, 250, 251); // Gray-50
+            doc.setDrawColor(243, 244, 246); // Gray-100
+            doc.roundedRect(leftX, boxTop, pageWidth - 40, boxHeight, 3, 3, 'FD');
+
+            let boxY = boxTop + 8;
+            const labelX = leftX + 5;
+            const valueX = rightX - 5;
+
+            // Name
+            doc.setFontSize(10);
+            doc.setTextColor(107, 114, 128);
+            doc.setFont("helvetica", "normal");
+            doc.text("Aluno(a):", labelX, boxY);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(0, 0, 0);
+            doc.text(student.name.toUpperCase(), valueX, boxY, { align: "right" });
+
+            boxY += 7;
+            // Matricula
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(107, 114, 128);
+            doc.text("Matrícula:", labelX, boxY);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(0, 0, 0);
+            doc.text(student.code, valueX, boxY, { align: "right" });
+
+            boxY += 7;
+            // Turma
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(107, 114, 128);
+            doc.text("Turma/Série:", labelX, boxY);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(0, 0, 0);
+            doc.text(student.gradeLevel, valueX, boxY, { align: "right" });
+
+            y = boxTop + boxHeight + 15;
+
+            // Reference
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(107, 114, 128);
+            doc.text("Referência:", leftX, y);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(0, 0, 0);
+            doc.text(receiptData.month, rightX, y, { align: "right" });
+
+            y += 8;
+            // Method
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(107, 114, 128);
+            doc.text("Método:", leftX, y);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(0, 0, 0);
+            doc.text(getPaymentMethodLabel(receiptData.paymentMethod), rightX, y, { align: "right" });
+
+            y += 8;
+            // Status
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(107, 114, 128);
+            doc.text("Status:", leftX, y);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(22, 163, 74); // Green-600
+            doc.text("PAGO [OK]", rightX, y, { align: "right" });
+
+            y += 12;
+            // Dashed Divider
+            doc.setDrawColor(209, 213, 219); // Gray-300
+            doc.setLineDashPattern([1, 1], 0);
+            doc.line(leftX, y, rightX, y);
+            doc.setLineDashPattern([], 0);
+
+            y += 12;
+            // Total
+            doc.setFontSize(14);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont("helvetica", "bold");
+            doc.text("VALOR TOTAL", leftX, y);
+
+            doc.setFontSize(18);
+            doc.text(`R$ ${receiptData.value.toFixed(2).replace('.', ',')}`, rightX, y, { align: "right" });
 
             // Generate filename unique
             const filename = `comprovante_${student.name.replace(/\s+/g, '_')}_${receiptData?.month.replace('/', '-')}.pdf`;
 
-            // Salva o PDF
-            pdf.save(filename);
+            doc.save(filename);
 
         } catch (error) {
-            console.error("Erro ao gerar/compartilhar PDF:", error);
-            alert("Erro ao processar o comprovante. Tente usar a opção 'Imprimir'.");
-        } finally {
-            // Clean up
-            document.body.removeChild(wrapper);
+            console.error("Erro ao gerar PDF:", error);
+            alert("Erro ao processar o PDF.");
         }
     };
 
