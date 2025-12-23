@@ -47,30 +47,41 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
         const input = document.getElementById('receipt-modal-content');
         if (!input) return;
 
-        // Store original styles
-        const originalMaxHeight = input.style.maxHeight;
-        const originalOverflow = input.style.overflow;
-        const originalBorder = input.style.border;
+        // Clone the element to avoid interrupting the user or layout issues
+        const clone = input.cloneNode(true) as HTMLElement;
 
-        // Temporarily reset styles for full capture
-        input.style.maxHeight = 'none';
-        input.style.overflow = 'visible';
-        input.style.border = 'none'; // Remove border for clean PDF
+        // Reset styles on the clone to ensure full visibility
+        clone.style.maxHeight = 'none';
+        clone.style.overflow = 'visible';
+        clone.style.height = 'auto'; // Force auto height
+        clone.style.width = '550px'; // Fixed width for consistent PDF size (approx A4 proportional or robust mobile fallback)
+        clone.style.position = 'fixed'; // Remove from normal flow
+        clone.style.top = '-10000px'; // Hide off-screen
+        clone.style.left = '-10000px';
+        clone.style.transform = 'none'; // Remove any potential transforms
+        clone.style.zIndex = '-1000';
+        clone.style.background = 'white'; // Ensure background is solid
 
-        // Temporarily hide buttons for capture
-        const buttons = input.querySelectorAll('.no-print');
+        // Hide buttons in the clone
+        const buttons = clone.querySelectorAll('.no-print');
         buttons.forEach((el) => (el as HTMLElement).style.display = 'none');
 
-        try {
-            await new Promise(resolve => setTimeout(resolve, 300)); // Wait for render
+        // Append to body to render full content
+        document.body.appendChild(clone);
 
-            const canvas = await html2canvas(input, {
+        try {
+            // Short wait for images/fonts to settle in the clone (though usually cloneNode is fast)
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            const canvas = await html2canvas(clone, {
                 scale: 2,
                 backgroundColor: '#ffffff',
                 useCORS: true,
                 logging: false,
-                windowWidth: input.scrollWidth,
-                windowHeight: input.scrollHeight
+                width: clone.scrollWidth,
+                height: clone.scrollHeight,
+                windowWidth: clone.scrollWidth,
+                windowHeight: clone.scrollHeight
             });
 
             const imgData = canvas.toDataURL('image/png');
@@ -95,13 +106,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
             console.error("Erro ao gerar/compartilhar PDF:", error);
             alert("Erro ao processar o comprovante. Tente usar a opção 'Imprimir'.");
         } finally {
-            // Restore styles
-            input.style.maxHeight = originalMaxHeight;
-            input.style.overflow = originalOverflow;
-            input.style.border = originalBorder;
-
-            // Restore buttons
-            buttons.forEach((el) => (el as HTMLElement).style.display = '');
+            // Clean up the clone
+            document.body.removeChild(clone);
         }
     };
 
