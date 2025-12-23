@@ -10,7 +10,7 @@ export const getStudyTips = async (subject: Subject, difficultyTopic: string, gr
     console.log("🔑 [Gemini Service] Verificando chave de API:", apiKey ? "Definida" : "UNDEFINED");
 
     if (!apiKey || apiKey.includes('TOKEN_PENDENTE')) {
-      throw new Error("Chave de API inválida ou pendente. Verifique o arquivo .env");
+      throw new Error("Chave de API não configurada. Local: Verifique .env | Produção: Verifique Variáveis de Ambiente no Vercel");
     }
 
     // Using gemini-2.5-flash as requested by user
