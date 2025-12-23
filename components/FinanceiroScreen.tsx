@@ -41,6 +41,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
     const [preferenceId, setPreferenceId] = useState<string | null>(null);
     const [isBrickReady, setIsBrickReady] = useState(false);
     const [paymentResult, setPaymentResult] = useState<any>(null); // Store payment result
+    const [receiptData, setReceiptData] = useState<Mensalidade | null>(null); // State for internal Receipt Modal
 
     useEffect(() => {
         if (preferenceId && isModalOpen) {
@@ -505,7 +506,15 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                                     <p className="text-sm text-gray-600">Valor: <span className="font-bold">R$ {m.value.toFixed(2)}</span></p>
                                                                     <p className="text-xs text-gray-500">Venc: {formatDate(m.dueDate)}</p>
                                                                     {m.paymentDate && <p className="text-xs text-green-700 font-bold mt-1">Pago em: {formatDate(m.paymentDate)}</p>}
-                                                                    {m.receiptUrl && <a href={m.receiptUrl} target="_blank" rel="noopener noreferrer" className="block mt-1 text-xs text-blue-600 underline hover:text-blue-800">Ver Recibo</a>}
+                                                                    {m.paymentDate && <p className="text-xs text-green-700 font-bold mt-1">Pago em: {formatDate(m.paymentDate)}</p>}
+
+                                                                    {/* INTERNAL RECEIPT BUTTON */}
+                                                                    <button
+                                                                        onClick={() => setReceiptData(m)}
+                                                                        className="block mt-1 text-xs text-blue-600 underline hover:text-blue-800"
+                                                                    >
+                                                                        Ver Comprovante
+                                                                    </button>
                                                                 </div>
                                                                 {/* Recibo ou Status */}
                                                                 <div className="mt-2 pt-2 border-t border-gray-100">
@@ -1014,6 +1023,62 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                     </Button>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                )
+            }
+            {
+                receiptData && (
+                    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                        <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-scale-in relative border border-gray-100">
+
+                            {/* Receipt Header */}
+                            <div className="text-center border-b border-dashed border-gray-300 pb-4 mb-4">
+                                <div className="w-12 h-12 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">
+                                    🧾
+                                </div>
+                                <h3 className="text-lg font-bold text-gray-800 uppercase tracking-wide">Comprovante</h3>
+                                <p className="text-xs text-gray-500">{new Date(receiptData.paymentDate || new Date()).toLocaleString()}</p>
+                            </div>
+
+                            {/* Receipt Details */}
+                            <div className="space-y-3 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Pagador:</span>
+                                    <span className="font-bold text-gray-800 text-right w-32 truncate">{student.nome_responsavel || student.name}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Beneficiário:</span>
+                                    <span className="font-bold text-gray-800">Meu Expansivo</span>
+                                </div>
+                                <div className="my-2 border-t border-dashed border-gray-200" />
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Referência:</span>
+                                    <span className="font-bold text-gray-800">{receiptData.month}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Método:</span>
+                                    <span className="font-bold text-gray-800">{receiptData.paymentMethod || 'Pix / Cartão'}</span>
+                                </div>
+                                <div className="my-2 border-t border-dashed border-gray-200" />
+                                <div className="flex justify-between text-base">
+                                    <span className="font-bold text-gray-800">Valor Total:</span>
+                                    <span className="font-bold text-green-700">R$ {receiptData.value.toFixed(2).replace('.', ',')}</span>
+                                </div>
+                            </div>
+
+                            {/* Footer Actions */}
+                            <div className="mt-6 space-y-2">
+                                <Button onClick={() => window.print()} variant="outline" className="w-full border-dashed">
+                                    🖨️ Imprimir / Salvar PDF
+                                </Button>
+                                <Button onClick={() => setReceiptData(null)} className="w-full bg-gray-800 hover:bg-gray-900 text-white">
+                                    Fechar
+                                </Button>
+                            </div>
+
+                            {/* Decorative jagged edge (CSS trick or SVG) - Optional, simplified for now */}
+                            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-20 rounded-t-2xl"></div>
                         </div>
                     </div>
                 )
