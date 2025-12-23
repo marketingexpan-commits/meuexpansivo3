@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'; // Refresh
 import { Student, Mensalidade, EventoFinanceiro, UnitContact, ContactRole } from '../types';
 import { Button } from './Button';
+import { SchoolLogo } from './SchoolLogo';
 import { initMercadoPago, Payment } from '@mercadopago/sdk-react';
 // NOTE: Replace with your actual Firebase Functions URL or configure Vite proxy
 const MP_REFERENCE_URL = 'https://us-central1-meu-expansivo-app.cloudfunctions.net/createMercadoPagoPreference';
@@ -13,11 +14,12 @@ interface FinanceiroScreenProps {
     mensalidades: Mensalidade[];
     eventos: EventoFinanceiro[];
     unitContacts?: UnitContact[];
+    onPaymentSuccess?: () => void;
 }
 
 type PaymentMethod = 'pix' | 'debito' | 'credito' | 'boleto';
 
-export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, mensalidades, eventos = [], unitContacts = [] }) => {
+export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, mensalidades, eventos = [], unitContacts = [], onPaymentSuccess }) => {
     // Lógica de Filtro
     // Lógica de Filtro
     const studentMensalidades = useMemo(() => mensalidades.filter(m => m.studentId === student.id), [mensalidades, student.id]);
@@ -54,6 +56,16 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             setIsBrickReady(false);
         }
     }, [preferenceId, isModalOpen]);
+
+    useEffect(() => {
+        if (receiptData) {
+            const updated = mensalidades.find(m => m.id === receiptData.id);
+            // Atualiza se houver mudança relevante (status ou metodo)
+            if (updated && (updated.status !== receiptData.status || updated.paymentMethod !== receiptData.paymentMethod)) {
+                setReceiptData(updated);
+            }
+        }
+    }, [mensalidades, receiptData]);
 
     // Inicializar quantidades para eventos
     useEffect(() => {
@@ -142,6 +154,42 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             if (selectedMethod === 'debito') return 'Pagamento no débito possui acréscimo de 3% referente a taxas operacionais.';
         }
         return null;
+    };
+
+    const getDisplayStatus = (mensalidade: Mensalidade) => {
+        if (mensalidade.status === 'Pago') {
+            return { label: 'PAGO', color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' };
+        }
+
+        const dueDate = new Date(mensalidade.dueDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Se já passou da data de vencimento
+        if (today > dueDate) {
+            return { label: 'ATRASADO', color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' };
+        }
+
+        // Se ainda não venceu
+        return { label: 'A VENCER', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' };
+    };
+
+    const getPaymentMethodLabel = (method?: string) => {
+        if (!method) return 'Pix / Cartão';
+        const m = method.toLowerCase();
+
+        // Mapeamento correto dos IDs do Mercado Pago
+        if (m.includes('pix')) return 'Pix';
+        if (m.includes('boleto') || m.includes('bolbradesco') || m.includes('pec')) return 'Boleto Bancário';
+        if (m.includes('credit') || m.includes('credito') || m === 'master' || m === 'visa' || m === 'elo' || m === 'hipercard' || m === 'amex') return 'Cartão de Crédito';
+        if (m.includes('debit') || m.includes('debito')) return 'Cartão de Débito';
+        if (m.includes('account') || m.includes('money')) return 'Saldo Mercado Pago';
+
+        // Tratamento de códigos internos/fallback
+        if (m.includes('mercadopago')) return 'Pix / Cartão'; // Fallback genérico melhor que "Mercado Pago"
+
+        // Fallback final: Capitalizar primeira letra
+        return method.charAt(0).toUpperCase() + method.slice(1);
     };
 
     const handlePaymentClick = () => {
@@ -496,36 +544,38 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                             const [mb, yb] = b.month.split('/');
                                                             return monthsOrder[ma] - monthsOrder[mb];
                                                         })
-                                                        .map(m => (
-                                                            <div key={m.id} className={`relative p-4 rounded-xl border-2 flex flex-col gap-2 ${m.status === 'Pago' ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100 grayscale opacity-70'}`}>
-                                                                <div className="flex justify-between items-start">
-                                                                    <span className="font-bold text-gray-800">{m.month}</span>
-                                                                    {m.status === 'Pago' && <span className="text-xl">✅</span>}
-                                                                </div>
-                                                                <div className="mt-auto">
-                                                                    <p className="text-sm text-gray-600">Valor: <span className="font-bold">R$ {m.value.toFixed(2)}</span></p>
-                                                                    <p className="text-xs text-gray-500">Venc: {formatDate(m.dueDate)}</p>
-                                                                    {m.paymentDate && <p className="text-xs text-green-700 font-bold mt-1">Pago em: {formatDate(m.paymentDate)}</p>}
-                                                                    {m.paymentDate && <p className="text-xs text-green-700 font-bold mt-1">Pago em: {formatDate(m.paymentDate)}</p>}
+                                                        .map(m => {
+                                                            const status = getDisplayStatus(m);
+                                                            return (
+                                                                <div key={m.id} className={`relative p-4 rounded-xl border-2 flex flex-col gap-2 ${status.bg} ${status.border} ${m.status !== 'Pago' ? 'grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all' : ''}`}>
+                                                                    <div className="flex justify-between items-start">
+                                                                        <span className="font-bold text-gray-800">{m.month}</span>
+                                                                        {m.status === 'Pago' && <span className="text-xl">✅</span>}
+                                                                    </div>
+                                                                    <div className="mt-auto">
+                                                                        <p className="text-sm text-gray-600">Valor: <span className="font-bold">R$ {m.value.toFixed(2)}</span></p>
+                                                                        <p className="text-xs text-gray-500">Venc: {formatDate(m.dueDate)}</p>
+                                                                        {m.paymentDate && <p className="text-xs text-green-700 font-bold mt-1">Pago em: {formatDate(m.paymentDate)}</p>}
 
-                                                                    {/* INTERNAL RECEIPT BUTTON */}
-                                                                    <button
-                                                                        onClick={() => setReceiptData(m)}
-                                                                        className="block mt-1 text-xs text-blue-600 underline hover:text-blue-800"
-                                                                    >
-                                                                        Ver Comprovante
-                                                                    </button>
+                                                                        {/* INTERNAL RECEIPT BUTTON */}
+                                                                        {m.status === 'Pago' && (
+                                                                            <button
+                                                                                onClick={() => setReceiptData(m)}
+                                                                                className="block mt-1 text-xs text-blue-600 underline hover:text-blue-800"
+                                                                            >
+                                                                                Ver Comprovante
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                    {/* Recibo ou Status */}
+                                                                    <div className="mt-2 pt-2 border-t border-gray-100">
+                                                                        <span className={`text-xs font-bold uppercase tracking-wider ${status.color}`}>
+                                                                            {status.label}
+                                                                        </span>
+                                                                    </div>
                                                                 </div>
-                                                                {/* Recibo ou Status */}
-                                                                <div className="mt-2 pt-2 border-t border-gray-100">
-                                                                    {m.status === 'Pago' ? (
-                                                                        <span className="text-xs font-bold text-green-600 uppercase tracking-wider">Pago</span>
-                                                                    ) : (
-                                                                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{m.status}</span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        ))}
+                                                            );
+                                                        })}
                                                 </div>
                                             </td>
                                         </tr>
@@ -573,9 +623,14 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                             </td>
                                                             <td className="px-6 py-4 text-gray-600">{formatDate(m.dueDate)}</td>
                                                             <td className="px-6 py-4 text-center">
-                                                                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusStyle(m.status)}`}>
-                                                                    {m.status}
-                                                                </span>
+                                                                {(() => {
+                                                                    const status = getDisplayStatus(m);
+                                                                    return (
+                                                                        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${status.color} ${status.bg} ${status.border}`}>
+                                                                            {status.label}
+                                                                        </span>
+                                                                    );
+                                                                })()}
                                                             </td>
                                                         </tr>
                                                     );
@@ -839,7 +894,15 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                                 });
                                                                 const data = await response.json();
                                                                 if (data.status === 'approved') {
-                                                                    setPaymentResult((prev: any) => ({ ...prev, status: 'approved' }));
+                                                                    // Atualiza resultado local com o método correto retornado pelo backend
+                                                                    setPaymentResult((prev: any) => ({
+                                                                        ...prev,
+                                                                        status: 'approved',
+                                                                        payment_method_id: data.payment_method_id // Salva o método exato (ex: 'pix', 'bolbradesco')
+                                                                    }));
+
+                                                                    // 🔥 Força atualização dos dados globais do aluno para o recibo pegar o método novo
+                                                                    if (onPaymentSuccess) onPaymentSuccess();
                                                                 } else {
                                                                     alert(`Status do Pagamento: ${data.status}. Aguarde mais alguns instantes.`);
                                                                 }
@@ -1030,56 +1093,142 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             {
                 receiptData && (
                     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-                        <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-scale-in relative border border-gray-100">
+                        {/* CSS for Printing */}
+                        <style>
+                            {`
+                                @media print {
+                                    body * {
+                                        visibility: hidden;
+                                    }
+                                    #receipt-modal-content, #receipt-modal-content * {
+                                        visibility: visible;
+                                    }
+                                    #receipt-modal-content {
+                                        position: fixed;
+                                        left: 0;
+                                        top: 0;
+                                        width: 100%;
+                                        height: 100%;
+                                        margin: 0;
+                                        padding: 20px;
+                                        background: white;
+                                        border: none;
+                                        box-shadow: none;
+                                        z-index: 9999;
+                                    }
+                                    .no-print {
+                                        display: none !important;
+                                    }
+                                }
+                            `}
+                        </style>
 
-                            {/* Receipt Header */}
-                            <div className="text-center border-b border-dashed border-gray-300 pb-4 mb-4">
-                                <div className="w-12 h-12 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto mb-2 text-xl">
-                                    🧾
-                                </div>
-                                <h3 className="text-lg font-bold text-gray-800 uppercase tracking-wide">Comprovante</h3>
-                                <p className="text-xs text-gray-500">{new Date(receiptData.paymentDate || new Date()).toLocaleString()}</p>
-                            </div>
+                        {/* Local Data Map (Duplicate from Dashboard for safety) */}
+                        {(() => {
+                            const UNIT_CNPJ_MAP: Record<string, string> = {
+                                'Zona Norte': '08.693.673/0001-95',
+                                'Boa Sorte': '08.693.673/0002-76',
+                                'Extremoz': '08.693.673/0003-57',
+                                'Quintas': '08.693.673/0004-38'
+                            };
+                            const unitName = student.unit || 'Matriz';
+                            const cnpj = UNIT_CNPJ_MAP[unitName] || '08.693.673/0001-95';
 
-                            {/* Receipt Details */}
-                            <div className="space-y-3 text-sm">
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Pagador:</span>
-                                    <span className="font-bold text-gray-800 text-right w-32 truncate">{student.nome_responsavel || student.name}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Beneficiário:</span>
-                                    <span className="font-bold text-gray-800">Meu Expansivo</span>
-                                </div>
-                                <div className="my-2 border-t border-dashed border-gray-200" />
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Referência:</span>
-                                    <span className="font-bold text-gray-800">{receiptData.month}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Método:</span>
-                                    <span className="font-bold text-gray-800">{receiptData.paymentMethod || 'Pix / Cartão'}</span>
-                                </div>
-                                <div className="my-2 border-t border-dashed border-gray-200" />
-                                <div className="flex justify-between text-base">
-                                    <span className="font-bold text-gray-800">Valor Total:</span>
-                                    <span className="font-bold text-green-700">R$ {receiptData.value.toFixed(2).replace('.', ',')}</span>
-                                </div>
-                            </div>
+                            return (
+                                <div id="receipt-modal-content" className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl animate-scale-in relative border border-gray-100">
 
-                            {/* Footer Actions */}
-                            <div className="mt-6 space-y-2">
-                                <Button onClick={() => window.print()} variant="outline" className="w-full border-dashed">
-                                    🖨️ Imprimir / Salvar PDF
-                                </Button>
-                                <Button onClick={() => setReceiptData(null)} className="w-full bg-gray-800 hover:bg-gray-900 text-white">
-                                    Fechar
-                                </Button>
-                            </div>
+                                    {/* Receipt Header */}
+                                    <div className="text-center border-b-2 border-dashed border-gray-200 pb-6 mb-6">
+                                        <div className="mb-4 flex justify-center">
+                                            <SchoolLogo variant="print" />
+                                        </div>
+                                        <h3 className="text-xl font-black text-gray-900 uppercase tracking-widest">Comprovante</h3>
+                                        <p className="text-xs text-gray-500 font-mono mt-1">{new Date(receiptData.paymentDate || new Date()).toLocaleString()}</p>
+                                    </div>
 
-                            {/* Decorative jagged edge (CSS trick or SVG) - Optional, simplified for now */}
-                            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-20 rounded-t-2xl"></div>
-                        </div>
+                                    {/* Receipt Details */}
+                                    <div className="space-y-4 text-sm font-mono text-gray-700">
+
+                                        {/* Unit & Beneficiary */}
+                                        <div className="flex justify-between items-end border-b border-gray-100 pb-2">
+                                            <span className="text-gray-500 text-xs uppercase">Beneficiário</span>
+                                            <div className="text-right">
+                                                <span className="font-bold text-gray-900 block">Expansivo - Rede de Ensino</span>
+                                                <span className="text-xs text-gray-600 uppercase block">Uni. {unitName}</span>
+                                                <span className="text-[10px] text-gray-400 block font-sans">CNPJ: {cnpj}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Payer Info */}
+                                        <div className="flex justify-between items-end border-b border-gray-100 pb-2">
+                                            <span className="text-gray-500 text-xs uppercase">Pagador</span>
+                                            <span className="font-bold text-gray-900 text-right w-40 truncate">{student.nome_responsavel || student.name}</span>
+                                        </div>
+
+                                        {/* Student Detailed Info */}
+                                        <div className="py-2 bg-gray-50 rounded-lg px-3 space-y-1">
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-500 text-xs">Aluno(a):</span>
+                                                <span className="font-bold text-gray-900 text-right">{student.name}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-500 text-xs">Matrícula:</span>
+                                                <span className="font-mono text-gray-900">{student.code}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-500 text-xs">Turma/Série:</span>
+                                                <span className="text-gray-900">{student.gradeLevel}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Transaction Info */}
+                                        <div className="space-y-2 pt-2">
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-500">Referência:</span>
+                                                <span className="font-bold text-gray-900">{receiptData.month}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-500">Método:</span>
+                                                <span className="font-bold text-gray-900">{getPaymentMethodLabel(receiptData.paymentMethod)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-500">Status:</span>
+                                                <span className={`font-bold uppercase ${receiptData.status === 'Pago' ? 'text-green-700' : 'text-gray-500'}`}>
+                                                    {receiptData.status === 'Pago' ? 'PAGO ✅' : receiptData.status}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Total Value */}
+                                        <div className="my-4 border-t-2 border-dashed border-gray-300 pt-4">
+                                            <div className="flex justify-between items-center text-lg">
+                                                <span className="font-black text-gray-900 uppercase">Valor Total</span>
+                                                <span className="font-black text-gray-900">R$ {receiptData.value.toFixed(2).replace('.', ',')}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Footer Actions (Hidden on Print) */}
+                                    <div className="mt-8 space-y-3 no-print">
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <Button onClick={() => window.print()} variant="outline" className="w-full flex items-center justify-center gap-2">
+                                                🖨️ Imprimir
+                                            </Button>
+                                            <Button onClick={() => window.print()} variant="outline" className="w-full flex items-center justify-center gap-2">
+                                                💾 Salvar PDF
+                                            </Button>
+                                        </div>
+
+                                        <Button onClick={() => setReceiptData(null)} className="w-full bg-gray-900 hover:bg-black text-white py-3 rounded-xl shadow-lg">
+                                            Fechar Comprovante
+                                        </Button>
+                                    </div>
+
+                                    {/* Decorative jagged edge bottom (CSS) */}
+                                    <div className="absolute bottom-0 left-0 w-full h-4 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMCAxMCIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+PHBhdGggZD0iTTAgMTBMMTAgMEwyMCAxMFoiIGZpbGw9IndoaXRlIi8+PC9zdmc+')] opacity-0"></div>
+                                </div>
+                            );
+                        })()}
                     </div>
                 )
             }

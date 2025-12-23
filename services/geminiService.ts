@@ -1,53 +1,50 @@
 import { Subject } from "../types";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+// Initialize using the correct Vite env variable
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || '');
 
 export const getStudyTips = async (subject: Subject, difficultyTopic: string, gradeLevel: string): Promise<string> => {
   try {
-    const response = await fetch('/api/gemini', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        subject,
-        difficultyTopic,
-        gradeLevel,
-      }),
-    });
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    console.log("🔑 [Gemini Service] Verificando chave de API:", apiKey ? "Definida" : "UNDEFINED");
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-
-      // Se o backend retornar 429 explicitamente (como implementamos agora), usamos a mensagem dele
-      if (response.status === 429) {
-        throw new Error(errorData.error || 'O sistema está sobrecarregado. Tente novamente em instantes.');
-      }
-
-      throw new Error(errorData.details || errorData.error || 'Falha na requisição');
+    if (!apiKey || apiKey.includes('TOKEN_PENDENTE')) {
+      throw new Error("Chave de API inválida ou pendente. Verifique o arquivo .env");
     }
 
-    const data = await response.json();
-    return data.text ?? "Não foi possível gerar dicas no momento. Tente novamente mais tarde.";
+    // Using gemini-2.5-flash as requested by user
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    console.log(`🤖 [Gemini Service] Solicitando dicas para: ${subject} - ${difficultyTopic}`);
+
+    const prompt = `
+      Atue como um tutor escolar especialista e amigável.
+      Aluno do: ${gradeLevel}
+      Matéria: ${subject}
+      Dificuldade específica: "${difficultyTopic}"
+
+      Por favor, forneça:
+      1. Uma explicação super simples e didática sobre esse tópico.
+      2. Uma analogia do dia a dia para facilitar o entendimento.
+      3. Três dicas práticas de como estudar isso melhor.
+      
+      Use emojis, seja encorajador e mantenha o texto formatado para fácil leitura.
+    `;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text();
 
   } catch (error: any) {
-    console.error("Erro ao consultar o Gemini via Backend:", error);
-    // DEBUG: Retornar o erro real para o usuário ver
+    console.error("❌ [Gemini Service] Erro Detalhado:", error);
+
     const errorMessage = error.message || String(error);
 
-    // Mensagens amigáveis para erros conhecidos
-    if (errorMessage.includes('429') ||
-      errorMessage.includes('overloaded') ||
-      errorMessage.includes('competitors') ||
-      errorMessage.includes('alta demanda') ||
-      errorMessage.includes('quota')) {
-      return "O Tutor Inteligente está recebendo muitos pedidos agora! 🚦\n\nPor favor, aguarde uns 10 segundos e tente novamente. Estamos processando as dúvidas de muitos alunos.";
-    }
+    if (errorMessage.includes("API_KEY_INVALID")) return "Erro: A chave de API informada é inválida.";
+    if (errorMessage.includes("BILLING_DISABLED")) return "Erro: A conta da API não tem faturamento ativado.";
+    if (errorMessage.includes("not found")) return "Erro: O modelo de IA não está disponível. Verifique se o 'gemini-2.0-flash' está habilitado na sua chave.";
 
-    // Se for erro técnico genérico, tenta suavizar
-    if (errorMessage.includes('fetch') || errorMessage.includes('network')) {
-      return "Parece que houve um problema de conexão. Verifique sua internet e tente novamente.";
-    }
-
-    return `Ops! Tivemos um problema técnico: ${errorMessage}. Tente novamente.`;
+    return `Erro Técnico: ${errorMessage}`;
   }
 };
-

@@ -86,9 +86,9 @@ exports.mercadopagoWebhook = functions.https.onRequest(async (req, res) => {
                             await db.collection('mensalidades').doc(feeId).update({
                                 status: 'Pago',
                                 paymentDate: new Date().toISOString(),
-                                paymentMethod: 'MercadoPago',
+                                paymentMethod: paymentInfo.payment_method_id || 'MercadoPago',
                                 lastUpdated: new Date().toISOString(),
-                                receiptUrl: `https://www.mercadopago.com.br/activities/1`
+                                receiptUrl: `https://www.mercadopago.com.br/activities/${data.id}`
                             });
                         } catch (err) {
                             console.error(`Erro ao atualizar mensalidade ${feeId}:`, err);
@@ -101,7 +101,7 @@ exports.mercadopagoWebhook = functions.https.onRequest(async (req, res) => {
                         await db.collection('mensalidades').doc(feeId).update({
                             status: 'Pago',
                             paymentDate: new Date().toISOString(),
-                            paymentMethod: 'MercadoPago_Metadata',
+                            paymentMethod: paymentInfo.payment_method_id || 'MercadoPago',
                             lastUpdated: new Date().toISOString()
                         });
                     }
@@ -151,7 +151,7 @@ exports.processMercadoPagoPayment = functions.https.onRequest((req, res) => {
                             await db.collection('mensalidades').doc(feeId).update({
                                 status: 'Pago',
                                 paymentDate: new Date().toISOString(),
-                                paymentMethod: 'MercadoPago_Instant',
+                                paymentMethod: result.payment_method_id || 'MercadoPago_Instant',
                                 lastUpdated: new Date().toISOString(),
                                 receiptUrl: `https://www.mercadopago.com.br/activities/${result.id}`
                             });
@@ -205,7 +205,7 @@ exports.verifyPaymentStatus = functions.https.onRequest((req, res) => {
                             await db.collection('mensalidades').doc(feeId).update({
                                 status: 'Pago',
                                 paymentDate: new Date().toISOString(),
-                                paymentMethod: 'MercadoPago_ManualVerify',
+                                paymentMethod: paymentInfo.payment_method_id || 'MercadoPago_Manual',
                                 lastUpdated: new Date().toISOString(),
                                 receiptUrl: `https://www.mercadopago.com.br/activities/${paymentId}`
                             });
@@ -220,6 +220,7 @@ exports.verifyPaymentStatus = functions.https.onRequest((req, res) => {
             res.status(200).json({
                 status: status,
                 id: paymentId,
+                payment_method_id: paymentInfo.payment_method_id, // Return method ID for frontend
                 updated: status === 'approved'
             });
 

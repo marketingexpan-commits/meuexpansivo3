@@ -115,6 +115,7 @@ export interface Mensalidade {
   lastUpdated: string;
   paymentDate?: string;
   receiptUrl?: string;
+  paymentMethod?: string; // Novo: 'pix', 'credit_card', 'bolbradesco', etc.
 }
 
 export interface EventoFinanceiro {
