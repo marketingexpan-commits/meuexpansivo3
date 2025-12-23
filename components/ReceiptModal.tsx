@@ -109,36 +109,16 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
     return (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
             {/* CSS for Printing */}
-            <style>
-                {`
-                    @media print {
-                        body * {
-                            visibility: hidden;
-                        }
-                        #receipt-modal-content, #receipt-modal-content * {
-                            visibility: visible;
-                        }
-                        #receipt-modal-content {
-                            position: fixed;
-                            left: 0;
-                            top: 0;
-                            width: 100%;
-                            height: 100%;
-                            margin: 0;
-                            padding: 20px;
-                            background: white;
-                            border: none;
-                            box-shadow: none;
-                            z-index: 9999;
-                        }
-                        .no-print {
-                            display: none !important;
-                        }
-                    }
-                `}
-            </style>
+            <style>{`
+                @media print {
+                    body * { visibility: hidden; }
+                    #receipt-modal-content, #receipt-modal-content * { visibility: visible; }
+                    #receipt-modal-content { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none; border: none; }
+                    .no-print { display: none !important; }
+                }
+            `}</style>
 
-            <div id="receipt-modal-content" className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl animate-scale-in relative border border-gray-100">
+            <div id="receipt-modal-content" className="bg-white rounded-2xl p-6 sm:p-8 w-[95%] sm:w-full max-w-sm shadow-2xl animate-scale-in relative border border-gray-100">
 
                 {/* Receipt Header */}
                 <div className="text-center border-b-2 border-dashed border-gray-200 pb-6 mb-6">
@@ -218,8 +198,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
                     {whatsappNumber && (
                         <div className="space-y-2 mb-4">
                             <Button onClick={handleOpenWhatsApp} className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl shadow-lg flex items-center justify-center gap-2">
-                                <span className="text-xl font-bold">whatsapp</span> {/* Usando texto por enquanto ou ícone se disponível */}
-                                <span className="font-bold">Falar com Financeiro</span>
+                                <span className="text-2xl">📱</span>
+                                <span className="font-bold text-lg">Falar com Financeiro</span>
                             </Button>
                             <p className="text-xs text-center text-gray-500 px-4">
                                 💡 Dica: Baixe o PDF abaixo e anexe na conversa para agilizar o atendimento.
@@ -244,6 +224,6 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
                 {/* Decorative jagged edge bottom (CSS) */}
                 <div className="absolute bottom-0 left-0 w-full h-4 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMCAxMCIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+PHBhdGggZD0iTTAgMTBMMTAgMEwyMCAxMFoiIGZpbGw9IndoaXRlIi8+PC9zdmc+')] opacity-0"></div>
             </div>
-        </div>
+        </div >
     );
 };

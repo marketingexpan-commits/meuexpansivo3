@@ -488,8 +488,8 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
 
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                        <thead className="bg-gray-50 border-b border-gray-100">
+                    <table className="w-full text-left block md:table">
+                        <thead className="bg-gray-50 border-b border-gray-100 hidden md:table-header-group">
                             <tr>
                                 <th className="px-6 py-4 w-10"></th>
                                 {activeTab === 'eventos' && (
@@ -501,12 +501,12 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Status</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody className="divide-y divide-gray-50 block md:table-row-group">
                             {activeTab === 'mensalidades' ? (
                                 <>
                                     {/* MENSALIDADES TAB HEADER / TOGGLE */}
-                                    <tr>
-                                        <td colSpan={5} className="p-4 bg-gray-50">
+                                    <tr className="block md:table-row">
+                                        <td colSpan={5} className="p-4 bg-gray-50 block md:table-cell">
                                             <div className="flex gap-2 justify-center sm:justify-start">
                                                 <button
                                                     onClick={() => setHistoryMode(false)}
@@ -543,8 +543,8 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                     {/* CONTENT */}
                                     {historyMode ? (
                                         // VIEW: HISTÓRICO (GRID)
-                                        <tr>
-                                            <td colSpan={5} className="p-6">
+                                        <tr className="block md:table-row">
+                                            <td colSpan={5} className="p-6 block md:table-cell">
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                                     {studentMensalidades
                                                         .sort((a, b) => {
@@ -607,8 +607,9 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                 displayList.map((m) => {
                                                     const isLocked = m.id !== oldestPendingId;
                                                     return (
-                                                        <tr key={m.id} className={`transition-colors ${isLocked ? 'bg-gray-50 opacity-60' : 'hover:bg-blue-50/30'}`}>
-                                                            <td className="px-6 py-4">
+                                                        <tr key={m.id} className={`transition-colors block md:table-row mb-4 md:mb-0 bg-white md:bg-transparent rounded-xl border border-gray-200 md:border-0 p-4 md:p-0 shadow-sm md:shadow-none ${isLocked ? 'bg-gray-50 opacity-60' : 'hover:bg-blue-50/30'}`}>
+                                                            <td className="px-6 py-2 md:py-4 block md:table-cell flex justify-between items-center md:block">
+                                                                <span className="md:hidden text-xs font-bold text-gray-500 uppercase block mb-1">Selecionar</span>
                                                                 <div className="flex items-center gap-3">
                                                                     {isLocked ? (
                                                                         <div className="w-5 h-5 flex items-center justify-center text-gray-400" title="Quite os meses anteriores primeiro">
@@ -624,15 +625,23 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                                     )}
                                                                 </div>
                                                             </td>
-                                                            <td className="px-6 py-4 font-bold text-gray-800">{m.month}</td>
-                                                            <td className="px-6 py-4">
-                                                                <div className="flex flex-col">
+                                                            <td className="px-6 py-2 md:py-4 font-bold text-gray-800 block md:table-cell flex justify-between items-center md:block">
+                                                                <span className="md:hidden text-xs font-bold text-gray-500 uppercase">Mês</span>
+                                                                {m.month}
+                                                            </td>
+                                                            <td className="px-6 py-2 md:py-4 block md:table-cell flex justify-between items-center md:block">
+                                                                <span className="md:hidden text-xs font-bold text-gray-500 uppercase">Valor</span>
+                                                                <div className="flex flex-col text-right md:text-left">
                                                                     <span className="text-xs text-gray-400 line-through">R$ {m.value.toFixed(2).replace('.', ',')}</span>
                                                                     <span className="font-bold text-blue-900">R$ {calculateValue(m.value, 'mensalidade').toFixed(2).replace('.', ',')}</span>
                                                                 </div>
                                                             </td>
-                                                            <td className="px-6 py-4 text-gray-600">{formatDate(m.dueDate)}</td>
-                                                            <td className="px-6 py-4 text-center">
+                                                            <td className="px-6 py-2 md:py-4 text-gray-600 block md:table-cell flex justify-between items-center md:block">
+                                                                <span className="md:hidden text-xs font-bold text-gray-500 uppercase">Vencimento</span>
+                                                                {formatDate(m.dueDate)}
+                                                            </td>
+                                                            <td className="px-6 py-2 md:py-4 text-right md:text-center block md:table-cell flex justify-between items-center md:block">
+                                                                <span className="md:hidden text-xs font-bold text-gray-500 uppercase">Status</span>
                                                                 {(() => {
                                                                     const status = getDisplayStatus(m);
                                                                     return (
@@ -646,8 +655,8 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                     );
                                                 })
                                             ) : (
-                                                <tr>
-                                                    <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">
+                                                <tr className="block md:table-row">
+                                                    <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic block md:table-cell">
                                                         <span className="text-4xl block mb-2">🎉</span>
                                                         Parabéns! Você está em dia com todas as mensalidades.
                                                         <button onClick={() => setHistoryMode(true)} className="block mx-auto mt-2 text-blue-600 underline text-sm">Ver Histórico</button>
@@ -664,8 +673,9 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                         const quantity = eventQuantities[e.id] || 1;
 
                                         return (
-                                            <tr key={e.id} className="hover:bg-gray-50/50 transition-colors">
-                                                <td className="px-6 py-4">
+                                            <tr key={e.id} className="hover:bg-gray-50/50 transition-colors block md:table-row mb-4 md:mb-0 bg-white md:bg-transparent rounded-xl border border-gray-200 md:border-0 p-4 md:p-0 shadow-sm md:shadow-none">
+                                                <td className="px-6 py-2 md:py-4 block md:table-cell flex justify-between items-center md:block">
+                                                    <span className="md:hidden text-xs font-bold text-gray-500 uppercase">Selecionar</span>
                                                     <input
                                                         type="checkbox"
                                                         checked={selectedEventIds.includes(e.id)}
@@ -673,7 +683,8 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                         className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                                                     />
                                                 </td>
-                                                <td className="px-6 py-4">
+                                                <td className="px-6 py-2 md:py-4 block md:table-cell flex justify-between items-center md:block">
+                                                    <span className="md:hidden text-xs font-bold text-gray-500 uppercase">Qtd</span>
                                                     {isUniform ? (
                                                         <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-1 w-fit">
                                                             <button
@@ -694,15 +705,23 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                         <span className="text-gray-400 text-xs ml-2 font-medium">1 (Fixo)</span>
                                                     )}
                                                 </td>
-                                                <td className="px-6 py-4 font-bold text-gray-800">{e.description}</td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col">
+                                                <td className="px-6 py-2 md:py-4 font-bold text-gray-800 block md:table-cell flex justify-between items-center md:block">
+                                                    <span className="md:hidden text-xs font-bold text-gray-500 uppercase">Descrição</span>
+                                                    {e.description}
+                                                </td>
+                                                <td className="px-6 py-2 md:py-4 block md:table-cell flex justify-between items-center md:block">
+                                                    <span className="md:hidden text-xs font-bold text-gray-500 uppercase">Valor</span>
+                                                    <div className="flex flex-col text-right md:text-left">
                                                         <span className="text-xs text-gray-400 line-through">R$ {(e.value * quantity).toFixed(2).replace('.', ',')}</span>
                                                         <span className="font-bold text-blue-900">R$ {calculateValue(e.value * quantity, 'evento').toFixed(2).replace('.', ',')}</span>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 text-gray-600">{formatDate(e.dueDate)}</td>
-                                                <td className="px-6 py-4 text-center">
+                                                <td className="px-6 py-2 md:py-4 text-gray-600 block md:table-cell flex justify-between items-center md:block">
+                                                    <span className="md:hidden text-xs font-bold text-gray-500 uppercase">Vencimento</span>
+                                                    {formatDate(e.dueDate)}
+                                                </td>
+                                                <td className="px-6 py-2 md:py-4 text-right md:text-center block md:table-cell flex justify-between items-center md:block">
+                                                    <span className="md:hidden text-xs font-bold text-gray-500 uppercase">Status</span>
                                                     <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusStyle(e.status)}`}>
                                                         {e.status}
                                                     </span>
@@ -711,8 +730,8 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                         );
                                     })
                                 ) : (
-                                    <tr>
-                                        <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">
+                                    <tr className="block md:table-row">
+                                        <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic block md:table-cell">
                                             Nenhum evento ou extra encontrado.
                                         </td>
                                     </tr>
@@ -762,7 +781,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             {/* Modal de Pagamento & PIX / BRICK */}
             {(isModalOpen || preferenceId) && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl animate-scale-in text-center space-y-6 max-h-[90vh] overflow-y-auto">
+                    <div className="bg-white rounded-3xl p-4 sm:p-8 max-w-2xl w-full shadow-2xl animate-scale-in text-center space-y-6 max-h-[90vh] overflow-y-auto">
 
                         {preferenceId ? (
                             <div className="w-full">
