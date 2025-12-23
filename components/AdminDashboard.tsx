@@ -679,9 +679,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 documentos_entregues: []
             };
             onAddStudent(newStudent);
-            alert("Cadastrado!");
-            onAddStudent(newStudent);
-            // alert("Cadastrado!");
             // setSName(''); setSResponsavel(''); setSEmail(''); setSPhone(''); setSCode(''); setSPass(''); setSMetodoPagamento('Interno'); setSValorMensalidade('');
 
             // Workflow de Agilidade: Entrar em modo de edição
@@ -2070,6 +2067,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     student={selectedStudentForFinancial}
                     receiptData={selectedReceiptForModal}
                     whatsappNumber={unitContacts?.find(c => c.unit === selectedStudentForFinancial.unit && c.role === ContactRole.FINANCIAL)?.phoneNumber}
+                    isAdminView={true}
                     onClose={() => setSelectedReceiptForModal(null)}
                 />
             )}

@@ -11,8 +11,13 @@ import { TeacherDashboard } from './components/TeacherDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { db } from './firebaseConfig';
 import { BackToTopButton } from './components/BackToTopButton';
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 
-const App: React.FC = () => {
+import { ValidateReceipt } from './components/ValidateReceipt';
+
+// Extracted Main Application Logic (formerly App)
+// Extracted Main Application Logic (formerly App)
+const AppContent: React.FC = () => {
   const [session, setSession] = useState<UserSession>({ role: UserRole.NONE, user: null });
 
   const [grades, setGrades] = useState<GradeEntry[]>([]);
@@ -881,6 +886,18 @@ const App: React.FC = () => {
   }
 
   return <div>Erro inesperado no estado da aplicação.</div>;
+};
+
+// New App Wrapper with Router
+const App: React.FC = () => {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/validar-recibo/:id" element={<ValidateReceipt />} />
+        <Route path="/*" element={<AppContent />} />
+      </Routes>
+    </Router>
+  );
 };
 
 export default App;

@@ -127,6 +127,8 @@ export interface EventoFinanceiro {
   status: 'Pago' | 'Pendente' | 'Atrasado';
   lastUpdated: string;
   type: 'Evento' | 'Extra';
+  paymentDate?: string;
+  paymentMethod?: string;
 }
 
 // --- NOVOS TIPOS PARA RELATÓRIO DA EDUCAÇÃO INFANTIL ---

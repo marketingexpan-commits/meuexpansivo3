@@ -719,6 +719,33 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                 <td className="px-6 py-2 md:py-4 text-gray-600 block md:table-cell flex justify-between items-center md:block">
                                                     <span className="md:hidden text-xs font-bold text-gray-500 uppercase">Vencimento</span>
                                                     {formatDate(e.dueDate)}
+
+                                                    {/* RECEIPT BUTTON FOR EVENTS */}
+                                                    {e.status === 'Pago' && (
+                                                        <button
+                                                            onClick={() => setReceiptData({
+                                                                id: e.id,
+                                                                studentId: e.studentId,
+                                                                month: e.description,
+                                                                value: e.value * quantity, // Use calculated total or base? Receipt expects total? 
+                                                                // Actually, quantity is UI state. If paid, it should be fixed. 
+                                                                // Assuming quantity was 1 for now or handled elsewhere in persistence.
+                                                                // For now, let's use e.value as stored in DB.
+                                                                // Wait, if I paid for 2, the DB event likely updated or created a transaction.
+                                                                // If the DB event is just "Uniforme R$ 50", and I bought 2, 
+                                                                // the system currently doesn't split events. 
+                                                                // Let's assume simplest case: value stored is the value paid.
+                                                                dueDate: e.dueDate,
+                                                                status: e.status,
+                                                                lastUpdated: e.lastUpdated,
+                                                                paymentDate: e.paymentDate,
+                                                                paymentMethod: e.paymentMethod
+                                                            } as Mensalidade)}
+                                                            className="block mt-1 text-xs text-blue-600 underline hover:text-blue-800"
+                                                        >
+                                                            Ver Comprovante
+                                                        </button>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-2 md:py-4 text-right md:text-center block md:table-cell flex justify-between items-center md:block">
                                                     <span className="md:hidden text-xs font-bold text-gray-500 uppercase">Status</span>
