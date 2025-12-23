@@ -47,51 +47,72 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
         const input = document.getElementById('receipt-modal-content');
         if (!input) return;
 
-        // Clone the element to avoid interrupting the user or layout issues
+        // Create a wrapper to render the clone "on screen" but invisible
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'fixed';
+        wrapper.style.top = '0';
+        wrapper.style.left = '0';
+        wrapper.style.width = '600px'; // Approx A4 proportional width for mobile check
+        wrapper.style.zIndex = '-9999'; // Behind everything
+        wrapper.style.opacity = '0';    // Invisible
+        wrapper.style.pointerEvents = 'none';
+        wrapper.style.background = '#ffffff';
+
+        // Clone the element
         const clone = input.cloneNode(true) as HTMLElement;
 
-        // Reset styles on the clone to ensure full visibility
+        // Remove classes that might interfere (animations, responsive width constraints)
+        clone.classList.remove('animate-scale-in', 'max-h-[90vh]', 'overflow-y-auto', 'w-[95%]', 'sm:w-full');
+
+        // Enforce styles for full capture
+        clone.style.transform = 'none';
+        clone.style.animation = 'none';
+        clone.style.transition = 'none';
         clone.style.maxHeight = 'none';
+        clone.style.height = 'auto'; // Let content grow
         clone.style.overflow = 'visible';
-        clone.style.height = 'auto'; // Force auto height
-        clone.style.width = '550px'; // Fixed width for consistent PDF size (approx A4 proportional or robust mobile fallback)
-        clone.style.position = 'fixed'; // Remove from normal flow
-        clone.style.top = '-10000px'; // Hide off-screen
-        clone.style.left = '-10000px';
-        clone.style.transform = 'none'; // Remove any potential transforms
-        clone.style.zIndex = '-1000';
-        clone.style.background = 'white'; // Ensure background is solid
+        clone.style.width = '100% !important'; // Fill wrapper
+        clone.style.maxWidth = 'none';
+        clone.style.boxShadow = 'none';
+        clone.style.border = 'none';
+        clone.style.margin = '0';
+        clone.style.position = 'static'; // Flow normally in wrapper
 
         // Hide buttons in the clone
         const buttons = clone.querySelectorAll('.no-print');
         buttons.forEach((el) => (el as HTMLElement).style.display = 'none');
 
-        // Append to body to render full content
-        document.body.appendChild(clone);
+        // Append to wrapper, then to body
+        wrapper.appendChild(clone);
+        document.body.appendChild(wrapper);
 
         try {
-            // Short wait for images/fonts to settle in the clone (though usually cloneNode is fast)
-            await new Promise(resolve => setTimeout(resolve, 300));
+            // Short wait to ensure layout is calculated
+            await new Promise(resolve => setTimeout(resolve, 500));
 
             const canvas = await html2canvas(clone, {
                 scale: 2,
                 backgroundColor: '#ffffff',
                 useCORS: true,
                 logging: false,
-                width: clone.scrollWidth,
-                height: clone.scrollHeight,
-                windowWidth: clone.scrollWidth,
-                windowHeight: clone.scrollHeight
+                width: wrapper.scrollWidth,  // Use wrapper width explicit
+                height: wrapper.scrollHeight, // Use wrapper height explicit
+                windowWidth: wrapper.scrollWidth,
+                windowHeight: wrapper.scrollHeight,
+                scrollX: 0,
+                scrollY: 0,
+                x: 0,
+                y: 0
             });
 
             const imgData = canvas.toDataURL('image/png');
             const pdf = new jsPDF({
                 orientation: 'portrait',
                 unit: 'mm',
-                format: 'a4' // A4 format
+                format: 'a4'
             });
 
-            const imgWidth = 210; // A4 width in mm
+            const imgWidth = 210;
             const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
             pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
@@ -106,8 +127,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
             console.error("Erro ao gerar/compartilhar PDF:", error);
             alert("Erro ao processar o comprovante. Tente usar a opção 'Imprimir'.");
         } finally {
-            // Clean up the clone
-            document.body.removeChild(clone);
+            // Clean up
+            document.body.removeChild(wrapper);
         }
     };
 
