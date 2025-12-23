@@ -747,7 +747,14 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                         headers: {
                                                             'Content-Type': 'application/json'
                                                         },
-                                                        body: JSON.stringify(param.formData)
+                                                        body: JSON.stringify({
+                                                            ...param.formData,
+                                                            external_reference: activeTab === 'mensalidades' ? selectedMensalidades.join(',') : `student_${student.id}`,
+                                                            metadata: {
+                                                                student_id: student.id,
+                                                                mensalidade_ids: activeTab === 'mensalidades' ? selectedMensalidades.join(',') : '',
+                                                            }
+                                                        })
                                                     });
                                                     const result = await response.json();
                                                     console.log("Payment Result:", result);

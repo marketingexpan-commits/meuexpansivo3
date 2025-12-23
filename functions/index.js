@@ -139,6 +139,31 @@ exports.processMercadoPagoPayment = functions.https.onRequest((req, res) => {
 
             console.log("✅ Pagamento criado:", result.id, result.status);
 
+            // --- INSTANT UPDATE LOGIC (Same as Webhook) ---
+            if (result.status === 'approved') {
+                const externalRef = result.external_reference;
+                const metadata = result.metadata;
+
+                if (externalRef && externalRef.includes('student_') === false) {
+                    const feeIds = externalRef.split(',').map(id => id.trim()).filter(id => id.length > 0);
+                    for (const feeId of feeIds) {
+                        try {
+                            await db.collection('mensalidades').doc(feeId).update({
+                                status: 'Pago',
+                                paymentDate: new Date().toISOString(),
+                                paymentMethod: 'MercadoPago_Instant',
+                                lastUpdated: new Date().toISOString(),
+                                receiptUrl: `https://www.mercadopago.com.br/activities/${result.id}`
+                            });
+                            console.log(`✅ [Instant] Mensalidade ${feeId} baixada.`);
+                        } catch (err) {
+                            console.error(`❌ [Instant] Erro ao atualizar mensalidade ${feeId}:`, err);
+                        }
+                    }
+                }
+            }
+            // -----------------------------------------------
+
             res.status(200).json(result);
 
         } catch (error) {
