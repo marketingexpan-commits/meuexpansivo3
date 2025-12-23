@@ -113,12 +113,21 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
                 @media print {
                     body * { visibility: hidden; }
                     #receipt-modal-content, #receipt-modal-content * { visibility: visible; }
-                    #receipt-modal-content { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none; border: none; }
+                    #receipt-modal-content { 
+                        position: absolute; 
+                        left: 0; 
+                        top: 0; 
+                        width: 100%; 
+                        max-height: none; /* Ensure full height on print */
+                        overflow: visible; 
+                        box-shadow: none; 
+                        border: none; 
+                    }
                     .no-print { display: none !important; }
                 }
             `}</style>
 
-            <div id="receipt-modal-content" className="bg-white rounded-2xl p-6 sm:p-8 w-[95%] sm:w-full max-w-sm shadow-2xl animate-scale-in relative border border-gray-100">
+            <div id="receipt-modal-content" className="bg-white rounded-2xl p-6 sm:p-8 w-[95%] sm:w-full max-w-sm shadow-2xl animate-scale-in relative border border-gray-100 max-h-[90vh] overflow-y-auto">
 
                 {/* Receipt Header */}
                 <div className="text-center border-b-2 border-dashed border-gray-200 pb-6 mb-6">
