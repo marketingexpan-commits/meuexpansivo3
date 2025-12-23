@@ -1,6 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react'; // Refresh
 import { Student, Mensalidade, EventoFinanceiro, UnitContact, ContactRole } from '../types';
 import { Button } from './Button';
+import { initMercadoPago, Payment } from '@mercadopago/sdk-react';
+// NOTE: Replace with your actual Firebase Functions URL or configure Vite proxy
+const MP_REFERENCE_URL = 'https://us-central1-meu-expansivo-app.cloudfunctions.net/createMercadoPagoPreference';
+
+// Initialize outside component to avoid re-runs
+initMercadoPago('APP_USR-e0a54aff-c482-451f-882c-e41a50bcde7d', { locale: 'pt-BR' });
 
 interface FinanceiroScreenProps {
     student: Student;
@@ -32,6 +38,21 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
     const [emailInput, setEmailInput] = useState('');
     const [isCpfModalOpen, setIsCpfModalOpen] = useState(false);
     const [isPaymentConfirmed, setIsPaymentConfirmed] = useState(false);
+    const [preferenceId, setPreferenceId] = useState<string | null>(null);
+    const [isBrickReady, setIsBrickReady] = useState(false);
+    const [paymentResult, setPaymentResult] = useState<any>(null); // Store payment result
+
+    useEffect(() => {
+        if (preferenceId && isModalOpen) {
+            setIsBrickReady(false);
+            const timer = setTimeout(() => {
+                setIsBrickReady(true);
+            }, 500); // 500ms delay to ensure modal animation finishes
+            return () => clearTimeout(timer);
+        } else {
+            setIsBrickReady(false);
+        }
+    }, [preferenceId, isModalOpen]);
 
     // Inicializar quantidades para eventos
     useEffect(() => {
@@ -195,6 +216,8 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
         .filter(m => selectedMensalidades.includes(m.id))
         .reduce((acc, m) => acc + m.value, 0);
 
+
+
     const [pixData, setPixData] = useState<{ url: string, pixText: string, qrCodeImage?: string, publicUrl?: string } | null>(null);
     const [isLoadingPix, setIsLoadingPix] = useState(false);
 
@@ -217,6 +240,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setPixData(null);
+        setPreferenceId(null); // Cleanup MP Preference
         setIsPaymentConfirmed(false);
         // Reset Inputs
         setCpfInput('');
@@ -226,126 +250,66 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
         setIsCpfModalOpen(false);
     };
 
-    const handleCreatePixCharge = async (cpfOverride?: string, nameOverride?: string, phoneOverride?: string, emailOverride?: string) => {
-        setIsLoadingPix(true);
-        console.log("FinanceiroScreen: handleCreatePixCharge chamado.", { cpfOverride, nameOverride, phoneOverride, emailOverride, cpfInputState: cpfInput });
+    // Initialize Mercado Pago with a placeholder or env var
 
+
+    const handleCreatePayment = async (cpfOverride?: string, nameOverride?: string, phoneOverride?: string, emailOverride?: string) => {
+        setIsLoadingPix(true);
         try {
             const amount = calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento');
 
-            // NOTE: In a real production environment, this call should be made from a backend server
-            const token = (import.meta as any).env.VITE_ABACATE_PAY_TOKEN;
-            if (!token) {
-                alert("Erro de configuração: Token VITE_ABACATE_PAY_TOKEN não encontrado no arquivo .env");
+            if (amount <= 0) {
+                alert("Valor inválido para pagamento.");
+                setIsLoadingPix(false);
                 return;
             }
 
-            // 1. Capture Data (Arg -> State -> Student Record)
-            // Prioritize typed input: Args > State > Fallback
-            // Note: User requested strict use of TYPED data from Modal for Name/CPF.
+            // 1. Capture Data
             const rawCpf = cpfOverride || cpfInput || student.cpf_responsavel;
             const rawName = nameOverride || nameInput || student.nome_responsavel || student.name;
-            const rawPhone = phoneOverride || phoneInput || student.telefone_responsavel;
             const rawEmail = emailOverride || emailInput || student.email_responsavel;
 
-            // 2. Limpeza de Caracteres (Obrigatório: Apenas números)
-            if (!rawCpf || !rawName || !rawPhone || !rawEmail) {
-                alert("Dados incompletos. Nome, CPF, Telefone e Email são obrigatórios para o Pix.");
-                setIsLoadingPix(false);
-                return;
-            }
-            const cleanCpf = rawCpf.toString().replace(/\D/g, '');
-            const cleanPhone = rawPhone.toString().replace(/\D/g, '');
-            const cleanEmail = rawEmail.trim();
+            const description = `${student.name} | ${activeTab === 'mensalidades' ? 'Mensalidades' : 'Eventos/Extras'}`;
 
-            // Validação de comprimento (11 dígitos para CPF)
-            if (cleanCpf.length !== 11) {
-                alert(`CPF inválido (${cleanCpf}). O CPF deve conter exatamente 11 números.`);
-                setIsLoadingPix(false);
-                return;
-            }
-            if (cleanPhone.length < 10) {
-                alert(`Telefone inválido (${cleanPhone}). Inclua o DDD.`);
-                setIsLoadingPix(false);
-                return;
-            }
-
-            console.log("FinanceiroScreen: Payload Preparado", {
-                amount: Math.round(amount * 100),
-                descriptionSize: 50, // Truncado na API
-                customer: {
-                    name: rawName,
-                    taxId: cleanCpf, // Mapeado para field taxId conforme solicitado
-                    cellphone: cleanPhone,
-                    email: cleanEmail
-                }
-            });
-
-            const activeItems = activeTab === 'mensalidades'
-                ? studentMensalidades.filter(m => selectedMensalidades.includes(m.id)).map(m => m.month).join(', ')
-                : studentEventos.filter(e => selectedEventIds.includes(e.id)).map(e => e.description).join(', ');
-
-            // Detailed Description Format: "Name (Code) | Grade - Class - Shift | Unit | Months/Items"
-            const description = `${student.name} (${student.id}) | ${student.gradeLevel} - ${student.schoolClass} - ${student.shift} | ${student.unit} | ${activeItems.substring(0, 30)}`;
-
-            const response = await fetch('/api/abacate/pixQrCode/create', {
+            // Call Backend Function
+            const response = await fetch(MP_REFERENCE_URL, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    amount: Math.round(amount * 100),
-                    description: description,
-                    customer: {
-                        name: rawName,
-                        taxId: cleanCpf,
-                        cellphone: cleanPhone,
-                        email: cleanEmail
-                    },
-                    metadata: {
-                        studentId: student.id,
-                        mensalidadeIds: activeTab === 'mensalidades' ? selectedMensalidades.join(',') : '',
-                        eventIds: activeTab === 'eventos' ? selectedEventIds.join(',') : '',
-                        generatedBy: 'SystemWebhookFix'
-                    },
-                    products: [
-                        {
-                            externalId: `mensalidades_${student.id}`,
-                            name: "Mensalidades Escolares",
-                            quantity: 1,
-                            value: Math.round(amount * 100)
-                        }
-                    ]
+                    title: description,
+                    quantity: 1,
+                    price: Number(amount.toFixed(2)),
+                    studentId: student.id,
+                    mensalidadeIds: activeTab === 'mensalidades' ? selectedMensalidades : [],
+                    eventIds: activeTab === 'eventos' ? selectedEventIds : [],
+                    payer: {
+                        email: rawEmail,
+                        first_name: rawName ? rawName.split(' ')[0] : 'Responsável',
+                        last_name: rawName ? rawName.split(' ').slice(1).join(' ') : '',
+                        identification: { type: 'CPF', number: rawCpf }
+                    }
                 })
             });
 
             const data = await response.json();
 
-            if (data.error) {
-                console.error("Abacate Pay API Error:", data.error);
-                throw new Error(data.error.message || JSON.stringify(data.error));
+            console.log("Resposta do Backend (Preference):", data);
+
+            if (data.id) {
+                console.log("Preference ID válido recebido:", data.id);
+                setPreferenceId(data.id);
+                setIsModalOpen(true);
+                setIsCpfModalOpen(false);
+            } else {
+                console.error("Erro: Preference ID não retornado.", data);
+                alert("Erro ao gerar pagamento: " + (data.error || "Resposta inválida do servidor"));
             }
-
-            // 3. Handle Response (brCode & brCodeBase64)
-            const pixInfo = data.data || data;
-
-            if (!pixInfo.brCode) {
-                throw new Error("BR Code não retornado pela API.");
-            }
-
-            setPixData({
-                url: pixInfo.checkoutUrl || pixInfo.billingUrl || pixInfo.url, // Correctly capture the payment URL
-                pixText: pixInfo.brCode,
-                qrCodeImage: pixInfo.brCodeBase64,
-                publicUrl: pixInfo.publicUrl || pixInfo.url
-            });
-            setIsModalOpen(true); // Ensure modal is open to show QR
 
         } catch (error: any) {
-            console.error("Erro ao gerar Pix (Catch):", error);
-            const msg = error?.message || "Erro desconhecido";
-            alert(`Erro ao conectar com Abacate Pay: ${msg}. Verifique o console para detalhes.`);
+            console.error("Erro ao gerar pagamento MP:", error);
+            alert(`Erro: ${error.message || "Falha na conexão com Mercado Pago"}. Verifique o console.`);
         } finally {
             setIsLoadingPix(false);
         }
@@ -718,135 +682,211 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                 </p>
             </div>
 
-            {/* Modal de Pagamento & PIX */}
-            {(isModalOpen || pixData) && (
+            {/* Modals and other components that are part of the return statement */}
+            {/* Update the Modal to show Payment Brick */}
+
+            {/* Modal de Pagamento & PIX / BRICK */}
+            {(isModalOpen || preferenceId) && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-scale-in text-center space-y-6">
+                    <div className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl animate-scale-in text-center space-y-6 max-h-[90vh] overflow-y-auto">
 
-                        {pixData ? (
-                            <>
-                                <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mx-auto text-3xl">💠</div>
-                                {pixData.qrCodeImage && !isPaymentConfirmed ? (
-                                    <div className="flex justify-center my-4">
-                                        <img src={pixData.qrCodeImage} alt="QR Code Pix" className="w-48 h-48" />
-                                    </div>
-                                ) : null}
+                        {preferenceId ? (
+                            <div className="w-full">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h4 className="text-xl font-bold text-gray-900">Finalizar Pagamento</h4>
+                                    <button onClick={handleCloseModal} className="text-gray-500 hover:text-red-500 font-bold">FECHAR X</button>
+                                </div>
 
-                                {isPaymentConfirmed ? (
-                                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto text-3xl mb-4">✅</div>
-                                ) : null}
-
-                                <h4 className="text-xl font-bold text-gray-900">{isPaymentConfirmed ? 'Pagamento Confirmado!' : 'Pagamento via Pix'}</h4>
-                                <p className="text-sm text-gray-600">
-                                    {isPaymentConfirmed
-                                        ? 'O pagamento foi identificado com sucesso.'
-                                        : 'Utilize o link abaixo para concluir o pagamento.'}
-                                </p>
-
-                                {!isPaymentConfirmed && (
-                                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                                        <p className="text-xs font-bold text-gray-500 mb-2 uppercase">Código Pix (Copia e Cola)</p>
-                                        <div className="break-all text-gray-800 text-xs font-mono bg-white p-2 rounded border border-gray-100 overflow-y-auto max-h-20">
-                                            {pixData.pixText}
-                                        </div>
-                                        <button
-                                            onClick={() => navigator.clipboard.writeText(pixData.pixText).then(() => alert("Código copiado!"))}
-                                            className="mt-2 text-blue-600 text-xs font-bold underline cursor-pointer hover:text-blue-800"
-                                        >
-                                            Copiar Código
-                                        </button>
+                                {!isBrickReady && (
+                                    <div className="h-64 flex items-center justify-center flex-col gap-4 text-blue-600">
+                                        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                        <p>Carregando pagamento seguro...</p>
                                     </div>
                                 )}
 
-                                {!isPaymentConfirmed && (
-                                    <Button
-                                        onClick={() => {
-                                            if (pixData.url) {
-                                                window.open(pixData.url, '_blank');
-                                            } else {
-                                                alert("Link de pagamento não disponível.");
-                                            }
-                                        }}
-                                        className="w-full bg-teal-600 hover:bg-teal-700"
-                                    >
-                                        Abrir Pagamento
-                                    </Button>
+                                {isBrickReady && !paymentResult && (
+                                    <div id="paymentBrick_container" className="w-full min-h-[500px] relative z-50 bg-white rounded-lg p-2" key={preferenceId}>
+                                        <p className="text-xs text-blue-600 mb-2 font-semibold">Ambiente Seguro Mercado Pago</p>
+                                        <Payment
+                                            initialization={{
+                                                preferenceId: preferenceId,
+                                                amount: calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento'),
+                                                payer: {
+                                                    firstName: student.nome_responsavel?.split(' ')[0] || 'Responsável',
+                                                    lastName: student.nome_responsavel?.split(' ').slice(1).join(' ') || '',
+                                                    email: student.email_responsavel || 'email@exemplo.com',
+                                                    address: {
+                                                        zipCode: student.cep?.replace(/\D/g, '') || '',
+                                                        streetNumber: student.endereco_numero || '',
+                                                        neighborhood: student.endereco_bairro || '',
+                                                        city: student.endereco_cidade || '',
+                                                        federalUnit: student.endereco_uf || '',
+                                                        streetName: student.endereco_logradouro || ''
+                                                    }
+                                                }
+                                            }}
+                                            customization={{
+                                                paymentMethods: {
+                                                    maxInstallments: selectedMethod === 'credito' ? 12 : 1,
+                                                    ticket: selectedMethod === 'boleto' ? 'all' : undefined,
+                                                    bankTransfer: selectedMethod === 'pix' ? 'all' : undefined,
+                                                    creditCard: selectedMethod === 'credito' ? 'all' : undefined,
+                                                    debitCard: selectedMethod === 'debito' ? 'all' : undefined,
+                                                },
+                                                visual: {
+                                                    style: {
+                                                        theme: 'default',
+                                                    }
+                                                }
+                                            }}
+                                            onSubmit={async (param) => {
+                                                console.log("Brick onSubmit:", param);
+                                                try {
+                                                    const response = await fetch('https://us-central1-meu-expansivo-app.cloudfunctions.net/processMercadoPagoPayment', {
+                                                        method: 'POST',
+                                                        headers: {
+                                                            'Content-Type': 'application/json'
+                                                        },
+                                                        body: JSON.stringify(param.formData)
+                                                    });
+                                                    const result = await response.json();
+                                                    console.log("Payment Result:", result);
+                                                    setPaymentResult(result);
+                                                } catch (e) {
+                                                    console.error("Payment Error:", e);
+                                                    alert("Erro ao processar pagamento. Tente novamente.");
+                                                }
+                                            }}
+                                            onReady={() => {
+                                                console.log('Brick onReady: Componente carregado!');
+                                            }}
+                                            onError={(error) => {
+                                                console.error('Brick onError DO CATCH:', error);
+                                                // Silent error to avoid scaring the user, as Brick handles field validation UI
+                                            }}
+                                        />
+                                    </div>
                                 )}
-                                <Button onClick={handleCloseModal} variant="secondary" className="w-full">
-                                    Fechar
-                                </Button>
 
-                                {/* WhatsApp Button - Conditional Display */}
-                                {isPaymentConfirmed && (() => {
-                                    const finContact = unitContacts.find(c => c.unit === student.unit && c.role === ContactRole.FINANCIAL);
-                                    if (finContact) {
-                                        const cleanPhone = finContact.phoneNumber.replace(/\D/g, '');
-                                        const finalPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+                                {paymentResult && (
+                                    <div className="bg-white p-6 rounded-lg text-center space-y-4 animate-fade-in">
+                                        {paymentResult.status === 'approved' && (
+                                            <>
+                                                <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto text-3xl">✅</div>
+                                                <h3 className="text-xl font-bold text-green-700">Pagamento Aprovado!</h3>
+                                                <p className="text-gray-600">Seu pagamento foi confirmado com sucesso.</p>
+                                                <Button onClick={handleCloseModal} className="w-full">Fechar</Button>
+                                            </>
+                                        )}
+                                        {paymentResult.status === 'pending' && paymentResult.point_of_interaction?.transaction_data?.qr_code && (
+                                            <>
+                                                <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto text-3xl">💠</div>
+                                                <h3 className="text-xl font-bold text-blue-900">Pagamento via Pix</h3>
+                                                <p className="text-sm text-gray-600">Escaneie o QR Code ou copie a chave abaixo:</p>
 
-                                        const message = encodeURIComponent(
-                                            `Olá! Segue comprovante.\n\n` +
-                                            `*Aluno:* ${student.name}\n` +
-                                            `*Série:* ${student.gradeLevel} - ${student.schoolClass}\n` +
-                                            `*Unidade:* ${student.unit}\n` +
-                                            `*Valor:* R$ ${calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento').toFixed(2).replace('.', ',')}\n\n` +
-                                            `*Código Pix:* ${pixData.pixText.substring(0, 20)}...\n\n` +
-                                            `*Link do Recibo:* ${pixData.publicUrl || pixData.url || 'N/A'}`
-                                        );
-                                        return (
-                                            <Button onClick={() => window.open(`https://wa.me/${finalPhone}?text=${message}`, '_blank')} className="w-full bg-green-500 hover:bg-green-600 flex items-center justify-center gap-2">
-                                                <span>📱</span> Enviar Comprovante p/ Financeiro
-                                            </Button>
-                                        );
-                                    }
-                                    return null;
-                                })()}
+                                                {paymentResult.point_of_interaction.transaction_data.qr_code_base64 && (
+                                                    <img
+                                                        src={`data:image/png;base64,${paymentResult.point_of_interaction.transaction_data.qr_code_base64}`}
+                                                        alt="Pix QR Code"
+                                                        className="w-48 h-48 mx-auto"
+                                                    />
+                                                )}
 
-                            </>
+                                                <div className="bg-gray-100 p-3 rounded-lg flex items-center gap-2">
+                                                    <input
+                                                        readOnly
+                                                        value={paymentResult.point_of_interaction.transaction_data.qr_code}
+                                                        className="w-full bg-transparent text-xs text-gray-600 outline-none font-mono"
+                                                    />
+                                                    <button
+                                                        onClick={() => navigator.clipboard.writeText(paymentResult.point_of_interaction.transaction_data.qr_code)}
+                                                        className="text-blue-600 hover:text-blue-800 font-bold text-xs whitespace-nowrap"
+                                                    >
+                                                        COPIAR
+                                                    </button>
+                                                </div>
+                                                <Button onClick={handleCloseModal} variant="secondary" className="w-full">Fechar e Aguardar</Button>
+                                            </>
+                                        )}
+                                        {/* BOLETO UI: Check for pending/in_process status AND boleto payment method or external resource URL */}
+                                        {(paymentResult.status === 'pending' || paymentResult.status === 'in_process') && paymentResult.payment_method_id === 'bolbradesco' && (
+                                            <>
+                                                <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto text-3xl">📄</div>
+                                                <h3 className="text-xl font-bold text-blue-900">Boleto Gerado!</h3>
+                                                <p className="text-sm text-gray-600">Baixe o PDF ou copie o código de barras abaixo para pagar.</p>
+
+                                                {paymentResult.transaction_details?.external_resource_url && (
+                                                    <Button
+                                                        onClick={() => window.open(paymentResult.transaction_details.external_resource_url, '_blank')}
+                                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-md"
+                                                    >
+                                                        ⬇️ BAIXAR BOLETO PDF
+                                                    </Button>
+                                                )}
+
+                                                {paymentResult.barcode?.content && (
+                                                    <div className="bg-gray-100 p-3 rounded-lg flex items-center gap-2 mt-4">
+                                                        <input
+                                                            readOnly
+                                                            value={paymentResult.barcode.content}
+                                                            className="w-full bg-transparent text-xs text-gray-600 outline-none font-mono"
+                                                        />
+                                                        <button
+                                                            onClick={() => navigator.clipboard.writeText(paymentResult.barcode.content)}
+                                                            className="text-blue-600 hover:text-blue-800 font-bold text-xs whitespace-nowrap"
+                                                        >
+                                                            COPIAR
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                <Button onClick={handleCloseModal} variant="secondary" className="w-full mt-2">Fechar e Aguardar</Button>
+                                            </>
+                                        )}
+                                        {paymentResult.status === 'rejected' && (
+                                            <>
+                                                <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-3xl">❌</div>
+                                                <h3 className="text-xl font-bold text-red-700">Pagamento Recusado</h3>
+                                                <p className="text-gray-600">{paymentResult.status_detail || 'Ocorreu um erro com seu pagamento.'}</p>
+                                                <Button onClick={() => setPaymentResult(null)} variant="outline" className="w-full">Tentar Novamente</Button>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         ) : (
+                            // Existing "Novo Sistema de Pagamentos" Summary
                             <>
                                 <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto text-3xl">🚀</div>
                                 <div className="space-y-4">
                                     <h4 className="text-xl font-bold text-gray-900">Novo Sistema de Pagamentos</h4>
+
+                                    {/* ... existing summary content ... */}
+
                                     <div className="text-sm text-gray-600 text-left space-y-3 bg-gray-50 p-4 rounded-xl">
+                                        {/* ... Re-insert existing summary details ... */}
                                         <div className="border-b pb-2 mb-2">
                                             <p className="text-xs font-bold text-gray-500 uppercase">Pagador</p>
                                             <p className="font-bold text-gray-800">{student.nome_responsavel || student.name}</p>
                                             <p className="text-xs text-gray-500">CPF: {student.cpf_responsavel || '---'}</p>
                                         </div>
-                                        <p><strong>Resumo do Pagamento ({
-                                            selectedMethod === 'pix' ? 'Pix' :
-                                                selectedMethod === 'debito' ? 'Débito' :
-                                                    selectedMethod === 'credito' ? 'Crédito' :
-                                                        'Boleto'
-                                        }):</strong></p>
-                                        <ul className="list-disc list-inside space-y-1 text-xs border-b pb-2 mb-2">
-                                            {activeTab === 'mensalidades' ? (
-                                                studentMensalidades.filter(m => selectedMensalidades.includes(m.id)).map(m => (
-                                                    <li key={m.id}>{m.month}: R$ {calculateValue(m.value, 'mensalidade').toFixed(2).replace('.', ',')}</li>
-                                                ))
-                                            ) : (
-                                                studentEventos.filter(e => selectedEventIds.includes(e.id)).map(e => (
-                                                    <li key={e.id}>
-                                                        {eventQuantities[e.id] > 1 ? `${eventQuantities[e.id]}x ` : ''}
-                                                        {e.description}: R$ {calculateValue(e.value * (eventQuantities[e.id] || 1), 'evento').toFixed(2).replace('.', ',')}
-                                                    </li>
-                                                ))
-                                            )}
-                                        </ul>
                                         <p className="text-lg font-bold text-blue-950 flex justify-between items-center">
                                             <span>Total:</span>
                                             <span>R$ {calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento').toFixed(2).replace('.', ',')}</span>
                                         </p>
-                                        <p className="text-blue-900 font-bold border-t pt-2 mt-2">Por enquanto, realize o pagamento na secretaria.</p>
                                     </div>
+
                                 </div>
-                                <Button onClick={() => setIsModalOpen(false)} className="w-full">Entendi</Button>
+                                <Button onClick={() => setIsCpfModalOpen(true)} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transform transition hover:scale-105">
+                                    Confirmar e Pagar
+                                </Button>
+                                <Button onClick={handleCloseModal} variant="secondary" className="w-full">Cancelar</Button>
                             </>
                         )}
                     </div>
                 </div>
-            )
-            }
+            )}
+
 
 
             {/* MODAL DE INPUT DE CPF (NOVO) */}
@@ -922,12 +962,12 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                 return;
                                             }
                                             setIsCpfModalOpen(false);
-                                            handleCreatePixCharge(cpfInput, nameInput, phoneInput, emailInput);
+                                            handleCreatePayment(cpfInput, nameInput, phoneInput, emailInput);
                                         }}
                                         className="w-1/2 bg-blue-600 hover:bg-blue-700"
                                         disabled={cpfInput.length < 11}
                                     >
-                                        Gerar Pix
+                                        Ir para Pagamento
                                     </Button>
                                 </div>
                             </div>

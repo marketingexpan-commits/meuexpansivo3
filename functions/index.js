@@ -1,138 +1,152 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+const { MercadoPagoConfig, Payment, Preference } = require('mercadopago');
 
 admin.initializeApp();
 const db = admin.firestore();
 
 // --------------------------------------------------------
-// WEBHOOK ABACATE PAY
-// Endpoint para receber notificações de pagamento.
+// MERCADO PAGO CONFIGURATION
 // --------------------------------------------------------
-// URL Exemplo: https://us-central1-SEU-PROJETO.cloudfunctions.net/abacateWebhook
+const MP_ACCESS_TOKEN = 'APP_USR-4544114605136589-122217-b74f4f0e9bb11f6ea971a59ec2e6d690-3074894410';
+const MP_PUBLIC_KEY = 'APP_USR-e0a54aff-c482-451f-882c-e41a50bcde7d';
 
-exports.abacateWebhook = functions.https.onRequest(async (req, res) => {
-    // 1. Verificação de Segurança
+const client = new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN });
+
+const cors = require('cors')({ origin: true });
+
+// --------------------------------------------------------
+// 1. CREATE PREFERENCE (Para gerar o pagamento)
+// --------------------------------------------------------
+exports.createMercadoPagoPreference = functions.https.onRequest((req, res) => {
+    cors(req, res, async () => {
+        try {
+            const { title, quantity, price, studentId, mensalidadeIds, eventIds } = req.body;
+
+            const preference = new Preference(client);
+
+            const result = await preference.create({
+                body: {
+                    items: [
+                        {
+                            title: title,
+                            quantity: Number(quantity),
+                            unit_price: Number(price),
+                            currency_id: 'BRL',
+                        }
+                    ],
+                    external_reference: mensalidadeIds ? mensalidadeIds.toString() : `student_${studentId}`,
+                    metadata: {
+                        student_id: studentId,
+                        mensalidade_ids: mensalidadeIds || '',
+                        event_ids: eventIds || ''
+                    },
+                    back_urls: {
+                        success: "https://meuexpansivo.vercel.app",
+                        failure: "https://meuexpansivo.vercel.app",
+                        pending: "https://meuexpansivo.vercel.app"
+                    },
+                    auto_return: "approved",
+                }
+            });
+
+            res.json({ id: result.id, init_point: result.init_point });
+
+        } catch (error) {
+            console.error("Erro ao criar preferência:", error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+});
+
+// --------------------------------------------------------
+// 2. WEBHOOK MERCADO PAGO
+// --------------------------------------------------------
+exports.mercadopagoWebhook = functions.https.onRequest(async (req, res) => {
     try {
-        console.log("🔥 ACESSOU: abacateWebhook endpoint atingido!");
+        const { type, data } = req.body;
+        console.log("🔔 Webhook Mercado Pago recebido:", type, data?.id);
 
-        const event = req.body;
-        console.log("📥 Payload Recebido:", JSON.stringify(event, null, 2));
+        if (type === 'payment') {
+            const payment = new Payment(client);
+            const paymentInfo = await payment.get({ id: data.id });
 
-        // 2. Lógica de Processamento
-        const { status, metadata, customerId, products } = event.data || event;
+            const status = paymentInfo.status;
+            const externalRef = paymentInfo.external_reference;
+            const metadata = paymentInfo.metadata;
 
-        if (status === 'PAID') {
-            console.log("Status PAID recebido. Iniciando processamento...");
-            console.log("Metadata recebido:", metadata || "Nenhum metadata");
+            console.log(`💰 Pagamento ${data.id} - Status: ${status} - Ref: ${externalRef}`);
 
-            const batch = db.batch();
-            let updatedCount = 0;
-
-            // 1. Prioridade: Buscar via METADATA (Novo Padrão)
-            if (metadata && metadata.studentId) {
-                const studentId = metadata.studentId;
-                console.log(`Processando via Metadata para Aluno ID: ${studentId}`);
-
-                // Processar Mensalidades Específicas
-                if (metadata.mensalidadeIds) {
-                    const idsToPay = metadata.mensalidadeIds.split(',').map(id => id.trim()).filter(id => id.length > 0);
-                    console.log(`IDs recebidos para baixa: ${idsToPay.join(', ')}`);
-
-                    for (const feeId of idsToPay) {
+            if (status === 'approved') {
+                // Lógica de Baixa no Firestore
+                if (externalRef && externalRef.includes('student_') === false) {
+                    const feeIds = externalRef.split(',').map(id => id.trim()).filter(id => id.length > 0);
+                    for (const feeId of feeIds) {
                         try {
-                            const feeRef = db.collection('mensalidades').doc(feeId);
-                            const doc = await feeRef.get();
-
-                            if (!doc.exists) {
-                                console.error(`❌ ERRO CRÍTICO: Mensalidade com ID [${feeId}] não encontrada no banco de dados!`);
-                                console.log(`Tentativa de baixa falhou para ID: ${feeId}`);
-                                continue;
-                            }
-
-                            // Update directly to ensure success in loop
-                            await feeRef.update({
+                            await db.collection('mensalidades').doc(feeId).update({
                                 status: 'Pago',
                                 paymentDate: new Date().toISOString(),
-                                receiptUrl: event.data?.publicUrl || event.data?.billingUrl || event.data?.url || null,
+                                paymentMethod: 'MercadoPago',
                                 lastUpdated: new Date().toISOString(),
-                                paymentMethod: 'AbacatePay_Webhook'
+                                receiptUrl: `https://www.mercadopago.com.br/activities/1`
                             });
-                            console.log(`✅ Sucesso: Mensalidade [${feeId}] atualizada para PAGO.`);
-                            updatedCount++;
                         } catch (err) {
-                            console.error(`Erro ao atualizar mensalidade [${feeId}]:`, err);
+                            console.error(`Erro ao atualizar mensalidade ${feeId}:`, err);
                         }
                     }
                 }
-
-                // Processar Eventos (Se houver)
-                if (metadata.eventIds) {
-                    const eventIdsToPay = metadata.eventIds.split(',').map(id => id.trim()).filter(id => id.length > 0);
-                    console.log(`IDs de Eventos para baixar: ${eventIdsToPay.join(', ')}`);
-                    for (const evId of eventIdsToPay) {
-                        const evRef = db.collection('eventos_financeiros').doc(evId);
-                        batch.update(evRef, {
+                else if (metadata && metadata.mensalidade_ids) {
+                    const feeIds = metadata.mensalidade_ids.split(',').map(id => id.trim()).filter(id => id.length > 0);
+                    for (const feeId of feeIds) {
+                        await db.collection('mensalidades').doc(feeId).update({
                             status: 'Pago',
                             paymentDate: new Date().toISOString(),
-                            receiptUrl: event.data?.publicUrl || event.data?.billingUrl || event.data?.url || null,
+                            paymentMethod: 'MercadoPago_Metadata',
                             lastUpdated: new Date().toISOString()
                         });
-                        updatedCount++;
                     }
                 }
-
-            } else {
-                // 2. Fallback: Lógica Antiga
-                console.log("Metadata ausente. Tentando fallback para externalId...");
-                const externalId = products && products[0] ? products[0].externalId : null;
-
-                if (externalId && externalId.startsWith('mensalidades_')) {
-                    const studentId = externalId.split('_')[1];
-                    console.log(`Fallback: Baixando TUDO pendente para aluno ${studentId}`);
-
-                    const snapshot = await db.collection('mensalidades')
-                        .where('studentId', '==', studentId)
-                        .where('status', '==', 'Pendente')
-                        .get();
-
-                    if (!snapshot.empty) {
-                        snapshot.docs.forEach(doc => {
-                            batch.update(doc.ref, {
-                                status: 'Pago',
-                                paymentDate: new Date().toISOString(),
-                                receiptUrl: event.data?.publicUrl || event.data?.billingUrl || event.data?.url || null,
-                                lastUpdated: new Date().toISOString()
-                            });
-                            updatedCount++;
-                        });
-                    }
-                }
-            }
-
-            if (updatedCount > 0) {
-                // Note: batch might be empty if we used direct await updates above, but commit is safe even if empty/partial
-                // We only strictly *need* batch commit if we added batch operations (fallback logic or events logic)
-                // Safe to commit always if we think batch has ops, or check. 
-                // For simplicity, let's just commit - if empty, it's a no-op usually. 
-                // Check if batch has operations? Firestore Admin SDK doesn't expose 'hasOperations'.
-                // We can rely on logic: if fallback was used OR events logic used batch (yes they did), we commit.
-                // Mensalidades utilized direct update.
-                // So if metadata.eventIds OR (!metadata && fallback), we commit.
-                try {
-                    await batch.commit();
-                } catch (e) {
-                    // ignore if "no writes" error, otherwise log
-                }
-                console.log(`Sucesso! Registros atualizados.`);
-            } else {
-                console.log("Nenhum registro encontrado para atualização ou lista de IDs vazia.");
             }
         }
 
-        res.status(200).send({ received: true });
+        res.status(200).send("OK");
 
     } catch (error) {
-        console.error("Erro no Webhook:", error);
+        console.error("Erro no Webhook MP:", error);
         res.status(500).send("Internal Server Error");
     }
+});
+
+// --------------------------------------------------------
+// 3. PROCESS PAYMENT (Recebe dados do Brick e cria pagamento)
+// --------------------------------------------------------
+exports.processMercadoPagoPayment = functions.https.onRequest((req, res) => {
+    cors(req, res, async () => {
+        try {
+            const paymentData = req.body;
+            console.log("💳 Processando pagamento:", paymentData.payment_method_id);
+
+            const payment = new Payment(client);
+
+            const requestOptions = {
+                idempotencyKey: req.headers['x-idempotency-key'] || undefined
+            };
+
+            const result = await payment.create({
+                body: paymentData,
+                requestOptions
+            });
+
+            console.log("✅ Pagamento criado:", result.id, result.status);
+
+            res.status(200).json(result);
+
+        } catch (error) {
+            console.error("❌ Erro ao processar pagamento:", error);
+            res.status(500).json({
+                error: error.message,
+                details: error.cause || error
+            });
+        }
+    });
 });
