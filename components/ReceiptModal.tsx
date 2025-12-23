@@ -76,33 +76,6 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
             // Salva o PDF
             pdf.save(filename);
 
-            // Abre WhatsApp se houver número, com instruções
-            if (whatsappNumber) {
-                const phone = whatsappNumber.replace(/\D/g, '');
-
-                // Mensagem detalhada com VALOR explícito
-                const message = `*COMPROVANTE DE PAGAMENTO*\n\n` +
-                    `*Beneficiário:* Expansivo - Rede de Ensino (Uni. ${unitName})\n` +
-                    `*Pagador:* ${student.nome_responsavel || student.name}\n\n` +
-                    `*Aluno(a):* ${student.name}\n` +
-                    `*Matrícula:* ${student.code}\n` +
-                    `*Turma:* ${student.gradeLevel}\n\n` +
-                    `*Referência:* ${receiptData?.month}\n` +
-                    `*Valor:* R$ ${receiptData?.value.toFixed(2).replace('.', ',')}\n` +
-                    `*Status:* ${receiptData?.status === 'Pago' ? 'PAGO [OK]' : receiptData?.status}\n\n` +
-                    `_O arquivo PDF do comprovante foi baixado no seu celular. Por favor, anexe-o aqui._ 📎`;
-
-                const url = `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`;
-
-                // Alerta explicativo antes de abrir o WhatsApp
-                alert("✅ PDF Baixado!\n\n1. O WhatsApp do Financeiro abrirá agora.\n2. O recibo PDF já está no seu celular (Downloads).\n3. Clique no clipe (📎) e anexe o arquivo para enviar.");
-
-                // Timeout para garantir que o download começou
-                setTimeout(() => {
-                    window.open(url, '_blank');
-                }, 1000);
-            }
-
         } catch (error) {
             console.error("Erro ao gerar/compartilhar PDF:", error);
             alert("Erro ao processar o comprovante. Tente usar a opção 'Imprimir'.");
@@ -110,6 +83,27 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
             // Restore buttons
             buttons.forEach(b => b.style.display = '');
         }
+    };
+
+    const handleOpenWhatsApp = () => {
+        if (!whatsappNumber) return;
+
+        const phone = whatsappNumber.replace(/\D/g, '');
+
+        // Mensagem detalhada com VALOR explícito
+        const message = `*COMPROVANTE DE PAGAMENTO*\n\n` +
+            `*Beneficiário:* Expansivo - Rede de Ensino (Uni. ${unitName})\n` +
+            `*Pagador:* ${student.nome_responsavel || student.name}\n\n` +
+            `*Aluno(a):* ${student.name}\n` +
+            `*Matrícula:* ${student.code}\n` +
+            `*Turma:* ${student.gradeLevel}\n\n` +
+            `*Referência:* ${receiptData?.month}\n` +
+            `*Valor:* R$ ${receiptData?.value.toFixed(2).replace('.', ',')}\n` +
+            `*Status:* ${receiptData?.status === 'Pago' ? 'PAGO [OK]' : receiptData?.status}\n\n` +
+            `_Olá, estou enviando o comprovante de pagamento._`;
+
+        const url = `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
     };
 
     return (
@@ -219,30 +213,39 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
 
                 {/* Footer Actions (Hidden on Print) */}
                 <div className="mt-8 space-y-3 no-print">
-                    {/* WhatsApp Button - Only shows if whatsappNumber is provided */}
-                    {whatsappNumber && (
-                        <Button onClick={handleShare} className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl shadow-lg flex items-center justify-center gap-2 mb-2">
-                            <span className="text-lg">📱</span> Enviar para Financeiro
-                        </Button>
-                    )}
+                    {/* Footer Actions (Hidden on Print) */}
+                    <div className="mt-8 space-y-3 no-print">
 
-                    <div className="grid grid-cols-2 gap-3">
-                        <Button onClick={() => window.print()} variant="outline" className="w-full flex items-center justify-center gap-2">
-                            🖨️ Imprimir
-                        </Button>
-                        <Button onClick={handleShare} variant="outline" className="w-full flex items-center justify-center gap-2">
-                            💾 Baixar PDF
+                        {/* WhatsApp Button */}
+                        {whatsappNumber && (
+                            <div className="space-y-2 mb-4">
+                                <Button onClick={handleOpenWhatsApp} className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl shadow-lg flex items-center justify-center gap-2">
+                                    <span className="text-xl font-bold">whatsapp</span> {/* Usando texto por enquanto ou ícone se disponível */}
+                                    <span className="font-bold">Falar com Financeiro</span>
+                                </Button>
+                                <p className="text-xs text-center text-gray-500 px-4">
+                                    💡 Dica: Baixe o PDF abaixo e anexe na conversa para agilizar o atendimento.
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <Button onClick={() => window.print()} variant="outline" className="w-full flex items-center justify-center gap-2">
+                                🖨️ Imprimir
+                            </Button>
+                            <Button onClick={handleShare} variant="outline" className="w-full flex items-center justify-center gap-2">
+                                💾 Baixar PDF
+                            </Button>
+                        </div>
+
+                        <Button onClick={onClose} className="w-full bg-gray-900 hover:bg-black text-white py-3 rounded-xl shadow-lg">
+                            Fechar Comprovante
                         </Button>
                     </div>
 
-                    <Button onClick={onClose} className="w-full bg-gray-900 hover:bg-black text-white py-3 rounded-xl shadow-lg">
-                        Fechar Comprovante
-                    </Button>
+                    {/* Decorative jagged edge bottom (CSS) */}
+                    <div className="absolute bottom-0 left-0 w-full h-4 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMCAxMCIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+PHBhdGggZD0iTTAgMTBMMTAgMEwyMCAxMFoiIGZpbGw9IndoaXRlIi8+PC9zdmc+')] opacity-0"></div>
                 </div>
-
-                {/* Decorative jagged edge bottom (CSS) */}
-                <div className="absolute bottom-0 left-0 w-full h-4 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMCAxMCIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+PHBhdGggZD0iTTAgMTBMMTAgMEwyMCAxMFoiIGZpbGw9IndoaXRlIi8+PC9zdmc+')] opacity-0"></div>
             </div>
-        </div>
-    );
+            );
 };
