@@ -172,6 +172,7 @@ export interface UnitContact {
   id: string;
   name: string;
   phoneNumber: string; // Formato com DDD (ex: 5584999999999)
+  email?: string; // Novo: Email para contato
   role: ContactRole;
   unit: SchoolUnit;
 }
@@ -253,6 +254,7 @@ export interface Student {
   documentos_entregues?: string[];
   historico_escolar_2025?: string;
   gradeLevelSigla?: string; // New field to preserve original PDF sigla
+  isScholarship?: boolean; // Indicates if the student is exempt from monthly fees
 }
 
 export interface Teacher {

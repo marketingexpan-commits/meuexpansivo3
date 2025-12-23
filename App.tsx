@@ -465,6 +465,11 @@ const App: React.FC = () => {
   };
 
   const handleGenerateIndividualFees = async (student: Student) => {
+    if (student.isScholarship) {
+      alert(`O aluno ${student.name} está marcado como BOLSISTA e está isento de mensalidades. Nenhuma cobrança foi gerada.`);
+      return;
+    }
+
     if (!student.valor_mensalidade || student.valor_mensalidade <= 0) {
       alert(`Erro: O aluno ${student.name} não possui valor de mensalidade definido ou é zero.`);
       return;
@@ -711,6 +716,12 @@ const App: React.FC = () => {
         const existingFee = mensalidades.find(m => m.studentId === student.id && m.month === 'Janeiro/2026');
 
         if (!existingFee) {
+          if (student.isScholarship) {
+            console.log(`Pulando aluno bolsista: ${student.name}`);
+            skippedStudents.push(`${student.name} (Bolsista)`);
+            continue;
+          }
+
           if (!student.valor_mensalidade || student.valor_mensalidade <= 0) {
             skippedStudents.push(student.name);
             continue;

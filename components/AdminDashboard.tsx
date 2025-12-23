@@ -4,6 +4,7 @@ import { Admin, Student, Teacher, SchoolUnit, Subject, SchoolShift, SchoolClass,
 import { SCHOOL_UNITS_LIST, SUBJECT_LIST, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST, SCHOOL_GRADES_LIST, SCHOOL_LOGO_URL } from '../constants';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
+import { ReceiptModal } from './ReceiptModal';
 import { db } from '../firebaseConfig';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -82,11 +83,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     // STATES PARA FINANCEIRO INDIVIDUAL
     const [isFinancialModalOpen, setIsFinancialModalOpen] = useState(false);
     const [selectedStudentForFinancial, setSelectedStudentForFinancial] = useState<Student | null>(null);
+    const [selectedReceiptForModal, setSelectedReceiptForModal] = useState<Mensalidade | null>(null); // State for Receipt Modal
 
     const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
     const [sName, setSName] = useState('');
     const [sResponsavel, setSResponsavel] = useState(''); // Novo Campo
-    const [sValorMensalidade, setSValorMensalidade] = useState(''); // Novo Campo Valor
+    const [sValorMensalidade, setSValorMensalidade] = useState('');
+    const [sScholarship, setSScholarship] = useState(false); // Novo Campo Valor
     const [sEmail, setSEmail] = useState('');
     const [sPhone, setSPhone] = useState('');
     const [sCode, setSCode] = useState('');
@@ -562,6 +565,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setSPass(s.password);
         setSMetodoPagamento(s.metodo_pagamento || 'Interno');
         setSValorMensalidade(s.valor_mensalidade ? s.valor_mensalidade.toString() : '');
+        setSScholarship(s.isScholarship || false);
 
 
 
@@ -577,6 +581,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setSCode('');
         setSPass('');
         setSValorMensalidade('');
+        setSScholarship(false);
 
 
     };
@@ -598,6 +603,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
             metodo_pagamento: sMetodoPagamento,
             valor_mensalidade: sValorMensalidade ? parseFloat(sValorMensalidade.replace(',', '.')) : 0,
+            isScholarship: sScholarship,
 
         };
 
@@ -832,7 +838,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <div><label className="text-sm font-medium">Série</label><select value={sGrade} onChange={e => setSGrade(e.target.value)} className="w-full p-2 border rounded">{SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}</select></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">Turma</label><select value={sClass} onChange={e => setSClass(e.target.value as SchoolClass)} className="w-full p-2 border rounded">{SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}</select></div><div><label className="text-sm font-medium">Turno</label><select value={sShift} onChange={e => setSShift(e.target.value as SchoolShift)} className="w-full p-2 border rounded">{SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{s}</option>)}</select></div></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">Unidade</label>{isGeneralAdmin ? (<select value={sUnit} onChange={e => setSUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}</div><div><label className="text-sm font-medium text-blue-700 font-bold">Método Pagamento</label><select value={sMetodoPagamento} onChange={e => setSMetodoPagamento(e.target.value as 'Isaac' | 'Interno')} className="w-full p-2 border-2 border-blue-200 rounded font-semibold text-blue-900 focus:border-blue-500"><option value="Interno">Sistema Interno</option><option value="Isaac">Parceiro Isaac</option></select></div></div>
 
                         <div><label className="text-sm font-medium">Responsável Financeiro</label><input type="text" value={sResponsavel} onChange={e => setSResponsavel(e.target.value)} className="w-full p-2 border rounded" placeholder="Nome do responsável financeiro" /></div>
-                        <div><label className="text-sm font-medium font-bold text-green-700">Valor da Mensalidade (R$)</label><input type="number" step="0.01" value={sValorMensalidade} onChange={e => setSValorMensalidade(e.target.value)} className="w-full p-2 border rounded font-bold text-green-800" placeholder="0.00" /></div>
+
+                        <div className="flex items-center gap-3 bg-yellow-50 p-3 rounded border border-yellow-200">
+                            <input
+                                type="checkbox"
+                                id="scholarship-switch"
+                                checked={sScholarship}
+                                onChange={e => setSScholarship(e.target.checked)}
+                                className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
+                            />
+                            <div className="flex flex-col">
+                                <label htmlFor="scholarship-switch" className="text-sm font-bold text-gray-800 cursor-pointer">
+                                    Aluno Bolsista 🎓
+                                </label>
+                                <span className="text-xs text-gray-500">Se marcado, o aluno será isento da geração automática de mensalidades.</span>
+                            </div>
+                        </div>
+
+                        <div><label className="text-sm font-medium font-bold text-green-700">Valor da Mensalidade (R$)</label><input type="number" step="0.01" value={sValorMensalidade} onChange={e => setSValorMensalidade(e.target.value)} className="w-full p-2 border rounded font-bold text-green-800" placeholder="0.00" disabled={sScholarship} /></div>
                         <div className="grid grid-cols-2 gap-2">
                             <div><label className="text-sm font-medium">E-mail</label><input type="email" value={sEmail} onChange={e => setSEmail(e.target.value)} className="w-full p-2 border rounded" placeholder="email@exemplo.com" /></div>
                             <div><label className="text-sm font-medium">Telefone</label><input type="tel" value={sPhone} onChange={e => { if (/^[0-9]*$/.test(e.target.value)) setSPhone(e.target.value); }} className="w-full p-2 border rounded" placeholder="Apenas números" maxLength={15} /></div>
@@ -1537,16 +1560,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                                     {rec.month}
                                                                 </td>
                                                                 <td className="px-6 py-4 text-center">
-                                                                    {rec.receiptUrl ? (
-                                                                        <a
-                                                                            href={rec.receiptUrl}
-                                                                            target="_blank"
-                                                                            rel="noopener noreferrer"
+                                                                    {rec.status === 'Pago' || rec.receiptUrl ? (
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                if (s) {
+                                                                                    setSelectedStudentForFinancial(s);
+                                                                                    setSelectedReceiptForModal(rec as Mensalidade);
+                                                                                } else {
+                                                                                    alert("Erro: Aluno não encontrado para este recibo.");
+                                                                                }
+                                                                            }}
                                                                             title="Ver Comprovante Oficial"
                                                                             className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-800 transition-colors"
                                                                         >
                                                                             📄
-                                                                        </a>
+                                                                        </button>
                                                                     ) : (
                                                                         <span className="text-gray-300 text-xs" title="Sem recibo disponível">-</span>
                                                                     )}
@@ -2034,6 +2062,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
                     </div>
                 </div>
+            )}
+            {/* MODAL DE RECIBO UNIFICADO */}
+            {selectedStudentForFinancial && selectedReceiptForModal && (
+                <ReceiptModal
+                    isOpen={!!selectedReceiptForModal}
+                    student={selectedStudentForFinancial}
+                    receiptData={selectedReceiptForModal}
+                    whatsappNumber={unitContacts?.find(c => c.unit === selectedStudentForFinancial.unit && c.role === ContactRole.FINANCIAL)?.phoneNumber}
+                    onClose={() => setSelectedReceiptForModal(null)}
+                />
             )}
         </div>
     );

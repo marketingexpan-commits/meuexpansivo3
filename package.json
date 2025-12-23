@@ -13,6 +13,7 @@
     "@google/generative-ai": "^0.24.1",
     "@mercadopago/sdk-react": "^1.0.6",
     "firebase": "^12.6.0",
+    "html2canvas": "^1.4.1",
     "jspdf": "^3.0.4",
     "jspdf-autotable": "^5.0.2",
     "react": "^19.2.1",

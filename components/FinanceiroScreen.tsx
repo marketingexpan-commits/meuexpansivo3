@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react'; // Refresh
 import { Student, Mensalidade, EventoFinanceiro, UnitContact, ContactRole } from '../types';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
+import { ReceiptModal } from './ReceiptModal'; // Import ReceiptModal
 import { initMercadoPago, Payment } from '@mercadopago/sdk-react';
 // NOTE: Replace with your actual Firebase Functions URL or configure Vite proxy
 const MP_REFERENCE_URL = 'https://us-central1-meu-expansivo-app.cloudfunctions.net/createMercadoPagoPreference';
@@ -522,9 +523,18 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                             </div>
                                             {/* INFO LOCK MESSAGE */}
                                             {!historyMode && (
-                                                <div className="mt-3 text-xs text-orange-700 bg-orange-50 border border-orange-100 p-2 rounded flex items-center gap-2">
-                                                    <span>🔒</span>
-                                                    <span>Pagamento Cronológico: Você deve quitar a mensalidade mais antiga antes de avançar para as próximas.</span>
+                                                <div className="flex flex-col gap-2 mt-3">
+                                                    {student.isScholarship && (
+                                                        <div className="text-xs text-blue-800 bg-blue-50 border border-blue-200 p-2 rounded flex items-center gap-2">
+                                                            <span className="text-lg">🎓</span>
+                                                            <span className="font-bold">Aluno Bolsista:</span>
+                                                            <span>Isento de pagamento de mensalidades regulares.</span>
+                                                        </div>
+                                                    )}
+                                                    <div className="text-xs text-orange-700 bg-orange-50 border border-orange-100 p-2 rounded flex items-center gap-2">
+                                                        <span>🔒</span>
+                                                        <span>Pagamento Cronológico: Você deve quitar a mensalidade mais antiga antes de avançar para as próximas.</span>
+                                                    </div>
                                                 </div>
                                             )}
                                         </td>
@@ -1090,148 +1100,16 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                     </div>
                 )
             }
-            {
-                receiptData && (
-                    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-                        {/* CSS for Printing */}
-                        <style>
-                            {`
-                                @media print {
-                                    body * {
-                                        visibility: hidden;
-                                    }
-                                    #receipt-modal-content, #receipt-modal-content * {
-                                        visibility: visible;
-                                    }
-                                    #receipt-modal-content {
-                                        position: fixed;
-                                        left: 0;
-                                        top: 0;
-                                        width: 100%;
-                                        height: 100%;
-                                        margin: 0;
-                                        padding: 20px;
-                                        background: white;
-                                        border: none;
-                                        box-shadow: none;
-                                        z-index: 9999;
-                                    }
-                                    .no-print {
-                                        display: none !important;
-                                    }
-                                }
-                            `}
-                        </style>
-
-                        {/* Local Data Map (Duplicate from Dashboard for safety) */}
-                        {(() => {
-                            const UNIT_CNPJ_MAP: Record<string, string> = {
-                                'Zona Norte': '08.693.673/0001-95',
-                                'Boa Sorte': '08.693.673/0002-76',
-                                'Extremoz': '08.693.673/0003-57',
-                                'Quintas': '08.693.673/0004-38'
-                            };
-                            const unitName = student.unit || 'Matriz';
-                            const cnpj = UNIT_CNPJ_MAP[unitName] || '08.693.673/0001-95';
-
-                            return (
-                                <div id="receipt-modal-content" className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl animate-scale-in relative border border-gray-100">
-
-                                    {/* Receipt Header */}
-                                    <div className="text-center border-b-2 border-dashed border-gray-200 pb-6 mb-6">
-                                        <div className="mb-4 flex justify-center">
-                                            <SchoolLogo variant="print" />
-                                        </div>
-                                        <h3 className="text-xl font-black text-gray-900 uppercase tracking-widest">Comprovante</h3>
-                                        <p className="text-xs text-gray-500 font-mono mt-1">{new Date(receiptData.paymentDate || new Date()).toLocaleString()}</p>
-                                    </div>
-
-                                    {/* Receipt Details */}
-                                    <div className="space-y-4 text-sm font-mono text-gray-700">
-
-                                        {/* Unit & Beneficiary */}
-                                        <div className="flex justify-between items-end border-b border-gray-100 pb-2">
-                                            <span className="text-gray-500 text-xs uppercase">Beneficiário</span>
-                                            <div className="text-right">
-                                                <span className="font-bold text-gray-900 block">Expansivo - Rede de Ensino</span>
-                                                <span className="text-xs text-gray-600 uppercase block">Uni. {unitName}</span>
-                                                <span className="text-[10px] text-gray-400 block font-sans">CNPJ: {cnpj}</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Payer Info */}
-                                        <div className="flex justify-between items-end border-b border-gray-100 pb-2">
-                                            <span className="text-gray-500 text-xs uppercase">Pagador</span>
-                                            <span className="font-bold text-gray-900 text-right w-40 truncate">{student.nome_responsavel || student.name}</span>
-                                        </div>
-
-                                        {/* Student Detailed Info */}
-                                        <div className="py-2 bg-gray-50 rounded-lg px-3 space-y-1">
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-500 text-xs">Aluno(a):</span>
-                                                <span className="font-bold text-gray-900 text-right">{student.name}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-500 text-xs">Matrícula:</span>
-                                                <span className="font-mono text-gray-900">{student.code}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-500 text-xs">Turma/Série:</span>
-                                                <span className="text-gray-900">{student.gradeLevel}</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Transaction Info */}
-                                        <div className="space-y-2 pt-2">
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-500">Referência:</span>
-                                                <span className="font-bold text-gray-900">{receiptData.month}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-500">Método:</span>
-                                                <span className="font-bold text-gray-900">{getPaymentMethodLabel(receiptData.paymentMethod)}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-500">Status:</span>
-                                                <span className={`font-bold uppercase ${receiptData.status === 'Pago' ? 'text-green-700' : 'text-gray-500'}`}>
-                                                    {receiptData.status === 'Pago' ? 'PAGO ✅' : receiptData.status}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Total Value */}
-                                        <div className="my-4 border-t-2 border-dashed border-gray-300 pt-4">
-                                            <div className="flex justify-between items-center text-lg">
-                                                <span className="font-black text-gray-900 uppercase">Valor Total</span>
-                                                <span className="font-black text-gray-900">R$ {receiptData.value.toFixed(2).replace('.', ',')}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Footer Actions (Hidden on Print) */}
-                                    <div className="mt-8 space-y-3 no-print">
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <Button onClick={() => window.print()} variant="outline" className="w-full flex items-center justify-center gap-2">
-                                                🖨️ Imprimir
-                                            </Button>
-                                            <Button onClick={() => window.print()} variant="outline" className="w-full flex items-center justify-center gap-2">
-                                                💾 Salvar PDF
-                                            </Button>
-                                        </div>
-
-                                        <Button onClick={() => setReceiptData(null)} className="w-full bg-gray-900 hover:bg-black text-white py-3 rounded-xl shadow-lg">
-                                            Fechar Comprovante
-                                        </Button>
-                                    </div>
-
-                                    {/* Decorative jagged edge bottom (CSS) */}
-                                    <div className="absolute bottom-0 left-0 w-full h-4 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMCAxMCIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+PHBhdGggZD0iTTAgMTBMMTAgMEwyMCAxMFoiIGZpbGw9IndoaXRlIi8+PC9zdmc+')] opacity-0"></div>
-                                </div>
-                            );
-                        })()}
-                    </div>
-                )
-            }
-        </div >
+            {/* NOVO: Componente ReceiptModal compartilhado */}
+            {receiptData && (
+                <ReceiptModal
+                    isOpen={!!receiptData}
+                    student={student}
+                    receiptData={receiptData}
+                    whatsappNumber={unitContacts.find(c => c.unit === student.unit && c.role === ContactRole.FINANCIAL)?.phoneNumber}
+                    onClose={() => setReceiptData(null)}
+                />
+            )}
+        </div>
     );
 };
