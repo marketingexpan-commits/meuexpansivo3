@@ -1086,7 +1086,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                 <Button onClick={handleCloseModal} className="w-full">Fechar</Button>
                                             </>
                                         )}
-                                        {paymentResult.status === 'pending' && paymentResult.point_of_interaction?.transaction_data?.qr_code && (
+                                        {paymentResult.status === 'pending' && paymentResult.payment_method_id === 'pix' && paymentResult.point_of_interaction?.transaction_data?.qr_code && (
                                             <>
                                                 <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto text-3xl">💠</div>
                                                 <h3 className="text-xl font-bold text-blue-900">Pagamento via Pix</h3>
@@ -1157,6 +1157,16 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                 </div>
                                             </>
                                         )}
+                                        {/* CREDIT CARD: IN PROCESS / REVIEW */}
+                                        {(paymentResult.status === 'in_process' || (paymentResult.status === 'pending' && paymentResult.payment_method_id !== 'pix' && paymentResult.payment_method_id !== 'bolbradesco')) && (
+                                            <div className="text-center py-6">
+                                                <div className="w-16 h-16 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mx-auto text-3xl mb-4">⏳</div>
+                                                <h3 className="text-xl font-bold text-yellow-800">Pagamento em Análise</h3>
+                                                <p className="text-gray-600 mb-4">Estamos processando seu pagamento. Isso pode levar alguns minutos.</p>
+                                                <Button onClick={() => setPaymentResult(null)} variant="secondary" className="w-full">Voltar</Button>
+                                            </div>
+                                        )}
+
                                         {/* BOLETO UI: Check for pending/in_process status AND boleto payment method or external resource URL */}
                                         {(paymentResult.status === 'pending' || paymentResult.status === 'in_process') && paymentResult.payment_method_id === 'bolbradesco' && (
                                             <>
