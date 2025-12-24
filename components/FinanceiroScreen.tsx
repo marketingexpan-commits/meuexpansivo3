@@ -229,28 +229,15 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             setEmailInput('');
             setIsCpfModalOpen(true);
         } else if (selectedMethod === 'boleto') {
-            // Check for Missing Data (CPF or Address)
-            const hasCpf = student.cpf_responsavel && student.cpf_responsavel.length >= 11;
-            const hasAddress = student.cep && student.cep.replace(/\D/g, '').length === 8;
-
-            if (!hasCpf || !hasAddress) {
-                // Pre-fill what we have
-                if (hasCpf) setTempCpf(student.cpf_responsavel!);
-                if (hasAddress) setTempCep(student.cep!);
-
-                // Allow user to fill the rest
-                setIsMissingDataModalOpen(true);
-            } else {
-                // Check for Minimum Amount for Boleto (Mercado Pago Requirement ~ R$ 4-5)
-                const amountToCheck = calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento');
-                if (amountToCheck < 5) {
-                    alert("O valor mínimo para pagamentos via Boleto é de R$ 5,00. Para valores menores, utilize o Pix.");
-                    return;
-                }
-
-                // All good, open payment
-                setIsModalOpen(true);
+            // Check for Minimum Amount for Boleto (Mercado Pago Requirement ~ R$ 4-5)
+            const amountToCheck = calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento');
+            if (amountToCheck < 5) {
+                alert("O valor mínimo para pagamentos via Boleto é de R$ 5,00. Por favor, selecione mais itens ou utilize o Pix (sem valor mínimo).");
+                return;
             }
+
+            // Proceed directly to Payment Summary/Brick (Let Brick handle missing data)
+            setIsModalOpen(true);
         } else {
             setIsModalOpen(true);
         }
