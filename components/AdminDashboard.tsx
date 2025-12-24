@@ -152,6 +152,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [contactName, setContactName] = useState('');
     const [contactPhone, setContactPhone] = useState('+55');
     const [contactUnit, setContactUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_1);
+    const [contactSegment, setContactSegment] = useState<'infantil' | 'fundamental_medio' | 'all'>('all'); // Novo state
 
     // --- ESTADOS DE LOGS/STATS ---
     const [dailyLoginsCount, setDailyLoginsCount] = useState<number | null>(null);
@@ -706,7 +707,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             name: contactName,
             phoneNumber: contactPhone,
             role: role,
-            unit: contactUnit
+            unit: contactUnit,
+            segment: role === ContactRole.COORDINATOR ? contactSegment : undefined // Salva apenas se for Coordenação
         };
 
         if (editingContactId && onEditUnitContact) {
@@ -720,6 +722,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         setContactName('');
         setContactPhone('+55');
+        setContactSegment('all');
     };
 
     const startEditingContact = (contact: UnitContact) => {
@@ -727,12 +730,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setContactName(contact.name);
         setContactPhone(contact.phoneNumber);
         setContactUnit(contact.unit);
+        setContactSegment(contact.segment || 'all');
     };
 
     const cancelEditingContact = () => {
         setEditingContactId(null);
         setContactName('');
         setContactPhone('+55');
+        setContactSegment('all');
     };
 
     const EyeIcon = () => (<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>);
@@ -1199,6 +1204,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 <select value={contactUnit} onChange={e => setContactUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>
                                             ) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}
                                         </div>
+
+                                        {/* NOVO: Seletor de Segmento (Apenas relevante para Coordenação) */}
+                                        <div>
+                                            <label className="text-sm font-medium">Segmento (Para Coordenação)</label>
+                                            <select
+                                                value={contactSegment}
+                                                onChange={e => setContactSegment(e.target.value as any)}
+                                                className="w-full p-2 border rounded"
+                                            >
+                                                <option value="all">Geral / Ambos</option>
+                                                <option value="infantil">Educação Infantil</option>
+                                                <option value="fundamental_medio">Ens. Fundamental/Médio</option>
+                                            </select>
+                                        </div>
                                         <div className="pt-2 grid grid-cols-2 gap-3">
                                             <Button onClick={() => handleSaveContact(ContactRole.DIRECTOR)} className="w-full bg-blue-950 hover:bg-blue-900">
                                                 Salvar Diretor
@@ -1260,7 +1279,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             <tbody>
                                                 {coordinators.map(c => (
                                                     <tr key={c.id} className="border-b last:border-0 hover:bg-gray-50">
-                                                        <td className="p-3 font-medium">{c.name}</td>
+                                                        <td className="p-3 font-medium">
+                                                            {c.name}
+                                                            {c.segment && c.segment !== 'all' && (
+                                                                <span className="block text-[10px] text-gray-500 uppercase bg-gray-100 px-1 rounded w-fit mt-1">
+                                                                    {c.segment === 'infantil' ? 'Infantil' : 'Fund/Médio'}
+                                                                </span>
+                                                            )}
+                                                        </td>
                                                         <td className="p-3 font-mono text-gray-600">{c.phoneNumber}</td>
                                                         <td className="p-3"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{c.unit}</span></td>
                                                         <td className="p-3 text-right flex justify-end gap-2">

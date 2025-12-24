@@ -840,7 +840,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                     {currentView === 'messages' && (
                         <div className="animate-fade-in-up">
-                            <MessageBox student={student} onSendMessage={onSendMessage} unitContacts={unitContacts || []} />
+                            <MessageBox student={student} onSendMessage={onSendMessage} unitContacts={unitContacts || []} teachers={teachers} />
                         </div>
                     )}
 

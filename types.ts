@@ -177,6 +177,7 @@ export interface UnitContact {
   email?: string; // Novo: Email para contato
   role: ContactRole;
   unit: SchoolUnit;
+  segment?: 'infantil' | 'fundamental_medio' | 'all'; // Novo: Segmento do coordenador
 }
 // --- FIM ---
 

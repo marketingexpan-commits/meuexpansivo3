@@ -1,15 +1,22 @@
 import React, { useState } from 'react';
-import { Student, SchoolMessage, MessageRecipient, MessageType, UnitContact, ContactRole } from '../types';
+import { Student, SchoolMessage, MessageRecipient, MessageType, UnitContact, ContactRole, Teacher } from '../types';
 import { Button } from './Button';
 
 import { UNITS_DATA, DEFAULT_UNIT_DATA } from '../src/constants';
 
-export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: Omit<SchoolMessage, 'id'>) => Promise<void>; unitContacts: UnitContact[]; }> = ({ student, onSendMessage, unitContacts }) => {
+export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: Omit<SchoolMessage, 'id'>) => Promise<void>; unitContacts: UnitContact[]; teachers?: Teacher[]; }> = ({ student, onSendMessage, unitContacts, teachers = [] }) => {
   const [recipient, setRecipient] = useState<MessageRecipient>(MessageRecipient.COORDINATION);
   const [messageType, setMessageType] = useState<MessageType>(MessageType.SUGGESTION);
   const [content, setContent] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isSent, setIsSent] = useState(false);
+
+  // Novo State para Coordenador Específico
+  const [selectedCoordinatorId, setSelectedCoordinatorId] = useState<string>('');
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
+
+  const coordinators = unitContacts.filter(c => c.unit === student.unit && c.role === ContactRole.COORDINATOR);
+  const unitTeachers = teachers.filter(t => t.unit === student.unit);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,8 +32,16 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
 
     if (recipient === MessageRecipient.DIRECTION || recipient === MessageRecipient.COORDINATION) {
       const targetRole = recipient === MessageRecipient.DIRECTION ? ContactRole.DIRECTOR : ContactRole.COORDINATOR;
-      // Tenta encontrar contato específico
-      const contact = unitContacts.find(c => c.unit === student.unit && c.role === targetRole);
+      // Tenta encontrar contato específico (prioriza seleção se for coordenação)
+      let contact;
+
+      if (recipient === MessageRecipient.COORDINATION && selectedCoordinatorId) {
+        contact = unitContacts.find(c => c.id === selectedCoordinatorId);
+      }
+
+      if (!contact) {
+        contact = unitContacts.find(c => c.unit === student.unit && c.role === targetRole);
+      }
 
       // Fallback para dados da unidade
       const unitInfo = UNITS_DATA[student.unit] || DEFAULT_UNIT_DATA;
@@ -48,6 +63,15 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
 
     setIsSending(true);
     try {
+      // Modifica o conteúdo se for para um professor específico
+      let finalContent = content;
+      if (recipient === MessageRecipient.TEACHERS && selectedTeacherId) {
+        const teacher = unitTeachers.find(t => t.id === selectedTeacherId);
+        if (teacher) {
+          finalContent = `Para o Professor(a): ${teacher.name} - ${content}`;
+        }
+      }
+
       // O envio ao banco ocorre em paralelo/background relativo à janela aberta
       await onSendMessage({
         studentId: student.id,
@@ -55,7 +79,7 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
         unit: student.unit,
         recipient,
         messageType,
-        content,
+        content: finalContent,
         timestamp: new Date().toISOString(),
         status: 'new',
       });
@@ -63,7 +87,10 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
       setIsSent(true);
       setContent('');
       setMessageType(MessageType.SUGGESTION);
+
       setRecipient(MessageRecipient.COORDINATION);
+      setSelectedCoordinatorId(''); // Reset
+      setSelectedTeacherId('');
       setTimeout(() => setIsSent(false), 5000);
     } catch (error) {
       console.error("Erro ao enviar mensagem interna:", error);
@@ -98,6 +125,46 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
                 <select id="recipient" value={recipient} onChange={e => setRecipient(e.target.value as MessageRecipient)} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white">
                   {Object.values(MessageRecipient).map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
+
+                {/* NOVO: Dropdown Secundário para Coordenadores */}
+                {recipient === MessageRecipient.COORDINATION && coordinators.length > 0 && (
+                  <div className="mt-2 animate-fade-in">
+                    <label htmlFor="coordSelect" className="block text-xs font-bold text-gray-500 mb-1 uppercase">Selecione o Coordenador:</label>
+                    <select
+                      id="coordSelect"
+                      value={selectedCoordinatorId}
+                      onChange={e => setSelectedCoordinatorId(e.target.value)}
+                      className="w-full p-2 border border-blue-200 rounded-md bg-blue-50 text-blue-900 text-sm"
+                      required
+                    >
+                      <option value="">-- Selecione --</option>
+                      {coordinators.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} {c.segment && c.segment !== 'all' ? `(${c.segment === 'infantil' ? 'Ed. Infantil' : 'Fund./Médio'})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Dropdown para Professores */}
+                {recipient === MessageRecipient.TEACHERS && unitTeachers.length > 0 && (
+                  <div className="mt-2 animate-fade-in">
+                    <label htmlFor="teacherSelect" className="block text-xs font-bold text-gray-500 mb-1 uppercase">Selecione o Professor:</label>
+                    <select
+                      id="teacherSelect"
+                      value={selectedTeacherId}
+                      onChange={e => setSelectedTeacherId(e.target.value)}
+                      className="w-full p-2 border border-blue-200 rounded-md bg-blue-50 text-blue-900 text-sm"
+                      required
+                    >
+                      <option value="">-- Selecione --</option>
+                      {unitTeachers.map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 {(recipient === MessageRecipient.DIRECTION || recipient === MessageRecipient.COORDINATION) && (
                   <p className="text-xs text-blue-600 mt-1 italic flex items-center">
                     <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.017-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" /></svg>
