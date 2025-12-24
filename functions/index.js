@@ -12,6 +12,7 @@ const MP_ACCESS_TOKEN = 'APP_USR-4544114605136589-122217-b74f4f0e9bb11f6ea971a59
 const MP_PUBLIC_KEY = 'APP_USR-e0a54aff-c482-451f-882c-e41a50bcde7d';
 
 const client = new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN });
+console.log('Mercado Pago Access Token presente:', !!MP_ACCESS_TOKEN);
 
 const cors = require('cors')({ origin: true });
 
@@ -36,6 +37,7 @@ exports.createMercadoPagoPreference = functions.https.onRequest((req, res) => {
                         }
                     ],
                     external_reference: mensalidadeIds ? mensalidadeIds.toString() : `student_${studentId}`,
+                    payer: req.body.payer, // Include Payer in Preference
                     metadata: {
                         student_id: studentId,
                         mensalidade_ids: mensalidadeIds || '',
@@ -132,8 +134,29 @@ exports.processMercadoPagoPayment = functions.https.onRequest((req, res) => {
                 idempotencyKey: req.headers['x-idempotency-key'] || undefined
             };
 
+            // Ensure Payload is standardized to Snake Case (API Requirement)
+            const cleanPaymentData = {
+                ...paymentData,
+                payer: {
+                    email: paymentData.payer.email,
+                    first_name: paymentData.payer.first_name || paymentData.payer.firstName,
+                    last_name: paymentData.payer.last_name || paymentData.payer.lastName,
+                    identification: paymentData.payer.identification,
+                    address: paymentData.payer.address
+                        ? {
+                            zip_code: paymentData.payer.address.zip_code || paymentData.payer.address.zipCode,
+                            federal_unit: paymentData.payer.address.federal_unit || paymentData.payer.address.federalUnit,
+                            street_name: paymentData.payer.address.street_name || paymentData.payer.address.streetName,
+                            street_number: paymentData.payer.address.street_number || paymentData.payer.address.streetNumber,
+                            neighborhood: paymentData.payer.address.neighborhood,
+                            city: paymentData.payer.address.city
+                        }
+                        : undefined
+                }
+            };
+
             const result = await payment.create({
-                body: paymentData,
+                body: cleanPaymentData,
                 requestOptions
             });
 

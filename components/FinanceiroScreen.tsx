@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react'; // Refresh
+import React, { useState, useEffect, useMemo } from 'react'; // Final Update: Boleto Fixed & UI Restored
 import { Student, Mensalidade, EventoFinanceiro, UnitContact, ContactRole } from '../types';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 import { ReceiptModal } from './ReceiptModal'; // Import ReceiptModal
 import { initMercadoPago, Payment } from '@mercadopago/sdk-react';
+import { ALLOW_MOCK_LOGIN } from '../constants';
+
 // NOTE: Replace with your actual Firebase Functions URL or configure Vite proxy
 const MP_REFERENCE_URL = 'https://us-central1-meu-expansivo-app.cloudfunctions.net/createMercadoPagoPreference';
 
@@ -18,12 +20,16 @@ interface FinanceiroScreenProps {
     onPaymentSuccess?: () => void;
 }
 
-type PaymentMethod = 'pix' | 'debito' | 'credito' | 'boleto';
+type PaymentMethod = 'pix' | 'debito' | 'credito' | 'boleto'; // Import constants
+
+// ...
 
 export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, mensalidades, eventos = [], unitContacts = [], onPaymentSuccess }) => {
     // Lógica de Filtro
-    // Lógica de Filtro
-    const studentMensalidades = useMemo(() => mensalidades.filter(m => m.studentId === student.id), [mensalidades, student.id]);
+    const studentMensalidades = useMemo(() => {
+        return mensalidades.filter(m => m.studentId === student.id);
+    }, [mensalidades, student.id]);
+
     const studentEventos = useMemo(() => eventos.filter(e => e.studentId === student.id), [eventos, student.id]);
     const isIsaac = student.metodo_pagamento === 'Isaac';
 
@@ -45,6 +51,19 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
     const [isBrickReady, setIsBrickReady] = useState(false);
     const [paymentResult, setPaymentResult] = useState<any>(null); // Store payment result
     const [receiptData, setReceiptData] = useState<Mensalidade | null>(null); // State for internal Receipt Modal
+
+    // STATE: CONTINGENCY FORM (BOLETO)
+    const [isMissingDataModalOpen, setIsMissingDataModalOpen] = useState(false);
+    const [tempCpf, setTempCpf] = useState('');
+    const [tempCep, setTempCep] = useState('');
+    const [tempStreet, setTempStreet] = useState('');
+    const [tempNumber, setTempNumber] = useState('');
+    const [tempNeighborhood, setTempNeighborhood] = useState('');
+    const [tempCity, setTempCity] = useState('');
+    const [tempState, setTempState] = useState('');
+
+    // State to hold the final Payer object for the Brick initialization
+    const [transactionPayer, setTransactionPayer] = useState<any>(null);
 
     useEffect(() => {
         if (preferenceId && isModalOpen) {
@@ -209,6 +228,29 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             setPhoneInput('');
             setEmailInput('');
             setIsCpfModalOpen(true);
+        } else if (selectedMethod === 'boleto') {
+            // Check for Missing Data (CPF or Address)
+            const hasCpf = student.cpf_responsavel && student.cpf_responsavel.length >= 11;
+            const hasAddress = student.cep && student.cep.replace(/\D/g, '').length === 8;
+
+            if (!hasCpf || !hasAddress) {
+                // Pre-fill what we have
+                if (hasCpf) setTempCpf(student.cpf_responsavel!);
+                if (hasAddress) setTempCep(student.cep!);
+
+                // Allow user to fill the rest
+                setIsMissingDataModalOpen(true);
+            } else {
+                // Check for Minimum Amount for Boleto (Mercado Pago Requirement ~ R$ 4-5)
+                const amountToCheck = calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento');
+                if (amountToCheck < 5) {
+                    alert("O valor mínimo para pagamentos via Boleto é de R$ 5,00. Para valores menores, utilize o Pix.");
+                    return;
+                }
+
+                // All good, open payment
+                setIsModalOpen(true);
+            }
         } else {
             setIsModalOpen(true);
         }
@@ -262,9 +304,63 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
         );
     };
 
+    const calculateFinancials = (mensalidade: Mensalidade) => {
+        // 1. Check if Paid or Scholarship
+        if (mensalidade.status === 'Pago' || student.isScholarship) {
+            return {
+                isLate: false,
+                originalValue: mensalidade.value,
+                fine: 0,
+                interest: 0,
+                daysLate: 0,
+                total: mensalidade.value
+            };
+        }
+
+        // 2. Determine Fixed Due Date (10th of the month)
+        // Ensure we parse the date correctly regardless of timezone issues by treating it as YYYY-MM-DD
+        const [yearStr, monthStr] = mensalidade.dueDate.toString().split('-');
+        // If format is not YYYY-MM-DD, fallback (though types suggest string or date)
+        // Assuming ISO string or simple date string. safely handle Date object.
+        const originalDate = new Date(mensalidade.dueDate);
+
+        // Construct the strict due date: 10th of the specific month
+        // Use local time construction to match user expectation of "Day 10"
+        const strictDueDate = new Date(new Date(mensalidade.dueDate).setDate(10));
+        strictDueDate.setHours(23, 59, 59, 999);
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // 3. Calc Late Days
+        let isLate = false;
+        let daysLate = 0;
+        let fine = 0;
+        let interest = 0;
+
+        if (today > strictDueDate) {
+            isLate = true;
+            const diffTime = Math.abs(today.getTime() - strictDueDate.getTime());
+            daysLate = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            // 4. Calculate Values
+            fine = mensalidade.value * 0.02; // 2%
+            interest = mensalidade.value * (0.00033 * daysLate); // 0.033% per day
+        }
+
+        return {
+            isLate,
+            originalValue: mensalidade.value,
+            fine,
+            interest,
+            daysLate,
+            total: mensalidade.value + fine + interest
+        };
+    };
+
     const totalMensalidadesValue = studentMensalidades
         .filter(m => selectedMensalidades.includes(m.id))
-        .reduce((acc, m) => acc + m.value, 0);
+        .reduce((acc, m) => acc + calculateFinancials(m).total, 0);
 
 
 
@@ -303,13 +399,20 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
     // Initialize Mercado Pago with a placeholder or env var
 
 
-    const handleCreatePayment = async (cpfOverride?: string, nameOverride?: string, phoneOverride?: string, emailOverride?: string) => {
+    const handleCreatePayment = async (cpfOverride?: string, nameOverride?: string, phoneOverride?: string, emailOverride?: string, addressOverride?: any) => {
         setIsLoadingPix(true);
         try {
             const amount = calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento');
 
             if (amount <= 0) {
                 alert("Valor inválido para pagamento.");
+                setIsLoadingPix(false);
+                return;
+            }
+
+            // Centralized Validation: Minimum Amount for Boleto
+            if (selectedMethod === 'boleto' && amount < 5) {
+                alert("O valor mínimo para pagamentos via Boleto é de R$ 5,00. Por favor, selecione mais itens ou utilize o Pix (sem valor mínimo).");
                 setIsLoadingPix(false);
                 return;
             }
@@ -321,7 +424,56 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
 
             const description = `${student.name} | ${activeTab === 'mensalidades' ? 'Mensalidades' : 'Eventos/Extras'}`;
 
-            // Call Backend Function
+            // Construct Distinct Payer Objects for API (Snake Case) and SDK (Camel Case)
+            const cleanCpf = rawCpf ? rawCpf.replace(/\D/g, '') : '';
+
+            // 1. Backend Payer (API) - Strict Snake Case
+            const backendPayer = {
+                email: rawEmail || 'email@exemplo.com',
+                first_name: rawName ? rawName.split(' ')[0] : 'Responsável',
+                last_name: rawName ? rawName.split(' ').slice(1).join(' ') : 'do Aluno',
+                identification: { type: 'CPF', number: cleanCpf },
+                ...(addressOverride ? {
+                    address: {
+                        zip_code: addressOverride.zip_code || addressOverride.zipCode,
+                        federal_unit: addressOverride.federal_unit || addressOverride.federalUnit,
+                        street_name: addressOverride.street_name || addressOverride.streetName,
+                        street_number: addressOverride.street_number || addressOverride.streetNumber,
+                        neighborhood: addressOverride.neighborhood,
+                        city: addressOverride.city
+                    }
+                } : (student.cep && student.cep.replace(/\D/g, '').length === 8 && {
+                    address: {
+                        zip_code: student.cep.replace(/\D/g, ''),
+                        federal_unit: student.endereco_uf || 'UF',
+                        street_name: student.endereco_logradouro || 'Rua',
+                        street_number: student.endereco_numero || 'S/N',
+                        neighborhood: student.endereco_bairro || 'Bairro',
+                        city: student.endereco_cidade || 'Cidade'
+                    }
+                }))
+            };
+
+            // 2. Frontend Payer (SDK) - Strict Camel Case
+            const frontendPayer = {
+                email: rawEmail || 'email@exemplo.com',
+                firstName: rawName ? rawName.split(' ')[0] : 'Responsável',
+                lastName: rawName ? rawName.split(' ').slice(1).join(' ') : 'do Aluno',
+                identification: { type: 'CPF', number: cleanCpf },
+                address: {
+                    zipCode: backendPayer.address?.zip_code || '',
+                    federalUnit: backendPayer.address?.federal_unit || '',
+                    streetName: backendPayer.address?.street_name || '',
+                    streetNumber: backendPayer.address?.street_number || '',
+                    neighborhood: backendPayer.address?.neighborhood || '',
+                    city: backendPayer.address?.city || ''
+                }
+            };
+
+            // Set for Frontend Brick usage (SDK uses CamelCase)
+            setTransactionPayer(frontendPayer);
+
+            // Call Backend Function (API uses SnakeCase)
             const response = await fetch(MP_REFERENCE_URL, {
                 method: 'POST',
                 headers: {
@@ -334,12 +486,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                     studentId: student.id,
                     mensalidadeIds: activeTab === 'mensalidades' ? selectedMensalidades : [],
                     eventIds: activeTab === 'eventos' ? selectedEventIds : [],
-                    payer: {
-                        email: rawEmail,
-                        first_name: rawName ? rawName.split(' ')[0] : 'Responsável',
-                        last_name: rawName ? rawName.split(' ').slice(1).join(' ') : '',
-                        identification: { type: 'CPF', number: rawCpf }
-                    }
+                    payer: backendPayer // Send strict snake_case to backend
                 })
             });
 
@@ -606,6 +753,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                             return displayList.length > 0 ? (
                                                 displayList.map((m) => {
                                                     const isLocked = m.id !== oldestPendingId;
+                                                    const financials = calculateFinancials(m);
                                                     return (
                                                         <tr key={m.id} className={`transition-colors block md:table-row mb-4 md:mb-0 bg-white md:bg-transparent rounded-xl border border-gray-200 md:border-0 p-4 md:p-0 shadow-sm md:shadow-none ${isLocked ? 'bg-gray-50 opacity-60' : 'hover:bg-blue-50/30'}`}>
                                                             <td className="px-6 py-2 md:py-4 block md:table-cell flex justify-between items-center md:block">
@@ -633,7 +781,21 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                                 <span className="md:hidden text-xs font-bold text-gray-500 uppercase">Valor</span>
                                                                 <div className="flex flex-col text-right md:text-left">
                                                                     <span className="text-xs text-gray-400 line-through">R$ {m.value.toFixed(2).replace('.', ',')}</span>
-                                                                    <span className="font-bold text-blue-900">R$ {calculateValue(m.value, 'mensalidade').toFixed(2).replace('.', ',')}</span>
+                                                                    {financials.isLate ? (
+                                                                        <>
+                                                                            <span className="font-bold text-red-600 block">
+                                                                                R$ {calculateValue(financials.total, 'mensalidade').toFixed(2).replace('.', ',')}
+                                                                            </span>
+                                                                            <div className="flex flex-col text-[10px] text-red-500 font-medium mt-1 leading-tight whitespace-nowrap">
+                                                                                <span>+ Multa: R$ {financials.fine.toFixed(2).replace('.', ',')}</span>
+                                                                                <span>+ Juros: R$ {financials.interest.toFixed(2).replace('.', ',')}</span>
+                                                                            </div>
+                                                                        </>
+                                                                    ) : (
+                                                                        <span className="font-bold text-blue-900">
+                                                                            R$ {calculateValue(m.value, 'mensalidade').toFixed(2).replace('.', ',')}
+                                                                        </span>
+                                                                    )}
                                                                 </div>
                                                             </td>
                                                             <td className="px-6 py-2 md:py-4 text-gray-600 block md:table-cell flex justify-between items-center md:block">
@@ -727,13 +889,13 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                                 id: e.id,
                                                                 studentId: e.studentId,
                                                                 month: e.description,
-                                                                value: e.value * quantity, // Use calculated total or base? Receipt expects total? 
-                                                                // Actually, quantity is UI state. If paid, it should be fixed. 
+                                                                value: e.value * quantity, // Use calculated total or base? Receipt expects total? 
+                                                                // Actually, quantity is UI state. If paid, it should be fixed. 
                                                                 // Assuming quantity was 1 for now or handled elsewhere in persistence.
                                                                 // For now, let's use e.value as stored in DB.
                                                                 // Wait, if I paid for 2, the DB event likely updated or created a transaction.
-                                                                // If the DB event is just "Uniforme R$ 50", and I bought 2, 
-                                                                // the system currently doesn't split events. 
+                                                                // If the DB event is just "Uniforme R$ 50", and I bought 2, 
+                                                                // the system currently doesn't split events. 
                                                                 // Let's assume simplest case: value stored is the value paid.
                                                                 dueDate: e.dueDate,
                                                                 status: e.status,
@@ -827,31 +989,20 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                 {isBrickReady && !paymentResult && (
                                     <div id="paymentBrick_container" className="w-full min-h-[500px] relative z-50 bg-white rounded-lg p-2" key={preferenceId}>
                                         <p className="text-xs text-blue-600 mb-2 font-semibold">Ambiente Seguro Mercado Pago</p>
+                                        {console.log("Payment Brick Initialization Payer:", transactionPayer)}
                                         <Payment
                                             initialization={{
-                                                preferenceId: preferenceId,
                                                 amount: calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento'),
-                                                payer: {
-                                                    firstName: student.nome_responsavel?.split(' ')[0] || 'Responsável',
-                                                    lastName: student.nome_responsavel?.split(' ').slice(1).join(' ') || '',
-                                                    email: student.email_responsavel || 'email@exemplo.com',
-                                                    address: {
-                                                        zipCode: student.cep?.replace(/\D/g, '') || '',
-                                                        streetNumber: student.endereco_numero || '',
-                                                        neighborhood: student.endereco_bairro || '',
-                                                        city: student.endereco_cidade || '',
-                                                        federalUnit: student.endereco_uf || '',
-                                                        streetName: student.endereco_logradouro || ''
-                                                    }
-                                                }
+                                                preferenceId: preferenceId,
+                                                // payer: transactionPayer <--- REMOVED: Relying on Backend Preference to avoid Conflicts
                                             }}
                                             customization={{
                                                 paymentMethods: {
                                                     maxInstallments: selectedMethod === 'credito' ? 12 : 1,
-                                                    ticket: selectedMethod === 'boleto' ? 'all' : undefined,
-                                                    bankTransfer: selectedMethod === 'pix' ? 'all' : undefined,
-                                                    creditCard: selectedMethod === 'credito' ? 'all' : undefined,
-                                                    debitCard: selectedMethod === 'debito' ? 'all' : undefined,
+                                                    ticket: selectedMethod === 'boleto' ? 'all' : [],
+                                                    bankTransfer: selectedMethod === 'pix' ? 'all' : [],
+                                                    creditCard: selectedMethod === 'credito' ? 'all' : [],
+                                                    debitCard: selectedMethod === 'debito' ? 'all' : [],
                                                 },
                                                 visual: {
                                                     style: {
@@ -860,8 +1011,13 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                 }
                                             }}
                                             onSubmit={async (param) => {
-                                                console.log("Brick onSubmit:", param);
+                                                console.log("Brick onSubmit param:", param);
+
                                                 try {
+                                                    // Ensure we send the snake_case payer to the process endpoint
+                                                    // param.formData usually contains the Brick's collected data, but we can merge/override if needed
+                                                    // For now, let's trust the Brick or the Backend Sanitizer we built.
+
                                                     const response = await fetch('https://us-central1-meu-expansivo-app.cloudfunctions.net/processMercadoPagoPayment', {
                                                         method: 'POST',
                                                         headers: {
@@ -879,17 +1035,19 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                     const result = await response.json();
                                                     console.log("Payment Result:", result);
                                                     setPaymentResult(result);
-                                                } catch (e) {
-                                                    console.error("Payment Error:", e);
-                                                    alert("Erro ao processar pagamento. Tente novamente.");
+                                                } catch (e: any) {
+                                                    console.error("Payment Error (onSubmit):", e);
+                                                    alert("Erro ao processar pagamento: " + (e.message || "Erro desconhecido"));
                                                 }
                                             }}
                                             onReady={() => {
                                                 console.log('Brick onReady: Componente carregado!');
+                                                setIsBrickReady(true);
                                             }}
                                             onError={(error) => {
-                                                console.error('Brick onError DO CATCH:', error);
-                                                // Silent error to avoid scaring the user, as Brick handles field validation UI
+                                                console.error('Detalhes do Erro MP:', error);
+                                                // VISUAL DIAGNOSTIC FOR USER
+                                                alert("ERRO MERCADO PAGO: " + JSON.stringify(error, null, 2));
                                             }}
                                         />
                                     </div>
@@ -1097,7 +1255,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
                         <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-scale-in">
                             <h3 className="text-lg font-bold text-gray-800 mb-2">Dados do Pagador</h3>
-                            <p className="text-sm text-gray-500 mb-4">Confirme as informações para registro do Pix.</p>
+                            <p className="text-sm text-gray-500 mb-4">Confirme as informações para o pagamento via {getPaymentMethodLabel(selectedMethod)}.</p>
 
                             <div className="space-y-4">
                                 <div>
@@ -1146,6 +1304,160 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                     </div>
                 )
             }
+
+            {/* MODAL DE CONTINGÊNCIA (DADOS FALTANTES BOLETO) */}
+            {isMissingDataModalOpen && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl animate-scale-in max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center gap-3 mb-4 text-amber-600 bg-amber-50 p-3 rounded-lg">
+                            <span className="text-2xl">⚠️</span>
+                            <p className="text-xs font-bold leading-tight">
+                                Para emitir o Boleto Bancário, o banco exige os dados abaixo. Eles serão usados apenas nesta transação.
+                            </p>
+                        </div>
+
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">CPF do Responsável (Obrigatório)</label>
+                                <input
+                                    type="text"
+                                    value={tempCpf}
+                                    onChange={(e) => setTempCpf(e.target.value.replace(/\D/g, '').substring(0, 11))}
+                                    className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:border-blue-500"
+                                    placeholder="000.000.000-00"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">CEP</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={tempCep}
+                                        onChange={(e) => {
+                                            const val = e.target.value.replace(/\D/g, '').substring(0, 8);
+                                            setTempCep(val);
+                                            // Simple auto-fill mock or logic could go here, but for now manual is safer for contingency
+                                        }}
+                                        className="w-1/3 p-3 border border-gray-200 rounded-lg outline-none focus:border-blue-500"
+                                        placeholder="00000-000"
+                                    />
+                                    <div className="text-[10px] text-gray-400 flex items-center">
+                                        Digite o CEP para validar
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Rua / Logradouro</label>
+                                    <input
+                                        type="text"
+                                        value={tempStreet}
+                                        onChange={(e) => setTempStreet(e.target.value)}
+                                        className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:border-blue-500"
+                                        placeholder="Rua Exemplo"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Número</label>
+                                    <input
+                                        type="text"
+                                        value={tempNumber}
+                                        onChange={(e) => setTempNumber(e.target.value)}
+                                        className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:border-blue-500"
+                                        placeholder="123"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Bairro</label>
+                                <input
+                                    type="text"
+                                    value={tempNeighborhood}
+                                    onChange={(e) => setTempNeighborhood(e.target.value)}
+                                    className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:border-blue-500"
+                                    placeholder="Centro"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Cidade</label>
+                                    <input
+                                        type="text"
+                                        value={tempCity}
+                                        onChange={(e) => setTempCity(e.target.value)}
+                                        className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:border-blue-500"
+                                        placeholder="Natal"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">UF</label>
+                                    <input
+                                        type="text"
+                                        value={tempState}
+                                        onChange={(e) => setTempState(e.target.value.toUpperCase().substring(0, 2))}
+                                        className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:border-blue-500"
+                                        placeholder="RN"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex gap-2 pt-4">
+                                <Button onClick={() => setIsMissingDataModalOpen(false)} variant="secondary" className="w-1/2">
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    onClick={() => {
+                                        // Validate
+                                        if (tempCpf.length < 11) {
+                                            alert(`CPF incompleto. Digitados: ${tempCpf.length}. Necessários: 11.`);
+                                            return;
+                                        }
+                                        if (tempCep.length < 8) {
+                                            alert(`CEP incompleto. Digitados: ${tempCep.length}. Necessários: 8. (Ex: 59575-000)`);
+                                            return;
+                                        }
+                                        if (!tempStreet || !tempNumber || !tempNeighborhood || !tempCity || !tempState) {
+                                            alert("Por favor, preencha o endereço completo (Rua, Número, Bairro, Cidade, UF).");
+                                            return;
+                                        }
+
+                                        setIsMissingDataModalOpen(false);
+
+                                        // Construct Address Override (Use hybrid keys for API + SDK)
+                                        const cleanTempCpf = tempCpf.replace(/\D/g, '');
+                                        const addr = {
+                                            zipCode: tempCep.replace(/\D/g, ''),
+                                            zip_code: tempCep.replace(/\D/g, ''),
+
+                                            streetName: tempStreet,
+                                            street_name: tempStreet,
+
+                                            streetNumber: tempNumber,
+                                            street_number: tempNumber,
+
+                                            neighborhood: tempNeighborhood,
+
+                                            city: tempCity,
+
+                                            federalUnit: tempState,
+                                            federal_unit: tempState
+                                        };
+
+                                        handleCreatePayment(cleanTempCpf, undefined, undefined, undefined, addr);
+                                    }}
+                                    className="w-1/2 bg-blue-900 hover:bg-blue-800 font-bold"
+                                >
+                                    Confirmar
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* NOVO: Componente ReceiptModal compartilhado */}
             {receiptData && (
                 <ReceiptModal
