@@ -3,6 +3,7 @@ import { Student, SchoolMessage, MessageRecipient, MessageType, UnitContact, Con
 import { Button } from './Button';
 
 import { UNITS_DATA, DEFAULT_UNIT_DATA } from '../src/constants';
+import { MessageCircle } from 'lucide-react';
 
 export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: Omit<SchoolMessage, 'id'>) => Promise<void>; unitContacts: UnitContact[]; teachers?: Teacher[]; }> = ({ student, onSendMessage, unitContacts, teachers = [] }) => {
   const [recipient, setRecipient] = useState<MessageRecipient>(MessageRecipient.COORDINATION);
@@ -104,7 +105,7 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
   return (
     <div className="mt-8 pt-6 border-t border-gray-200 print:hidden">
       <h3 className="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2">
-        <svg className="w-6 h-6 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+        <MessageCircle className="w-6 h-6 text-blue-950" />
         Fale com a Escola
       </h3>
       <div className="bg-white p-6 rounded-lg shadow-md border border-gray-100">

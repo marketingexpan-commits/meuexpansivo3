@@ -5,6 +5,7 @@ import { SchoolLogo } from './SchoolLogo';
 import { ReceiptModal } from './ReceiptModal'; // Import ReceiptModal
 import { initMercadoPago, Payment } from '@mercadopago/sdk-react';
 import { ALLOW_MOCK_LOGIN } from '../constants';
+import { CreditCard, AlertTriangle, GraduationCap, Lock, CheckCircle, Handshake } from 'lucide-react';
 
 // NOTE: Replace with your actual Firebase Functions URL or configure Vite proxy
 const MP_REFERENCE_URL = 'https://us-central1-meu-expansivo-app.cloudfunctions.net/createMercadoPagoPreference';
@@ -248,7 +249,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             <div className="animate-fade-in-up">
                 <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 text-center space-y-6">
                     <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto">
-                        <span className="text-4xl">🤝</span>
+                        <Handshake className="w-10 h-10 text-blue-950" />
                     </div>
                     <div className="space-y-2">
                         <h3 className="text-2xl font-bold text-blue-950">Seu financeiro é gerido pelo parceiro Isaac</h3>
@@ -460,6 +461,37 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             // Set for Frontend Brick usage (SDK uses CamelCase)
             setTransactionPayer(frontendPayer);
 
+            // 3. Define Payment Method Restrictions (Strict Backend Enforcement)
+            let excludedTypes: { id: string }[] = [];
+            let maxInstallments = 1;
+
+            if (selectedMethod === 'credito') {
+                excludedTypes = [
+                    { id: 'ticket' },        // Boleto
+                    { id: 'bank_transfer' }, // Pix
+                    { id: 'debit_card' }
+                ];
+                maxInstallments = 12;
+            } else if (selectedMethod === 'debito') {
+                excludedTypes = [
+                    { id: 'ticket' },
+                    { id: 'bank_transfer' },
+                    { id: 'credit_card' } // Exclude credit
+                ];
+            } else if (selectedMethod === 'pix') {
+                excludedTypes = [
+                    { id: 'ticket' },
+                    { id: 'credit_card' },
+                    { id: 'debit_card' }
+                ];
+            } else if (selectedMethod === 'boleto') {
+                excludedTypes = [
+                    { id: 'bank_transfer' },
+                    { id: 'credit_card' },
+                    { id: 'debit_card' }
+                ];
+            }
+
             // Call Backend Function (API uses SnakeCase)
             const response = await fetch(MP_REFERENCE_URL, {
                 method: 'POST',
@@ -473,7 +505,11 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                     studentId: student.id,
                     mensalidadeIds: activeTab === 'mensalidades' ? selectedMensalidades : [],
                     eventIds: activeTab === 'eventos' ? selectedEventIds : [],
-                    payer: backendPayer // Send strict snake_case to backend
+                    payer: backendPayer, // Send strict snake_case to backend
+                    payment_methods: {
+                        excluded_payment_types: excludedTypes,
+                        installments: maxInstallments
+                    }
                 })
             });
 
@@ -503,7 +539,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
         <div className="animate-fade-in-up space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                    <span className="text-3xl">💰</span> Financeiro Interno
+                    <CreditCard className="w-8 h-8 text-blue-950" /> Financeiro Interno
                 </h3>
             </div>
 
@@ -575,7 +611,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                 {getFeeNotice() && (
                     <div className="space-y-4">
                         <div className="p-3 bg-amber-50 border border-amber-100 rounded-lg flex items-center gap-2">
-                            <span className="text-amber-600 font-bold">⚠️</span>
+                            <AlertTriangle className="w-5 h-5 text-amber-600" />
                             <p className="text-xs text-amber-800 font-medium italic">{getFeeNotice()}</p>
                         </div>
 
@@ -660,13 +696,13 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                 <div className="flex flex-col gap-2 mt-3">
                                                     {student.isScholarship && (
                                                         <div className="text-xs text-blue-800 bg-blue-50 border border-blue-200 p-2 rounded flex items-center gap-2">
-                                                            <span className="text-lg">🎓</span>
+                                                            <GraduationCap className="w-5 h-5 text-blue-800" />
                                                             <span className="font-bold">Aluno Bolsista:</span>
                                                             <span>Isento de pagamento de mensalidades regulares.</span>
                                                         </div>
                                                     )}
                                                     <div className="text-xs text-orange-700 bg-orange-50 border border-orange-100 p-2 rounded flex items-center gap-2">
-                                                        <span>🔒</span>
+                                                        <Lock className="w-4 h-4 text-orange-700" />
                                                         <span>Pagamento Cronológico: Você deve quitar a mensalidade mais antiga antes de avançar para as próximas.</span>
                                                     </div>
                                                 </div>
@@ -694,7 +730,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                                 <div key={m.id} className={`relative p-4 rounded-xl border-2 flex flex-col gap-2 ${status.bg} ${status.border} ${m.status !== 'Pago' ? 'grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all' : ''}`}>
                                                                     <div className="flex justify-between items-start">
                                                                         <span className="font-bold text-gray-800">{m.month}</span>
-                                                                        {m.status === 'Pago' && <span className="text-xl">✅</span>}
+                                                                        {m.status === 'Pago' && <CheckCircle className="w-6 h-6 text-green-600" />}
                                                                     </div>
                                                                     <div className="mt-auto">
                                                                         <p className="text-sm text-gray-600">Valor: <span className="font-bold">R$ {m.value.toFixed(2)}</span></p>
@@ -748,7 +784,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                                 <div className="flex items-center gap-3">
                                                                     {isLocked ? (
                                                                         <div className="w-5 h-5 flex items-center justify-center text-gray-400" title="Quite os meses anteriores primeiro">
-                                                                            🔒
+                                                                            <Lock className="w-4 h-4" />
                                                                         </div>
                                                                     ) : (
                                                                         <input

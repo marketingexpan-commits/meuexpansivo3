@@ -22,7 +22,7 @@ const cors = require('cors')({ origin: true });
 exports.createMercadoPagoPreference = functions.https.onRequest((req, res) => {
     cors(req, res, async () => {
         try {
-            const { title, quantity, price, studentId, mensalidadeIds, eventIds } = req.body;
+            const { title, quantity, price, studentId, mensalidadeIds, eventIds, payment_methods } = req.body;
 
             const preference = new Preference(client);
 
@@ -38,6 +38,7 @@ exports.createMercadoPagoPreference = functions.https.onRequest((req, res) => {
                     ],
                     external_reference: mensalidadeIds ? mensalidadeIds.toString() : `student_${studentId}`,
                     payer: req.body.payer, // Include Payer in Preference
+                    payment_methods: payment_methods, // Pass payment restrictions
                     metadata: {
                         student_id: studentId,
                         mensalidade_ids: mensalidadeIds || '',

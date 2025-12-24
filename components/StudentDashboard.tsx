@@ -10,12 +10,17 @@ import { MessageBox } from './MessageBox';
 import { FinanceiroScreen } from './FinanceiroScreen';
 import { useNavigate } from 'react-router-dom';
 import {
-    FileText,
+    Bot,
     CalendarDays,
+    CreditCard,
+    Download,
+    FileText,
     LifeBuoy,
+    Lightbulb,
+    Mail,
     MessageCircle,
     MessageSquare,
-    CreditCard
+    User
 } from 'lucide-react';
 import { db } from '../firebaseConfig';
 
@@ -377,7 +382,20 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                         className={`p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer ${!n.read ? 'bg-blue-50/30' : ''}`}
                                                         onClick={() => {
                                                             if (!n.read && onMarkNotificationAsRead) onMarkNotificationAsRead(n.id);
-                                                            setCurrentView('tickets');
+
+                                                            const titleLower = n.title.toLowerCase();
+                                                            const messageLower = n.message.toLowerCase();
+
+                                                            if (titleLower.includes('boletim') || titleLower.includes('nota') || messageLower.includes('boletim')) {
+                                                                setCurrentView(isEarlyChildhood ? 'early_childhood' : 'grades');
+                                                            } else if (titleLower.includes('frequência') || titleLower.includes('falta')) {
+                                                                setCurrentView('attendance');
+                                                            } else if (titleLower.includes('financeiro') || titleLower.includes('mensalidade') || titleLower.includes('pagamento')) {
+                                                                setCurrentView('financeiro');
+                                                            } else {
+                                                                setCurrentView('tickets');
+                                                            }
+
                                                             setShowNotifications(false);
                                                         }}
                                                     >
@@ -508,7 +526,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     {currentView === 'attendance' && (
                         <div className="mb-8 print:hidden">
                             <h3 className="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2">
-                                <span className="text-2xl">📅</span> Registro de frequência
+                                <CalendarDays className="w-6 h-6 text-green-600" />
+                                Registro de frequência
                             </h3>
                             <div className="bg-white p-6 rounded-lg shadow-md border border-gray-100">
                                 <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -653,7 +672,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     onClick={handleDownloadPDF}
                                     className="flex items-center gap-2"
                                 >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                    <Download className="w-5 h-5" />
                                     {isEarlyChildhood ? 'Baixar Relatório (PDF)' : 'Baixar Boletim (PDF)'}
                                 </Button>
                             </div>
@@ -707,7 +726,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                                 <div className="mt-8 border border-gray-200 rounded-lg p-6 bg-blue-50/30">
                                                     <h4 className="font-bold text-blue-950 mb-3 flex items-center gap-2">
-                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path></svg>
+                                                        <MessageSquare className="w-5 h-5" />
                                                         Observações do Professor(a)
                                                     </h4>
                                                     <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap italic">
@@ -817,8 +836,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                     {currentView === 'support' && supportNeededGrades.length > 0 && (
                         <div className="mt-8 print:hidden animate-fade-in-up">
-                            <h3 className="text-xl font-bold mb-4 text-gray-800 border-b border-gray-200 pb-2">
-                                <span className="mr-2">🆘</span> Centro de Suporte ao Aluno
+                            <h3 className="text-xl font-bold mb-4 text-gray-800 border-b border-gray-200 pb-2 flex items-center gap-2">
+                                <LifeBuoy className="w-6 h-6 text-purple-600" />
+                                Centro de Suporte ao Aluno
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {supportNeededGrades.map((grade) => {
@@ -905,7 +925,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 onClick={() => handleGetHelp(grade.subject as Subject, d.topic!)}
                                                                 className="w-full bg-gradient-to-r from-blue-950 to-slate-900 text-white hover:from-blue-900 hover:to-slate-800 py-2 rounded-lg text-xs font-bold flex items-center justify-center transition-all shadow-sm hover:shadow-md transform active:scale-95"
                                                             >
-                                                                <span className="mr-2 text-md">🤖</span> Ajuda da IA
+                                                                <Bot className="w-4 h-4 mr-2" />
+                                                                Ajuda da IA
                                                             </button>
                                                         </div>
                                                     </div>
@@ -920,7 +941,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                         onClick={() => handleOpenTicketModal(grade.subject)}
                                                         className="w-full bg-blue-600 text-white hover:bg-blue-700 py-2.5 rounded-md text-sm font-bold flex items-center justify-center transition-colors shadow-sm"
                                                     >
-                                                        <span className="mr-2">📧</span>
+                                                        <Mail className="w-4 h-4 mr-2" />
                                                         Enviar Dúvida ao Professor
                                                     </button>
                                                 )}
@@ -941,7 +962,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     {currentView === 'tickets' && (
                         <div className="animate-fade-in-up">
                             <h3 className="text-xl font-bold mb-4 text-gray-800 border-b border-gray-200 pb-2 flex items-center gap-2">
-                                <span className="text-2xl">📧</span> Minhas Dúvidas
+                                <MessageSquare className="w-6 h-6 text-yellow-600" />
+                                Minhas Dúvidas
                             </h3>
 
                             {isLoadingStudentTickets ? (
@@ -978,7 +1000,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             {ticket.response && (
                                                 <div className="bg-blue-50/50 p-3 rounded-md text-sm text-gray-800 border border-blue-100">
                                                     <div className="flex items-center gap-2 mb-1">
-                                                        <span className="text-lg">👨‍🏫</span>
+                                                        <User className="w-5 h-5 text-blue-800" />
                                                         <span className="font-bold text-blue-900">Resposta do Professor{ticket.responderName ? ` (${ticket.responderName})` : ''}:</span>
                                                     </div>
                                                     <p className="whitespace-pre-wrap pl-2 border-l-2 border-blue-200">{ticket.response}</p>
@@ -992,13 +1014,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         </div>
                     )}
 
+
                     {isModalOpen && (
                         <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 print:hidden p-4">
                             <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col animate-fade-in-up">
                                 <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-slate-100 rounded-t-xl">
                                     <div>
-                                        <h3 className="text-xl font-extrabold text-gray-800 flex items-center">
-                                            <span className="text-2xl mr-2">🤖</span> Tutor Inteligente
+                                        <h3 className="text-xl font-extrabold text-gray-800 flex items-center gap-2">
+                                            <Bot className="w-8 h-8 text-blue-600" />
+                                            Tutor Inteligente
                                         </h3>
                                         <p className="text-sm text-gray-500 mt-1">{modalContent.title}</p>
                                     </div>
@@ -1034,8 +1058,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg flex flex-col animate-fade-in-up">
                                 <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-blue-50/50 rounded-t-xl">
                                     <div>
-                                        <h3 className="text-lg font-extrabold text-blue-950 flex items-center">
-                                            <span className="text-2xl mr-2">📧</span> Enviar Dúvida
+                                        <h3 className="text-lg font-extrabold text-blue-950 flex items-center gap-2">
+                                            <Mail className="w-6 h-6 text-blue-600" />
+                                            Enviar Dúvida
                                         </h3>
                                         <p className="text-sm text-gray-500 mt-0.5 font-medium">{selectedTicketSubject}</p>
                                     </div>
@@ -1072,7 +1097,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                 />
                                             </div>
                                             <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100 text-xs text-yellow-800 flex gap-2">
-                                                <span className="text-lg">💡</span>
+                                                <Lightbulb className="w-5 h-5 text-yellow-600 flex-shrink-0" />
                                                 <p>Sua mensagem será enviada diretamente para o painel do professor. Seja claro e específico para obter uma resposta melhor.</p>
                                             </div>
                                             <div className="flex justify-end pt-2">
