@@ -13,7 +13,8 @@ export default defineConfig(({ mode }) => {
           target: 'https://api.abacatepay.com/v1',
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/abacate/, '')
-        }
+        },
+
       }
     },
     plugins: [react()],

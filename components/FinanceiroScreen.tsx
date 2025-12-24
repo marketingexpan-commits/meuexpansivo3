@@ -24,13 +24,13 @@ type PaymentMethod = 'pix' | 'debito' | 'credito' | 'boleto'; // Import constant
 
 // ...
 
-export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, mensalidades, eventos = [], unitContacts = [], onPaymentSuccess }) => {
+export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, mensalidades = [], eventos = [], unitContacts = [], onPaymentSuccess }) => {
     // Lógica de Filtro
     const studentMensalidades = useMemo(() => {
-        return mensalidades.filter(m => m.studentId === student.id);
+        return (mensalidades || []).filter(m => m.studentId === student.id);
     }, [mensalidades, student.id]);
 
-    const studentEventos = useMemo(() => eventos.filter(e => e.studentId === student.id), [eventos, student.id]);
+    const studentEventos = useMemo(() => (eventos || []).filter(e => e.studentId === student.id), [eventos, student.id]);
     const isIsaac = student.metodo_pagamento === 'Isaac';
 
     const [isModalOpen, setIsModalOpen] = useState(false);

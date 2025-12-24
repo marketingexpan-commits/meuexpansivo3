@@ -1,6 +1,7 @@
 // src/components/TeacherDashboard.tsx
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { Teacher, Student, GradeEntry, BimesterData, SchoolUnit, Subject, SchoolClass, AttendanceRecord, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus } from '../types';
+import { Teacher, Student, GradeEntry, BimesterData, SchoolUnit, Subject, SchoolClass, AttendanceRecord, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, Ticket, TicketStatus, AppNotification } from '../types';
+import { db } from '../firebaseConfig';
 import { getAttendanceBreakdown, AttendanceBreakdown } from '../src/utils/attendanceUtils';
 import {
     calculateBimesterMedia,
@@ -30,7 +31,7 @@ const formatGrade = (value: number | undefined | null) => {
 };
 
 export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, students, grades, attendanceRecords, earlyChildhoodReports, onSaveGrade, onSaveAttendance, onSaveEarlyChildhoodReport, onLogout }) => {
-    const [activeTab, setActiveTab] = useState<'grades' | 'attendance'>('grades');
+    const [activeTab, setActiveTab] = useState<'grades' | 'attendance' | 'tickets'>('grades');
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const activeUnit = teacher.unit;
@@ -75,7 +76,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     const [attendanceStudents, setAttendanceStudents] = useState<Student[]>([]);
     const [studentStatuses, setStudentStatuses] = useState<Record<string, AttendanceStatus>>({});
     const [isAttendanceLoading, setIsAttendanceLoading] = useState(false);
+
     const [isAttendanceSaving, setIsAttendanceSaving] = useState(false);
+
+    // Estados para o Sistema de Dúvidas (Tickets)
+    const [tickets, setTickets] = useState<Ticket[]>([]);
+    const [isLoadingTickets, setIsLoadingTickets] = useState(false);
+    const [replyingTicketId, setReplyingTicketId] = useState<string | null>(null);
+    const [replyText, setReplyText] = useState('');
+    const [isSendingReply, setIsSendingReply] = useState(false);
 
     const MONTH_NAMES = [
         "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -390,11 +399,104 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
         }
     };
 
+    // --- TICKET SYSTEM LOGIC ---
+    useEffect(() => {
+        loadTickets();
+    }, [teacher.unit, teacher.subjects]); // Reloads if teacher unit or subjects change, or on mount
+
+    const loadTickets = async () => {
+        setIsLoadingTickets(true);
+        try {
+            // Fetch tickets for this unit and teacher's subjects
+            // Note: Firestore 'in' query supports max 10 values. If teacher has more than 10 subjects, we need to batch or client-side filter.
+            // Assuming for now teacher has <= 10 subjects usually. 
+            // If empty subjects, don't query.
+            if (teacher.subjects.length === 0) {
+                setTickets([]);
+                return;
+            }
+
+            // We filter primarily by Unit
+            let query = db.collection('tickets_pedagogicos')
+                .where('unit', '==', teacher.unit);
+
+            // Client side filtering for subjects might be safer if list is long
+            const snapshot = await query.get();
+            const allUnitTickets = snapshot.docs.map(doc => doc.data() as Ticket);
+
+            // Filter by teacher subjects
+            const relevantTickets = allUnitTickets.filter(t => teacher.subjects.includes(t.subject as any));
+
+            // Sort: Pending first, then by date (newest first)
+            const sorted = relevantTickets.sort((a, b) => {
+                if (a.status === TicketStatus.PENDING && b.status !== TicketStatus.PENDING) return -1;
+                if (a.status !== TicketStatus.PENDING && b.status === TicketStatus.PENDING) return 1;
+                return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+            });
+
+            setTickets(sorted);
+        } catch (error) {
+            console.error("Erro ao carregar tickets:", error);
+        } finally {
+            setIsLoadingTickets(false);
+        }
+    };
+
+    const handleReplySubmit = async (ticketId: string) => {
+        if (!replyText.trim()) return;
+        setIsSendingReply(true);
+
+        try {
+            const ticketRef = db.collection('tickets_pedagogicos').doc(ticketId);
+            const timestamp = new Date().toISOString();
+
+            // 1. Update Ticket
+            await ticketRef.update({
+                response: replyText,
+                responseTimestamp: timestamp,
+                status: TicketStatus.ANSWERED,
+                responderName: teacher.name // Save teacher name
+            });
+
+            // 2. Create Notification for Student
+            const ticket = tickets.find(t => t.id === ticketId);
+            if (ticket) {
+                const notification: AppNotification = {
+                    id: `notif-${Date.now()}`,
+                    studentId: ticket.studentId,
+                    title: 'Dúvida Respondida',
+                    message: `O professor ${teacher.name} respondeu sua dúvida em ${ticket.subject}.`,
+                    timestamp: timestamp,
+                    read: false
+                };
+                await db.collection('notifications').add(notification);
+            }
+
+            // Update local state
+            setTickets(prev => prev.map(t =>
+                t.id === ticketId
+                    ? { ...t, response: replyText, responseTimestamp: timestamp, status: TicketStatus.ANSWERED, responderName: teacher.name }
+                    : t
+            ));
+
+            setReplyingTicketId(null);
+            setReplyText('');
+            alert("Resposta enviada com sucesso!");
+        } catch (error) {
+            console.error("Erro ao responder ticket:", error);
+            alert("Erro ao enviar resposta. Tente novamente.");
+        } finally {
+            setIsSendingReply(false);
+        }
+    };
+
     const getBimesterDataDisplay = () => { if (!currentGradeData || selectedStage === 'recuperacaoFinal') return null; const key = selectedStage.replace('_rec', '') as keyof GradeEntry['bimesters']; return currentGradeData.bimesters[key]; }
     const getAnnualMediaValue = () => { if (!currentGradeData) return 0; return ((currentGradeData.bimesters.bimester1.media || 0) + (currentGradeData.bimesters.bimester2.media || 0) + (currentGradeData.bimesters.bimester3.media || 0) + (currentGradeData.bimesters.bimester4.media || 0)) / 4; };
     const getAnnualMediaDisplay = () => !currentGradeData ? '-' : getAnnualMediaValue().toFixed(1);
     const isRecoveryMode = selectedStage.includes('_rec') && selectedStage !== 'recuperacaoFinal';
     const isAnnualMediaPassing = getAnnualMediaValue() >= 7;
+
+    const pendingTicketsCount = tickets.filter(t => t.status === TicketStatus.PENDING).length;
 
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans">
@@ -418,6 +520,18 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                         </div>
 
                         <div className="flex items-center gap-3">
+                            {pendingTicketsCount > 0 && (
+                                <button
+                                    onClick={() => setActiveTab('tickets')}
+                                    className="relative p-2 text-blue-200 hover:text-white transition-colors mr-2"
+                                    title="Dúvidas Pendentes"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                                    <span className="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-red-100 transform translate-x-1/4 -translate-y-1/4 bg-red-600 rounded-full animate-pulse">
+                                        {pendingTicketsCount}
+                                    </span>
+                                </button>
+                            )}
                             <Button variant="secondary" onClick={onLogout} className="!bg-transparent border-none !text-white font-medium hover:!text-gray-200 shadow-none !px-0">
                                 Sair
                             </Button>
@@ -437,6 +551,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                         </button>
                         <button onClick={() => setActiveTab('attendance')} className={`flex-1 pb-3 px-1 font-semibold border-b-2 text-center transition-colors ${activeTab === 'attendance' ? 'text-blue-950 border-blue-950' : 'text-gray-500 border-transparent hover:text-gray-700'}`}>
                             Chamada Diária
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('tickets')}
+                            className={`flex-1 pb-3 px-1 font-semibold border-b-2 text-center transition-colors flex items-center justify-center gap-2 ${activeTab === 'tickets' ? 'text-blue-950 border-blue-950' : 'text-gray-500 border-transparent hover:text-gray-700'}`}
+                        >
+                            Dúvidas dos Alunos
+                            {pendingTicketsCount > 0 && (
+                                <span className="ml-2 bg-red-500 text-white rounded-full px-2 py-0.5 text-xs animate-bounce">
+                                    {pendingTicketsCount}
+                                </span>
+                            )}
                         </button>
                     </div>
 
@@ -830,17 +955,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
 
                                 {attendanceStudents.length > 0 && (
                                     <div>
-                                        {/* VIEW MOBILE/TABLET (CARDS) - Alterado para LG para cobrir tablets/celulares grandes */}
+                                        {/* VIEW MOBILE/TABLET (CARDS) */}
                                         <div className="lg:hidden space-y-4">
                                             {attendanceStudents.map(student => {
                                                 const absences: StudentAbsenceSummary = absenceData[student.id] || {
                                                     bimester: { 1: { count: 0, details: {} }, 2: { count: 0, details: {} }, 3: { count: 0, details: {} }, 4: { count: 0, details: {} } },
                                                     year: 0
                                                 };
-                                                const status = studentStatuses[student.id]; // Assuming studentStatuses holds the current status
+                                                const status = studentStatuses[student.id];
                                                 const bimesterBreakdown = absences.bimester;
-
                                                 const totalAbsences = absences.year;
+
                                                 return (
                                                     <div key={student.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col gap-3">
                                                         <div className="flex justify-between items-start">
@@ -857,7 +982,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                     <div className="text-gray-700">
                                                                         <p>{selectedFilterBimester}º Bimestre: <span className="font-bold text-red-600">{bimesterBreakdown[selectedFilterBimester]?.count || 0} falta(s)</span></p>
 
-                                                                        {/* Detailed Breakdown */}
                                                                         {bimesterBreakdown[selectedFilterBimester]?.count > 0 && (
                                                                             <div className="mt-1 flex flex-wrap gap-2">
                                                                                 {Object.entries(bimesterBreakdown[selectedFilterBimester].details).map(([month, days]) => (
@@ -899,9 +1023,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                             })}
                                         </div>
 
-                                        {/* VIEW DESKTOP (TABLE) - Apenas acima de LG */}
-                                        <div className="hidden lg:block bg-white rounded-lg shadow-sm border overflow-x-auto">
-                                            {/* min-w-[800px] força o scroll se a tela for menor que isso, evitando esmagamento */}
+                                        {/* VIEW DESKTOP (TABLE) */}
+                                        <div className="hidden lg:block bg-white rounded-lg shadow-sm border overflow-x-auto mt-6">
                                             <table className="min-w-[800px] w-full">
                                                 <thead className="bg-gray-50">
                                                     <tr>
@@ -931,7 +1054,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                                 <span>
                                                                                     {selectedFilterBimester}º Bimestre: <strong className="text-red-600 font-bold">{bimesterBreakdown[selectedFilterBimester]?.count || 0} falta(s)</strong>
                                                                                 </span>
-                                                                                {/* Detailed Breakdown for Desktop */}
                                                                                 {bimesterBreakdown[selectedFilterBimester]?.count > 0 && (
                                                                                     <div className="mt-0.5 flex flex-wrap gap-1">
                                                                                         {Object.entries(bimesterBreakdown[selectedFilterBimester].details).map(([month, days]) => (
@@ -943,7 +1065,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                                 )}
                                                                             </div>
                                                                         </div>
-
                                                                         <span>Total no Ano: <strong className="text-gray-700 font-bold">{absences.year} falta(s)</strong></span>
                                                                     </div>
                                                                 </td>
@@ -959,6 +1080,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                 </tbody>
                                             </table>
                                         </div>
+
                                         <div className="mt-6 text-right">
                                             <Button onClick={handleSaveAttendance} disabled={isAttendanceSaving}>{isAttendanceSaving ? 'Salvando...' : 'Salvar Chamada'}</Button>
                                         </div>
@@ -967,8 +1089,104 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                             </div>
                         </div>
                     )}
+                    {activeTab === 'tickets' && (
+                        <div className="animate-fade-in-up">
+                            <div className="p-6 border rounded-lg shadow-md bg-white">
+                                <h2 className="text-xl font-bold mb-6 text-blue-950 flex items-center gap-2">
+                                    <span className="text-2xl">📧</span> Dúvidas e Perguntas
+                                </h2>
+
+                                {isLoadingTickets ? (
+                                    <div className="text-center py-12">
+                                        <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-200 border-t-blue-950 mx-auto mb-4"></div>
+                                        <p className="text-gray-500">Carregando dúvidas...</p>
+                                    </div>
+                                ) : tickets.length === 0 ? (
+                                    <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                                        <span className="text-4xl block mb-2">🎉</span>
+                                        <p className="text-gray-500 text-lg">Nenhuma dúvida pendente no momento!</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 gap-6">
+                                        {tickets.map(ticket => (
+                                            <div key={ticket.id} className={`border rounded-lg p-5 transition-shadow hover:shadow-md ${ticket.status === TicketStatus.PENDING ? 'bg-white border-l-4 border-l-yellow-400 border-gray-200' : 'bg-gray-50 border-gray-200 opacity-80'}`}>
+                                                <div className="flex flex-col md:flex-row justify-between mb-4">
+                                                    <div className="mb-2 md:mb-0">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide ${ticket.status === TicketStatus.PENDING ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
+                                                                {ticket.status === TicketStatus.PENDING ? 'Pendente' : 'Respondido'}
+                                                            </span>
+                                                            <span className="text-xs text-gray-400">
+                                                                {new Date(ticket.timestamp).toLocaleDateString()} às {new Date(ticket.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            </span>
+                                                        </div>
+                                                        <h4 className="font-bold text-lg text-gray-900">{ticket.studentName}</h4>
+                                                        <p className="text-xs text-gray-600 font-medium bg-gray-100 px-2 py-1 rounded inline-block mt-1">
+                                                            {ticket.gradeLevel} - {ticket.schoolClass} | {ticket.subject}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-50 mb-4">
+                                                    <p className="text-gray-800 whitespace-pre-wrap">{ticket.message}</p>
+                                                </div>
+
+                                                {ticket.response && (
+                                                    <div className="bg-green-50 p-4 rounded-lg border border-green-100 mb-4 ml-4">
+                                                        <p className="text-xs font-bold text-green-800 mb-1 uppercase tracking-wide">Sua Resposta</p>
+                                                        <p className="text-gray-700 whitespace-pre-wrap">{ticket.response}</p>
+                                                        <p className="text-[10px] text-gray-400 mt-2 text-right">Enviada em {new Date(ticket.responseTimestamp!).toLocaleDateString()}</p>
+                                                    </div>
+                                                )}
+
+                                                {ticket.status === TicketStatus.PENDING && (
+                                                    <div className="mt-4 border-t border-gray-100 pt-4">
+                                                        {replyingTicketId === ticket.id ? (
+                                                            <div className="animate-fade-in">
+                                                                <label className="block text-sm font-bold text-gray-700 mb-2">Sua Resposta:</label>
+                                                                <textarea
+                                                                    value={replyText}
+                                                                    onChange={(e) => setReplyText(e.target.value)}
+                                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[100px] text-sm mb-3"
+                                                                    placeholder="Escreva sua resposta para o aluno..."
+                                                                    autoFocus
+                                                                />
+                                                                <div className="flex justify-end gap-3">
+                                                                    <button
+                                                                        onClick={() => { setReplyingTicketId(null); setReplyText(''); }}
+                                                                        className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md text-sm font-bold transition-colors"
+                                                                    >
+                                                                        Cancelar
+                                                                    </button>
+                                                                    <Button
+                                                                        onClick={() => handleReplySubmit(ticket.id)}
+                                                                        disabled={!replyText.trim() || isSendingReply}
+                                                                        className="px-6 py-2"
+                                                                    >
+                                                                        {isSendingReply ? 'Enviando...' : 'Enviar Resposta'}
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => setReplyingTicketId(ticket.id)}
+                                                                className="text-blue-600 hover:text-blue-800 font-bold text-sm flex items-center gap-1 transition-colors"
+                                                            >
+                                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
+                                                                Responder
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
-        </div >
+        </div>
     );
 };

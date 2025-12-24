@@ -134,7 +134,7 @@ const AppContent: React.FC = () => {
     });
 
     const unsubNotifications = db.collection('notifications').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
-      const data = snapshot.docs.map(doc => doc.data() as AppNotification);
+      const data = snapshot.docs.map(doc => ({ ...doc.data() as AppNotification, id: doc.id }));
       setNotifications(data);
       setInitialLoad(prev => ({ ...prev, notifications: true }));
     }, (error) => {
@@ -828,7 +828,7 @@ const AppContent: React.FC = () => {
           unitContacts={unitContacts}
           onLogout={handleLogout}
           onSendMessage={handleSendMessage}
-          notifications={notifications}
+          notifications={notifications.filter(n => n.studentId === (session.user as Student).id)}
           onMarkNotificationAsRead={handleMarkNotificationAsRead}
           mensalidades={mensalidades}
           eventos={eventosFinanceiros}

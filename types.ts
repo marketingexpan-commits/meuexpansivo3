@@ -300,3 +300,25 @@ export interface AttendanceRecord {
   discipline: string; // Disciplina da chamada to allow subject-specific absences
   studentStatus: Record<string, AttendanceStatus>; // studentId -> status
 }
+
+// NOVO: Tipos para o sistema de Tickets (Dúvidas)
+export enum TicketStatus {
+  PENDING = 'pendente',
+  ANSWERED = 'respondido'
+}
+
+export interface Ticket {
+  id: string;
+  studentId: string;
+  studentName: string;
+  gradeLevel: string; // Série
+  schoolClass: string; // Turma
+  unit: SchoolUnit;
+  subject: string;
+  message: string;
+  response?: string;
+  timestamp: string; // ISO
+  responseTimestamp?: string; // ISO
+  status: TicketStatus;
+  responderName?: string; // Nome do professor que respondeu
+}

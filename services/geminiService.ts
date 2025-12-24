@@ -41,27 +41,12 @@ export const getStudyTips = async (subject: Subject, difficultyTopic: string, gr
 
     const errorMessage = error.message || String(error);
 
-    // Diagnostic: Fetch available models if model not found or generic error
-    let diagnosticMsg = "";
-    if (errorMessage.includes("not found") || errorMessage.includes("404") || errorMessage.includes("available")) {
-      try {
-        const modelsResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-        const modelsData = await modelsResp.json();
-        if (modelsData.models) {
-          const modelNames = modelsData.models.map((m: any) => m.name.replace('models/', '')).join(", ");
-          diagnosticMsg = `\n\n(Modelos Detectados: ${modelNames})`;
-        }
-      } catch (diagErr) {
-        console.error("Diagnostic failed", diagErr);
-      }
-    }
-
     if (errorMessage.includes("API_KEY_INVALID")) return "Erro: A chave de API informada é inválida.";
     if (errorMessage.includes("BILLING_DISABLED")) return "Erro: A conta da API não tem faturamento ativado.";
     if (errorMessage.includes("not found") || errorMessage.includes("404")) {
-      return `Erro: O modelo atual (gemini-2.5-flash) não está disponível para sua chave.${diagnosticMsg}`;
+      return `Erro: O modelo atual (gemini-2.5-flash) não está disponível. Verifique se o nome do modelo está correto ou se sua chave tem acesso a ele.`;
     }
 
-    return `Erro Técnico: ${errorMessage}${diagnosticMsg}`;
+    return `Erro Técnico: ${errorMessage}`;
   }
 };

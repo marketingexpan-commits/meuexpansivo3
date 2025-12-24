@@ -77,7 +77,7 @@ export interface SchoolMessage {
 
 
 export interface BimesterData {
-  nota: number | null; 
+  nota: number | null;
   recuperacao: number | null;
   media: number;
   faltas: number;
@@ -87,7 +87,7 @@ export interface BimesterData {
 export interface GradeEntry {
   id: string;
   studentId: string;
-  subject: string; 
+  subject: string;
   bimesters: {
     bimester1: BimesterData;
     bimester2: BimesterData;
@@ -95,8 +95,8 @@ export interface GradeEntry {
     bimester4: BimesterData;
   };
   recuperacaoFinal?: number | null;
-  mediaAnual: number; 
-  mediaFinal: number; 
+  mediaAnual: number;
+  mediaFinal: number;
   situacaoFinal: 'Aprovado' | 'Recuperação' | 'Reprovado';
   lastUpdated: string;
 }
@@ -104,7 +104,7 @@ export interface GradeEntry {
 export interface Student {
   id: string;
   code: string;
-  password: string; 
+  password: string;
   name: string;
   gradeLevel: string;
   schoolClass: SchoolClass;
@@ -119,7 +119,7 @@ export interface Teacher {
   password: string;
   name: string;
   subjects: Subject[];
-  phoneNumber?: string; 
+  phoneNumber?: string;
   unit: SchoolUnit; // Singular: define a unidade deste registro específico
 }
 
@@ -128,7 +128,7 @@ export interface Admin {
   username: string;
   password: string;
   name: string;
-  unit?: SchoolUnit; 
+  unit?: SchoolUnit;
 }
 
 export interface UserSession {
@@ -151,4 +151,25 @@ export interface AttendanceRecord {
   teacherId: string;
   teacherName: string;
   studentStatus: Record<string, AttendanceStatus>; // studentId -> status
+}
+
+// NOVO: Tipos para o sistema de Tickets (Dúvidas)
+export enum TicketStatus {
+  PENDING = 'pendente',
+  ANSWERED = 'respondido'
+}
+
+export interface Ticket {
+  id: string;
+  studentId: string;
+  studentName: string;
+  gradeLevel: string; // Série
+  schoolClass: string; // Turma
+  unit: SchoolUnit;
+  subject: string;
+  message: string;
+  response?: string;
+  timestamp: string; // ISO
+  responseTimestamp?: string; // ISO
+  status: TicketStatus;
 }

@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
-import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro } from '../types';
+import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus } from '../types';
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
 import { calculateBimesterMedia, calculateFinalData } from '../src/constants'; // Import Sync Fix
 import { getStudyTips } from '../services/geminiService';
@@ -8,6 +8,16 @@ import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 import { MessageBox } from './MessageBox';
 import { FinanceiroScreen } from './FinanceiroScreen';
+import { useNavigate } from 'react-router-dom';
+import {
+    FileText,
+    CalendarDays,
+    LifeBuoy,
+    MessageCircle,
+    MessageSquare,
+    CreditCard
+} from 'lucide-react';
+import { db } from '../firebaseConfig';
 
 // --- DADOS DAS UNIDADES (Definidos localmente) ---
 const UNITS_DATA: Record<string, { address: string; cep: string; phone: string; email: string; cnpj: string }> = {
@@ -66,25 +76,34 @@ interface StudentDashboardProps {
 
 export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     student,
-    grades,
+    grades = [],
     teachers = [],
-    attendanceRecords,
+    attendanceRecords = [],
     earlyChildhoodReports = [],
     unitContacts = [],
     onLogout,
     onSendMessage,
     notifications = [],
     onMarkNotificationAsRead,
-    mensalidades,
-    eventos
+    mensalidades = [],
+    eventos = []
 }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState({ title: '', tip: '' });
     const [isLoadingAI, setIsLoadingAI] = useState(false);
-    const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro'>('menu');
+    const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro' | 'tickets'>('menu');
     const [showNotifications, setShowNotifications] = useState(false);
 
-    const unreadNotifications = notifications.filter(n => !n.read).length;
+    // Estado para o sistema de Dúvidas (Tickets)
+    const [ticketModalOpen, setTicketModalOpen] = useState(false);
+    const [selectedTicketSubject, setSelectedTicketSubject] = useState<string>('');
+    const [ticketMessage, setTicketMessage] = useState('');
+    const [isTicketSending, setIsTicketSending] = useState(false);
+    const [ticketSuccess, setTicketSuccess] = useState(false);
+    const [studentTickets, setStudentTickets] = useState<Ticket[]>([]);
+    const [isLoadingStudentTickets, setIsLoadingStudentTickets] = useState(false);
+
+    const unreadNotifications = (notifications || []).filter(n => n && !n.read).length;
 
     // Estado para controle do semestre do relatório infantil
     const [selectedReportSemester, setSelectedReportSemester] = useState<1 | 2>(1);
@@ -137,8 +156,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     }, [isEarlyChildhood, earlyChildhoodReports, student.id, currentYear, selectedReportSemester]);
 
     const studentAttendance = useMemo(() => {
-        return attendanceRecords
-            .filter(record => record.studentStatus && record.studentStatus[student.id])
+        return (attendanceRecords || [])
+            .filter(record => record && record.studentStatus && record.studentStatus[student.id])
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [attendanceRecords, student.id]);
 
@@ -234,6 +253,71 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             .replace(/\n/g, '<br/>');
     };
 
+    const handleOpenTicketModal = (subject: string) => {
+        setSelectedTicketSubject(subject);
+        setTicketMessage('');
+        setTicketSuccess(false);
+        setTicketModalOpen(true);
+    };
+
+    const handleSendTicket = async () => {
+        if (!ticketMessage.trim() || !selectedTicketSubject) return;
+        setIsTicketSending(true);
+
+        try {
+            const ticket: Ticket = {
+                id: `ticket-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                studentId: student.id,
+                studentName: student.name,
+                gradeLevel: student.gradeLevel,
+                schoolClass: student.schoolClass,
+                unit: student.unit,
+                subject: selectedTicketSubject,
+                message: ticketMessage,
+                timestamp: new Date().toISOString(),
+                status: TicketStatus.PENDING
+            };
+
+            await db.collection('tickets_pedagogicos').doc(ticket.id).set(ticket);
+            setTicketSuccess(true);
+            setTimeout(() => {
+                setTicketModalOpen(false);
+                setTicketSuccess(false);
+            }, 3000);
+        } catch (error) {
+            console.error("Erro ao enviar ticket:", error);
+            alert("Erro ao enviar dúvida. Tente novamente.");
+        } finally {
+            setIsTicketSending(false);
+        }
+    };
+
+    // Load Student Tickets
+    useEffect(() => {
+        if (currentView === 'tickets') {
+            loadStudentTickets();
+        }
+    }, [currentView]);
+
+    const loadStudentTickets = async () => {
+        setIsLoadingStudentTickets(true);
+        try {
+            const snapshot = await db.collection('tickets_pedagogicos')
+                .where('studentId', '==', student.id)
+                .get();
+
+            const tickets = snapshot.docs.map(doc => doc.data() as Ticket);
+            // Sort by date (newest first)
+            tickets.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+            setStudentTickets(tickets);
+        } catch (error) {
+            console.error("Erro ao carregar dúvidas:", error);
+        } finally {
+            setIsLoadingStudentTickets(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans transition-all duration-500 ease-in-out print:min-h-0 print:h-auto print:bg-white print:p-0 print:block print:overflow-visible">
             <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${currentView === 'menu' ? 'max-w-md' : 'max-w-5xl'} print:min-h-0 print:h-auto print:shadow-none print:rounded-none`}>
@@ -293,6 +377,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                         className={`p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer ${!n.read ? 'bg-blue-50/30' : ''}`}
                                                         onClick={() => {
                                                             if (!n.read && onMarkNotificationAsRead) onMarkNotificationAsRead(n.id);
+                                                            setCurrentView('tickets');
+                                                            setShowNotifications(false);
                                                         }}
                                                     >
                                                         <div className="flex justify-between items-start mb-1">
@@ -358,7 +444,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-500 hover:shadow-md transition-all group aspect-square"
                                     >
                                         <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
-                                            <span className="text-xl">📊</span>
+                                            <FileText className="w-6 h-6 text-blue-600" />
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm">{isEarlyChildhood ? 'Relatório de Desenvolvimento' : 'Boletim Escolar'}</h3>
                                     </button>
@@ -368,7 +454,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-green-500 hover:shadow-md transition-all group aspect-square"
                                     >
                                         <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-green-100 transition-colors">
-                                            <span className="text-xl">📅</span>
+                                            <CalendarDays className="w-6 h-6 text-green-600" />
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm text-center">Registro de frequência</h3>
                                     </button>
@@ -378,7 +464,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-purple-500 hover:shadow-md transition-all group aspect-square"
                                     >
                                         <div className="w-10 h-10 bg-purple-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-purple-100 transition-colors">
-                                            <span className="text-xl">🆘</span>
+                                            <LifeBuoy className="w-6 h-6 text-purple-600" />
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm text-center leading-tight">Centro de Suporte ao Aluno</h3>
                                     </button>
@@ -388,9 +474,19 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-orange-500 hover:shadow-md transition-all group aspect-square"
                                     >
                                         <div className="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-orange-100 transition-colors">
-                                            <span className="text-xl">💬</span>
+                                            <MessageCircle className="w-6 h-6 text-orange-600" />
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Fale com a Escola</h3>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setCurrentView('tickets')}
+                                        className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-yellow-500 hover:shadow-md transition-all group aspect-square"
+                                    >
+                                        <div className="w-10 h-10 bg-yellow-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-yellow-100 transition-colors">
+                                            <MessageSquare className="w-6 h-6 text-yellow-600" />
+                                        </div>
+                                        <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Minhas Dúvidas</h3>
                                     </button>
 
                                     <button
@@ -398,7 +494,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-600 hover:shadow-md transition-all group aspect-square"
                                     >
                                         <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
-                                            <span className="text-xl">💳</span>
+                                            <CreditCard className="w-6 h-6 text-blue-600" />
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Financeiro</h3>
                                     </button>
@@ -819,16 +915,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             </div>
 
                                             <div className="mt-auto border-t border-gray-100 pt-4">
-                                                {statusConfig.showContactButton && teacherPhone && (
-                                                    <a
-                                                        href={`https://wa.me/${waPhone}?text=Olá, sou o aluno(a) ${student.name}. Estou com dificuldades em ${grade.subject} e gostaria de tirar dúvidas.`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="w-full bg-green-500 text-white hover:bg-green-600 py-2.5 rounded-md text-sm font-bold flex items-center justify-center transition-colors shadow-sm"
+                                                {statusConfig.showContactButton && (
+                                                    <button
+                                                        onClick={() => handleOpenTicketModal(grade.subject)}
+                                                        className="w-full bg-blue-600 text-white hover:bg-blue-700 py-2.5 rounded-md text-sm font-bold flex items-center justify-center transition-colors shadow-sm"
                                                     >
-                                                        <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.017-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" /></svg>
-                                                        Falar com Professor
-                                                    </a>
+                                                        <span className="mr-2">📧</span>
+                                                        Enviar Dúvida ao Professor
+                                                    </button>
                                                 )}
                                             </div>
                                         </div>
@@ -841,6 +935,60 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     {currentView === 'messages' && (
                         <div className="animate-fade-in-up">
                             <MessageBox student={student} onSendMessage={onSendMessage} unitContacts={unitContacts || []} teachers={teachers} />
+                        </div>
+                    )}
+
+                    {currentView === 'tickets' && (
+                        <div className="animate-fade-in-up">
+                            <h3 className="text-xl font-bold mb-4 text-gray-800 border-b border-gray-200 pb-2 flex items-center gap-2">
+                                <span className="text-2xl">📧</span> Minhas Dúvidas
+                            </h3>
+
+                            {isLoadingStudentTickets ? (
+                                <div className="text-center py-12">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-2"></div>
+                                    <p className="text-gray-500 text-sm">Carregando...</p>
+                                </div>
+                            ) : studentTickets.length === 0 ? (
+                                <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-100">
+                                    <p className="text-gray-500">Você ainda não enviou dúvidas.</p>
+                                    <Button onClick={() => setCurrentView('grades')} className="mt-4">
+                                        Ir para Boletim
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {studentTickets.map(ticket => (
+                                        <div key={ticket.id} className="bg-white border rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
+                                            <div className="flex justify-between items-start mb-3">
+                                                <div>
+                                                    <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">{ticket.subject}</span>
+                                                    <p className="text-xs text-gray-400 mt-0.5">{new Date(ticket.timestamp).toLocaleDateString()} às {new Date(ticket.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                                </div>
+                                                <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide ${ticket.status === TicketStatus.PENDING ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+                                                    {ticket.status === TicketStatus.PENDING ? 'Aguardando Resposta' : 'Respondido'}
+                                                </span>
+                                            </div>
+
+                                            <div className="bg-gray-50 p-3 rounded-md mb-3 text-sm text-gray-700 border border-gray-100">
+                                                <span className="font-bold text-gray-900 block mb-1">Sua Pergunta:</span>
+                                                {ticket.message}
+                                            </div>
+
+                                            {ticket.response && (
+                                                <div className="bg-blue-50/50 p-3 rounded-md text-sm text-gray-800 border border-blue-100">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className="text-lg">👨‍🏫</span>
+                                                        <span className="font-bold text-blue-900">Resposta do Professor{ticket.responderName ? ` (${ticket.responderName})` : ''}:</span>
+                                                    </div>
+                                                    <p className="whitespace-pre-wrap pl-2 border-l-2 border-blue-200">{ticket.response}</p>
+                                                    <p className="text-[10px] text-gray-400 mt-2 text-right">Respondido em {new Date(ticket.responseTimestamp!).toLocaleDateString()}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -875,6 +1023,76 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 </div>
                                 <div className="p-4 border-t border-gray-100 bg-white rounded-b-xl flex justify-end">
                                     <Button onClick={() => setIsModalOpen(false)} className="px-6">Entendi, vou estudar!</Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* TICKET MDOAL */}
+                    {ticketModalOpen && (
+                        <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 print:hidden p-4">
+                            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg flex flex-col animate-fade-in-up">
+                                <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-blue-50/50 rounded-t-xl">
+                                    <div>
+                                        <h3 className="text-lg font-extrabold text-blue-950 flex items-center">
+                                            <span className="text-2xl mr-2">📧</span> Enviar Dúvida
+                                        </h3>
+                                        <p className="text-sm text-gray-500 mt-0.5 font-medium">{selectedTicketSubject}</p>
+                                    </div>
+                                    {!ticketSuccess && (
+                                        <button onClick={() => setTicketModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-white/50">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="p-6">
+                                    {ticketSuccess ? (
+                                        <div className="flex flex-col items-center justify-center py-8 text-center animate-fade-in">
+                                            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 text-green-600">
+                                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                                            </div>
+                                            <h4 className="text-xl font-bold text-gray-800 mb-2">Dúvida Enviada!</h4>
+                                            <p className="text-gray-600 text-sm max-w-xs mx-auto">
+                                                O professor responderá sua dúvida dentro do horário de planejamento escolar.
+                                            </p>
+                                            <div className="mt-6 w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                                                <div className="h-full bg-green-500 animate-progress-shrink origin-left"></div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">Descreva sua dúvida:</label>
+                                                <textarea
+                                                    value={ticketMessage}
+                                                    onChange={(e) => setTicketMessage(e.target.value)}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[150px] text-sm"
+                                                    placeholder="Escreva aqui sua pergunta para o professor..."
+                                                    autoFocus
+                                                />
+                                            </div>
+                                            <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100 text-xs text-yellow-800 flex gap-2">
+                                                <span className="text-lg">💡</span>
+                                                <p>Sua mensagem será enviada diretamente para o painel do professor. Seja claro e específico para obter uma resposta melhor.</p>
+                                            </div>
+                                            <div className="flex justify-end pt-2">
+                                                <Button
+                                                    onClick={handleSendTicket}
+                                                    disabled={!ticketMessage.trim() || isTicketSending}
+                                                    className={`w-full py-3 flex justify-center items-center gap-2 ${isTicketSending ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                                >
+                                                    {isTicketSending ? (
+                                                        <>
+                                                            <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
+                                                            Enviando...
+                                                        </>
+                                                    ) : (
+                                                        <>Enviar Dúvida</>
+                                                    )}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
