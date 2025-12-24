@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     Bot,
     CalendarDays,
+    CircleHelp,
     CreditCard,
     Download,
     FileText,
@@ -19,7 +20,6 @@ import {
     Lightbulb,
     Mail,
     MessageCircle,
-    MessageSquare,
     User
 } from 'lucide-react';
 import { db } from '../firebaseConfig';
@@ -502,7 +502,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-yellow-500 hover:shadow-md transition-all group aspect-square"
                                     >
                                         <div className="w-10 h-10 bg-yellow-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-yellow-100 transition-colors">
-                                            <MessageSquare className="w-6 h-6 text-yellow-600" />
+                                            <CircleHelp className="w-6 h-6 text-yellow-600" />
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Minhas Dúvidas</h3>
                                     </button>
@@ -726,7 +726,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                                 <div className="mt-8 border border-gray-200 rounded-lg p-6 bg-blue-50/30">
                                                     <h4 className="font-bold text-blue-950 mb-3 flex items-center gap-2">
-                                                        <MessageSquare className="w-5 h-5" />
+                                                        <MessageCircle className="w-5 h-5" />
                                                         Observações do Professor(a)
                                                     </h4>
                                                     <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap italic">
@@ -962,7 +962,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     {currentView === 'tickets' && (
                         <div className="animate-fade-in-up">
                             <h3 className="text-xl font-bold mb-4 text-gray-800 border-b border-gray-200 pb-2 flex items-center gap-2">
-                                <MessageSquare className="w-6 h-6 text-yellow-600" />
+                                <CircleHelp className="w-6 h-6 text-yellow-600" />
                                 Minhas Dúvidas
                             </h3>
 

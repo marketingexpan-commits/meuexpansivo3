@@ -16,7 +16,10 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
   const [selectedCoordinatorId, setSelectedCoordinatorId] = useState<string>('');
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
 
-  const coordinators = unitContacts.filter(c => c.unit === student.unit && c.role === ContactRole.COORDINATOR);
+  const coordinators = unitContacts.filter(c =>
+    c.unit === student.unit &&
+    (c.role === ContactRole.COORDINATOR || c.role?.toString().toUpperCase() === 'COORDENADOR')
+  );
   const unitTeachers = teachers.filter(t => t.unit === student.unit);
 
   const handleSubmit = async (e: React.FormEvent) => {
