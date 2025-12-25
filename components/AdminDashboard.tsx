@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
-import { Admin, Student, Teacher, SchoolUnit, Subject, SchoolShift, SchoolClass, SchoolMessage, MessageType, MessageRecipient, AttendanceRecord, AttendanceStatus, UnitContact, ContactRole, GradeEntry, Mensalidade } from '../types';
+import { Admin, Student, Teacher, SchoolUnit, Subject, SchoolShift, SchoolClass, SchoolMessage, MessageType, MessageRecipient, AttendanceRecord, AttendanceStatus, UnitContact, ContactRole, GradeEntry, Mensalidade, Ticket, TicketStatus } from '../types';
 import { SCHOOL_UNITS_LIST, SUBJECT_LIST, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST, SCHOOL_GRADES_LIST, SCHOOL_LOGO_URL } from '../constants';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
@@ -72,7 +72,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     mensalidades = [],
     onLogout
 }) => {
-    const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'admins' | 'messages' | 'attendance' | 'contacts' | 'rematricula' | 'financial'>('students');
+    const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'admins' | 'messages' | 'attendance' | 'contacts' | 'rematricula' | 'financial' | 'tickets'>('students');
 
     const adminUnit = admin.unit;
     const isGeneralAdmin = !adminUnit;
@@ -147,6 +147,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [attendanceFilterDate, setAttendanceFilterDate] = useState(new Date().toISOString().split('T')[0]);
     const [expandedRecordId, setExpandedRecordId] = useState<string | null>(null);
 
+    // Estados para Tickets (Dúvidas)
+    const [ticketsList, setTicketsList] = useState<Ticket[]>([]);
+    const [ticketFilterUnit, setTicketFilterUnit] = useState<string>('all'); // Novo filtro de unidade para tickets
+    const [isLoadingTickets, setIsLoadingTickets] = useState(false);
+
     // Estados para Contatos
     const [editingContactId, setEditingContactId] = useState<string | null>(null);
     const [contactName, setContactName] = useState('');
@@ -182,6 +187,41 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         };
         fetchFinancial();
     }, [activeTab]);
+
+    // Fetch Tickets
+    useEffect(() => {
+        if (activeTab === 'tickets' && isGeneralAdmin) {
+            fetchTickets();
+        }
+    }, [activeTab, isGeneralAdmin]);
+
+    const fetchTickets = async () => {
+        setIsLoadingTickets(true);
+        try {
+            const snapshot = await db.collection('tickets_pedagogicos')
+                .orderBy('timestamp', 'desc')
+                .get();
+            const data = snapshot.docs.map(doc => doc.data() as Ticket);
+            setTicketsList(data);
+        } catch (error) {
+            console.error("Error fetching tickets:", error);
+        } finally {
+            setIsLoadingTickets(false);
+        }
+    };
+
+    const handleDeleteTicket = async (ticketId: string) => {
+        if (!window.confirm("ATENÇÃO: Tem certeza que deseja excluir esta dúvida permanentemente? Ela sumirá para o aluno e para o professor.")) return;
+
+        try {
+            await db.collection('tickets_pedagogicos').doc(ticketId).delete();
+            setTicketsList(prev => prev.filter(t => t.id !== ticketId));
+            alert("Dúvida excluída com sucesso.");
+        } catch (error) {
+            console.error("Erro ao excluir dúvida:", error);
+            alert("Erro ao excluir dúvida.");
+        }
+    };
 
     // Auto-fill Financial Contact when Unit Changes
     useEffect(() => {
@@ -834,6 +874,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <span>💰</span> Financeiro
                         </button>
                         {isGeneralAdmin && <button onClick={() => setActiveTab('admins')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeTab === 'admins' ? 'bg-purple-800 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Gerenciar Admins</button>}
+                        {isGeneralAdmin && <button onClick={() => setActiveTab('tickets')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap flex items-center gap-2 ${activeTab === 'tickets' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>
+                            <span>❓</span> Dúvidas
+                        </button>}
                     </div>
 
                     {activeTab === 'students' && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-1"><div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"><h2 className="text-lg font-bold text-gray-800 mb-4">{editingStudentId ? 'Editar Aluno' : 'Cadastrar Novo Aluno'}</h2><form onSubmit={fullHandleStudentSubmit} className="space-y-4"><div><label className="text-sm font-medium">Nome</label><input type="text" value={sName} onChange={e => setSName(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Código</label><input type="text" value={sCode} onChange={e => setSCode(e.target.value)} required className="w-full p-2 border rounded" /></div>
@@ -886,7 +929,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             schoolClass: sClass,
                                             shift: sShift,
                                             unit: isGeneralAdmin ? sUnit : (adminUnit || SchoolUnit.UNIT_1), // Ensure unit is present
-                                            // Legacy/Optional fields can be partial/dummy if not used by fee generator, 
+                                            // Legacy/Optional fields can be partial/dummy if not used by fee generator,
                                             // but best to try finding original to keep data clean if possible.
                                             ...(students.find(s => s.id === editingStudentId) || {} as any)
                                         };
@@ -1342,7 +1385,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             grades={grades}
                             currentAdminUnit={isGeneralAdmin ? undefined : adminUnit}
                             onRefresh={async () => {
-                                // Re-triggering parent data via mock add if needed, 
+                                // Re-triggering parent data via mock add if needed,
                                 // but Firestore is real-time.
                             }}
                         />
@@ -1621,6 +1664,112 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             </div>
                         </div>
                     )}
+
+                    {activeTab === 'tickets' && isGeneralAdmin && (
+                        <div className="animate-fade-in-up">
+                            <div className="flex justify-between items-center mb-6">
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-800">Minhas Dúvidas (Tickets)</h2>
+                                    <p className="text-sm text-gray-500">Gerenciamento interativo de dúvidas dos alunos.</p>
+                                </div>
+                                <div>
+                                    <select
+                                        value={ticketFilterUnit}
+                                        onChange={(e) => setTicketFilterUnit(e.target.value)}
+                                        className="p-2 border border-gray-300 rounded-lg text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                    >
+                                        <option value="all">Todas as Unidades</option>
+                                        {SCHOOL_UNITS_LIST.map(unit => (
+                                            <option key={unit} value={unit}>{unit}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {isLoadingTickets ? (
+                                <div className="text-center py-12">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-2"></div>
+                                    <p className="text-gray-500">Carregando tickets...</p>
+                                </div>
+                            ) : ticketsList.length === 0 ? (
+                                <div className="bg-white p-12 text-center rounded-2xl border border-gray-100 shadow-sm">
+                                    <svg className="w-16 h-16 text-gray-200 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    <h3 className="text-lg font-bold text-gray-900">Nenhuma dúvida registrada</h3>
+                                    <p className="text-gray-500">O histórico de perguntas está vazio.</p>
+                                </div>
+                            ) : (
+                                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="bg-gray-50 text-gray-600 font-medium border-b border-gray-200 uppercase tracking-wider text-xs">
+                                                <tr>
+                                                    <th className="px-6 py-4">Data</th>
+                                                    <th className="px-6 py-4">Aluno</th>
+                                                    <th className="px-6 py-4">Disciplina</th>
+                                                    <th className="px-6 py-4 w-1/3">Dúvida / Resposta</th>
+                                                    <th className="px-6 py-4 text-center">Status</th>
+                                                    <th className="px-6 py-4 text-center">Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                                {ticketsList
+                                                    .filter(ticket => ticketFilterUnit === 'all' || ticket.unit === ticketFilterUnit)
+                                                    .map(ticket => (
+                                                        <tr key={ticket.id} className="hover:bg-gray-50 transition-colors">
+                                                            <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                                                                {new Date(ticket.timestamp).toLocaleDateString()}
+                                                                <span className="block text-xs">{new Date(ticket.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <div className="font-bold text-gray-800">{ticket.studentName}</div>
+                                                                <div className="text-xs text-gray-500">{ticket.gradeLevel} - {ticket.schoolClass} ({ticket.unit})</div>
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">{ticket.subject}</span>
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <div className="mb-2">
+                                                                    <span className="font-bold text-gray-700 text-xs uppercase block mb-1">Dúvida:</span>
+                                                                    <p className="text-gray-600 italic">"{ticket.message}"</p>
+                                                                </div>
+                                                                {ticket.response && (
+                                                                    <div className="bg-green-50 p-2 rounded border border-green-100">
+                                                                        <span className="font-bold text-green-800 text-xs uppercase block mb-1">
+                                                                            Resposta {ticket.responderName ? `(${ticket.responderName})` : ''}:
+                                                                        </span>
+                                                                        <p className="text-green-700 text-xs">{ticket.response}</p>
+                                                                    </div>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-6 py-4 text-center">
+                                                                {ticket.status === TicketStatus.ANSWERED ? (
+                                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                                                                        Respondido
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+                                                                        Pendente
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-6 py-4 text-center">
+                                                                <button
+                                                                    onClick={() => handleDeleteTicket(ticket.id)}
+                                                                    className="text-red-400 hover:text-red-600 transition-colors p-2 hover:bg-red-50 rounded-full"
+                                                                    title="Excluir Dúvida permanentemente"
+                                                                >
+                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -1737,8 +1886,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             // 3. MESSAGES & OTHERS
                                             // Only filtering messages if we can identify unit (often difficult without direct field).
                                             // For now, if unit selected, we might skip messages or include relevant ones?
-                                            // Strategy: Include all if 'all', else include only if we can link to unit? 
-                                            // Let's include all for backup safety, user can filter in Excel. 
+                                            // Strategy: Include all if 'all', else include only if we can link to unit?
+                                            // Let's include all for backup safety, user can filter in Excel.
                                             // Actually, if exporting for a unit, broad messages might be confusing.
                                             // Let's keep all for now to be safe.
                                             const msgData = msgRel.docs.map(doc => ({ ...doc.data(), ID: doc.id }));
@@ -1883,7 +2032,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                                             if (maintenanceUnit === 'all') {
                                                 const collections = ['grades', 'attendance', 'schoolMessages', 'earlyChildhoodReports', 'notifications', 'access_logs', 'daily_stats'];
-                                                // NOTE: This uses batch.delete which is size-limited. 
+                                                // NOTE: This uses batch.delete which is size-limited.
                                                 // The original code used a separate deleteCollection with batch per collection.
 
                                                 const deleteCollection = async (col: string) => {
@@ -1932,7 +2081,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 }
 
                                                 // Commit the specific batch
-                                                // Warning: If > 500 deletes, this will crash. 
+                                                // Warning: If > 500 deletes, this will crash.
                                                 // Implementing a safe commit loop.
                                                 if (deletedCount > 0) {
                                                     await batch.commit();
@@ -2097,6 +2246,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     onClose={() => setSelectedReceiptForModal(null)}
                 />
             )}
+
         </div>
     );
 }
