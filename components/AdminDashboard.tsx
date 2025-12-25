@@ -148,6 +148,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [pendingGradesMap, setPendingGradesMap] = useState<Record<string, GradeEntry[]>>({});
     const [isLoadingCoordination, setIsLoadingCoordination] = useState(false);
 
+    // Enforcement of Unit Filter for Non-Admins
+    useEffect(() => {
+        if (!isGeneralAdmin && adminUnit) {
+            setCoordinationFilterUnit(adminUnit);
+        }
+    }, [isGeneralAdmin, adminUnit]);
+
     // Estados para Frequência
     const [attendanceFilterUnit, setAttendanceFilterUnit] = useState<SchoolUnit | ''>(adminUnit || '');
     const [attendanceFilterGrade, setAttendanceFilterGrade] = useState('');
@@ -1910,6 +1917,133 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             )}
                         </div>
                     )}
+                    {/* TAB COORDENAÇÃO (APROVAÇÃO) */}
+                    {
+                        activeTab === 'coordination' && (
+                            <div className="animate-fade-in-up md:px-6 px-4">
+                                <div className="mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                        <span className="bg-purple-100 text-purple-700 p-2 rounded-lg text-sm">🛡️</span>
+                                        Aprovação de Notas
+                                    </h2>
+
+                                    {/* FILTROS */}
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                        <div>
+                                            <label className="text-xs font-bold text-gray-500 uppercase">Unidade</label>
+                                            <select
+                                                value={coordinationFilterUnit}
+                                                onChange={e => setCoordinationFilterUnit(e.target.value as SchoolUnit)}
+                                                className={`w-full p-2 border rounded-lg text-sm ${!isGeneralAdmin ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
+                                                disabled={!isGeneralAdmin}
+                                            >
+                                                {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-gray-500 uppercase">Série</label>
+                                            <select
+                                                value={coordinationFilterGrade}
+                                                onChange={e => setCoordinationFilterGrade(e.target.value)}
+                                                className="w-full p-2 border rounded-lg text-sm"
+                                            >
+                                                <option value="">Todas</option>
+                                                {SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-gray-500 uppercase">Turma</label>
+                                            <select
+                                                value={coordinationFilterClass}
+                                                onChange={e => setCoordinationFilterClass(e.target.value)}
+                                                className="w-full p-2 border rounded-lg text-sm"
+                                            >
+                                                <option value="">Todas</option>
+                                                {SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-gray-500 uppercase">Disciplina</label>
+                                            <input
+                                                type="text"
+                                                value={coordinationFilterSubject}
+                                                onChange={e => setCoordinationFilterSubject(e.target.value)}
+                                                placeholder="Filtrar disciplina..."
+                                                className="w-full p-2 border rounded-lg text-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {isLoadingCoordination ? (
+                                    <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600"></div></div>
+                                ) : pendingGradesStudents.length === 0 ? (
+                                    <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
+                                        <p className="text-gray-500 font-medium">Nenhuma nota pendente de aprovação com os filtros atuais. 🎉</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {pendingGradesStudents.map(student => (
+                                            <div key={student.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                                <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+                                                    <div>
+                                                        <h3 className="font-bold text-gray-800">{student.name}</h3>
+                                                        <p className="text-xs text-gray-500">{student.gradeLevel} - {student.schoolClass} ({student.shift})</p>
+                                                    </div>
+                                                    <div className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full">
+                                                        {pendingGradesMap[student.id]?.length} Pendência(s)
+                                                    </div>
+                                                </div>
+                                                <div className="p-0">
+                                                    <table className="w-full text-sm text-left">
+                                                        <thead className="bg-white text-gray-500 border-b">
+                                                            <tr>
+                                                                <th className="px-4 py-2 font-medium w-1/4">Disciplina</th>
+                                                                <th className="px-4 py-2 font-medium">Alterações Pendentes</th>
+                                                                <th className="px-4 py-2 text-right">Ação</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {pendingGradesMap[student.id]?.map(grade => {
+                                                                const pendingBimesters = Object.entries(grade.bimesters)
+                                                                    .filter(([_, data]: [string, any]) => data.isApproved === false)
+                                                                    .map(([key]) => key.replace('bimester', '') + 'º Bim');
+
+                                                                if (grade.recuperacaoFinalApproved === false) pendingBimesters.push('Rec. Final');
+
+                                                                return (
+                                                                    <tr key={grade.id} className="hover:bg-purple-50 transition-colors">
+                                                                        <td className="px-4 py-3 font-bold text-gray-700">{grade.subject}</td>
+                                                                        <td className="px-4 py-3">
+                                                                            <div className="flex gap-2 flex-wrap">
+                                                                                {pendingBimesters.map(label => (
+                                                                                    <span key={label} className="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded text-xs font-bold border border-yellow-200">
+                                                                                        {label}
+                                                                                    </span>
+                                                                                ))}
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="px-4 py-3 text-right">
+                                                                            <button
+                                                                                onClick={() => handleApproveGrade(grade)}
+                                                                                className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-all"
+                                                                            >
+                                                                                Aprovar
+                                                                            </button>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )
+                    }
                 </div>
             </div>
 
