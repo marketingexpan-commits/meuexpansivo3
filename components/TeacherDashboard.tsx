@@ -851,7 +851,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                             <thead className="bg-blue-50">
                                                                 <tr>
                                                                     <th rowSpan={2} className="px-2 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-24 md:w-40 sticky left-0 bg-blue-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[10px] md:text-sm">Disciplina</th>
-                                                                    {[1, 2, 3, 4].map(num => (<th key={num} colSpan={3} className="px-1 py-2 text-center font-bold text-gray-700 uppercase tracking-wider border-l border-r border-gray-300">{num}º BIM</th>))}
+                                                                    {[1, 2, 3, 4].map(num => (<th key={num} colSpan={4} className="px-1 py-2 text-center font-bold text-gray-700 uppercase tracking-wider border-l border-r border-gray-300">{num}º BIM</th>))}
                                                                     <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-16 text-[10px] leading-tight">Média<br />Anual</th>
                                                                     <th rowSpan={2} className="px-2 py-3 text-center font-bold text-red-700 uppercase tracking-wider border-r border-gray-300 bg-red-50 w-16 text-[10px] leading-tight">Prova<br />Final</th>
                                                                     <th rowSpan={2} className="px-2 py-3 text-center font-bold text-blue-950 uppercase tracking-wider border-r border-gray-300 bg-blue-100 w-16 text-[10px] leading-tight">Média<br />Final</th>
@@ -862,7 +862,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                         <React.Fragment key={num}>
                                                                             <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300" title={`Nota ${num}º Bimestre`}>N{num}</th>
                                                                             <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300" title={`Recuperação ${num}º Bimestre`}>R{num}</th>
-                                                                            <th className="px-1 py-1 text-center font-bold text-blue-950 bg-blue-50 border-r border-gray-300" title={`Faltas ${num}º Bimestre`}>F{num}</th>
+                                                                            <th className="px-1 py-1 text-center font-bold text-blue-950 bg-blue-50 border-r border-gray-300" title={`Média ${num}º Bimestre`}>M{num}</th>
+                                                                            <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300" title={`Faltas ${num}º Bimestre`}>F{num}</th>
                                                                         </React.Fragment>
                                                                     ))}
                                                                 </tr>
@@ -902,6 +903,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                                 <React.Fragment key={key}>
                                                                                     <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-300">{formatGrade(bData.nota)}</td>
                                                                                     <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-300">{formatGrade(bData.recuperacao)}</td>
+                                                                                    <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs">{formatGrade(bData.media)}</td>
                                                                                     <td className="px-1 py-2 text-center text-gray-500 text-xs border-r border-gray-300">
                                                                                         {bData.faltas !== undefined && bData.faltas !== null ? bData.faltas : (currentStudentAbsences || '')}
                                                                                     </td>
