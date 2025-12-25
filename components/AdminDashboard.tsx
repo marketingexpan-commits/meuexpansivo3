@@ -139,6 +139,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
     const [messageFilter, setMessageFilter] = useState<'new' | 'all'>('new');
 
+    // States for Coordination / Grade Approval
+    const [coordinationFilterUnit, setCoordinationFilterUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_1);
+    const [coordinationFilterGrade, setCoordinationFilterGrade] = useState('');
+    const [coordinationFilterClass, setCoordinationFilterClass] = useState('');
+    const [coordinationFilterSubject, setCoordinationFilterSubject] = useState('');
+    const [pendingGradesStudents, setPendingGradesStudents] = useState<Student[]>([]);
+    const [pendingGradesMap, setPendingGradesMap] = useState<Record<string, GradeEntry[]>>({});
+    const [isLoadingCoordination, setIsLoadingCoordination] = useState(false);
+
     // Estados para Frequência
     const [attendanceFilterUnit, setAttendanceFilterUnit] = useState<SchoolUnit | ''>(adminUnit || '');
     const [attendanceFilterGrade, setAttendanceFilterGrade] = useState('');
@@ -201,12 +210,140 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             const snapshot = await db.collection('tickets_pedagogicos')
                 .orderBy('timestamp', 'desc')
                 .get();
-            const data = snapshot.docs.map(doc => doc.data() as Ticket);
-            setTicketsList(data);
+            const tickets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ticket));
+            setTicketsList(tickets);
         } catch (error) {
             console.error("Error fetching tickets:", error);
         } finally {
             setIsLoadingTickets(false);
+        }
+    };
+
+    // --- COORDENAÇÃO: FETCH PENDING GRADES ---
+    useEffect(() => {
+        if (activeTab === 'coordination') {
+            fetchPendingGrades();
+        }
+    }, [activeTab, coordinationFilterUnit, coordinationFilterGrade, coordinationFilterClass, coordinationFilterSubject]);
+
+    const fetchPendingGrades = async () => {
+        setIsLoadingCoordination(true);
+        try {
+            // 1. Fetch Students based on filters
+            // Note: Optimally we should index this. For now, client filtering if 'unit' is set.
+            let studentsQuery = db.collection('students');
+
+            if (coordinationFilterUnit) {
+                // @ts-ignore
+                studentsQuery = studentsQuery.where('unit', '==', coordinationFilterUnit);
+            }
+
+            const studsSnapshot = await studentsQuery.get();
+            let studentsData = studsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
+
+            // Apply other filters locally
+            if (coordinationFilterGrade) studentsData = studentsData.filter(s => s.gradeLevel === coordinationFilterGrade);
+            if (coordinationFilterClass) studentsData = studentsData.filter(s => s.schoolClass === coordinationFilterClass);
+
+            // 2. Fetch Grades for these students
+            // We need to find grades that have ANY unapproved part
+            // Fetching all grades for these students is safer/easier than disjoint queries
+            if (studentsData.length === 0) {
+                setPendingGradesStudents([]);
+                setPendingGradesMap({});
+                setIsLoadingCoordination(false);
+                return;
+            }
+
+            // Chunk student IDs for 'in' query if needed, or just fetch all grades filtered by Unit if possible?
+            // Grades collection has studentId. It's better to fetch grades by studentId.
+            // But if many students, this is hard.
+            // Alternative: Fetch ALL grades for the UNIT (if selected) or ALL grades, then filter vertically.
+            // Assuming 'grades' collection doesn't have 'unit' field directly (it relies on student).
+            // Let's iterate chunks of students.
+
+            const studentIds = studentsData.map(s => s.id);
+            const chunks = [];
+            for (let i = 0; i < studentIds.length; i += 10) {
+                chunks.push(studentIds.slice(i, i + 10));
+            }
+
+            const allGrades: GradeEntry[] = [];
+            for (const chunk of chunks) {
+                const q = db.collection('grades').where('studentId', 'in', chunk);
+                const snap = await q.get();
+                snap.docs.forEach(d => allGrades.push({ id: d.id, ...d.data() } as GradeEntry));
+            }
+
+            // 3. Filter Grades that have Pending items AND match Subject filter
+            const pendingMap: Record<string, GradeEntry[]> = {};
+            const studentsWithPending: Set<string> = new Set();
+
+            allGrades.forEach(grade => {
+                if (coordinationFilterSubject && grade.subject !== coordinationFilterSubject) return;
+
+                // Check for unapproved bimesters OR unapproved final recovery
+                const hasPending = Object.values(grade.bimesters).some((b: any) => b.isApproved === false) ||
+                    grade.recuperacaoFinalApproved === false;
+
+                if (hasPending) {
+                    if (!pendingMap[grade.studentId]) pendingMap[grade.studentId] = [];
+                    pendingMap[grade.studentId].push(grade);
+                    studentsWithPending.add(grade.studentId);
+                }
+            });
+
+            setPendingGradesStudents(studentsData.filter(s => studentsWithPending.has(s.id)));
+            setPendingGradesMap(pendingMap);
+
+        } catch (error) {
+            console.error("Error fetching coordination data:", error);
+        } finally {
+            setIsLoadingCoordination(false);
+        }
+    };
+
+    const handleApproveGrade = async (grade: GradeEntry) => {
+        if (!window.confirm(`Confirma a aprovação das notas de ${grade.subject}?`)) return;
+
+        try {
+            // Create a safe copy of bimesters to avoid mutating the original object references
+            const updatedBimesters = { ...grade.bimesters };
+
+            Object.keys(updatedBimesters).forEach((key) => {
+                const k = key as keyof typeof updatedBimesters;
+                // Deep copy the specific bimester object before modifying
+                updatedBimesters[k] = { ...updatedBimesters[k] };
+
+                if (updatedBimesters[k].isApproved === false) {
+                    updatedBimesters[k].isApproved = true;
+                }
+            });
+
+            let updatedRecFinalApproved = grade.recuperacaoFinalApproved;
+            if (updatedRecFinalApproved === false) updatedRecFinalApproved = true;
+
+            await db.collection('grades').doc(grade.id).update({
+                bimesters: updatedBimesters,
+                recuperacaoFinalApproved: updatedRecFinalApproved
+            });
+
+            // Update Local State (Remove from pending list)
+            setPendingGradesMap(prev => {
+                const studentGrades = prev[grade.studentId] || [];
+                const newStudentGrades = studentGrades.filter(g => g.id !== grade.id);
+
+                if (newStudentGrades.length === 0) {
+                    setPendingGradesStudents(prevS => prevS.filter(s => s.id !== grade.studentId));
+                }
+
+                return { ...prev, [grade.studentId]: newStudentGrades };
+            });
+
+            alert("Notas aprovadas com sucesso!");
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao aprovar notas.");
         }
     };
 
@@ -1773,480 +1910,613 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
             </div>
 
-            {/* MODAL DE MANUTENÇÃO */}
-            {isMaintenanceModalOpen && isGeneralAdmin && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900 bg-opacity-70 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-auto max-h-[90vh] flex flex-col overflow-hidden">
-                        {/* HEADER MODAL */}
-                        <div className="flex justify-between items-center p-6 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-                            <div>
-                                <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                                    ⚙️ Manutenção do Sistema
-                                </h2>
-                                <p className="text-sm text-gray-500">Ferramentas avançadas de administração e virada de ano.</p>
+            {/* TAB COORDENAÇÃO (APROVAÇÃO) */}
+            {
+                activeTab === 'coordination' && (
+                    <div className="animate-fade-in-up md:px-6 px-4">
+                        <div className="mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                <span className="bg-purple-100 text-purple-700 p-2 rounded-lg text-sm">🛡️</span>
+                                Aprovação de Notas
+                            </h2>
+
+                            {/* FILTROS */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 uppercase">Unidade</label>
+                                    <select
+                                        value={coordinationFilterUnit}
+                                        onChange={e => setCoordinationFilterUnit(e.target.value as SchoolUnit)}
+                                        className="w-full p-2 border rounded-lg text-sm"
+                                    >
+                                        {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 uppercase">Série</label>
+                                    <select
+                                        value={coordinationFilterGrade}
+                                        onChange={e => setCoordinationFilterGrade(e.target.value)}
+                                        className="w-full p-2 border rounded-lg text-sm"
+                                    >
+                                        <option value="">Todas</option>
+                                        {SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 uppercase">Turma</label>
+                                    <select
+                                        value={coordinationFilterClass}
+                                        onChange={e => setCoordinationFilterClass(e.target.value)}
+                                        className="w-full p-2 border rounded-lg text-sm"
+                                    >
+                                        <option value="">Todas</option>
+                                        {SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 uppercase">Disciplina</label>
+                                    <input
+                                        type="text"
+                                        value={coordinationFilterSubject}
+                                        onChange={e => setCoordinationFilterSubject(e.target.value)}
+                                        placeholder="Filtrar disciplina..."
+                                        className="w-full p-2 border rounded-lg text-sm"
+                                    />
+                                </div>
                             </div>
-                            <button onClick={() => setIsMaintenanceModalOpen(false)} className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-gray-200">
-                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                            </button>
                         </div>
 
-                        {/* BODY MODAL */}
-                        <div className="p-8 overflow-y-auto">
-                            <div className="p-4 bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 mb-8 rounded shadow-sm">
-                                <p className="font-bold">⚠️ Área de Risco</p>
-                                <p>Estas ferramentas manipulam dados críticos. Certifique-se de que sabe o que está fazendo.</p>
+                        {isLoadingCoordination ? (
+                            <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600"></div></div>
+                        ) : pendingGradesStudents.length === 0 ? (
+                            <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
+                                <p className="text-gray-500 font-medium">Nenhuma nota pendente de aprovação com os filtros atuais. 🎉</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {pendingGradesStudents.map(student => (
+                                    <div key={student.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                        <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+                                            <div>
+                                                <h3 className="font-bold text-gray-800">{student.name}</h3>
+                                                <p className="text-xs text-gray-500">{student.gradeLevel} - {student.schoolClass} ({student.shift})</p>
+                                            </div>
+                                            <div className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full">
+                                                {pendingGradesMap[student.id]?.length} Pendência(s)
+                                            </div>
+                                        </div>
+                                        <div className="p-0">
+                                            <table className="w-full text-sm text-left">
+                                                <thead className="bg-white text-gray-500 border-b">
+                                                    <tr>
+                                                        <th className="px-4 py-2 font-medium w-1/4">Disciplina</th>
+                                                        <th className="px-4 py-2 font-medium">Alterações Pendentes</th>
+                                                        <th className="px-4 py-2 text-right">Ação</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-100">
+                                                    {pendingGradesMap[student.id]?.map(grade => {
+                                                        const pendingBimesters = Object.entries(grade.bimesters)
+                                                            .filter(([_, data]: [string, any]) => data.isApproved === false)
+                                                            .map(([key]) => key.replace('bimester', '') + 'º Bim');
+
+                                                        if (grade.recuperacaoFinalApproved === false) pendingBimesters.push('Rec. Final');
+
+                                                        return (
+                                                            <tr key={grade.id} className="hover:bg-purple-50 transition-colors">
+                                                                <td className="px-4 py-3 font-bold text-gray-700">{grade.subject}</td>
+                                                                <td className="px-4 py-3">
+                                                                    <div className="flex gap-2 flex-wrap">
+                                                                        {pendingBimesters.map(label => (
+                                                                            <span key={label} className="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded text-xs font-bold border border-yellow-200">
+                                                                                {label}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-4 py-3 text-right">
+                                                                    <button
+                                                                        onClick={() => handleApproveGrade(grade)}
+                                                                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-all"
+                                                                    >
+                                                                        Aprovar
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )
+            }
+
+            {/* MODAL DE MANUTENÇÃO */}
+            {
+                isMaintenanceModalOpen && isGeneralAdmin && (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900 bg-opacity-70 backdrop-blur-sm animate-fade-in">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-auto max-h-[90vh] flex flex-col overflow-hidden">
+                            {/* HEADER MODAL */}
+                            <div className="flex justify-between items-center p-6 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                                        ⚙️ Manutenção do Sistema
+                                    </h2>
+                                    <p className="text-sm text-gray-500">Ferramentas avançadas de administração e virada de ano.</p>
+                                </div>
+                                <button onClick={() => setIsMaintenanceModalOpen(false)} className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-gray-200">
+                                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                </button>
                             </div>
 
-                            {/* Unit Selector */}
-                            <div className="mb-8">
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Selecionar Unidade Alvo</label>
-                                <select
-                                    value={maintenanceUnit}
-                                    onChange={(e) => setMaintenanceUnit(e.target.value)}
-                                    className="w-full md:w-1/3 p-2.5 border border-gray-300 rounded-lg bg-white font-medium text-gray-800"
-                                >
-                                    <option value="all">Todas as Unidades (Global)</option>
-                                    {SCHOOL_UNITS_LIST.map(u => (
-                                        <option key={u} value={u}>{u}</option>
-                                    ))}
-                                </select>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    {maintenanceUnit === 'all'
-                                        ? "As ações abaixo afetarão TODOS os dados do sistema."
-                                        : `As ações abaixo afetarão APENAS dados da unidade ${maintenanceUnit}.`
-                                    }
-                                </p>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-
-                                {/* 1. BACKUP */}
-                                <div className="bg-white p-6 rounded-lg shadow border border-gray-200 hover:shadow-lg transition-shadow">
-                                    <h3 className="text-lg font-bold text-blue-900 mb-2">1. Exportar Dados</h3>
-                                    <p className="text-sm text-gray-600 mb-4">Gera um arquivo Excel (.xlsx) com todas as notas, faltas e mensagens atuais.</p>
-                                    <Button onClick={async () => {
-                                        try {
-                                            const wb = XLSX.utils.book_new();
-
-                                            // Fetch Data
-                                            const [usersRel, gradesRel, attRel, msgRel, reportsRel] = await Promise.all([
-                                                db.collection('students').get(),
-                                                db.collection('grades').get(),
-                                                db.collection('attendance').get(),
-                                                db.collection('schoolMessages').get(),
-                                                db.collection('earlyChildhoodReports').get()
-                                            ]);
-
-                                            // Map Students for easy lookup
-                                            const studentsMap: any = {};
-                                            usersRel.docs.forEach(d => { studentsMap[d.id] = d.data(); });
-
-                                            // 1. GRADES
-                                            let gradesData = gradesRel.docs.map(doc => {
-                                                const g = doc.data();
-                                                const s = studentsMap[g.studentId] || {};
-                                                return {
-                                                    ID: g.id,
-                                                    ALUNO_ID: g.studentId,
-                                                    ALUNO_NOME: s.name || 'Desconhecido',
-                                                    UNIDADE: s.unit || '',
-                                                    TURMA: s.schoolClass || '',
-                                                    DISCIPLINA: g.subject,
-                                                    MEDIA_ANUAL: g.mediaAnual,
-                                                    RESULTADO: g.situacaoFinal,
-                                                    RAW_DATA: JSON.stringify(g)
-                                                };
-                                            });
-
-                                            // Filter Grades by Unit
-                                            if (maintenanceUnit !== 'all') {
-                                                gradesData = gradesData.filter(g => g.UNIDADE === maintenanceUnit);
-                                            }
-                                            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gradesData), "Notas");
-
-                                            // 2. ATTENDANCE
-                                            let attData = attRel.docs.map(doc => {
-                                                const a = doc.data();
-                                                return {
-                                                    ID: a.id,
-                                                    DATA: a.date,
-                                                    TURMA: a.schoolClass,
-                                                    PROFESSOR: a.teacherName,
-                                                    UNIDADE: a.unit, // Ensure we check this
-                                                    RAW_DATA: JSON.stringify(a)
-                                                };
-                                            });
-
-                                            // Filter Attendance by Unit
-                                            if (maintenanceUnit !== 'all') {
-                                                attData = attData.filter(a => a.UNIDADE === maintenanceUnit);
-                                            }
-                                            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(attData), "Frequencia");
-
-                                            // 3. MESSAGES & OTHERS
-                                            // Only filtering messages if we can identify unit (often difficult without direct field).
-                                            // For now, if unit selected, we might skip messages or include relevant ones?
-                                            // Strategy: Include all if 'all', else include only if we can link to unit?
-                                            // Let's include all for backup safety, user can filter in Excel.
-                                            // Actually, if exporting for a unit, broad messages might be confusing.
-                                            // Let's keep all for now to be safe.
-                                            const msgData = msgRel.docs.map(doc => ({ ...doc.data(), ID: doc.id }));
-                                            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(msgData), "Mensagens");
-
-                                            let repData = reportsRel.docs.map(doc => {
-                                                const r = doc.data();
-                                                const s = studentsMap[r.studentId] || {};
-                                                return { ...r, ID: doc.id, UNIDADE: s.unit };
-                                            });
-
-                                            if (maintenanceUnit !== 'all') {
-                                                repData = repData.filter(r => r.UNIDADE === maintenanceUnit);
-                                            }
-                                            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(repData), "RelatoriosInfantil");
-
-                                            const fileName = maintenanceUnit === 'all'
-                                                ? `Backup_Completo_${new Date().toISOString().split('T')[0]}.xlsx`
-                                                : `Backup_${maintenanceUnit.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
-
-                                            XLSX.writeFile(wb, fileName);
-                                            alert("Backup gerado com sucesso!");
-                                        } catch (e) {
-                                            console.error(e);
-                                            alert("Erro ao gerar backup: " + e);
-                                        }
-                                    }} className="w-full">
-                                        💾 Baixar Backup
-                                    </Button>
+                            {/* BODY MODAL */}
+                            <div className="p-8 overflow-y-auto">
+                                <div className="p-4 bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 mb-8 rounded shadow-sm">
+                                    <p className="font-bold">⚠️ Área de Risco</p>
+                                    <p>Estas ferramentas manipulam dados críticos. Certifique-se de que sabe o que está fazendo.</p>
                                 </div>
 
-                                {/* 2. RESTORE */}
-                                <div className="bg-white p-6 rounded-lg shadow border border-gray-200 hover:shadow-lg transition-shadow">
-                                    <h3 className="text-lg font-bold text-green-900 mb-2">2. Restaurar Dados</h3>
-                                    <p className="text-sm text-gray-600 mb-4">Reimporta dados de um backup anterior. Útil para desfazer erros.</p>
-                                    <input type="file" id="restoreFile" accept=".xlsx" className="hidden" onChange={async (e) => {
-                                        const file = e.target.files?.[0];
-                                        if (!file) return;
-                                        if (!window.confirm("Isso irá mesclar/sobrescrever os dados atuais com os do arquivo. Confirmar?")) return;
-
-                                        try {
-                                            const data = await file.arrayBuffer();
-                                            const wb = XLSX.read(data);
-                                            const batch = db.batch();
-
-                                            // Restore Grades
-                                            const wsGrades = wb.Sheets["Notas"];
-                                            if (wsGrades) {
-                                                const gradesJson = XLSX.utils.sheet_to_json(wsGrades);
-                                                gradesJson.forEach((row: any) => {
-                                                    // Filter by Unit if selected
-                                                    if (maintenanceUnit !== 'all' && row.UNIDADE !== maintenanceUnit) return;
-
-                                                    if (row.RAW_DATA) {
-                                                        const gBase = JSON.parse(row.RAW_DATA);
-                                                        batch.set(db.collection('grades').doc(gBase.id), gBase);
-                                                    }
-                                                });
-                                            }
-
-                                            // Restore Attendance
-                                            const wsAtt = wb.Sheets["Frequencia"];
-                                            if (wsAtt) {
-                                                const attJson = XLSX.utils.sheet_to_json(wsAtt);
-                                                attJson.forEach((row: any) => {
-                                                    // Filter by Unit if selected
-                                                    if (maintenanceUnit !== 'all' && row.UNIDADE !== maintenanceUnit) return;
-
-                                                    if (row.RAW_DATA) {
-                                                        const aBase = JSON.parse(row.RAW_DATA);
-                                                        batch.set(db.collection('attendance').doc(aBase.id), aBase);
-                                                    }
-                                                });
-                                            }
-
-                                            // Restore Messages
-                                            const wsMsg = wb.Sheets["Mensagens"];
-                                            if (wsMsg) {
-                                                const msgJson = XLSX.utils.sheet_to_json(wsMsg);
-                                                msgJson.forEach((row: any) => {
-                                                    if (row.ID) {
-                                                        const { ID, ...rest } = row;
-                                                        // Difficult to filter messages by unit without extra info, but assuming user caution.
-                                                        // If we added unit to export, we could filter here.
-                                                        // Current Export doesn't explicitly add UNIDADE column to messages, so we SKIP filtering or Restore ALL.
-                                                        // Safest: Restore All for messages as they might be system wide or we can't tell.
-                                                        // Alternatively, assume messages are not unit-critical for selective restore?
-                                                        // Let's keep it restoring all to prevent data loss, or skip if strict.
-                                                        batch.set(db.collection('schoolMessages').doc(ID), rest);
-                                                    }
-                                                });
-                                            }
-
-                                            // Restore Reports
-                                            const wsRep = wb.Sheets["RelatoriosInfantil"];
-                                            if (wsRep) {
-                                                const repJson = XLSX.utils.sheet_to_json(wsRep);
-                                                repJson.forEach((row: any) => {
-                                                    // Filter by Unit if selected
-                                                    if (maintenanceUnit !== 'all' && row.UNIDADE !== maintenanceUnit) return;
-
-                                                    if (row.ID) {
-                                                        const { ID, UNIDADE, ...rest } = row; // remove helper fields
-                                                        batch.set(db.collection('earlyChildhoodReports').doc(ID), rest);
-                                                    }
-                                                });
-                                            }
-
-                                            await batch.commit();
-                                            alert("Restauração concluída! Recarregue a página.");
-                                            window.location.reload();
-                                        } catch (err) {
-                                            console.error(err);
-                                            alert("Erro na restauração: " + err);
+                                {/* Unit Selector */}
+                                <div className="mb-8">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Selecionar Unidade Alvo</label>
+                                    <select
+                                        value={maintenanceUnit}
+                                        onChange={(e) => setMaintenanceUnit(e.target.value)}
+                                        className="w-full md:w-1/3 p-2.5 border border-gray-300 rounded-lg bg-white font-medium text-gray-800"
+                                    >
+                                        <option value="all">Todas as Unidades (Global)</option>
+                                        {SCHOOL_UNITS_LIST.map(u => (
+                                            <option key={u} value={u}>{u}</option>
+                                        ))}
+                                    </select>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        {maintenanceUnit === 'all'
+                                            ? "As ações abaixo afetarão TODOS os dados do sistema."
+                                            : `As ações abaixo afetarão APENAS dados da unidade ${maintenanceUnit}.`
                                         }
-                                    }} />
-                                    <Button variant="secondary" onClick={() => document.getElementById('restoreFile')?.click()} className="w-full">
-                                        ♻️ Carregar Backup
-                                    </Button>
+                                    </p>
                                 </div>
 
-                                {/* 3. RESET */}
-                                <div className="bg-white p-6 rounded-lg shadow border border-red-200 hover:shadow-lg transition-shadow">
-                                    <h3 className="text-lg font-bold text-red-900 mb-2">3. Novo Ano Letivo</h3>
-                                    <p className="text-sm text-gray-600 mb-4">Apaga NOTAS, FALTAS e RELATÓRIOS. Mantém alunos e professores.</p>
-                                    <Button variant="danger" onClick={async () => {
-                                        const confirmMsg = maintenanceUnit === 'all'
-                                            ? "VOCÊ É O ADMINISTRADOR GERAL.\n\nEsta ação apagará TODAS as notas, faltas e relatórios de TODAS as unidades para iniciar um novo ano.\n\nTem certeza absoluta?"
-                                            : `ATENÇÃO: Você selecionou a unidade: ${maintenanceUnit}.\n\nEsta ação apagará apenas notas, faltas e relatórios desta unidade.\n\nTem certeza?`;
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
 
-                                        if (!window.confirm(confirmMsg)) return;
-                                        if (!window.confirm("CONFIRMAÇÃO FINAL: Você já baixou o backup dos dados atuais? Se não, cancele agora.")) return;
+                                    {/* 1. BACKUP */}
+                                    <div className="bg-white p-6 rounded-lg shadow border border-gray-200 hover:shadow-lg transition-shadow">
+                                        <h3 className="text-lg font-bold text-blue-900 mb-2">1. Exportar Dados</h3>
+                                        <p className="text-sm text-gray-600 mb-4">Gera um arquivo Excel (.xlsx) com todas as notas, faltas e mensagens atuais.</p>
+                                        <Button onClick={async () => {
+                                            try {
+                                                const wb = XLSX.utils.book_new();
 
-                                        try {
-                                            let deletedCount = 0;
-                                            const batch = db.batch();
+                                                // Fetch Data
+                                                const [usersRel, gradesRel, attRel, msgRel, reportsRel] = await Promise.all([
+                                                    db.collection('students').get(),
+                                                    db.collection('grades').get(),
+                                                    db.collection('attendance').get(),
+                                                    db.collection('schoolMessages').get(),
+                                                    db.collection('earlyChildhoodReports').get()
+                                                ]);
 
-                                            // Helper to process deletions
-                                            // Firestore batches max 500 ops. We might need multiple batches if large data.
-                                            // For simplicity here, assuming reasonable size or simplistic batching.
-                                            // Real-world: use a loop/chunking function.
+                                                // Map Students for easy lookup
+                                                const studentsMap: any = {};
+                                                usersRel.docs.forEach(d => { studentsMap[d.id] = d.data(); });
 
-                                            if (maintenanceUnit === 'all') {
-                                                const collections = ['grades', 'attendance', 'schoolMessages', 'earlyChildhoodReports', 'notifications', 'access_logs', 'daily_stats'];
-                                                // NOTE: This uses batch.delete which is size-limited.
-                                                // The original code used a separate deleteCollection with batch per collection.
+                                                // 1. GRADES
+                                                let gradesData = gradesRel.docs.map(doc => {
+                                                    const g = doc.data();
+                                                    const s = studentsMap[g.studentId] || {};
+                                                    return {
+                                                        ID: g.id,
+                                                        ALUNO_ID: g.studentId,
+                                                        ALUNO_NOME: s.name || 'Desconhecido',
+                                                        UNIDADE: s.unit || '',
+                                                        TURMA: s.schoolClass || '',
+                                                        DISCIPLINA: g.subject,
+                                                        MEDIA_ANUAL: g.mediaAnual,
+                                                        RESULTADO: g.situacaoFinal,
+                                                        RAW_DATA: JSON.stringify(g)
+                                                    };
+                                                });
 
-                                                const deleteCollection = async (col: string) => {
-                                                    const snapshot = await db.collection(col).get();
-                                                    const b = db.batch(); // New batch per collection
-                                                    snapshot.docs.forEach(doc => b.delete(doc.ref));
-                                                    await b.commit();
-                                                    deletedCount += snapshot.size;
-                                                };
-                                                await Promise.all(collections.map(c => deleteCollection(c)));
+                                                // Filter Grades by Unit
+                                                if (maintenanceUnit !== 'all') {
+                                                    gradesData = gradesData.filter(g => g.UNIDADE === maintenanceUnit);
+                                                }
+                                                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gradesData), "Notas");
 
-                                            } else {
-                                                // Specific Unit Deletion
+                                                // 2. ATTENDANCE
+                                                let attData = attRel.docs.map(doc => {
+                                                    const a = doc.data();
+                                                    return {
+                                                        ID: a.id,
+                                                        DATA: a.date,
+                                                        TURMA: a.schoolClass,
+                                                        PROFESSOR: a.teacherName,
+                                                        UNIDADE: a.unit, // Ensure we check this
+                                                        RAW_DATA: JSON.stringify(a)
+                                                    };
+                                                });
 
-                                                // 1. Attendance (Has Unit)
-                                                const attSnap = await db.collection('attendance').where('unit', '==', maintenanceUnit).get();
-                                                attSnap.docs.forEach(doc => batch.delete(doc.ref));
-                                                deletedCount += attSnap.size;
+                                                // Filter Attendance by Unit
+                                                if (maintenanceUnit !== 'all') {
+                                                    attData = attData.filter(a => a.UNIDADE === maintenanceUnit);
+                                                }
+                                                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(attData), "Frequencia");
 
-                                                // 2. Grades (Linked via Student)
-                                                // Need to fetch all students of this unit first
-                                                const unitStudents = students.filter(s => s.unit === maintenanceUnit);
-                                                const unitStudentIds = unitStudents.map(s => s.id);
+                                                // 3. MESSAGES & OTHERS
+                                                // Only filtering messages if we can identify unit (often difficult without direct field).
+                                                // For now, if unit selected, we might skip messages or include relevant ones?
+                                                // Strategy: Include all if 'all', else include only if we can link to unit?
+                                                // Let's include all for backup safety, user can filter in Excel.
+                                                // Actually, if exporting for a unit, broad messages might be confusing.
+                                                // Let's keep all for now to be safe.
+                                                const msgData = msgRel.docs.map(doc => ({ ...doc.data(), ID: doc.id }));
+                                                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(msgData), "Mensagens");
 
-                                                if (unitStudentIds.length > 0) {
-                                                    // Firestore 'in' query supports max 10/30 items. Safer to fetch all grades and filter in memory since we download grades anyway.
-                                                    // Optimisation: Fetch all grades, locally filter.
-                                                    const allGrades = await db.collection('grades').get();
-                                                    allGrades.docs.forEach(doc => {
-                                                        const g = doc.data();
-                                                        if (unitStudentIds.includes(g.studentId)) {
-                                                            batch.delete(doc.ref);
-                                                            deletedCount++;
-                                                        }
-                                                    });
+                                                let repData = reportsRel.docs.map(doc => {
+                                                    const r = doc.data();
+                                                    const s = studentsMap[r.studentId] || {};
+                                                    return { ...r, ID: doc.id, UNIDADE: s.unit };
+                                                });
 
-                                                    // 3. Early Childhood Reports
-                                                    const allReports = await db.collection('earlyChildhoodReports').get();
-                                                    allReports.docs.forEach(doc => {
-                                                        const r = doc.data();
-                                                        if (unitStudentIds.includes(r.studentId)) {
-                                                            batch.delete(doc.ref);
-                                                            deletedCount++;
+                                                if (maintenanceUnit !== 'all') {
+                                                    repData = repData.filter(r => r.UNIDADE === maintenanceUnit);
+                                                }
+                                                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(repData), "RelatoriosInfantil");
+
+                                                const fileName = maintenanceUnit === 'all'
+                                                    ? `Backup_Completo_${new Date().toISOString().split('T')[0]}.xlsx`
+                                                    : `Backup_${maintenanceUnit.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+                                                XLSX.writeFile(wb, fileName);
+                                                alert("Backup gerado com sucesso!");
+                                            } catch (e) {
+                                                console.error(e);
+                                                alert("Erro ao gerar backup: " + e);
+                                            }
+                                        }} className="w-full">
+                                            💾 Baixar Backup
+                                        </Button>
+                                    </div>
+
+                                    {/* 2. RESTORE */}
+                                    <div className="bg-white p-6 rounded-lg shadow border border-gray-200 hover:shadow-lg transition-shadow">
+                                        <h3 className="text-lg font-bold text-green-900 mb-2">2. Restaurar Dados</h3>
+                                        <p className="text-sm text-gray-600 mb-4">Reimporta dados de um backup anterior. Útil para desfazer erros.</p>
+                                        <input type="file" id="restoreFile" accept=".xlsx" className="hidden" onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (!file) return;
+                                            if (!window.confirm("Isso irá mesclar/sobrescrever os dados atuais com os do arquivo. Confirmar?")) return;
+
+                                            try {
+                                                const data = await file.arrayBuffer();
+                                                const wb = XLSX.read(data);
+                                                const batch = db.batch();
+
+                                                // Restore Grades
+                                                const wsGrades = wb.Sheets["Notas"];
+                                                if (wsGrades) {
+                                                    const gradesJson = XLSX.utils.sheet_to_json(wsGrades);
+                                                    gradesJson.forEach((row: any) => {
+                                                        // Filter by Unit if selected
+                                                        if (maintenanceUnit !== 'all' && row.UNIDADE !== maintenanceUnit) return;
+
+                                                        if (row.RAW_DATA) {
+                                                            const gBase = JSON.parse(row.RAW_DATA);
+                                                            batch.set(db.collection('grades').doc(gBase.id), gBase);
                                                         }
                                                     });
                                                 }
 
-                                                // Commit the specific batch
-                                                // Warning: If > 500 deletes, this will crash.
-                                                // Implementing a safe commit loop.
-                                                if (deletedCount > 0) {
-                                                    await batch.commit();
+                                                // Restore Attendance
+                                                const wsAtt = wb.Sheets["Frequencia"];
+                                                if (wsAtt) {
+                                                    const attJson = XLSX.utils.sheet_to_json(wsAtt);
+                                                    attJson.forEach((row: any) => {
+                                                        // Filter by Unit if selected
+                                                        if (maintenanceUnit !== 'all' && row.UNIDADE !== maintenanceUnit) return;
+
+                                                        if (row.RAW_DATA) {
+                                                            const aBase = JSON.parse(row.RAW_DATA);
+                                                            batch.set(db.collection('attendance').doc(aBase.id), aBase);
+                                                        }
+                                                    });
                                                 }
+
+                                                // Restore Messages
+                                                const wsMsg = wb.Sheets["Mensagens"];
+                                                if (wsMsg) {
+                                                    const msgJson = XLSX.utils.sheet_to_json(wsMsg);
+                                                    msgJson.forEach((row: any) => {
+                                                        if (row.ID) {
+                                                            const { ID, ...rest } = row;
+                                                            // Difficult to filter messages by unit without extra info, but assuming user caution.
+                                                            // If we added unit to export, we could filter here.
+                                                            // Current Export doesn't explicitly add UNIDADE column to messages, so we SKIP filtering or Restore ALL.
+                                                            // Safest: Restore All for messages as they might be system wide or we can't tell.
+                                                            // Alternatively, assume messages are not unit-critical for selective restore?
+                                                            // Let's keep it restoring all to prevent data loss, or skip if strict.
+                                                            batch.set(db.collection('schoolMessages').doc(ID), rest);
+                                                        }
+                                                    });
+                                                }
+
+                                                // Restore Reports
+                                                const wsRep = wb.Sheets["RelatoriosInfantil"];
+                                                if (wsRep) {
+                                                    const repJson = XLSX.utils.sheet_to_json(wsRep);
+                                                    repJson.forEach((row: any) => {
+                                                        // Filter by Unit if selected
+                                                        if (maintenanceUnit !== 'all' && row.UNIDADE !== maintenanceUnit) return;
+
+                                                        if (row.ID) {
+                                                            const { ID, UNIDADE, ...rest } = row; // remove helper fields
+                                                            batch.set(db.collection('earlyChildhoodReports').doc(ID), rest);
+                                                        }
+                                                    });
+                                                }
+
+                                                await batch.commit();
+                                                alert("Restauração concluída! Recarregue a página.");
+                                                window.location.reload();
+                                            } catch (err) {
+                                                console.error(err);
+                                                alert("Erro na restauração: " + err);
                                             }
+                                        }} />
+                                        <Button variant="secondary" onClick={() => document.getElementById('restoreFile')?.click()} className="w-full">
+                                            ♻️ Carregar Backup
+                                        </Button>
+                                    </div>
 
-                                            alert(`Ano Letivo Reiniciado! ${deletedCount} registros foram apagados.`);
-                                            window.location.reload();
+                                    {/* 3. RESET */}
+                                    <div className="bg-white p-6 rounded-lg shadow border border-red-200 hover:shadow-lg transition-shadow">
+                                        <h3 className="text-lg font-bold text-red-900 mb-2">3. Novo Ano Letivo</h3>
+                                        <p className="text-sm text-gray-600 mb-4">Apaga NOTAS, FALTAS e RELATÓRIOS. Mantém alunos e professores.</p>
+                                        <Button variant="danger" onClick={async () => {
+                                            const confirmMsg = maintenanceUnit === 'all'
+                                                ? "VOCÊ É O ADMINISTRADOR GERAL.\n\nEsta ação apagará TODAS as notas, faltas e relatórios de TODAS as unidades para iniciar um novo ano.\n\nTem certeza absoluta?"
+                                                : `ATENÇÃO: Você selecionou a unidade: ${maintenanceUnit}.\n\nEsta ação apagará apenas notas, faltas e relatórios desta unidade.\n\nTem certeza?`;
 
-                                        } catch (e) {
-                                            alert("Erro ao resetar: " + e);
-                                        }
-                                    }} className="w-full">
-                                        🔥 Iniciar Novo Ano
-                                    </Button>
+                                            if (!window.confirm(confirmMsg)) return;
+                                            if (!window.confirm("CONFIRMAÇÃO FINAL: Você já baixou o backup dos dados atuais? Se não, cancele agora.")) return;
+
+                                            try {
+                                                let deletedCount = 0;
+                                                const batch = db.batch();
+
+                                                // Helper to process deletions
+                                                // Firestore batches max 500 ops. We might need multiple batches if large data.
+                                                // For simplicity here, assuming reasonable size or simplistic batching.
+                                                // Real-world: use a loop/chunking function.
+
+                                                if (maintenanceUnit === 'all') {
+                                                    const collections = ['grades', 'attendance', 'schoolMessages', 'earlyChildhoodReports', 'notifications', 'access_logs', 'daily_stats'];
+                                                    // NOTE: This uses batch.delete which is size-limited.
+                                                    // The original code used a separate deleteCollection with batch per collection.
+
+                                                    const deleteCollection = async (col: string) => {
+                                                        const snapshot = await db.collection(col).get();
+                                                        const b = db.batch(); // New batch per collection
+                                                        snapshot.docs.forEach(doc => b.delete(doc.ref));
+                                                        await b.commit();
+                                                        deletedCount += snapshot.size;
+                                                    };
+                                                    await Promise.all(collections.map(c => deleteCollection(c)));
+
+                                                } else {
+                                                    // Specific Unit Deletion
+
+                                                    // 1. Attendance (Has Unit)
+                                                    const attSnap = await db.collection('attendance').where('unit', '==', maintenanceUnit).get();
+                                                    attSnap.docs.forEach(doc => batch.delete(doc.ref));
+                                                    deletedCount += attSnap.size;
+
+                                                    // 2. Grades (Linked via Student)
+                                                    // Need to fetch all students of this unit first
+                                                    const unitStudents = students.filter(s => s.unit === maintenanceUnit);
+                                                    const unitStudentIds = unitStudents.map(s => s.id);
+
+                                                    if (unitStudentIds.length > 0) {
+                                                        // Firestore 'in' query supports max 10/30 items. Safer to fetch all grades and filter in memory since we download grades anyway.
+                                                        // Optimisation: Fetch all grades, locally filter.
+                                                        const allGrades = await db.collection('grades').get();
+                                                        allGrades.docs.forEach(doc => {
+                                                            const g = doc.data();
+                                                            if (unitStudentIds.includes(g.studentId)) {
+                                                                batch.delete(doc.ref);
+                                                                deletedCount++;
+                                                            }
+                                                        });
+
+                                                        // 3. Early Childhood Reports
+                                                        const allReports = await db.collection('earlyChildhoodReports').get();
+                                                        allReports.docs.forEach(doc => {
+                                                            const r = doc.data();
+                                                            if (unitStudentIds.includes(r.studentId)) {
+                                                                batch.delete(doc.ref);
+                                                                deletedCount++;
+                                                            }
+                                                        });
+                                                    }
+
+                                                    // Commit the specific batch
+                                                    // Warning: If > 500 deletes, this will crash.
+                                                    // Implementing a safe commit loop.
+                                                    if (deletedCount > 0) {
+                                                        await batch.commit();
+                                                    }
+                                                }
+
+                                                alert(`Ano Letivo Reiniciado! ${deletedCount} registros foram apagados.`);
+                                                window.location.reload();
+
+                                            } catch (e) {
+                                                alert("Erro ao resetar: " + e);
+                                            }
+                                        }} className="w-full">
+                                            🔥 Iniciar Novo Ano
+                                        </Button>
+                                    </div>
+
                                 </div>
-
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* MODAL DE LOGS */}
-            {isLogModalOpen && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900 bg-opacity-70 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] md:h-auto md:max-h-[90vh] flex flex-col overflow-hidden">
-                        {/* HEADER MODAL */}
-                        <div className="flex justify-between items-center p-3 md:p-6 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-                            <div>
-                                <h2 className="text-lg md:text-2xl font-bold text-gray-800 flex items-center gap-2">
-                                    📊 Registro de Acessos
-                                </h2>
-                                <p className="hidden md:block text-sm text-gray-500">Auditoria de logins no sistema</p>
-                            </div>
-                            <button onClick={() => setIsLogModalOpen(false)} className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-gray-200">
-                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                            </button>
-                        </div>
-
-                        {/* FILTROS E AÇÕES */}
-                        <div className="p-2 md:p-4 bg-white border-b border-gray-100 flex flex-col md:flex-row gap-2 md:gap-4 justify-between items-center">
-                            <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
-                                <button
-                                    onClick={() => handleFilterChange('today')}
-                                    className={`whitespace-nowrap px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs font-bold transition-all ${logFilter === 'today' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                                >
-                                    Hoje
-                                </button>
-                                <button
-                                    onClick={() => handleFilterChange('week')}
-                                    className={`whitespace-nowrap px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs font-bold transition-all ${logFilter === 'week' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                                >
-                                    7 Dias
-                                </button>
-                                <button
-                                    onClick={() => handleFilterChange('month')}
-                                    className={`whitespace-nowrap px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs font-bold transition-all ${logFilter === 'month' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                                >
-                                    Mês
-                                </button>
-                            </div>
-
-                            <div className="flex flex-col md:flex-row gap-2 items-center w-full md:w-auto">
-                                <select
-                                    value={logUnitFilter}
-                                    onChange={(e) => setLogUnitFilter(e.target.value)}
-                                    className="p-2 border rounded-lg text-sm bg-gray-50 w-full md:w-auto"
-                                >
-                                    <option value="all">Todas as Unidades</option>
-                                    {SCHOOL_UNITS_LIST.map(u => (
-                                        <option key={u} value={u}>{u}</option>
-                                    ))}
-                                </select>
-
-                                <select
-                                    value={logProfileFilter}
-                                    onChange={(e) => setLogProfileFilter(e.target.value as any)}
-                                    className="p-2 border rounded-lg text-sm bg-gray-50 w-full md:w-auto"
-                                >
-                                    <option value="all">Todos os Perfis</option>
-                                    <option value="student">Alunos</option>
-                                    <option value="teacher">Professores</option>
-                                    <option value="admin">Administração</option>
-                                </select>
-
-                                <button
-                                    onClick={handleDownloadPDF}
-                                    className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 shadow-sm transition-all whitespace-nowrap w-full md:w-auto justify-center"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                    PDF
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* SUMMARY STATS */}
-                        <div className="bg-blue-50 px-3 py-2 md:px-6 md:py-3 border-b border-blue-100 flex flex-wrap gap-2 md:gap-4 text-xs md:text-sm justify-between items-center shadow-inner">
-                            <span className="font-bold text-blue-900">Total: {filteredAccessLogs.length}</span>
-                            <div className="flex gap-2 md:gap-4">
-                                <span className="text-gray-600 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span> Alunos: <strong>{filteredAccessLogs.filter(l => getLogUserInfo(l.user_id).type === 'student').length}</strong></span>
-                                <span className="text-gray-600 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500"></span> Prof.: <strong>{filteredAccessLogs.filter(l => getLogUserInfo(l.user_id).type === 'teacher').length}</strong></span>
-                                <span className="text-gray-600 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500"></span> Admin: <strong>{filteredAccessLogs.filter(l => getLogUserInfo(l.user_id).type === 'admin').length}</strong></span>
-                            </div>
-                        </div>
-
-                        {/* CONTEÚDO / TABELA */}
-                        <div className="flex-1 overflow-y-auto overflow-x-auto p-0 bg-gray-50">
-                            {isLoadingLogs ? (
-                                <div className="flex items-center justify-center h-64">
-                                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-950"></div>
+            {
+                isLogModalOpen && (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900 bg-opacity-70 backdrop-blur-sm animate-fade-in">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] md:h-auto md:max-h-[90vh] flex flex-col overflow-hidden">
+                            {/* HEADER MODAL */}
+                            <div className="flex justify-between items-center p-3 md:p-6 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                                <div>
+                                    <h2 className="text-lg md:text-2xl font-bold text-gray-800 flex items-center gap-2">
+                                        📊 Registro de Acessos
+                                    </h2>
+                                    <p className="hidden md:block text-sm text-gray-500">Auditoria de logins no sistema</p>
                                 </div>
-                            ) : filteredAccessLogs.length > 0 ? (
-                                <table className="w-full min-w-[600px] text-sm text-left">
-                                    <thead className="bg-gray-100 text-gray-600 font-bold uppercase text-xs sticky top-0 shadow-sm z-10">
-                                        <tr>
-                                            <th className="p-4">Data/Hora</th>
-                                            <th className="p-4">Usuário</th>
-                                            <th className="p-4">IP</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100 bg-white">
-                                        {filteredAccessLogs.map((log) => (
-                                            <tr key={log.id} className="hover:bg-blue-50 transition-colors">
-                                                <td className="p-4 font-mono text-gray-600 whitespace-nowrap">
-                                                    {new Date(log.date).toLocaleString('pt-BR')}
-                                                </td>
-                                                <td className="p-4 font-bold text-gray-800">
-                                                    {resolveUserName(log.user_id)}
-                                                    <div className="text-[10px] text-gray-400 font-normal">{log.user_id}</div>
-                                                </td>
-                                                <td className="p-4 text-gray-600 font-mono text-xs">
-                                                    {log.ip || 'N/A'}
-                                                </td>
-                                            </tr>
+                                <button onClick={() => setIsLogModalOpen(false)} className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-gray-200">
+                                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                </button>
+                            </div>
+
+                            {/* FILTROS E AÇÕES */}
+                            <div className="p-2 md:p-4 bg-white border-b border-gray-100 flex flex-col md:flex-row gap-2 md:gap-4 justify-between items-center">
+                                <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
+                                    <button
+                                        onClick={() => handleFilterChange('today')}
+                                        className={`whitespace-nowrap px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs font-bold transition-all ${logFilter === 'today' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                    >
+                                        Hoje
+                                    </button>
+                                    <button
+                                        onClick={() => handleFilterChange('week')}
+                                        className={`whitespace-nowrap px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs font-bold transition-all ${logFilter === 'week' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                    >
+                                        7 Dias
+                                    </button>
+                                    <button
+                                        onClick={() => handleFilterChange('month')}
+                                        className={`whitespace-nowrap px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs font-bold transition-all ${logFilter === 'month' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                    >
+                                        Mês
+                                    </button>
+                                </div>
+
+                                <div className="flex flex-col md:flex-row gap-2 items-center w-full md:w-auto">
+                                    <select
+                                        value={logUnitFilter}
+                                        onChange={(e) => setLogUnitFilter(e.target.value)}
+                                        className="p-2 border rounded-lg text-sm bg-gray-50 w-full md:w-auto"
+                                    >
+                                        <option value="all">Todas as Unidades</option>
+                                        {SCHOOL_UNITS_LIST.map(u => (
+                                            <option key={u} value={u}>{u}</option>
                                         ))}
-                                    </tbody>
-                                </table>
-                            ) : (
-                                <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-                                    <svg className="w-12 h-12 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
-                                    <p>Nenhum registro encontrado para este período.</p>
-                                </div>
-                            )}
-                        </div>
+                                    </select>
 
-                        {/* FOOTER */}
-                        <div className="p-4 bg-gray-50 border-t border-gray-200 text-right">
-                            <p className="text-xs text-gray-400 text-center mb-2">Exibindo os {accessLogs.length} registros mais recentes.</p>
+                                    <select
+                                        value={logProfileFilter}
+                                        onChange={(e) => setLogProfileFilter(e.target.value as any)}
+                                        className="p-2 border rounded-lg text-sm bg-gray-50 w-full md:w-auto"
+                                    >
+                                        <option value="all">Todos os Perfis</option>
+                                        <option value="student">Alunos</option>
+                                        <option value="teacher">Professores</option>
+                                        <option value="admin">Administração</option>
+                                    </select>
+
+                                    <button
+                                        onClick={handleDownloadPDF}
+                                        className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 shadow-sm transition-all whitespace-nowrap w-full md:w-auto justify-center"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                        PDF
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* SUMMARY STATS */}
+                            <div className="bg-blue-50 px-3 py-2 md:px-6 md:py-3 border-b border-blue-100 flex flex-wrap gap-2 md:gap-4 text-xs md:text-sm justify-between items-center shadow-inner">
+                                <span className="font-bold text-blue-900">Total: {filteredAccessLogs.length}</span>
+                                <div className="flex gap-2 md:gap-4">
+                                    <span className="text-gray-600 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span> Alunos: <strong>{filteredAccessLogs.filter(l => getLogUserInfo(l.user_id).type === 'student').length}</strong></span>
+                                    <span className="text-gray-600 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500"></span> Prof.: <strong>{filteredAccessLogs.filter(l => getLogUserInfo(l.user_id).type === 'teacher').length}</strong></span>
+                                    <span className="text-gray-600 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500"></span> Admin: <strong>{filteredAccessLogs.filter(l => getLogUserInfo(l.user_id).type === 'admin').length}</strong></span>
+                                </div>
+                            </div>
+
+                            {/* CONTEÚDO / TABELA */}
+                            <div className="flex-1 overflow-y-auto overflow-x-auto p-0 bg-gray-50">
+                                {isLoadingLogs ? (
+                                    <div className="flex items-center justify-center h-64">
+                                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-950"></div>
+                                    </div>
+                                ) : filteredAccessLogs.length > 0 ? (
+                                    <table className="w-full min-w-[600px] text-sm text-left">
+                                        <thead className="bg-gray-100 text-gray-600 font-bold uppercase text-xs sticky top-0 shadow-sm z-10">
+                                            <tr>
+                                                <th className="p-4">Data/Hora</th>
+                                                <th className="p-4">Usuário</th>
+                                                <th className="p-4">IP</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 bg-white">
+                                            {filteredAccessLogs.map((log) => (
+                                                <tr key={log.id} className="hover:bg-blue-50 transition-colors">
+                                                    <td className="p-4 font-mono text-gray-600 whitespace-nowrap">
+                                                        {new Date(log.date).toLocaleString('pt-BR')}
+                                                    </td>
+                                                    <td className="p-4 font-bold text-gray-800">
+                                                        {resolveUserName(log.user_id)}
+                                                        <div className="text-[10px] text-gray-400 font-normal">{log.user_id}</div>
+                                                    </td>
+                                                    <td className="p-4 text-gray-600 font-mono text-xs">
+                                                        {log.ip || 'N/A'}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                                        <svg className="w-12 h-12 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                                        <p>Nenhum registro encontrado para este período.</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* FOOTER */}
+                            <div className="p-4 bg-gray-50 border-t border-gray-200 text-right">
+                                <p className="text-xs text-gray-400 text-center mb-2">Exibindo os {accessLogs.length} registros mais recentes.</p>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
             {/* MODAL DE RECIBO UNIFICADO */}
-            {selectedStudentForFinancial && selectedReceiptForModal && (
-                <ReceiptModal
-                    isOpen={!!selectedReceiptForModal}
-                    student={selectedStudentForFinancial}
-                    receiptData={selectedReceiptForModal}
-                    whatsappNumber={unitContacts?.find(c => c.unit === selectedStudentForFinancial.unit && c.role === ContactRole.FINANCIAL)?.phoneNumber}
-                    isAdminView={true}
-                    onClose={() => setSelectedReceiptForModal(null)}
-                />
-            )}
+            {
+                selectedStudentForFinancial && selectedReceiptForModal && (
+                    <ReceiptModal
+                        isOpen={!!selectedReceiptForModal}
+                        student={selectedStudentForFinancial}
+                        receiptData={selectedReceiptForModal}
+                        whatsappNumber={unitContacts?.find(c => c.unit === selectedStudentForFinancial.unit && c.role === ContactRole.FINANCIAL)?.phoneNumber}
+                        isAdminView={true}
+                        onClose={() => setSelectedReceiptForModal(null)}
+                    />
+                )
+            }
 
-        </div>
+        </div >
     );
 }

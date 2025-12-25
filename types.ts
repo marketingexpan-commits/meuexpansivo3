@@ -83,6 +83,7 @@ export interface BimesterData {
   media: number;
   faltas: number;
   difficultyTopic?: string;
+  isApproved?: boolean; // Novo: Indica se o bimestre foi aprovado pela coordenação
 }
 
 export interface GradeEntry {
@@ -96,6 +97,7 @@ export interface GradeEntry {
     bimester4: BimesterData;
   };
   recuperacaoFinal?: number | null;
+  recuperacaoFinalApproved?: boolean; // Novo: Indica se a recuperação final foi aprovada
   mediaAnual: number;
   mediaFinal: number;
   situacaoFinal: 'Aprovado' | 'Recuperação' | 'Reprovado';

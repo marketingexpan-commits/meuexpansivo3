@@ -800,19 +800,27 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                                             return (
                                                                 <React.Fragment key={key}>
-                                                                    <td className="px-1 py-2 text-center text-gray-600 border-r border-gray-300 text-xs">{formatGrade(bData.nota)}</td>
-                                                                    <td className="px-1 py-2 text-center text-gray-600 border-r border-gray-300 text-xs">{formatGrade(bData.recuperacao)}</td>
+                                                                    <td className="px-1 py-1 text-center text-gray-500 font-medium text-[10px] md:text-sm border-r border-gray-100 relative">
+                                                                        {bData.isApproved !== false ? formatGrade(bData.nota) : <span className="text-gray-300 pointer-events-none select-none" title="Em análise">-</span>}
+                                                                        {bData.isApproved === false && bData.nota !== null && (
+                                                                            <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-400 rounded-full" title="Em análise pela coordenação"></div>
+                                                                        )}
+                                                                    </td>
+                                                                    <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-100">
+                                                                        {bData.isApproved !== false ? formatGrade(bData.recuperacao) : '-'}
+                                                                    </td>
                                                                     <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs">{formatGrade(bData.media)}</td>
-                                                                    <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300 text-xs">
-                                                                        {/* Prioritize persisted 'faltas' from sync, fallback to dynamic */}
+                                                                    <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs">
                                                                         {bData.faltas !== undefined && bData.faltas !== null ? bData.faltas : (currentAbsences || '')}
                                                                     </td>
                                                                 </React.Fragment>
                                                             );
                                                         })}
                                                         <td className="px-1 py-2 text-center font-bold text-gray-700 border-r border-gray-300 bg-gray-50 text-sm">{formatGrade(grade.mediaAnual)}</td>
-                                                        <td className="px-1 py-2 text-center font-bold text-red-600 border-r border-gray-300 bg-red-50 text-sm">{formatGrade(grade.recuperacaoFinal)}</td>
-                                                        <td className="px-1 py-2 text-center font-extrabold text-blue-950 border-r border-gray-300 bg-blue-50 text-sm">{formatGrade(grade.mediaFinal)}</td>
+                                                        <td className="px-1 py-1 text-center font-bold text-red-400 text-[10px] md:text-xs border-r border-gray-100">
+                                                            {grade.recuperacaoFinalApproved !== false ? formatGrade(grade.recuperacaoFinal) : <span className="text-gray-300">-</span>}
+                                                        </td>
+                                                        <td className="px-1 py-1 text-center font-extrabold text-blue-900 bg-blue-50/50 text-xs md:text-sm">{grade.situacaoFinal === 'Aprovado' ? formatGrade(grade.mediaFinal) : ((grade.recuperacaoFinalApproved !== false && Object.values(grade.bimesters).every(b => b.isApproved !== false)) ? formatGrade(grade.mediaFinal) : '-')}</td>
                                                         <td className="px-1 py-2 text-center align-middle">
                                                             <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
                                                                 grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
@@ -888,12 +896,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                 const relevantBimesters = grade.bimesters ? Object.entries(grade.bimesters)
                                                     .filter(([key, data]) => {
                                                         const bData = data as BimesterData;
+                                                        // Prioritize persisted 'faltas' from sync, fallback to dynamic
                                                         if (bData.media === undefined || bData.media === null) return false;
 
                                                         // Filter based on the status category
-                                                        if (isLowGrade) return bData.media < 7.0;
-                                                        if (media >= 7.0 && media <= 8.5) return bData.media >= 7.0 && bData.media <= 8.5;
-                                                        if (media > 8.5) return bData.media > 8.5;
+                                                        if (isLowGrade) return bData.media < 7.0 && bData.isApproved !== false;
+                                                        if (media >= 7.0 && media <= 8.5) return bData.media >= 7.0 && bData.media <= 8.5 && bData.isApproved !== false;
+                                                        if (media > 8.5) return bData.media > 8.5 && bData.isApproved !== false;
 
                                                         return false;
                                                     })

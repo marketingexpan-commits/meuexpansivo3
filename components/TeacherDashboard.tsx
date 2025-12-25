@@ -234,11 +234,27 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
             const autoAbsences = calculatedAbsences[bimesterNumber] || 0;
             const faltasToSave = autoAbsences;
 
-            const rawBimesterData: BimesterData = { nota: notaToSave, recuperacao: recToSave, faltas: faltasToSave, media: 0, difficultyTopic: topic };
+            const rawBimesterData: BimesterData = {
+                nota: notaToSave,
+                recuperacao: recToSave,
+                faltas: faltasToSave,
+                media: 0,
+                difficultyTopic: topic,
+                isApproved: false // Reset approval on any change
+            };
             newBimesters[bimesterKey] = calculateBimesterMedia(rawBimesterData);
         }
         const finalData = calculateFinalData(newBimesters, newRecFinal);
-        const gradeToSave: GradeEntry = { id: existingGrade ? existingGrade.id : `grade-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, studentId: selectedStudent.id, subject: selectedSubject, bimesters: newBimesters, recuperacaoFinal: newRecFinal, ...finalData, lastUpdated: new Date().toISOString() };
+        const gradeToSave: GradeEntry = {
+            id: existingGrade ? existingGrade.id : `grade-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            studentId: selectedStudent.id,
+            subject: selectedSubject,
+            bimesters: newBimesters,
+            recuperacaoFinal: newRecFinal,
+            recuperacaoFinalApproved: selectedStage === 'recuperacaoFinal' ? false : existingGrade?.recuperacaoFinalApproved, // Reset if changing Rec Final, otherwise keep
+            ...finalData,
+            lastUpdated: new Date().toISOString()
+        };
         await onSaveGrade(gradeToSave); setIsSaving(false); alert(`Dados de ${getStageDisplay(selectedStage)} salvos com sucesso!`);
     };
 
