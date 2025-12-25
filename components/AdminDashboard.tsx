@@ -1995,75 +1995,127 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                     </div>
                                                 </div>
                                                 <div className="p-0">
-                                                    <table className="w-full text-sm text-left">
-                                                        <thead className="bg-white text-gray-500 border-b">
-                                                            <tr>
-                                                                <th className="px-4 py-2 font-medium">Disciplina</th>
-                                                                <th className="px-2 py-2 font-medium text-center">1º Bimestre</th>
-                                                                <th className="px-2 py-2 font-medium text-center">2º Bimestre</th>
-                                                                <th className="px-2 py-2 font-medium text-center">3º Bimestre</th>
-                                                                <th className="px-2 py-2 font-medium text-center">4º Bimestre</th>
-                                                                <th className="px-2 py-2 font-medium text-center">Rec. Final</th>
-                                                                <th className="px-4 py-2 text-right">Ação</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {pendingGradesMap[student.id]?.map(grade => {
-                                                                // Helper to render bimester cell
-                                                                const renderBimesterCell = (data: any, label: string) => {
-                                                                    const isPending = data.isApproved === false;
+                                                    {/* Full Bulletin Table mimicking Student Dashboard structure */}
+                                                    <div className="overflow-x-auto pb-2">
+                                                        <table className="w-full text-[11px] md:text-xs text-left border-collapse border border-gray-200">
+                                                            <thead className="bg-gray-50 text-gray-500 border-b border-gray-300">
+                                                                <tr>
+                                                                    <th rowSpan={2} className="px-2 py-2 font-bold uppercase border-r border-gray-300 w-32 sticky left-0 bg-gray-50 z-10 shadow-sm">Disciplina</th>
+                                                                    {[1, 2, 3, 4].map(num => (
+                                                                        <th key={num} colSpan={4} className="px-1 py-1 text-center font-bold uppercase border-r border-gray-300">
+                                                                            {num}º Bim
+                                                                        </th>
+                                                                    ))}
+                                                                    <th rowSpan={2} className="px-1 py-2 text-center font-bold uppercase border-r border-gray-300 w-12 leading-tight">Média<br />Anual</th>
+                                                                    <th rowSpan={2} className="px-1 py-2 text-center font-bold text-red-700 uppercase border-r border-gray-300 bg-red-50 w-12 leading-tight">Rec.<br />Final</th>
+                                                                    <th rowSpan={2} className="px-1 py-2 text-center font-bold text-blue-950 uppercase border-r border-gray-300 bg-blue-50 w-12 leading-tight">Média<br />Final</th>
+                                                                    <th rowSpan={2} className="px-2 py-2 text-center font-bold uppercase w-20">Situação</th>
+                                                                    <th rowSpan={2} className="px-2 py-2 text-center font-bold uppercase w-20 bg-gray-100">Ação</th>
+                                                                </tr>
+                                                                <tr className="bg-gray-100 text-[10px]">
+                                                                    {[1, 2, 3, 4].map(num => (
+                                                                        <React.Fragment key={num}>
+                                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold" title="Nota">N</th>
+                                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold" title="Recuperação">R</th>
+                                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-bold bg-gray-200" title="Média">M</th>
+                                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold" title="Faltas">F</th>
+                                                                        </React.Fragment>
+                                                                    ))}
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {pendingGradesMap[student.id]?.map(grade => {
+                                                                    // Helper to format grade
+                                                                    const formatGrade = (val: number | null | undefined) => (val !== null && val !== undefined) ? val.toFixed(1) : '-';
+
+                                                                    const isRecFinalPending = grade.recuperacaoFinalApproved === false;
+
                                                                     return (
-                                                                        <td className={`px-2 py-3 text-center border-l border-gray-100 ${isPending ? 'bg-yellow-100 ring-2 ring-inset ring-yellow-300' : ''}`}>
-                                                                            <div className="flex flex-col items-center justify-center gap-1">
-                                                                                {data.nota !== null && <span className="text-xs">N: <strong>{data.nota}</strong></span>}
-                                                                                {data.recuperacao !== null && <span className="text-xs text-red-600">R: <strong>{data.recuperacao}</strong></span>}
-                                                                                {(data.nota === null && data.recuperacao === null) && <span className="text-gray-300">-</span>}
+                                                                        <tr key={grade.id} className="hover:bg-purple-50 transition-colors border-b last:border-0 border-gray-200">
+                                                                            <td className="px-2 py-2 font-bold text-gray-700 border-r border-gray-300 sticky left-0 bg-white z-10 shadow-sm">
+                                                                                {grade.subject}
+                                                                            </td>
 
-                                                                                {isPending && (
-                                                                                    <span className="text-[10px] bg-yellow-200 text-yellow-800 px-1 rounded font-bold uppercase tracking-wider mt-1">
-                                                                                        Alterado
-                                                                                    </span>
-                                                                                )}
-                                                                            </div>
-                                                                        </td>
+                                                                            {/* Bimesters */}
+                                                                            {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key, index) => {
+                                                                                const bData = grade.bimesters[key as keyof typeof grade.bimesters];
+                                                                                const isApproved = bData.isApproved !== false; // Default to true if undefined
+
+                                                                                // Calculate pending status
+                                                                                const isPending = bData.isApproved === false;
+
+                                                                                // Dynamic Highlight Class
+                                                                                const cellClass = (pending: boolean) =>
+                                                                                    `px-1 py-2 text-center border-r border-gray-100 relative ${pending ? 'bg-yellow-100 font-bold text-yellow-900 ring-1 ring-inset ring-yellow-300' : ''}`;
+
+                                                                                return (
+                                                                                    <React.Fragment key={key}>
+                                                                                        {/* Nota */}
+                                                                                        <td className={cellClass(isPending && bData.nota !== null)}>
+                                                                                            {formatGrade(bData.nota)}
+                                                                                            {isPending && bData.nota !== null && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" title="Nota Alterada"></span>}
+                                                                                        </td>
+
+                                                                                        {/* Recuperação */}
+                                                                                        <td className={cellClass(isPending && bData.recuperacao !== null)}>
+                                                                                            {formatGrade(bData.recuperacao)}
+                                                                                            {isPending && bData.recuperacao !== null && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" title="Recuperação Alterada"></span>}
+                                                                                        </td>
+
+                                                                                        {/* Média */}
+                                                                                        <td className="px-1 py-2 text-center font-bold bg-gray-50 border-r border-gray-300">
+                                                                                            {formatGrade(bData.media)}
+                                                                                        </td>
+
+                                                                                        {/* Faltas (Simplified view for now, as calculating from attendance requires fetching attendance records here which might be heavy. 
+                                                                                           Ideally we'd map this from attendance collection, but 'bData.faltas' is stored on the grade object too by TeacherDashboard sync logic) 
+                                                                                           TeacherDashboard syncs 'faltas' to grade object on save. So we can use bData.faltas directly if available.
+                                                                                        */}
+                                                                                        <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300">
+                                                                                            {bData.faltas ?? '-'}
+                                                                                        </td>
+                                                                                    </React.Fragment>
+                                                                                );
+                                                                            })}
+
+                                                                            {/* Final Columns */}
+                                                                            <td className="px-1 py-2 text-center font-bold text-gray-700 bg-gray-50 border-r border-gray-300">
+                                                                                {formatGrade(grade.mediaAnual)}
+                                                                            </td>
+
+                                                                            <td className={`px-1 py-2 text-center font-bold text-red-600 border-r border-gray-300 ${isRecFinalPending ? 'bg-yellow-100 ring-inset ring-2 ring-yellow-300' : ''}`}>
+                                                                                {formatGrade(grade.recuperacaoFinal)}
+                                                                                {isRecFinalPending && <span className="block text-[8px] bg-yellow-200 text-yellow-900 rounded px-1 mt-0.5 font-bold uppercase">Alterado</span>}
+                                                                            </td>
+
+                                                                            <td className="px-1 py-2 text-center font-extrabold text-blue-900 bg-blue-50 border-r border-gray-300">
+                                                                                {formatGrade(grade.mediaFinal)}
+                                                                            </td>
+
+                                                                            <td className="px-2 py-2 text-center align-middle border-r border-gray-200">
+                                                                                <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                                                        grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                                                                            'bg-red-50 text-red-700 border-red-200'
+                                                                                    }`}>
+                                                                                    {grade.situacaoFinal}
+                                                                                </span>
+                                                                            </td>
+
+                                                                            <td className="px-2 py-2 text-center bg-gray-50">
+                                                                                <button
+                                                                                    onClick={() => handleApproveGrade(grade)}
+                                                                                    className="bg-green-600 hover:bg-green-700 text-white p-1.5 rounded shadow-sm hover:scale-105 transition-all w-full flex items-center justify-center gap-1"
+                                                                                    title="Aprovar alterações desta disciplina"
+                                                                                >
+                                                                                    <span className="text-xs">✅</span> <span className="text-[10px] font-bold uppercase hidden md:inline">Aprovar</span>
+                                                                                </button>
+                                                                            </td>
+                                                                        </tr>
                                                                     );
-                                                                };
-
-                                                                const isRecFinalPending = grade.recuperacaoFinalApproved === false;
-
-                                                                return (
-                                                                    <tr key={grade.id} className="hover:bg-purple-50 transition-colors border-b last:border-0">
-                                                                        <td className="px-4 py-3 font-bold text-gray-700">{grade.subject}</td>
-
-                                                                        {renderBimesterCell(grade.bimesters.bimester1, '1º Bim')}
-                                                                        {renderBimesterCell(grade.bimesters.bimester2, '2º Bim')}
-                                                                        {renderBimesterCell(grade.bimesters.bimester3, '3º Bim')}
-                                                                        {renderBimesterCell(grade.bimesters.bimester4, '4º Bim')}
-
-                                                                        <td className={`px-2 py-3 text-center border-l border-gray-100 ${isRecFinalPending ? 'bg-yellow-100 ring-2 ring-inset ring-yellow-300' : ''}`}>
-                                                                            <div className="flex flex-col items-center justify-center gap-1">
-                                                                                {grade.recuperacaoFinal !== null ? <strong>{grade.recuperacaoFinal}</strong> : <span className="text-gray-300">-</span>}
-                                                                                {isRecFinalPending && (
-                                                                                    <span className="text-[10px] bg-yellow-200 text-yellow-800 px-1 rounded font-bold uppercase tracking-wider mt-1">
-                                                                                        Alterado
-                                                                                    </span>
-                                                                                )}
-                                                                            </div>
-                                                                        </td>
-
-                                                                        <td className="px-4 py-3 text-right">
-                                                                            <button
-                                                                                onClick={() => handleApproveGrade(grade)}
-                                                                                className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-all flex items-center gap-1 ml-auto"
-                                                                            >
-                                                                                <span>✅</span> Aprovar
-                                                                            </button>
-                                                                        </td>
-                                                                    </tr>
-                                                                );
-                                                            })}
-                                                        </tbody>
-                                                    </table>
+                                                                })}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))}
