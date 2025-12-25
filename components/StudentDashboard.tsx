@@ -810,18 +810,22 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                     <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300">
                                                                         {bData.isApproved !== false ? formatGrade(bData.recuperacao) : '-'}
                                                                     </td>
-                                                                    <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs">{formatGrade(bData.media)}</td>
+                                                                    <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs">{bData.isApproved !== false ? formatGrade(bData.media) : '-'}</td>
                                                                     <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300">
                                                                         {bData.faltas !== undefined && bData.faltas !== null ? bData.faltas : (currentAbsences || '')}
                                                                     </td>
                                                                 </React.Fragment>
                                                             );
                                                         })}
-                                                        <td className="px-1 py-2 text-center font-bold text-gray-700 border-r border-gray-300 bg-gray-50 text-sm">{formatGrade(grade.mediaAnual)}</td>
+                                                        <td className="px-1 py-2 text-center font-bold text-gray-700 border-r border-gray-300 bg-gray-50 text-sm">
+                                                            {Object.values(grade.bimesters).every((b: any) => b.isApproved !== false) ? formatGrade(grade.mediaAnual) : '-'}
+                                                        </td>
                                                         <td className={`px-1 py-1 text-center font-bold text-red-400 text-[10px] md:text-xs border-r border-gray-300 ${grade.recuperacaoFinalApproved === false ? 'bg-yellow-100' : ''}`}>
                                                             {grade.recuperacaoFinalApproved !== false ? formatGrade(grade.recuperacaoFinal) : <span className="text-gray-300">-</span>}
                                                         </td>
-                                                        <td className="px-1 py-1 text-center font-extrabold text-blue-900 bg-blue-50/50 text-xs md:text-sm border-r border-gray-300">{formatGrade(grade.mediaFinal)}</td>
+                                                        <td className="px-1 py-1 text-center font-extrabold text-blue-900 bg-blue-50/50 text-xs md:text-sm border-r border-gray-300">
+                                                            {(grade.recuperacaoFinalApproved !== false && Object.values(grade.bimesters).every((b: any) => b.isApproved !== false)) ? formatGrade(grade.mediaFinal) : '-'}
+                                                        </td>
                                                         <td className="px-1 py-2 text-center align-middle">
                                                             <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
                                                                 grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
