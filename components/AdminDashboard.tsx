@@ -1012,7 +1012,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <button onClick={() => setActiveTab('attendance')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeTab === 'attendance' ? 'bg-blue-950 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Controle de Frequência</button>
                         <button onClick={() => setActiveTab('contacts')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeTab === 'contacts' ? 'bg-blue-950 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Gestão de Contatos</button>
                         <button onClick={() => setActiveTab('coordination')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap flex items-center gap-2 ${activeTab === 'coordination' ? 'bg-purple-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>
-                            <span>🎓</span> Coordenação
+                            <span>🦉</span> Coordenação
                         </button>
                         <button onClick={() => setActiveTab('rematricula')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap flex items-center gap-2 ${activeTab === 'rematricula' ? 'bg-green-700 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>
                             <span>🎓</span> Rematrícula 2026
@@ -1923,7 +1923,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <div className="animate-fade-in-up md:px-6 px-4">
                                 <div className="mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                                     <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                        <span className="bg-purple-100 text-purple-700 p-2 rounded-lg text-sm">🎓</span>
+                                        <span className="bg-purple-100 text-purple-700 p-2 rounded-lg text-sm">🦉</span>
                                         Coordenação Pedagógica
                                     </h2>
 
