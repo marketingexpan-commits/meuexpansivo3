@@ -2046,7 +2046,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                                                                                 // Dynamic Highlight Class
                                                                                 const cellClass = (pending: boolean) =>
-                                                                                    `px-1 py-2 text-center border-r border-gray-100 relative ${pending ? 'bg-yellow-100 font-bold text-yellow-900 ring-1 ring-inset ring-yellow-300' : ''}`;
+                                                                                    `px-1 py-2 text-center border-r border-gray-300 relative ${pending ? 'bg-yellow-100 font-bold text-yellow-900 ring-1 ring-inset ring-yellow-300' : ''}`;
 
                                                                                 return (
                                                                                     <React.Fragment key={key}>
@@ -2067,8 +2067,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                                                             {formatGrade(bData.media)}
                                                                                         </td>
 
-                                                                                        {/* Faltas (Simplified view for now, as calculating from attendance requires fetching attendance records here which might be heavy. 
-                                                                                           Ideally we'd map this from attendance collection, but 'bData.faltas' is stored on the grade object too by TeacherDashboard sync logic) 
+                                                                                        {/* Faltas (Simplified view for now, as calculating from attendance requires fetching attendance records here which might be heavy.
+                                                                                           Ideally we'd map this from attendance collection, but 'bData.faltas' is stored on the grade object too by TeacherDashboard sync logic)
                                                                                            TeacherDashboard syncs 'faltas' to grade object on save. So we can use bData.faltas directly if available.
                                                                                         */}
                                                                                         <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300">
@@ -2092,10 +2092,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                                                 {formatGrade(grade.mediaFinal)}
                                                                             </td>
 
-                                                                            <td className="px-2 py-2 text-center align-middle border-r border-gray-200">
+                                                                            <td className="px-2 py-2 text-center align-middle border-r border-gray-300">
                                                                                 <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
-                                                                                        grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                                                                            'bg-red-50 text-red-700 border-red-200'
+                                                                                    grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                                                                        'bg-red-50 text-red-700 border-red-200'
                                                                                     }`}>
                                                                                     {grade.situacaoFinal}
                                                                                 </span>
