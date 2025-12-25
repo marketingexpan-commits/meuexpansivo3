@@ -244,14 +244,26 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
             };
             newBimesters[bimesterKey] = calculateBimesterMedia(rawBimesterData);
         }
-        const finalData = calculateFinalData(newBimesters, newRecFinal);
+
+        // Sanitize bimesters to ensure no undefined 'isApproved' values (legacy support)
+        const sanitizedBimesters = Object.entries(newBimesters).reduce((acc, [key, data]) => {
+            const bimesterData = data as BimesterData;
+            acc[key as keyof typeof newBimesters] = {
+                ...bimesterData,
+                isApproved: bimesterData.isApproved ?? true // Default to true if missing (legacy)
+            };
+            return acc;
+        }, {} as typeof newBimesters);
+
+        const finalData = calculateFinalData(sanitizedBimesters, newRecFinal);
         const gradeToSave: GradeEntry = {
             id: existingGrade ? existingGrade.id : `grade-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
             studentId: selectedStudent.id,
             subject: selectedSubject,
-            bimesters: newBimesters,
+            bimesters: sanitizedBimesters,
             recuperacaoFinal: newRecFinal,
-            recuperacaoFinalApproved: selectedStage === 'recuperacaoFinal' ? false : existingGrade?.recuperacaoFinalApproved, // Reset if changing Rec Final, otherwise keep
+            // Ensure recuperacaoFinalApproved is never undefined. Default to true if existing is missing/undefined (legacy).
+            recuperacaoFinalApproved: selectedStage === 'recuperacaoFinal' ? false : (existingGrade?.recuperacaoFinalApproved ?? true),
             ...finalData,
             lastUpdated: new Date().toISOString()
         };
