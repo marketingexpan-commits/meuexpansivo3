@@ -1998,37 +1998,65 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                     <table className="w-full text-sm text-left">
                                                         <thead className="bg-white text-gray-500 border-b">
                                                             <tr>
-                                                                <th className="px-4 py-2 font-medium w-1/4">Disciplina</th>
-                                                                <th className="px-4 py-2 font-medium">Alterações Pendentes</th>
+                                                                <th className="px-4 py-2 font-medium">Disciplina</th>
+                                                                <th className="px-2 py-2 font-medium text-center">1º Bimestre</th>
+                                                                <th className="px-2 py-2 font-medium text-center">2º Bimestre</th>
+                                                                <th className="px-2 py-2 font-medium text-center">3º Bimestre</th>
+                                                                <th className="px-2 py-2 font-medium text-center">4º Bimestre</th>
+                                                                <th className="px-2 py-2 font-medium text-center">Rec. Final</th>
                                                                 <th className="px-4 py-2 text-right">Ação</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
                                                             {pendingGradesMap[student.id]?.map(grade => {
-                                                                const pendingBimesters = Object.entries(grade.bimesters)
-                                                                    .filter(([_, data]: [string, any]) => data.isApproved === false)
-                                                                    .map(([key]) => key.replace('bimester', '') + 'º Bim');
+                                                                // Helper to render bimester cell
+                                                                const renderBimesterCell = (data: any, label: string) => {
+                                                                    const isPending = data.isApproved === false;
+                                                                    return (
+                                                                        <td className={`px-2 py-3 text-center border-l border-gray-100 ${isPending ? 'bg-yellow-100 ring-2 ring-inset ring-yellow-300' : ''}`}>
+                                                                            <div className="flex flex-col items-center justify-center gap-1">
+                                                                                {data.nota !== null && <span className="text-xs">N: <strong>{data.nota}</strong></span>}
+                                                                                {data.recuperacao !== null && <span className="text-xs text-red-600">R: <strong>{data.recuperacao}</strong></span>}
+                                                                                {(data.nota === null && data.recuperacao === null) && <span className="text-gray-300">-</span>}
 
-                                                                if (grade.recuperacaoFinalApproved === false) pendingBimesters.push('Rec. Final');
-
-                                                                return (
-                                                                    <tr key={grade.id} className="hover:bg-purple-50 transition-colors">
-                                                                        <td className="px-4 py-3 font-bold text-gray-700">{grade.subject}</td>
-                                                                        <td className="px-4 py-3">
-                                                                            <div className="flex gap-2 flex-wrap">
-                                                                                {pendingBimesters.map(label => (
-                                                                                    <span key={label} className="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded text-xs font-bold border border-yellow-200">
-                                                                                        {label}
+                                                                                {isPending && (
+                                                                                    <span className="text-[10px] bg-yellow-200 text-yellow-800 px-1 rounded font-bold uppercase tracking-wider mt-1">
+                                                                                        Alterado
                                                                                     </span>
-                                                                                ))}
+                                                                                )}
                                                                             </div>
                                                                         </td>
+                                                                    );
+                                                                };
+
+                                                                const isRecFinalPending = grade.recuperacaoFinalApproved === false;
+
+                                                                return (
+                                                                    <tr key={grade.id} className="hover:bg-purple-50 transition-colors border-b last:border-0">
+                                                                        <td className="px-4 py-3 font-bold text-gray-700">{grade.subject}</td>
+
+                                                                        {renderBimesterCell(grade.bimesters.bimester1, '1º Bim')}
+                                                                        {renderBimesterCell(grade.bimesters.bimester2, '2º Bim')}
+                                                                        {renderBimesterCell(grade.bimesters.bimester3, '3º Bim')}
+                                                                        {renderBimesterCell(grade.bimesters.bimester4, '4º Bim')}
+
+                                                                        <td className={`px-2 py-3 text-center border-l border-gray-100 ${isRecFinalPending ? 'bg-yellow-100 ring-2 ring-inset ring-yellow-300' : ''}`}>
+                                                                            <div className="flex flex-col items-center justify-center gap-1">
+                                                                                {grade.recuperacaoFinal !== null ? <strong>{grade.recuperacaoFinal}</strong> : <span className="text-gray-300">-</span>}
+                                                                                {isRecFinalPending && (
+                                                                                    <span className="text-[10px] bg-yellow-200 text-yellow-800 px-1 rounded font-bold uppercase tracking-wider mt-1">
+                                                                                        Alterado
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                        </td>
+
                                                                         <td className="px-4 py-3 text-right">
                                                                             <button
                                                                                 onClick={() => handleApproveGrade(grade)}
-                                                                                className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-all"
+                                                                                className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-all flex items-center gap-1 ml-auto"
                                                                             >
-                                                                                Aprovar
+                                                                                <span>✅</span> Aprovar
                                                                             </button>
                                                                         </td>
                                                                     </tr>
