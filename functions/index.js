@@ -257,3 +257,8 @@ exports.verifyPaymentStatus = functions.https.onRequest((req, res) => {
 
 
 
+
+// --------------------------------------------------------
+// 5. SMS SCHEDULER (Automação de Cobrança)
+// --------------------------------------------------------
+exports.smsScheduler = require('./smsScheduler').checkAndSendSms;
