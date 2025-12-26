@@ -375,6 +375,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
         setIsModalOpen(false);
         setPixData(null);
         setPreferenceId(null); // Cleanup MP Preference
+        setPaymentResult(null); // Fix: Clear previous payment result (like QR Codes)
         setIsPaymentConfirmed(false);
         // Reset Inputs
         setCpfInput('');
