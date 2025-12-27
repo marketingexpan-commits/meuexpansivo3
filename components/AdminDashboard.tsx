@@ -115,8 +115,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [financialFilterUnit, setFinancialFilterUnit] = useState<string>('');
 
     // NEW STATES FOR GENERAL HISTORY
-    const [historyFilterUnit, setHistoryFilterUnit] = useState<string>('');
+    const [historyFilterUnit, setHistoryFilterUnit] = useState<string>(!isGeneralAdmin && adminUnit ? adminUnit : '');
     const [historyFilterMonth, setHistoryFilterMonth] = useState<string>(new Date().toISOString().substring(0, 7)); // YYYY-MM
+    const [showFinancialTools, setShowFinancialTools] = useState(false);
+    const [showDelinquencyList, setShowDelinquencyList] = useState(false);
 
     const [editingTeacherId, setEditingTeacherId] = useState<string | null>(null);
     const [tName, setTName] = useState('');
@@ -192,7 +194,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 setLoadingFinancial(true);
                 try {
                     const snapshot = await db.collection('mensalidades')
-                        .where('status', '==', 'Pago')
+                        // .where('status', '==', 'Pago') // REMOVED to allow Delinquency tracking
                         .get();
                     const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Mensalidade));
                     setFinancialRecords(data);
@@ -1644,124 +1646,287 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 </div>
                             </div>
 
-                            <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                                <div>
-                                    <h2 className="text-xl font-bold text-gray-800">Conciliação Financeira</h2>
-                                    <p className="text-sm text-gray-500">Acompanhamento de receitas via Mensalidades</p>
-                                </div>
-                                <div className="flex gap-4 items-center flex-wrap md:flex-nowrap">
-                                    {isGeneralAdmin && (
-                                        <select
-                                            value={financialFilterUnit}
-                                            onChange={(e) => setFinancialFilterUnit(e.target.value)}
-                                            className="p-2 border rounded-lg bg-gray-50 text-gray-700 font-medium"
-                                        >
-                                            <option value="">Todas as Unidades</option>
-                                            {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}
-                                        </select>
-                                    )}
-                                    <div className="bg-green-100 px-6 py-3 rounded-xl border border-green-200 text-right min-w-[200px] flex-grow md:flex-grow-0">
-                                        <p className="text-xs font-bold text-green-800 uppercase tracking-wider">Receita Total {financialFilterUnit ? `(${financialFilterUnit})` : (isGeneralAdmin ? '(Geral)' : `(${adminUnit})`)}</p>
-                                        <p className="text-2xl font-bold text-green-900">R$ {displayTotal.toFixed(2).replace('.', ',')}</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* --- HISTÓRICO GERAL (DEMANDA RECEBIDA) --- */}
+                            {/* --- FINANCIAL DASHBOARD --- */}
                             <div className="bg-white p-6 rounded-xl shadow-sm border border-purple-200">
                                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                                     <div>
-                                        <h2 className="text-xl font-bold text-purple-900 flex items-center gap-2">
-                                            <span>📅</span> Histórico Geral de Faturamento
+                                        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                            <span>💲</span> Resumo Financeiro
                                         </h2>
-                                        <p className="text-sm text-gray-500">Visualize o total arrecadado por mês e unidade.</p>
-                                    </div>
-
-                                    {/* BUTTON: GERAR CARNÊS 2026 */}
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={onGenerateFees}
-                                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow flex items-center gap-2 text-sm transition-transform hover:scale-105"
-                                        >
-                                            <span>⚙️</span> Gerar Carnês 2026 (Todos)
-                                        </button>
-                                        {onFixDuplicates && (
-                                            <button
-                                                onClick={onFixDuplicates}
-                                                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow flex items-center gap-2 text-sm transition-transform hover:scale-105"
-                                                title="Corrige nomes de meses (ex: Janeiro -> Janeiro/2026) e remove duplicatas (priorizando Pagos)"
-                                            >
-                                                <span>🧹</span> Corrigir Duplicidades
-                                            </button>
-                                        )}
+                                        <p className="text-sm text-gray-500">Acompanhamento de receitas via Mensalidades, por Unidade</p>
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end bg-gray-50 p-4 rounded-lg border border-gray-100">
-                                    <div className="w-full">
-                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Unidade (Obrigatório)</label>
-                                        <select
-                                            value={historyFilterUnit}
-                                            onChange={e => setHistoryFilterUnit(e.target.value)}
-                                            className="w-full p-2.5 border border-gray-300 rounded-lg bg-white"
-                                        >
-                                            <option value="">Selecione uma Unidade...</option>
-                                            {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="w-full">
-                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Mês de Referência</label>
-                                        <input
-                                            type="month"
-                                            value={historyFilterMonth}
-                                            onChange={e => setHistoryFilterMonth(e.target.value)}
-                                            className="w-full p-2.5 border border-gray-300 rounded-lg bg-white"
-                                        />
-                                    </div>
-                                    <div className="w-full">
-                                        <div className="bg-purple-100 p-2.5 rounded-lg border border-purple-200 text-center mx-auto">
-                                            <p className="text-xs font-bold text-purple-800 uppercase">Faturamento Filtrado</p>
-                                            <p className="text-xl font-bold text-purple-900">
-                                                {(() => {
-                                                    if (!historyFilterUnit || !historyFilterMonth) return '---';
+                                {/* --- NEW FINANCIAL DASHBOARD (KPIs & ACTIONS) --- */}
+                                <div className="space-y-6">
 
-                                                    // Convert YYYY-MM to Month Name/Year potentially, OR check paymentDate
-                                                    // Requirment: "Faturamento consolidado... Month/Unit"
-                                                    // Logic: Sum 'value' of all 'Pago' records where:
-                                                    // 1. Student Unit == filterUnit
-                                                    // 2. PaymentDate falls in FilterMonth (YYYY-MM)
+                                    {/* 1. FILTER & ACTION TOOLBAR */}
+                                    <div className="flex flex-col xl:flex-row gap-4 justify-between items-end bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                        <div className="flex flex-col md:flex-row gap-4 w-full xl:w-auto">
+                                            <div className="w-full md:w-64">
+                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Unidade</label>
+                                                {isGeneralAdmin ? (
+                                                    <select
+                                                        value={historyFilterUnit}
+                                                        onChange={e => setHistoryFilterUnit(e.target.value)}
+                                                        className="w-full p-2.5 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-purple-500 transition-all font-medium"
+                                                    >
+                                                        <option value="">Selecione...</option>
+                                                        {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}
+                                                    </select>
+                                                ) : (
+                                                    <div className="w-full p-2.5 border border-gray-200 rounded-lg bg-gray-100 text-gray-700 font-bold">
+                                                        {adminUnit}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="w-full md:w-48">
+                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Referência</label>
+                                                <input
+                                                    type="month"
+                                                    value={historyFilterMonth}
+                                                    onChange={e => setHistoryFilterMonth(e.target.value)}
+                                                    className="w-full p-2.5 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-purple-500 transition-all font-medium"
+                                                />
+                                            </div>
+                                        </div>
 
-                                                    const total = financialRecords.reduce((acc, rec) => {
+                                        <div className="flex gap-2 w-full xl:w-auto justify-end items-center">
+                                            {/* TOGGLE ADVANCED TOOLS */}
+                                            <button
+                                                onClick={() => setShowFinancialTools(!showFinancialTools)}
+                                                className={`py-2.5 px-3 rounded-lg border transition-all ${showFinancialTools ? 'bg-gray-200 border-gray-300 text-gray-800' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}
+                                                title="Ferramentas Avançadas"
+                                            >
+                                                <span>⚙️</span>
+                                            </button>
+
+                                            <button
+                                                onClick={() => {
+                                                    // EXPORT LOGIC
+                                                    const exportData = financialRecords.filter(rec => {
                                                         const s = students.find(st => st.id === rec.studentId);
-                                                        if (!s || s.unit !== historyFilterUnit) return acc;
+                                                        if (!s || (historyFilterUnit && s.unit !== historyFilterUnit)) return false;
+                                                        // Export acts on the displayed month reference
+                                                        const [fYear, fMonth] = historyFilterMonth.split('-');
+                                                        const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+                                                        const fMonthName = monthNames[parseInt(fMonth) - 1];
+                                                        const targetReference = `${fMonthName}/${fYear}`;
+                                                        return rec.month === targetReference;
+                                                    }).map(rec => {
+                                                        const s = students.find(st => st.id === rec.studentId);
+                                                        return {
+                                                            Data: rec.paymentDate ? new Date(rec.paymentDate).toLocaleDateString() : 'Pendente',
+                                                            Aluno: s?.name || 'Desconhecido',
+                                                            Unidade: s?.unit,
+                                                            Referencia: rec.month,
+                                                            Valor: rec.value,
+                                                            Status: rec.status,
+                                                            Recibo: rec.receiptUrl || '-'
+                                                        };
+                                                    });
 
-                                                        // Check payment date
-                                                        if (!rec.paymentDate) return acc;
-                                                        const pDate = rec.paymentDate.substring(0, 7); // YYYY-MM
-
-                                                        if (pDate === historyFilterMonth) {
-                                                            return acc + rec.value;
-                                                        }
-                                                        return acc;
-                                                    }, 0);
-
-                                                    return `R$ ${total.toFixed(2).replace('.', ',')}`;
-                                                })()}
-                                            </p>
+                                                    const ws = XLSX.utils.json_to_sheet(exportData);
+                                                    const wb = XLSX.utils.book_new();
+                                                    XLSX.utils.book_append_sheet(wb, ws, "Financeiro");
+                                                    XLSX.writeFile(wb, `Financeiro_${historyFilterUnit}_${historyFilterMonth}.xlsx`);
+                                                }}
+                                                className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold py-2.5 px-4 rounded-lg shadow-sm flex items-center gap-2 text-sm transition-all"
+                                            >
+                                                <span>📊</span> Exportar Excel
+                                            </button>
                                         </div>
                                     </div>
+
+                                    {/* ADVANCED TOOLS SECTION (COLLAPSIBLE) */}
+                                    {showFinancialTools && (
+                                        <div className="bg-gray-100 p-4 rounded-xl border border-gray-200 animate-fade-in">
+                                            <p className="text-xs font-bold text-gray-500 uppercase mb-3">Ferramentas de Manutenção</p>
+                                            <div className="flex gap-3 flex-wrap">
+                                                <button
+                                                    onClick={onGenerateFees}
+                                                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow flex items-center gap-2 text-sm"
+                                                >
+                                                    <span>⚙️</span> Gerar Carnês (Lote)
+                                                </button>
+                                                {onFixDuplicates && (
+                                                    <button
+                                                        onClick={onFixDuplicates}
+                                                        className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow flex items-center gap-2 text-sm"
+                                                    >
+                                                        <span>🧹</span> Corrigir Duplicidades
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 2. KPI CARDS & PROGRESS */}
+                                    {(() => {
+                                        if (!historyFilterUnit || !historyFilterMonth) return (
+                                            <div className="text-center py-10 text-gray-400 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                                                Selecione uma Unidade e Mês de Referência para ver os indicadores.
+                                            </div>
+                                        );
+
+                                        // CALCULATION LOGIC
+                                        // 1. CASH FLOW (What actually entered this month)
+                                        // Filter: Payment Date == Selected Month
+                                        const receivedRecords = financialRecords.filter(rec => {
+                                            const s = students.find(st => st.id === rec.studentId);
+                                            if (!s || (historyFilterUnit && s.unit !== historyFilterUnit)) return false;
+
+                                            if (rec.status === 'Pago' && rec.paymentDate) {
+                                                return rec.paymentDate.substring(0, 7) === historyFilterMonth;
+                                            }
+                                            return false;
+                                        });
+
+                                        const totalReceived = receivedRecords.reduce((acc, rec) => acc + rec.value, 0);
+
+                                        // 2. COMPETENCY (What was supposed to be paid for this Reference Month)
+                                        // Filter: Reference Month == Selected Month
+                                        const [fYear, fMonth] = historyFilterMonth.split('-');
+                                        const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+                                        const fMonthName = monthNames[parseInt(fMonth) - 1];
+                                        const targetReference = `${fMonthName}/${fYear}`;
+
+                                        let totalExpected = 0;
+                                        let totalPending = 0;
+                                        const delinquentStudents: any[] = [];
+
+                                        const competencyRecords = financialRecords.filter(rec => {
+                                            const s = students.find(st => st.id === rec.studentId);
+                                            if (!s || (historyFilterUnit && s.unit !== historyFilterUnit)) return false;
+                                            return rec.month === targetReference;
+                                        });
+
+                                        competencyRecords.forEach(rec => {
+                                            const s = students.find(st => st.id === rec.studentId);
+                                            totalExpected += rec.value;
+                                            if (rec.status !== 'Pago') {
+                                                totalPending += rec.value;
+                                                delinquentStudents.push({ ...rec, studentName: s?.name, studentPhone: s?.phone, studentShift: s?.shift, studentClass: s?.schoolClass });
+                                            }
+                                        });
+
+                                        // Progress: Cash Received / Total Competency Expected
+                                        // Note: Can be > 100% if there are prepayments or late payments from other months, 
+                                        // but usually users want to compare "Cash In" vs "Target".
+                                        // Alternatively, we could calculate "Paid of this Competency", but user complained about "Received 0".
+                                        // Let's stick to Cash vs Target for now.
+                                        const progress = totalExpected > 0 ? (totalReceived / totalExpected) * 100 : 0;
+
+                                        return (
+                                            <div className="space-y-6">
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                    {/* CARD: RECEBIDO */}
+                                                    <div className="bg-white p-5 rounded-xl border-l-4 border-l-green-500 shadow-sm border border-gray-100 flex flex-col justify-between">
+                                                        <div>
+                                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Recebido (Realizado)</p>
+                                                            <h3 className="text-2xl font-black text-green-700">R$ {totalReceived.toFixed(2).replace('.', ',')}</h3>
+                                                        </div>
+                                                        <div className="mt-4 text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded w-fit">
+                                                            {receivedRecords.length} pagamentos confirmados
+                                                        </div>
+                                                    </div>
+
+                                                    {/* CARD: PENDENTE (INADIMPLÊNCIA) */}
+                                                    <div className={`bg-white p-5 rounded-xl border-l-4 border-l-red-500 shadow-sm border border-gray-100 flex flex-col justify-between cursor-pointer hover:bg-red-50 transition-colors ${showDelinquencyList ? 'ring-2 ring-red-500' : ''}`}
+                                                        onClick={() => setShowDelinquencyList(!showDelinquencyList)}>
+                                                        <div>
+                                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Pendente (Inadimplência)</p>
+                                                            <h3 className="text-2xl font-black text-red-600">R$ {totalPending.toFixed(2).replace('.', ',')}</h3>
+                                                        </div>
+                                                        <div className="mt-4 flex justify-between items-center">
+                                                            <span className="text-xs font-bold text-red-700 bg-red-100 px-2 py-1 rounded flex items-center gap-1">
+                                                                <span>⚠️</span> {delinquentStudents.length} Alunos
+                                                            </span>
+                                                            <span className="text-[10px] text-gray-400 font-medium">Clique para ver lista</span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* CARD: TOTAL ESPERADO */}
+                                                    <div className="bg-white p-5 rounded-xl border-l-4 border-l-blue-500 shadow-sm border border-gray-100 flex flex-col justify-between">
+                                                        <div>
+                                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Potencial (Previsto)</p>
+                                                            <h3 className="text-2xl font-black text-blue-900">R$ {totalExpected.toFixed(2).replace('.', ',')}</h3>
+                                                        </div>
+                                                        <div className="mt-4 w-full">
+                                                            <div className="flex justify-between text-[10px] font-bold text-gray-500 mb-1">
+                                                                <span>Progresso da Meta</span>
+                                                                <span>{progress.toFixed(1)}%</span>
+                                                            </div>
+                                                            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                                                <div
+                                                                    className="bg-blue-600 h-2 rounded-full transition-all duration-1000"
+                                                                    style={{ width: `${progress}%` }}
+                                                                ></div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* DELINQUENCY LIST (CONDITIONAL) */}
+                                                {showDelinquencyList && delinquentStudents.length > 0 && (
+                                                    <div className="bg-red-50 rounded-xl border border-red-200 overflow-hidden animate-fade-in">
+                                                        <div className="bg-red-100 px-6 py-3 border-b border-red-200 flex justify-between items-center">
+                                                            <h4 className="font-bold text-red-800 flex items-center gap-2">
+                                                                <span>📋</span> Lista de Pendências ({delinquentStudents.length})
+                                                            </h4>
+                                                            <button onClick={() => setShowDelinquencyList(false)} className="text-red-600 hover:text-red-800 text-sm font-bold">Fechar</button>
+                                                        </div>
+                                                        <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                                                            <table className="w-full text-left bg-white">
+                                                                <thead className="bg-gray-50 text-xs text-gray-500 uppercase font-bold sticky top-0">
+                                                                    <tr>
+                                                                        <th className="px-6 py-3">Aluno</th>
+                                                                        <th className="px-6 py-3">Turma</th>
+                                                                        <th className="px-6 py-3 text-right">Valor</th>
+                                                                        <th className="px-6 py-3 text-center">Ação</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="divide-y divide-gray-100">
+                                                                    {delinquentStudents.map((st, idx) => (
+                                                                        <tr key={idx} className="hover:bg-red-50/30">
+                                                                            <td className="px-6 py-3 text-sm font-bold text-gray-800">{st.studentName}</td>
+                                                                            <td className="px-6 py-3 text-sm text-gray-600">{st.studentClass} ({st.studentShift})</td>
+                                                                            <td className="px-6 py-3 text-sm font-bold text-red-600 text-right">R$ {st.value.toFixed(2)}</td>
+                                                                            <td className="px-6 py-3 text-center">
+                                                                                {st.studentPhone && (
+                                                                                    <a
+                                                                                        href={`https://wa.me/${st.studentPhone.replace(/\D/g, '')}?text=Olá! Notamos uma pendência referente a mensalidade de ${st.month} no valor de R$ ${st.value.toFixed(2)}. Podemos ajudar?`}
+                                                                                        target="_blank"
+                                                                                        rel="noreferrer"
+                                                                                        className="inline-flex items-center gap-1 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold hover:bg-green-600"
+                                                                                    >
+                                                                                        <span>📱</span> Cobrar
+                                                                                    </a>
+                                                                                )}
+                                                                            </td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             </div>
 
                             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                                <div className="p-6 border-b border-gray-100">
-                                    <h3 className="font-bold text-gray-700">Transações Recentes (Status: Pago)</h3>
+                                <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                                    <h3 className="font-bold text-gray-700">Transações (Filtradas)</h3>
+                                    <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded">Exibindo apenas Pagos</span>
                                 </div>
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left min-w-[600px]">
                                         <thead className="bg-gray-50 border-b border-gray-100">
                                             <tr>
-                                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Data</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Data Pagto</th>
                                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Aluno / Mãe</th>
                                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Unidade</th>
                                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Referência</th>
@@ -1774,11 +1939,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 financialRecords
                                                     .filter(rec => {
                                                         const s = students.find(st => st.id === rec.studentId);
+
+                                                        // 1. MUST BE PAID for this table (Recent Transactions)
+                                                        if (rec.status !== 'Pago') return false;
+
+                                                        // 2. Filter by Unit
+                                                        let unitMatch = true;
                                                         if (isGeneralAdmin) {
-                                                            return financialFilterUnit ? s?.unit === financialFilterUnit : true;
+                                                            unitMatch = historyFilterUnit ? s?.unit === historyFilterUnit : true;
                                                         } else {
-                                                            return s?.unit === adminUnit;
+                                                            unitMatch = s?.unit === adminUnit;
                                                         }
+
+                                                        // 3. Filter by Month (History Filter)
+                                                        // For the TABLE, user usually expects to see what happened in that month (Payment Date)
+                                                        // or the records belonging to that month?
+                                                        // "Recent Transactions" usually implies Payment Date.
+                                                        // Let's stick to Payment Date for this table to match previous behavior.
+                                                        let dateMatch = true;
+                                                        if (historyFilterMonth) {
+                                                            if (!rec.paymentDate) {
+                                                                dateMatch = false;
+                                                            } else {
+                                                                const pDate = rec.paymentDate.substring(0, 7); // YYYY-MM
+                                                                dateMatch = pDate === historyFilterMonth;
+                                                            }
+                                                        }
+
+                                                        return unitMatch && dateMatch;
                                                     })
                                                     .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
                                                     .slice(0, 50)
