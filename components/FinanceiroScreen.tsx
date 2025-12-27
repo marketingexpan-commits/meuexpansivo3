@@ -453,14 +453,19 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
 
             const description = `${student.name} | ${activeTab === 'mensalidades' ? 'Mensalidades' : 'Eventos/Extras'}`;
 
+            // Refined Name Logic
+            const parts = rawName ? rawName.trim().split(' ') : ['Responsável'];
+            const firstName = parts[0];
+            const lastName = parts.length > 1 ? parts.slice(1).join(' ') : firstName;
+
             // Construct Distinct Payer Objects for API (Snake Case) and SDK (Camel Case)
             const cleanCpf = rawCpf ? rawCpf.replace(/\D/g, '') : '';
 
             // 1. Backend Payer (API) - Strict Snake Case
             const backendPayer = {
                 email: rawEmail || 'email@exemplo.com',
-                first_name: rawName ? rawName.split(' ')[0] : 'Responsável',
-                last_name: rawName ? rawName.split(' ').slice(1).join(' ') : 'do Aluno',
+                first_name: firstName,
+                last_name: lastName,
                 identification: { type: 'CPF', number: cleanCpf },
                 ...(addressOverride ? {
                     address: {
@@ -486,8 +491,8 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             // 2. Frontend Payer (SDK) - Strict Camel Case
             const frontendPayer = {
                 email: rawEmail || 'email@exemplo.com',
-                firstName: rawName ? rawName.split(' ')[0] : 'Responsável',
-                lastName: rawName ? rawName.split(' ').slice(1).join(' ') : 'do Aluno',
+                firstName: firstName,
+                lastName: lastName,
                 identification: { type: 'CPF', number: cleanCpf },
                 address: {
                     zipCode: backendPayer.address?.zip_code || '',
