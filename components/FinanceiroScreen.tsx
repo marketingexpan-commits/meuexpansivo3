@@ -25,19 +25,23 @@ type PaymentMethod = 'pix' | 'debito' | 'credito' | 'boleto'; // Import constant
 
 // ...
 
-interface ErrorBoundaryState {
+interface BrickErrorBoundaryProps {
+    children: React.ReactNode;
+    onError: (error: Error) => void;
+}
+
+interface BrickErrorBoundaryState {
     hasError: boolean;
     error: Error | null;
 }
 
-class BrickErrorBoundary extends React.Component<{ children: React.ReactNode, onError: (error: Error) => void }, ErrorBoundaryState> {
-    public state: ErrorBoundaryState = { hasError: false, error: null };
-
-    constructor(props: any) {
+class BrickErrorBoundary extends React.Component<BrickErrorBoundaryProps, BrickErrorBoundaryState> {
+    constructor(props: BrickErrorBoundaryProps) {
         super(props);
+        this.state = { hasError: false, error: null };
     }
 
-    static getDerivedStateFromError(error: Error) {
+    static getDerivedStateFromError(error: Error): BrickErrorBoundaryState {
         return { hasError: true, error };
     }
 
