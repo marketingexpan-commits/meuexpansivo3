@@ -1772,46 +1772,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                         <span>🧹</span> Corrigir Duplicidades
                                                     </button>
                                                 )}
-                                                <button
-                                                    onClick={async () => {
-                                                        const targetCode = "54321";
-                                                        const targetStudent = students.find(s => s.code === targetCode || s.name.toLowerCase().includes("vivianny"));
 
-                                                        if (!targetStudent) {
-                                                            alert("Aluna Vivianny (54321) não encontrada na lista local.");
-                                                            return;
-                                                        }
-
-                                                        // Check for duplicates
-                                                        const alreadyExists = financialRecords.some(r => r.studentId === targetStudent.id && r.month === "Dezembro/2025" && r.status === "Pendente");
-                                                        if (alreadyExists) {
-                                                            alert("Já existe uma pendência de Dezembro/2025 para esta aluna.");
-                                                            return;
-                                                        }
-
-                                                        if (!confirm(`Gerar pendência de teste para ${targetStudent.name}?`)) return;
-
-                                                        try {
-                                                            await db.collection('mensalidades').add({
-                                                                studentId: targetStudent.id,
-                                                                month: "Dezembro/2025",
-                                                                value: 350.00,
-                                                                status: "Pendente",
-                                                                dueDate: "2025-12-10", // Atrasado
-                                                                createdAt: new Date().toISOString()
-                                                            });
-                                                            alert("Pendência gerada! Atualize a aba Financeiro.");
-                                                            // Trigger refresh if possible, or user manually refreshes tab
-                                                            window.location.reload();
-                                                        } catch (e) {
-                                                            console.error(e);
-                                                            alert("Erro ao gerar pendência.");
-                                                        }
-                                                    }}
-                                                    className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg shadow flex items-center gap-2 text-sm"
-                                                >
-                                                    <span>🧪</span> Simular Atraso (Vivianny Bezerra)
-                                                </button>
                                             </div>
                                         </div>
                                     )}
