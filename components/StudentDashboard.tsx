@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
-import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus } from '../types';
+import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial } from '../types';
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
 import { calculateBimesterMedia, calculateFinalData } from '../src/constants'; // Import Sync Fix
 import { getStudyTips } from '../services/geminiService';
@@ -20,7 +20,8 @@ import {
     Lightbulb,
     Mail,
     MessageCircle,
-    User
+    User,
+    Folder
 } from 'lucide-react';
 import { db } from '../firebaseConfig';
 
@@ -96,7 +97,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState({ title: '', tip: '' });
     const [isLoadingAI, setIsLoadingAI] = useState(false);
-    const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro' | 'tickets'>('menu');
+    const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro' | 'tickets' | 'materials'>('menu');
     const [showNotifications, setShowNotifications] = useState(false);
 
     // Estado para o sistema de Dúvidas (Tickets)
@@ -107,6 +108,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const [ticketSuccess, setTicketSuccess] = useState(false);
     const [studentTickets, setStudentTickets] = useState<Ticket[]>([]);
     const [isLoadingStudentTickets, setIsLoadingStudentTickets] = useState(false);
+
+    // Estados para Materiais
+    const [classMaterials, setClassMaterials] = useState<ClassMaterial[]>([]);
+    const [isLoadingMaterials, setIsLoadingMaterials] = useState(false);
+    const [materialsError, setMaterialsError] = useState<string | null>(null);
 
     const unreadNotifications = (notifications || []).filter(n => n && !n.read).length;
 
@@ -323,6 +329,44 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         }
     };
 
+    // --- MATERIALS LOADING LOGIC ---
+    useEffect(() => {
+        if (currentView === 'materials') {
+            loadClassMaterials();
+        }
+    }, [currentView]);
+
+    const loadClassMaterials = async () => {
+        setIsLoadingMaterials(true);
+        setMaterialsError(null); // Reset error
+        try {
+            console.log("Fetching materials for:", {
+                unit: student.unit,
+                grade: student.gradeLevel,
+                class: student.schoolClass,
+                shift: student.shift
+            });
+
+            // Filter by: Unit, Grade, Class, Shift
+            const snapshot = await db.collection('materials')
+                .where('unit', '==', student.unit)
+                .where('gradeLevel', '==', student.gradeLevel)
+                .where('schoolClass', '==', student.schoolClass)
+                .where('shift', '==', student.shift)
+                .get();
+
+            const mats = snapshot.docs.map(doc => doc.data() as ClassMaterial);
+            // Sort by Timestamp Desc
+            mats.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+            setClassMaterials(mats);
+        } catch (error: any) {
+            console.error("Erro ao carregar materiais:", error);
+            setMaterialsError(error.message || "Erro desconhecido ao carregar materiais.");
+        } finally {
+            setIsLoadingMaterials(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans transition-all duration-500 ease-in-out print:min-h-0 print:h-auto print:bg-white print:p-0 print:block print:overflow-visible">
             <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${currentView === 'menu' ? 'max-w-md' : 'max-w-5xl'} print:min-h-0 print:h-auto print:shadow-none print:rounded-none`}>
@@ -392,6 +436,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 setCurrentView('attendance');
                                                             } else if (titleLower.includes('financeiro') || titleLower.includes('mensalidade') || titleLower.includes('pagamento')) {
                                                                 setCurrentView('financeiro');
+                                                            } else if (titleLower.includes('material') || titleLower.includes('conteúdo') || titleLower.includes('aula')) {
+                                                                setCurrentView('materials');
                                                             } else {
                                                                 setCurrentView('tickets');
                                                             }
@@ -428,9 +474,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 <span className="text-sm font-bold text-blue-900 truncate max-w-[180px] leading-tight">{student.name}</span>
                             </div>
                             <div className="flex flex-col items-end">
-                                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Turma</span>
+                                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Turma / Turno</span>
                                 <div className="text-right">
-                                    <span className="text-xs font-bold text-gray-700 bg-white px-2 py-0.5 rounded border border-gray-200 block">{student.gradeLevel || 'N/A'}</span>
+                                    <span className="text-xs font-bold text-gray-700 bg-white px-2 py-0.5 rounded border border-gray-200 block">
+                                        {student.gradeLevel || 'N/A'} <span className="text-gray-300">|</span> {student.shift}
+                                    </span>
                                     <span className="text-[10px] font-semibold text-gray-500 mt-0.5 block">{student.unit}</span>
                                 </div>
                             </div>
@@ -505,6 +553,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             <CircleHelp className="w-6 h-6 text-yellow-600" />
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Minhas Dúvidas</h3>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setCurrentView('materials')}
+                                        className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-teal-500 hover:shadow-md transition-all group aspect-square"
+                                    >
+                                        <div className="w-10 h-10 bg-teal-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-teal-100 transition-colors">
+                                            <Folder className="w-6 h-6 text-teal-600" />
+                                        </div>
+                                        <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Biblioteca de Materiais</h3>
                                     </button>
 
                                     <button
@@ -616,6 +674,64 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             </div>
                                         ));
                                     })()}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {currentView === 'materials' && (
+                        <div className="mb-8 print:hidden">
+                            <h3 className="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2">
+                                <Folder className="w-6 h-6 text-teal-600" />
+                                Biblioteca de Materiais
+                            </h3>
+                            <div className="w-full bg-white p-6 border rounded-lg shadow-md h-[600px] flex flex-col">
+                                <div className="flex-1 overflow-y-auto pr-2">
+                                    {isLoadingMaterials ? (
+                                        <div className="text-center py-10 text-gray-500">Carregando conteúdos...</div>
+                                    ) : materialsError ? (
+                                        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                                            <p className="font-bold">Erro ao carregar materiais:</p>
+                                            <p className="text-sm mt-1">{materialsError}</p>
+                                            <p className="text-xs mt-2 text-red-500">Se aparecer um link acima, peça para o administrador clicar nele.</p>
+                                        </div>
+                                    ) : classMaterials.length > 0 ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {classMaterials.map(mat => (
+                                                <div key={mat.id} className="bg-gray-50 hover:bg-white p-4 rounded-lg shadow-sm hover:shadow-md border border-gray-200 transition-all group">
+                                                    <div className="flex justify-between items-start">
+                                                        <div>
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 uppercase tracking-wide">{mat.subject}</span>
+                                                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800 uppercase tracking-wide">{mat.shift}</span>
+                                                            </div>
+                                                            <h3 className="font-bold text-gray-800 text-lg leading-tight mb-1">{mat.title}</h3>
+                                                            <p className="text-xs text-gray-500">
+                                                                Prof. {mat.teacherName.split(' ')[0]} • {new Date(mat.timestamp).toLocaleDateString()}
+                                                            </p>
+                                                        </div>
+                                                        <div className="bg-white p-2 rounded-full shadow-sm group-hover:scale-110 transition-transform">
+                                                            <FileText className="w-5 h-5 text-red-500" />
+                                                        </div>
+                                                    </div>
+                                                    <a
+                                                        href={mat.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="mt-4 flex items-center justify-center gap-2 w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-bold text-sm transition-colors"
+                                                    >
+                                                        <Download className="w-4 h-4" />
+                                                        Baixar Material
+                                                    </a>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                                            <Folder className="w-16 h-16 mb-4 opacity-20" />
+                                            <p className="italic text-lg">Nenhum material disponível para sua turma no momento.</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

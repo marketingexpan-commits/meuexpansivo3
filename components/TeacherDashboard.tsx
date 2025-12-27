@@ -1,7 +1,9 @@
 // src/components/TeacherDashboard.tsx
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { Teacher, Student, GradeEntry, BimesterData, SchoolUnit, Subject, SchoolClass, AttendanceRecord, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, Ticket, TicketStatus, AppNotification } from '../types';
-import { db } from '../firebaseConfig';
+import { Teacher, Student, GradeEntry, BimesterData, SchoolUnit, Subject, SchoolClass, AttendanceRecord, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, Ticket, TicketStatus, AppNotification, ClassMaterial } from '../types';
+import { db, storage } from '../firebaseConfig';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+
 import { getAttendanceBreakdown, AttendanceBreakdown } from '../src/utils/attendanceUtils';
 import {
     calculateBimesterMedia,
@@ -31,7 +33,7 @@ const formatGrade = (value: number | undefined | null) => {
 };
 
 export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, students, grades, attendanceRecords, earlyChildhoodReports, onSaveGrade, onSaveAttendance, onSaveEarlyChildhoodReport, onLogout }) => {
-    const [activeTab, setActiveTab] = useState<'grades' | 'attendance' | 'tickets'>('grades');
+    const [activeTab, setActiveTab] = useState<'grades' | 'attendance' | 'tickets' | 'materials'>('grades');
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const activeUnit = teacher.unit;
@@ -85,6 +87,19 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     const [replyingTicketId, setReplyingTicketId] = useState<string | null>(null);
     const [replyText, setReplyText] = useState('');
     const [isSendingReply, setIsSendingReply] = useState(false);
+
+    // Estados para Materiais de Aula
+    const [materialTitle, setMaterialTitle] = useState('');
+    const [materialFile, setMaterialFile] = useState<File | null>(null);
+    const [materialGrade, setMaterialGrade] = useState('');
+    const [materialShift, setMaterialShift] = useState('');
+    const [materialClass, setMaterialClass] = useState<SchoolClass>(SchoolClass.A);
+    const [materialSubject, setMaterialSubject] = useState<string>('');
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadError, setUploadError] = useState<string | null>(null);
+    const [uploadedMaterials, setUploadedMaterials] = useState<ClassMaterial[]>([]);
+    const [isLoadingMaterials, setIsLoadingMaterials] = useState(false);
 
     const MONTH_NAMES = [
         "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -526,6 +541,166 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
 
     const pendingTicketsCount = tickets.filter(t => t.status === TicketStatus.PENDING).length;
 
+    // --- MATERIALS LOGIC ---
+    // Load Materials on Tab Switch or Mount
+    useEffect(() => {
+        if (activeTab === 'materials') {
+            loadMaterials();
+        }
+    }, [activeTab]);
+
+    const loadMaterials = async () => {
+        setIsLoadingMaterials(true);
+        try {
+            const snapshot = await db.collection('materials')
+                .where('teacherId', '==', teacher.id)
+                .get();
+            const mats = snapshot.docs.map(doc => doc.data() as ClassMaterial);
+            // Sort by date desc
+            mats.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+            setUploadedMaterials(mats);
+        } catch (error) {
+            console.error("Erro ao carregar materiais:", error);
+        } finally {
+            setIsLoadingMaterials(false);
+        }
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setMaterialFile(e.target.files[0]);
+        }
+    };
+
+    const handleUploadMaterial = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        // Validação básica
+        if (!materialFile || !materialTitle || !materialGrade || !materialSubject) {
+            alert("Preencha todos os campos e selecione um arquivo.");
+            return;
+        }
+
+        if (!materialShift) {
+            alert("Por favor, selecione o Turno.");
+            return;
+        }
+
+        setIsUploading(true);
+        setUploadProgress(0);
+        setUploadError(null);
+
+        console.log("Iniciando processo de upload (v2)...");
+
+        try {
+            // 1. Sanitize filename
+            const sanitizedFilename = materialFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+
+            // 2. Define Path (Modular)
+            const storagePath = `materials/${activeUnit}/${materialShift}/${materialGrade}/${materialClass}/${Date.now()}_${sanitizedFilename}`;
+            console.log("Caminho Modular:", storagePath);
+
+            // 3. Upload with uploadBytesResumable (Modular SDK)
+            const storageV9 = getStorage();
+            const storageRef = ref(storageV9, storagePath);
+            const uploadTask = uploadBytesResumable(storageRef, materialFile);
+
+            console.log("Iniciando Upload Resumable...");
+
+            // Aguardar conclusão com monitoramento
+            await new Promise<void>((resolve, reject) => {
+                uploadTask.on('state_changed',
+                    (snapshot) => {
+                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                        setUploadProgress(progress);
+                        console.log('Upload is ' + progress + '% done');
+                    },
+                    (error) => {
+                        console.error("ERRO UPLOAD (OnChanged):", error);
+                        reject(error);
+                    },
+                    async () => {
+                        // Sucesso
+                        try {
+                            const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+                            console.log("URL Final:", downloadUrl);
+
+                            // Salvar no Firestore
+                            const newMaterial: ClassMaterial = {
+                                id: `mat-${Date.now()}`,
+                                title: materialTitle,
+                                url: downloadUrl,
+                                filename: sanitizedFilename,
+                                teacherId: teacher.id,
+                                teacherName: teacher.name,
+                                subject: materialSubject,
+                                unit: activeUnit,
+                                gradeLevel: materialGrade,
+                                schoolClass: materialClass,
+                                shift: materialShift,
+                                timestamp: new Date().toISOString()
+                            };
+
+                            await db.collection('materials').doc(newMaterial.id).set(newMaterial);
+                            resolve();
+                        } catch (err) {
+                            reject(err);
+                        }
+                    }
+                );
+            });
+
+            // 4. Limpar Form e Finalizar
+            setMaterialFile(null);
+            setMaterialTitle('');
+            setUploadProgress(0);
+            alert("Material enviado com sucesso!");
+            loadMaterials();
+
+        } catch (error: any) {
+            console.error("ERRO NO UPLOAD:", error);
+
+            let errorMessage = `Erro: ${error.message}`;
+
+            if (error.code === 'storage/unauthorized') {
+                errorMessage = "Permissão negada (Storage Rules). Verifique se você está logado e se as regras permitem.";
+            } else if (error.code === 'storage/canceled') {
+                errorMessage = "Upload cancelado.";
+            } else if (error.code === 'storage/unknown') {
+                errorMessage = `Erro desconhecido (${error.code}).`;
+            }
+
+            setUploadError(errorMessage);
+            alert(`FALHA: ${errorMessage}`);
+
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleDeleteMaterial = async (material: ClassMaterial) => {
+        if (!window.confirm("Tem certeza que deseja excluir este material?")) return;
+
+        try {
+            // 1. Delete from Firestore
+            await db.collection('materials').doc(material.id).delete();
+
+            // 2. Try delete from Storage (might fail if file moved, but firestore is priority)
+            try {
+                const fileRef = storage.refFromURL(material.url);
+                await fileRef.delete();
+            } catch (err) {
+                console.warn("Erro ao deletar arquivo do storage (pode já ter sido removido):", err);
+            }
+
+            setUploadedMaterials(prev => prev.filter(m => m.id !== material.id));
+            alert("Material removido.");
+        } catch (error) {
+            console.error("Erro ao deletar material:", error);
+            alert("Erro ao deletar material.");
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans">
             <div className="w-full max-w-7xl bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col">
@@ -591,9 +766,142 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                 </span>
                             )}
                         </button>
+                        <button onClick={() => setActiveTab('materials')} className={`flex-1 pb-3 px-1 font-semibold border-b-2 text-center transition-colors ${activeTab === 'materials' ? 'text-blue-950 border-blue-950' : 'text-gray-500 border-transparent hover:text-gray-700'}`}>
+                            Materiais de Aula
+                        </button>
                     </div>
 
-                    {/* CONTEÚDO TAB: NOTAS/RELATÓRIOS */}
+                    {/* CONTEÚDO TAB: MATERIAIS */}
+                    {activeTab === 'materials' && (
+                        <div className="flex flex-col md:flex-row space-y-6 md:space-y-0 md:space-x-6">
+                            {/* FORMULÁRIO DE UPLOAD */}
+                            <div className="w-full md:w-1/3 p-6 border rounded-lg shadow-md bg-white">
+                                <h2 className="text-xl font-bold mb-4 text-blue-950 flex items-center gap-2">
+                                    <span className="text-xl">📤</span> Enviar Material
+                                </h2>
+                                <form onSubmit={handleUploadMaterial} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Título do Material</label>
+                                        <input
+                                            type="text"
+                                            value={materialTitle}
+                                            onChange={(e) => setMaterialTitle(e.target.value)}
+                                            placeholder="Ex: Lista de Exercícios - Fixação"
+                                            className="w-full p-2 border border-gray-300 rounded focus:ring-blue-950 focus:border-blue-950"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Disciplina</label>
+                                        <select value={materialSubject} onChange={(e) => setMaterialSubject(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
+                                            <option value="">Selecione...</option>
+                                            {teacherSubjects.map(subject => (<option key={subject} value={subject as string}>{subject as string}</option>))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Série</label>
+                                        <select value={materialGrade} onChange={(e) => setMaterialGrade(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
+                                            <option value="">Selecione...</option>
+                                            {SCHOOL_GRADES_LIST.map((grade) => (<option key={grade} value={grade}>{grade}</option>))}
+                                        </select>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1">Turno</label>
+                                            <select value={materialShift} onChange={(e) => setMaterialShift(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
+                                                <option value="">Selecione...</option>
+                                                <option value="Matutino">Matutino</option>
+                                                <option value="Vespertino">Vespertino</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1">Turma</label>
+                                            <select value={materialClass} onChange={(e) => setMaterialClass(e.target.value as SchoolClass)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
+                                                {SCHOOL_CLASSES_LIST.map((cls) => (<option key={cls} value={cls}>{cls}</option>))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Arquivo (PDF)</label>
+                                        <input
+                                            type="file"
+                                            accept="application/pdf"
+                                            onChange={handleFileChange}
+                                            className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                            required
+                                        />
+                                        <p className="text-xs text-gray-400 mt-1">Apenas arquivos .pdf são permitidos.</p>
+                                    </div>
+
+                                    {isUploading && (
+                                        <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+                                            <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
+                                        </div>
+                                    )}
+
+                                    {uploadError && (
+                                        <div className="p-3 mb-2 bg-red-100 border border-red-300 text-red-700 text-sm rounded">
+                                            {uploadError}
+                                        </div>
+                                    )}
+
+                                    <Button type="submit" disabled={isUploading} className="w-full flex justify-center items-center gap-2">
+                                        {isUploading ? 'Enviando...' : 'Fazer Upload'}
+                                    </Button>
+                                </form>
+                            </div>
+
+                            {/* LISTA DE MATERIAIS */}
+                            <div className="w-full md:w-2/3 p-6 border rounded-lg shadow-md bg-gray-50 flex flex-col h-[600px]">
+                                <h2 className="text-xl font-bold mb-4 text-blue-950 flex items-center gap-2">
+                                    <span className="text-xl">📚</span> Meus Envios Recentes
+                                </h2>
+
+                                <div className="flex-1 overflow-y-auto pr-2">
+                                    {isLoadingMaterials ? (
+                                        <div className="text-center py-10 text-gray-500">Carregando...</div>
+                                    ) : uploadedMaterials.length > 0 ? (
+                                        <div className="grid grid-cols-1 gap-4">
+                                            {uploadedMaterials.map(mat => (
+                                                <div key={mat.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex justify-between items-start">
+                                                    <div>
+                                                        <h3 className="font-bold text-gray-800 text-lg">{mat.title}</h3>
+                                                        <div className="text-sm text-gray-500 mt-1 space-y-0.5">
+                                                            <p><span className="font-semibold text-gray-600">Disciplina:</span> {mat.subject}</p>
+                                                            <p><span className="font-semibold text-gray-600">Destino:</span> {mat.gradeLevel} - {mat.schoolClass} ({mat.shift})</p>
+                                                            <p className="text-xs text-gray-400 mt-2">{new Date(mat.timestamp).toLocaleDateString()} às {new Date(mat.timestamp).toLocaleTimeString()}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex flex-col gap-2">
+                                                        <a
+                                                            href={mat.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded text-xs font-bold hover:bg-blue-200 text-center transition-colors"
+                                                        >
+                                                            Visualizar
+                                                        </a>
+                                                        <button
+                                                            onClick={() => handleDeleteMaterial(mat)}
+                                                            className="px-3 py-1.5 bg-red-50 text-red-600 rounded text-xs font-bold hover:bg-red-100 border border-red-100 transition-colors"
+                                                        >
+                                                            Excluir
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-20 text-gray-400 italic">
+                                            Nenhum material enviado ainda.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* CONTEÚDO TAB: NOTAS/RELATÓRIOS/ETC (Original) */}
                     {activeTab === 'grades' && (
                         <div className="flex flex-col md:flex-row space-y-6 md:space-y-0 md:space-x-6">
                             <div className="w-full md:w-1/3 p-4 border rounded-lg shadow-md h-full bg-white flex flex-col">

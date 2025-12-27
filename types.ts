@@ -165,6 +165,21 @@ export interface EarlyChildhoodReport {
 
 // --- FIM DOS NOVOS TIPOS ---
 
+export interface ClassMaterial {
+  id: string;
+  title: string;
+  url: string;
+  filename: string;
+  teacherId: string;
+  teacherName: string;
+  subject: string;
+  unit: SchoolUnit;
+  gradeLevel: string;
+  schoolClass: string;
+  shift: string; // Novo: Turno do material
+  timestamp: string;
+}
+
 // --- NOVOS TIPOS PARA CONTATOS DE LIDERANÇA ---
 export enum ContactRole {
   DIRECTOR = 'DIRETOR',

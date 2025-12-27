@@ -1,5 +1,6 @@
 import firebase from "firebase/compat/app";
 import "firebase/compat/firestore";
+import "firebase/compat/storage";
 
 // --- SUAS CHAVES DO FIREBASE (Transcritas da imagem) ---
 const firebaseConfig = {
@@ -16,3 +17,5 @@ const app = !firebase.apps.length ? firebase.initializeApp(firebaseConfig) : fir
 
 // Inicializa e exporta o Banco de Dados (Firestore)
 export const db = app.firestore();
+// FORCE BUCKET: Explicitly tell Firebase which bucket to use
+export const storage = app.storage("gs://meu-expansivo-app.firebasestorage.app");
