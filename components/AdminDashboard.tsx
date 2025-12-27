@@ -886,8 +886,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const handleRemoveSubject = (s: Subject) => setTSubjects(tSubjects.filter(sub => sub !== s));
 
     // Handlers de Telefone (Separados)
-    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => { if (/^[0-9]*$/.test(e.target.value)) setTPhone(e.target.value); };
-    const handleContactPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => { if (/^[0-9]*$/.test(e.target.value)) setContactPhone(e.target.value); };
+    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => { if (/^[0-9+ ]*$/.test(e.target.value)) setTPhone(e.target.value); };
+    const handleContactPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => { if (/^[0-9+ ]*$/.test(e.target.value)) setContactPhone(e.target.value); };
 
     // Handlers de Contatos
     const handleSaveContact = (role: ContactRole) => {
@@ -899,7 +899,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             phoneNumber: contactPhone,
             role: role,
             unit: contactUnit,
-            segment: role === ContactRole.COORDINATOR ? contactSegment : undefined // Salva apenas se for Coordenação
+            ...(role === ContactRole.COORDINATOR ? { segment: contactSegment } : {}) // Salva apenas se for Coordenação
         };
 
         if (editingContactId && onEditUnitContact) {
