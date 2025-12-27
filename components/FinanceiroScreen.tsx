@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'; // Final Update: Boleto Fixed & UI Restored
+import React, { useState, useEffect, useMemo, Component, ErrorInfo } from 'react'; // Final Update: Boleto Fixed & UI Restored
 import { Student, Mensalidade, EventoFinanceiro, UnitContact, ContactRole } from '../types';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
@@ -35,17 +35,18 @@ interface BrickErrorBoundaryState {
     error: Error | null;
 }
 
-class BrickErrorBoundary extends React.Component<BrickErrorBoundaryProps, BrickErrorBoundaryState> {
+class BrickErrorBoundary extends Component<BrickErrorBoundaryProps, BrickErrorBoundaryState> {
+    public state: BrickErrorBoundaryState = { hasError: false, error: null };
+
     constructor(props: BrickErrorBoundaryProps) {
         super(props);
-        this.state = { hasError: false, error: null };
     }
 
     static getDerivedStateFromError(error: Error): BrickErrorBoundaryState {
         return { hasError: true, error };
     }
 
-    componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    componentDidCatch(error: Error, errorInfo: ErrorInfo) {
         console.error("BrickErrorBoundary caught an error:", error, errorInfo);
         this.props.onError(error);
     }
