@@ -1060,11 +1060,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                         <div className="flex gap-2">
                             <Button type="submit" className="w-full flex-1">{editingStudentId ? 'Salvar Alterações' : 'Cadastrar Aluno'}</Button>
-                            {editingStudentId && onGenerateIndividualFees && (
+                            {onGenerateIndividualFees && (
                                 <button
 
                                     type="button"
+                                    disabled={!editingStudentId}
                                     onClick={() => {
+                                        if (!editingStudentId) return;
                                         // Construct student from form data to ensure we have the latest value (even if not synced yet)
                                         const formStudent: Student = {
                                             id: editingStudentId,
@@ -1087,18 +1089,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                                         if (onGenerateIndividualFees) onGenerateIndividualFees(formStudent);
                                     }}
-                                    className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded transition-colors flex items-center justify-center gap-2"
-                                    title="Gera o carnê de 2026 com o valor atual do formulário"
+                                    className={`flex-1 font-bold py-2 px-4 rounded transition-colors flex items-center justify-center gap-2 ${editingStudentId ? 'bg-yellow-500 hover:bg-yellow-600 text-white cursor-pointer' : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-70'}`}
+                                    title={editingStudentId ? "Gera o carnê de 2026 com o valor atual do formulário" : "Cadastre o aluno primeiro para gerar o carnê"}
                                 >
                                     <span>💰</span> Gerar Carnê 2026
                                 </button>
                             )}
-                            {editingStudentId && onResetFees && (
+                            {onResetFees && (
                                 <button
                                     type="button"
-                                    onClick={() => onResetFees!(editingStudentId)}
-                                    className="bg-red-100 text-red-600 px-4 py-2 rounded font-bold hover:bg-red-200 transition flex items-center gap-2 border border-red-200"
-                                    title="ATENÇÃO: Apaga TODAS as mensalidades de 2026 (inclusive pagas) para recomeçar."
+                                    disabled={!editingStudentId}
+                                    onClick={() => editingStudentId && onResetFees!(editingStudentId)}
+                                    className={`px-4 py-2 rounded font-bold transition flex items-center gap-2 border ${editingStudentId ? 'bg-red-100 text-red-600 hover:bg-red-200 border-red-200 cursor-pointer' : 'bg-gray-200 text-gray-400 border-gray-300 cursor-not-allowed'}`}
+                                    title={editingStudentId ? "ATENÇÃO: Apaga TODAS as mensalidades de 2026 (inclusive pagas) para recomeçar." : "Função indisponível (requer aluno cadastrado)"}
                                 >
                                     <span>🗑️</span> Reset
                                 </button>
