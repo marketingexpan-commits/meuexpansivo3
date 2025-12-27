@@ -464,7 +464,15 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             const rawName = nameOverride || nameInput || student.nome_responsavel || student.name;
             const rawEmail = emailOverride || emailInput || student.email_responsavel;
 
-            const description = `${student.name} | ${activeTab === 'mensalidades' ? 'Mensalidades' : 'Eventos/Extras'}`;
+            // Simplify Title to avoid special chars/long strings for Late Fees
+            let description = `Mensalidade Ref ${activeTab === 'mensalidades' ? 'Mês Atual' : 'Eventos'}`;
+            // Try to extract month from selected items if possible, or keep simple
+            if (activeTab === 'mensalidades' && selectedMensalidades.length === 1) {
+                const m = studentMensalidades.find(sm => sm.id === selectedMensalidades[0]);
+                if (m) description = `Mensalidade ${m.month}`;
+            }
+            // Remove "Atrasada" or complex chars just in case
+            description = description.replace(/[^a-zA-Z0-9À-ÿ \-\/]/g, "").substring(0, 60);
 
             // Refined Name Logic
             const parts = rawName ? rawName.trim().split(' ') : ['Responsável'];
@@ -551,25 +559,29 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                 ];
             }
 
+            const payload = {
+                title: description, // Simplified Title
+                quantity: 1,
+                price: Number(amount.toFixed(2)), // Strict Rounding
+                studentId: student.id,
+                mensalidadeIds: activeTab === 'mensalidades' ? selectedMensalidades : [],
+                eventIds: activeTab === 'eventos' ? selectedEventIds : [],
+                payer: backendPayer,
+                payment_methods: {
+                    excluded_payment_types: excludedTypes,
+                    installments: maxInstallments
+                }
+            };
+
+            console.log("Payload enviado ao MP:", payload);
+
             // Call Backend Function (API uses SnakeCase)
             const response = await fetch(MP_REFERENCE_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    title: description,
-                    quantity: 1,
-                    price: Number(amount.toFixed(2)),
-                    studentId: student.id,
-                    mensalidadeIds: activeTab === 'mensalidades' ? selectedMensalidades : [],
-                    eventIds: activeTab === 'eventos' ? selectedEventIds : [],
-                    payer: backendPayer, // Send strict snake_case to backend
-                    payment_methods: {
-                        excluded_payment_types: excludedTypes,
-                        installments: maxInstallments
-                    }
-                })
+                body: JSON.stringify(payload)
             });
 
             const data = await response.json();
@@ -1075,7 +1087,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                         <BrickErrorBoundary onError={(e) => console.error("Brick Error Boundary Caught:", e)}>
                                             <Payment
                                                 initialization={{
-                                                    amount: calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento'),
+                                                    amount: Number(calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento').toFixed(2)),
                                                     preferenceId: preferenceId,
                                                     // payer: transactionPayer <--- REMOVED: Relying on Backend Preference to avoid Conflicts
                                                 }}

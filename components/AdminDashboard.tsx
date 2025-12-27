@@ -1772,6 +1772,57 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                         <span>🧹</span> Corrigir Duplicidades
                                                     </button>
                                                 )}
+                                                <button
+                                                    onClick={async () => {
+                                                        const targetCode = "11111";
+                                                        // Find student by code
+                                                        const targetStudent = students.find(s => s.code === targetCode);
+
+                                                        if (!targetStudent) {
+                                                            alert("Aluno Thiago (11111) não encontrado na lista local.");
+                                                            return;
+                                                        }
+
+                                                        // Ensure name is "Thiago Quintiliano" for the test
+                                                        if (targetStudent.name !== "Thiago Quintiliano") {
+                                                            try {
+                                                                await db.collection('students').doc(targetStudent.id).update({ name: "Thiago Quintiliano" });
+                                                                console.log("Nome do aluno atualizado para Thiago Quintiliano");
+                                                                // alert("Nome do aluno corrigido para Thiago Quintiliano.");
+                                                            } catch (e) {
+                                                                console.error("Erro ao atualizar nome do aluno", e);
+                                                            }
+                                                        }
+
+                                                        // Check for duplicates
+                                                        const alreadyExists = financialRecords.some(r => r.studentId === targetStudent.id && r.month === "Dezembro/2025" && r.status === "Pendente");
+                                                        if (alreadyExists) {
+                                                            alert("Já existe uma pendência de Dezembro/2025 para este aluno.");
+                                                            return;
+                                                        }
+
+                                                        if (!confirm(`Gerar pendência de teste para ${targetStudent.name} (Thiago Quintiliano)?`)) return;
+
+                                                        try {
+                                                            await db.collection('mensalidades').add({
+                                                                studentId: targetStudent.id,
+                                                                month: "Dezembro/2025",
+                                                                value: 1.00, // Value for testing interest logic
+                                                                status: "Pendente",
+                                                                dueDate: "2025-12-10", // Late
+                                                                createdAt: new Date().toISOString()
+                                                            });
+                                                            alert("Pendência gerada para Thiago Quintiliano! Atualize a aba Financeiro.");
+                                                            window.location.reload();
+                                                        } catch (e) {
+                                                            console.error(e);
+                                                            alert("Erro ao gerar pendência.");
+                                                        }
+                                                    }}
+                                                    className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg shadow flex items-center gap-2 text-sm"
+                                                >
+                                                    <span>🧪</span> Simular Atraso (Thiago Quintiliano)
+                                                </button>
 
                                             </div>
                                         </div>
