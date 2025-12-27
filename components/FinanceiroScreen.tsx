@@ -25,6 +25,47 @@ type PaymentMethod = 'pix' | 'debito' | 'credito' | 'boleto'; // Import constant
 
 // ...
 
+interface ErrorBoundaryState {
+    hasError: boolean;
+    error: Error | null;
+}
+
+class BrickErrorBoundary extends React.Component<{ children: React.ReactNode, onError: (error: Error) => void }, ErrorBoundaryState> {
+    public state: ErrorBoundaryState = { hasError: false, error: null };
+
+    constructor(props: any) {
+        super(props);
+    }
+
+    static getDerivedStateFromError(error: Error) {
+        return { hasError: true, error };
+    }
+
+    componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+        console.error("BrickErrorBoundary caught an error:", error, errorInfo);
+        this.props.onError(error);
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                    <p className="font-bold">Ocorreu um erro ao carregar o módulo de pagamento.</p>
+                    <p>{this.state.error?.message}</p>
+                    <button
+                        onClick={() => this.setState({ hasError: false, error: null })}
+                        className="mt-2 text-blue-600 underline"
+                    >
+                        Tentar Novamente
+                    </button>
+                </div>
+            );
+        }
+
+        return this.props.children;
+    }
+}
+
 export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, mensalidades = [], eventos = [], unitContacts = [], onPaymentSuccess }) => {
     // Lógica de Filtro
     const studentMensalidades = useMemo(() => {
@@ -375,7 +416,6 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
         setIsModalOpen(false);
         setPixData(null);
         setPreferenceId(null); // Cleanup MP Preference
-        setPaymentResult(null); // Fix: Clear previous payment result (like QR Codes)
         setIsPaymentConfirmed(false);
         // Reset Inputs
         setCpfInput('');
@@ -1014,66 +1054,68 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                     <div id="paymentBrick_container" className="w-full min-h-[500px] relative z-50 bg-white rounded-lg p-2" key={preferenceId}>
                                         <p className="text-xs text-blue-600 mb-2 font-semibold">Ambiente Seguro Mercado Pago</p>
                                         {console.log("Payment Brick Initialization Payer:", transactionPayer)}
-                                        <Payment
-                                            initialization={{
-                                                amount: calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento'),
-                                                preferenceId: preferenceId,
-                                                // payer: transactionPayer <--- REMOVED: Relying on Backend Preference to avoid Conflicts
-                                            }}
-                                            customization={{
-                                                paymentMethods: {
-                                                    maxInstallments: selectedMethod === 'credito' ? 12 : 1,
-                                                    ticket: selectedMethod === 'boleto' ? 'all' : [],
-                                                    bankTransfer: selectedMethod === 'pix' ? 'all' : [],
-                                                    creditCard: selectedMethod === 'credito' ? 'all' : [],
-                                                    debitCard: selectedMethod === 'debito' ? 'all' : [],
-                                                },
-                                                visual: {
-                                                    style: {
-                                                        theme: 'default',
+                                        <BrickErrorBoundary onError={(e) => console.error("Brick Error Boundary Caught:", e)}>
+                                            <Payment
+                                                initialization={{
+                                                    amount: calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento'),
+                                                    preferenceId: preferenceId,
+                                                    // payer: transactionPayer <--- REMOVED: Relying on Backend Preference to avoid Conflicts
+                                                }}
+                                                customization={{
+                                                    paymentMethods: {
+                                                        maxInstallments: selectedMethod === 'credito' ? 12 : 1,
+                                                        ticket: selectedMethod === 'boleto' ? 'all' : [],
+                                                        bankTransfer: selectedMethod === 'pix' ? 'all' : [],
+                                                        creditCard: selectedMethod === 'credito' ? 'all' : [],
+                                                        debitCard: selectedMethod === 'debito' ? 'all' : [],
+                                                    },
+                                                    visual: {
+                                                        style: {
+                                                            theme: 'default',
+                                                        }
                                                     }
-                                                }
-                                            }}
-                                            onSubmit={async (param) => {
-                                                console.log("Brick onSubmit param:", param);
+                                                }}
+                                                onSubmit={async (param) => {
+                                                    console.log("Brick onSubmit param:", param);
 
-                                                try {
-                                                    // Ensure we send the snake_case payer to the process endpoint
-                                                    // param.formData usually contains the Brick's collected data, but we can merge/override if needed
-                                                    // For now, let's trust the Brick or the Backend Sanitizer we built.
+                                                    try {
+                                                        // Ensure we send the snake_case payer to the process endpoint
+                                                        // param.formData usually contains the Brick's collected data, but we can merge/override if needed
+                                                        // For now, let's trust the Brick or the Backend Sanitizer we built.
 
-                                                    const response = await fetch('https://us-central1-meu-expansivo-app.cloudfunctions.net/processMercadoPagoPayment', {
-                                                        method: 'POST',
-                                                        headers: {
-                                                            'Content-Type': 'application/json'
-                                                        },
-                                                        body: JSON.stringify({
-                                                            ...param.formData,
-                                                            external_reference: activeTab === 'mensalidades' ? selectedMensalidades.join(',') : `student_${student.id}`,
-                                                            metadata: {
-                                                                student_id: student.id,
-                                                                mensalidade_ids: activeTab === 'mensalidades' ? selectedMensalidades.join(',') : '',
-                                                            }
-                                                        })
-                                                    });
-                                                    const result = await response.json();
-                                                    console.log("Payment Result:", result);
-                                                    setPaymentResult(result);
-                                                } catch (e: any) {
-                                                    console.error("Payment Error (onSubmit):", e);
-                                                    alert("Erro ao processar pagamento: " + (e.message || "Erro desconhecido"));
-                                                }
-                                            }}
-                                            onReady={() => {
-                                                console.log('Brick onReady: Componente carregado!');
-                                                setIsBrickReady(true);
-                                            }}
-                                            onError={(error) => {
-                                                console.error('Detalhes do Erro MP:', error);
-                                                // VISUAL DIAGNOSTIC FOR USER
-                                                alert("ERRO MERCADO PAGO: " + JSON.stringify(error, null, 2));
-                                            }}
-                                        />
+                                                        const response = await fetch('https://us-central1-meu-expansivo-app.cloudfunctions.net/processMercadoPagoPayment', {
+                                                            method: 'POST',
+                                                            headers: {
+                                                                'Content-Type': 'application/json'
+                                                            },
+                                                            body: JSON.stringify({
+                                                                ...param.formData,
+                                                                external_reference: activeTab === 'mensalidades' ? selectedMensalidades.join(',') : `student_${student.id}`,
+                                                                metadata: {
+                                                                    student_id: student.id,
+                                                                    mensalidade_ids: activeTab === 'mensalidades' ? selectedMensalidades.join(',') : '',
+                                                                }
+                                                            })
+                                                        });
+                                                        const result = await response.json();
+                                                        console.log("Payment Result:", result);
+                                                        setPaymentResult(result);
+                                                    } catch (e: any) {
+                                                        console.error("Payment Error (onSubmit):", e);
+                                                        alert("Erro ao processar pagamento: " + (e.message || "Erro desconhecido"));
+                                                    }
+                                                }}
+                                                onReady={() => {
+                                                    console.log('Brick onReady: Componente carregado!');
+                                                    setIsBrickReady(true);
+                                                }}
+                                                onError={(error) => {
+                                                    console.error('Detalhes do Erro MP:', error);
+                                                    // VISUAL DIAGNOSTIC FOR USER
+                                                    alert("ERRO MERCADO PAGO: " + JSON.stringify(error, null, 2));
+                                                }}
+                                            />
+                                        </BrickErrorBoundary>
                                     </div>
                                 )}
 

@@ -1757,6 +1757,46 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                         <span>🧹</span> Corrigir Duplicidades
                                                     </button>
                                                 )}
+                                                <button
+                                                    onClick={async () => {
+                                                        const targetCode = "54321";
+                                                        const targetStudent = students.find(s => s.code === targetCode || s.name.toLowerCase().includes("vivianny"));
+
+                                                        if (!targetStudent) {
+                                                            alert("Aluna Vivianny (54321) não encontrada na lista local.");
+                                                            return;
+                                                        }
+
+                                                        // Check for duplicates
+                                                        const alreadyExists = financialRecords.some(r => r.studentId === targetStudent.id && r.month === "Dezembro/2025" && r.status === "Pendente");
+                                                        if (alreadyExists) {
+                                                            alert("Já existe uma pendência de Dezembro/2025 para esta aluna.");
+                                                            return;
+                                                        }
+
+                                                        if (!confirm(`Gerar pendência de teste para ${targetStudent.name}?`)) return;
+
+                                                        try {
+                                                            await db.collection('mensalidades').add({
+                                                                studentId: targetStudent.id,
+                                                                month: "Dezembro/2025",
+                                                                value: 350.00,
+                                                                status: "Pendente",
+                                                                dueDate: "2025-12-10", // Atrasado
+                                                                createdAt: new Date().toISOString()
+                                                            });
+                                                            alert("Pendência gerada! Atualize a aba Financeiro.");
+                                                            // Trigger refresh if possible, or user manually refreshes tab
+                                                            window.location.reload();
+                                                        } catch (e) {
+                                                            console.error(e);
+                                                            alert("Erro ao gerar pendência.");
+                                                        }
+                                                    }}
+                                                    className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg shadow flex items-center gap-2 text-sm"
+                                                >
+                                                    <span>🧪</span> Simular Atraso (Vivianny)
+                                                </button>
                                             </div>
                                         </div>
                                     )}
@@ -1806,12 +1846,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             totalExpected += rec.value;
                                             if (rec.status !== 'Pago') {
                                                 totalPending += rec.value;
-                                                delinquentStudents.push({ ...rec, studentName: s?.name, studentPhone: s?.phone, studentShift: s?.shift, studentClass: s?.schoolClass });
+                                                delinquentStudents.push({ ...rec, studentName: s?.name, studentPhone: s?.phone || s?.contactPhone, studentShift: s?.shift, studentClass: s?.schoolClass });
                                             }
                                         });
 
                                         // Progress: Cash Received / Total Competency Expected
-                                        // Note: Can be > 100% if there are prepayments or late payments from other months, 
+                                        // Note: Can be > 100% if there are prepayments or late payments from other months,
                                         // but usually users want to compare "Cash In" vs "Target".
                                         // Alternatively, we could calculate "Paid of this Competency", but user complained about "Received 0".
                                         // Let's stick to Cash vs Target for now.
@@ -1893,7 +1933,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                                             <td className="px-6 py-3 text-sm text-gray-600">{st.studentClass} ({st.studentShift})</td>
                                                                             <td className="px-6 py-3 text-sm font-bold text-red-600 text-right">R$ {st.value.toFixed(2)}</td>
                                                                             <td className="px-6 py-3 text-center">
-                                                                                {st.studentPhone && (
+                                                                                {st.studentPhone ? (
                                                                                     <a
                                                                                         href={`https://wa.me/${st.studentPhone.replace(/\D/g, '')}?text=Olá! Notamos uma pendência referente a mensalidade de ${st.month} no valor de R$ ${st.value.toFixed(2)}. Podemos ajudar?`}
                                                                                         target="_blank"
@@ -1902,6 +1942,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                                                     >
                                                                                         <span>📱</span> Cobrar
                                                                                     </a>
+                                                                                ) : (
+                                                                                    <span className="inline-flex items-center gap-1 bg-gray-200 text-gray-500 px-3 py-1 rounded-full text-xs font-bold cursor-not-allowed">
+                                                                                        <span>📵</span> Sem Tel
+                                                                                    </span>
                                                                                 )}
                                                                             </td>
                                                                         </tr>
