@@ -1384,6 +1384,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                                 Receber Manual
                                                             </button>
                                                         )}
+                                                        {isGeneralAdmin && (
+                                                            <button
+                                                                onClick={async () => {
+                                                                    if (!window.confirm("Admin: Tem certeza que deseja EXCLUIR permanentemente esta cobrança?")) return;
+                                                                    try {
+                                                                        await db.collection('mensalidades').doc(fee.id).delete();
+                                                                        // Update local state by removing the deleted item
+                                                                        setFinancialRecords(prev => prev.filter(item => item.id !== fee.id));
+                                                                    } catch (e) { alert("Erro ao excluir."); console.error(e); }
+                                                                }}
+                                                                className="py-1 text-xs font-bold text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                                                            >
+                                                                🗑️ Excluir
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             ))
@@ -1795,7 +1810,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                     }}
                                                     className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg shadow flex items-center gap-2 text-sm"
                                                 >
-                                                    <span>🧪</span> Simular Atraso (Vivianny)
+                                                    <span>🧪</span> Simular Atraso (Vivianny Bezerra)
                                                 </button>
                                             </div>
                                         </div>

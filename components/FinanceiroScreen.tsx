@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, Component, ErrorInfo } from 'react'; // Final Update: Boleto Fixed & UI Restored
+import React, { useState, useEffect, useMemo } from 'react'; // Final Update: Boleto Fixed & UI Restored
 import { Student, Mensalidade, EventoFinanceiro, UnitContact, ContactRole } from '../types';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
@@ -25,28 +25,35 @@ type PaymentMethod = 'pix' | 'debito' | 'credito' | 'boleto'; // Import constant
 
 // ...
 
-interface BrickErrorBoundaryProps {
+interface ErrorBoundaryProps {
     children: React.ReactNode;
     onError: (error: Error) => void;
 }
 
-interface BrickErrorBoundaryState {
+interface ErrorBoundaryState {
     hasError: boolean;
     error: Error | null;
 }
 
-class BrickErrorBoundary extends Component<BrickErrorBoundaryProps, BrickErrorBoundaryState> {
-    public state: BrickErrorBoundaryState = { hasError: false, error: null };
+class BrickErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+    public state: ErrorBoundaryState;
+    // Explicitly declaring these to resolve persistent environment type inference issues
+    public props: ErrorBoundaryProps & { children?: React.ReactNode };
+    public setState: (state: ErrorBoundaryState | ((prevState: ErrorBoundaryState, props: ErrorBoundaryProps) => ErrorBoundaryState | Pick<ErrorBoundaryState, keyof ErrorBoundaryState>) | Pick<ErrorBoundaryState, keyof ErrorBoundaryState>) => void;
 
-    constructor(props: BrickErrorBoundaryProps) {
+    constructor(props: ErrorBoundaryProps) {
         super(props);
+        this.props = props;
+        this.state = { hasError: false, error: null };
+        // Manually bind setState if needed, but the declaration should match inherited signature enough to pass TS check
+        this.setState = React.Component.prototype.setState.bind(this);
     }
 
-    static getDerivedStateFromError(error: Error): BrickErrorBoundaryState {
+    static getDerivedStateFromError(error: Error): ErrorBoundaryState {
         return { hasError: true, error };
     }
 
-    componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
         console.error("BrickErrorBoundary caught an error:", error, errorInfo);
         this.props.onError(error);
     }
@@ -421,6 +428,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
         setIsModalOpen(false);
         setPixData(null);
         setPreferenceId(null); // Cleanup MP Preference
+        setPaymentResult(null); // Reset Payment Result (Fix: Pix QR persisting)
         setIsPaymentConfirmed(false);
         // Reset Inputs
         setCpfInput('');
