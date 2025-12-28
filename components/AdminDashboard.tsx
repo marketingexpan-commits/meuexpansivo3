@@ -1824,6 +1824,57 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                     <span>🧪</span> Simular Atraso (Thiago Quintiliano)
                                                 </button>
 
+                                                <button
+                                                    onClick={async () => {
+                                                        const targetCode = "54321";
+                                                        // Find student by code
+                                                        const targetStudent = students.find(s => s.code === targetCode);
+
+                                                        if (!targetStudent) {
+                                                            alert("Aluna Vivianny (54321) não encontrada na lista local.");
+                                                            return;
+                                                        }
+
+                                                        // Ensure name is "Vivianny Bezerra" for the test
+                                                        if (targetStudent.name !== "Vivianny Bezerra") {
+                                                            try {
+                                                                await db.collection('students').doc(targetStudent.id).update({ name: "Vivianny Bezerra" });
+                                                                console.log("Nome da aluna atualizado para Vivianny Bezerra");
+                                                            } catch (e) {
+                                                                console.error("Erro ao atualizar nome da aluna", e);
+                                                            }
+                                                        }
+
+                                                        // Check for duplicates
+                                                        const alreadyExists = financialRecords.some(r => r.studentId === targetStudent.id && r.month === "Dezembro/2025" && r.status === "Pendente");
+                                                        if (alreadyExists) {
+                                                            alert("Já existe uma pendência de Dezembro/2025 para esta aluna.");
+                                                            return;
+                                                        }
+
+                                                        if (!confirm(`Gerar pendência de teste para ${targetStudent.name} (Vivianny Bezerra)?`)) return;
+
+                                                        try {
+                                                            await db.collection('mensalidades').add({
+                                                                studentId: targetStudent.id,
+                                                                month: "Dezembro/2025",
+                                                                value: 400.00, // Large Value for testing
+                                                                status: "Pendente",
+                                                                dueDate: "2025-12-10", // Late
+                                                                createdAt: new Date().toISOString()
+                                                            });
+                                                            alert("Pendência de R$ 400,00 gerada para Vivianny Bezerra! Atualize a aba Financeiro.");
+                                                            window.location.reload();
+                                                        } catch (e) {
+                                                            console.error(e);
+                                                            alert("Erro ao gerar pendência.");
+                                                        }
+                                                    }}
+                                                    className="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded-lg shadow flex items-center gap-2 text-sm"
+                                                >
+                                                    <span>🧪</span> Simular Atraso (Vivianny Bezerra)
+                                                </button>
+
                                             </div>
                                         </div>
                                     )}
