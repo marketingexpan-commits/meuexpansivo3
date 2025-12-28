@@ -1080,7 +1080,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                         <BrickErrorBoundary onError={(e) => console.error("Brick Error Boundary Caught:", e)}>
                                             <Payment
                                                 initialization={{
-                                                    amount: Number(calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento').toFixed(2)),
+                                                    amount: Number(((activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue) * (selectedMethod === 'cartao' ? 1.05 : 1)).toFixed(2)),
                                                     preferenceId: preferenceId,
                                                     // payer: transactionPayer <--- REMOVED: Relying on Backend Preference to avoid Conflicts
                                                 }}
