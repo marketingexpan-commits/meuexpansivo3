@@ -1478,6 +1478,16 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                 </p>
                                             </div>
                                         </div>
+
+                                        {/* Dica Estratégica Pix - Mostra apenas se cartão estiver selecionado */}
+                                        {selectedMethod === 'cartao' && (
+                                            <div className="mt-4 bg-blue-50 border border-blue-100 p-3 rounded-lg flex gap-3 items-start animate-fade-in">
+                                                <span className="text-lg">💡</span>
+                                                <p className="text-[11px] leading-relaxed text-blue-800 font-medium">
+                                                    Dica: Para pagamentos no Débito, utilize a opção Pix. Além de ser instantâneo, você fica livre da taxa administrativa de 5%.
+                                                </p>
+                                            </div>
+                                        )}
                                     </>
                                 );
                             })()}
@@ -1501,7 +1511,9 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                     setCpfInput(''); setNameInput(''); setPhoneInput(''); setEmailInput('');
                                     setIsCpfModalOpen(true);
                                 } else if (selectedMethod === 'boleto') {
-                                    setIsModalOpen(true);
+                                    // Bypass rocket screen for boleto as well
+                                    setCpfInput(''); setNameInput(''); setPhoneInput(''); setEmailInput('');
+                                    setIsCpfModalOpen(true);
                                 } else {
                                     setCpfInput(''); setNameInput(''); setPhoneInput(''); setEmailInput('');
                                     setIsCpfModalOpen(true);
