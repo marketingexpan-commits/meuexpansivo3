@@ -1225,6 +1225,41 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                 <div className="w-16 h-16 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mx-auto text-3xl mb-4">⏳</div>
                                                 <h3 className="text-xl font-bold text-yellow-800">Pagamento em Análise</h3>
                                                 <p className="text-gray-600 mb-4">Estamos processando seu pagamento. Isso pode levar alguns minutos.</p>
+
+                                                <Button
+                                                    onClick={async () => {
+                                                        if (!paymentResult?.id) return;
+                                                        const btn = document.getElementById('btn-verify-status-card');
+                                                        if (btn) btn.innerText = "Verificando...";
+
+                                                        try {
+                                                            const response = await fetch('https://us-central1-meu-expansivo-app.cloudfunctions.net/verifyPaymentStatus', {
+                                                                method: 'POST',
+                                                                headers: { 'Content-Type': 'application/json' },
+                                                                body: JSON.stringify({ paymentId: paymentResult.id })
+                                                            });
+                                                            const data = await response.json();
+
+                                                            if (data.status === 'approved') {
+                                                                setPaymentResult((prev: any) => ({ ...prev, status: 'approved' }));
+                                                                if (onPaymentSuccess) onPaymentSuccess();
+                                                            } else if (data.status === 'rejected') {
+                                                                setPaymentResult((prev: any) => ({ ...prev, status: 'rejected', status_detail: data.status_detail }));
+                                                            } else {
+                                                                alert("O pagamento ainda está em análise. Aguarde mais um pouco.");
+                                                            }
+                                                        } catch (e) {
+                                                            alert("Erro ao verificar status.");
+                                                        } finally {
+                                                            if (btn) btn.innerText = "🔄 Verificar Novamente";
+                                                        }
+                                                    }}
+                                                    id="btn-verify-status-card"
+                                                    className="w-full mb-3 bg-yellow-600 hover:bg-yellow-700 text-white"
+                                                >
+                                                    🔄 Verificar Status Agora
+                                                </Button>
+
                                                 <Button onClick={() => setPaymentResult(null)} variant="secondary" className="w-full">Voltar</Button>
                                             </div>
                                         )}
@@ -1447,17 +1482,21 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                         <div className="flex gap-3">
                             <Button onClick={() => setIsMethodSelectorOpen(false)} variant="secondary" className="flex-1 py-3 text-base">Voltar</Button>
                             <Button onClick={() => {
-                                setIsMethodSelectorOpen(false);
-                                setPaymentResult(null); // Clear previous results to prevent showing old QR codes
-                                if (selectedMethod === 'pix') {
-                                    setCpfInput(''); setNameInput(''); setPhoneInput(''); setEmailInput('');
-                                    setIsCpfModalOpen(true);
-                                } else if (selectedMethod === 'boleto') {
+                                if (selectedMethod === 'boleto') {
                                     const amountToCheck = calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento');
                                     if (amountToCheck < 5) {
                                         alert("O valor mínimo para pagamentos via Boleto é de R$ 5,00. Por favor, selecione mais itens ou utilize o Pix (sem valor mínimo).");
                                         return;
                                     }
+                                }
+
+                                setIsMethodSelectorOpen(false);
+                                setPaymentResult(null);
+
+                                if (selectedMethod === 'pix') {
+                                    setCpfInput(''); setNameInput(''); setPhoneInput(''); setEmailInput('');
+                                    setIsCpfModalOpen(true);
+                                } else if (selectedMethod === 'boleto') {
                                     setIsModalOpen(true);
                                 } else {
                                     setCpfInput(''); setNameInput(''); setPhoneInput(''); setEmailInput('');
@@ -1497,7 +1536,10 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                 </div>
 
                                 <div className="flex gap-2 pt-2">
-                                    <Button onClick={() => setIsCpfModalOpen(false)} variant="secondary" className="w-1/2">
+                                    <Button onClick={() => {
+                                        setIsCpfModalOpen(false);
+                                        setIsMethodSelectorOpen(true);
+                                    }} variant="secondary" className="w-1/2">
                                         Cancelar
                                     </Button>
                                     <Button
