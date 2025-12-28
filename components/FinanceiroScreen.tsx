@@ -13,6 +13,35 @@ const MP_REFERENCE_URL = 'https://us-central1-meu-expansivo-app.cloudfunctions.n
 // Initialize outside component to avoid re-runs
 initMercadoPago('APP_USR-e0a54aff-c482-451f-882c-e41a50bcde7d', { locale: 'pt-BR' });
 
+const validateCPF = (cpf: string): boolean => {
+    const cleanCPF = cpf.replace(/[^\d]/g, '');
+
+    // Verificações Básicas
+    if (cleanCPF.length !== 11) return false;
+    if (/^(\d)\1+$/.test(cleanCPF)) return false; // Bloqueia sequências repetidas (000.000.000-00, etc)
+
+    // Validação do Primeiro Dígito
+    let sum = 0;
+    let remainder;
+    for (let i = 1; i <= 9; i++) {
+        sum = sum + parseInt(cleanCPF.substring(i - 1, i)) * (11 - i);
+    }
+    remainder = (sum * 10) % 11;
+    if ((remainder === 10) || (remainder === 11)) remainder = 0;
+    if (remainder !== parseInt(cleanCPF.substring(9, 10))) return false;
+
+    // Validação do Segundo Dígito
+    sum = 0;
+    for (let i = 1; i <= 10; i++) {
+        sum = sum + parseInt(cleanCPF.substring(i - 1, i)) * (12 - i);
+    }
+    remainder = (sum * 10) % 11;
+    if ((remainder === 10) || (remainder === 11)) remainder = 0;
+    if (remainder !== parseInt(cleanCPF.substring(10, 11))) return false;
+
+    return true;
+};
+
 interface FinanceiroScreenProps {
     student: Student;
     mensalidades: Mensalidade[];
@@ -1386,8 +1415,8 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                     </Button>
                                     <Button
                                         onClick={() => {
-                                            if (cpfInput.length < 11) {
-                                                alert("CPF incompleto.");
+                                            if (!validateCPF(cpfInput)) {
+                                                alert("CPF inválido. Verifique os números digitados.");
                                                 return;
                                             }
 
@@ -1399,8 +1428,8 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                             setIsCpfModalOpen(false);
                                             handleCreatePayment(cpfInput, payerName, payerPhone, payerEmail);
                                         }}
-                                        className="w-1/2 bg-blue-600 hover:bg-blue-700 font-bold py-3"
-                                        disabled={cpfInput.length < 11}
+                                        className="w-1/2 font-bold py-3"
+                                        disabled={!validateCPF(cpfInput)}
                                     >
                                         Ir para Pagamento
                                     </Button>
@@ -1518,8 +1547,8 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                 <Button
                                     onClick={() => {
                                         // Validate
-                                        if (tempCpf.length < 11) {
-                                            alert(`CPF incompleto. Digitados: ${tempCpf.length}. Necessários: 11.`);
+                                        if (!validateCPF(tempCpf)) {
+                                            alert(`CPF inválido.`);
                                             return;
                                         }
                                         if (tempCep.length < 8) {
@@ -1555,7 +1584,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
 
                                         handleCreatePayment(cleanTempCpf, undefined, undefined, undefined, addr);
                                     }}
-                                    className="w-1/2 bg-blue-900 hover:bg-blue-800 font-bold"
+                                    className="w-1/2 font-bold"
                                 >
                                     Confirmar
                                 </Button>
