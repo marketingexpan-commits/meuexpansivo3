@@ -11,36 +11,34 @@ import { CreditCard, AlertTriangle, GraduationCap, Lock, CheckCircle, Handshake 
 const MP_REFERENCE_URL = 'https://us-central1-meu-expansivo-app.cloudfunctions.net/createMercadoPagoPreference';
 
 // Initialize outside component to avoid re-runs
-initMercadoPago('APP_USR-e0a54aff-c482-451f-882c-e41a50bcde7d', { locale: 'pt-BR' });
 
-const validateCPF = (cpf: string): boolean => {
-    const cleanCPF = cpf.replace(/[^\d]/g, '');
+// Helper de Validação de CPF (Algoritmo Oficial)
+const isValidCPF = (cpf: string): boolean => {
+    cpf = cpf.replace(/[^\d]+/g, '');
+    if (cpf.length !== 11 || !!cpf.match(/(\d)\1{10}/)) return false;
 
-    // Verificações Básicas
-    if (cleanCPF.length !== 11) return false;
-    if (/^(\d)\1+$/.test(cleanCPF)) return false; // Bloqueia sequências repetidas (000.000.000-00, etc)
-
-    // Validação do Primeiro Dígito
     let sum = 0;
     let remainder;
-    for (let i = 1; i <= 9; i++) {
-        sum = sum + parseInt(cleanCPF.substring(i - 1, i)) * (11 - i);
-    }
-    remainder = (sum * 10) % 11;
-    if ((remainder === 10) || (remainder === 11)) remainder = 0;
-    if (remainder !== parseInt(cleanCPF.substring(9, 10))) return false;
 
-    // Validação do Segundo Dígito
-    sum = 0;
-    for (let i = 1; i <= 10; i++) {
-        sum = sum + parseInt(cleanCPF.substring(i - 1, i)) * (12 - i);
-    }
+    for (let i = 1; i <= 9; i++)
+        sum = sum + parseInt(cpf.substring(i - 1, i)) * (11 - i);
+
     remainder = (sum * 10) % 11;
     if ((remainder === 10) || (remainder === 11)) remainder = 0;
-    if (remainder !== parseInt(cleanCPF.substring(10, 11))) return false;
+    if (remainder !== parseInt(cpf.substring(9, 10))) return false;
+
+    sum = 0;
+    for (let i = 1; i <= 10; i++)
+        sum = sum + parseInt(cpf.substring(i - 1, i)) * (12 - i);
+
+    remainder = (sum * 10) % 11;
+    if ((remainder === 10) || (remainder === 11)) remainder = 0;
+    if (remainder !== parseInt(cpf.substring(10, 11))) return false;
 
     return true;
 };
+
+initMercadoPago('APP_USR-e0a54aff-c482-451f-882c-e41a50bcde7d', { locale: 'pt-BR' });
 
 interface FinanceiroScreenProps {
     student: Student;
@@ -117,6 +115,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
     const isIsaac = student.metodo_pagamento === 'Isaac';
 
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isMethodSelectorOpen, setIsMethodSelectorOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'mensalidades' | 'eventos'>('mensalidades');
     const [historyMode, setHistoryMode] = useState(false); // Toggle between Pending and History view
 
@@ -304,26 +303,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             alert('Por favor, selecione ao menos uma mensalidade para prosseguir');
             return;
         }
-        if (selectedMethod === 'pix') {
-            // Security: Always start empty to force verification/entry
-            setCpfInput('');
-            setNameInput('');
-            setPhoneInput('');
-            setEmailInput('');
-            setIsCpfModalOpen(true);
-        } else if (selectedMethod === 'boleto') {
-            // Check for Minimum Amount for Boleto (Mercado Pago Requirement ~ R$ 4-5)
-            const amountToCheck = calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento');
-            if (amountToCheck < 5) {
-                alert("O valor mínimo para pagamentos via Boleto é de R$ 5,00. Por favor, selecione mais itens ou utilize o Pix (sem valor mínimo).");
-                return;
-            }
-
-            // Proceed directly to Payment Summary/Brick (Let Brick handle missing data)
-            setIsModalOpen(true);
-        } else {
-            setIsModalOpen(true);
-        }
+        setIsMethodSelectorOpen(true);
     };
 
     if (isIsaac) {
@@ -635,6 +615,53 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
         }
     };
 
+    const handleDirectPixPayment = async (cpf: string, name: string, email: string) => {
+        setIsLoadingPix(true);
+        try {
+            const amount = Number(calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento').toFixed(2));
+
+            const payload = {
+                transaction_amount: amount,
+                payment_method_id: 'pix',
+                payer: {
+                    email: email,
+                    first_name: name.split(' ')[0],
+                    last_name: name.split(' ').slice(1).join(' ') || name.split(' ')[0],
+                    identification: {
+                        type: 'CPF',
+                        number: cpf.replace(/\D/g, '')
+                    }
+                },
+                external_reference: activeTab === 'mensalidades' ? selectedMensalidades.join(',') : `student_${student.id}`,
+                description: `Pagamento Pix ${student.name} - ${activeTab}`,
+                metadata: {
+                    student_id: student.id,
+                    mensalidade_ids: activeTab === 'mensalidades' ? selectedMensalidades.join(',') : '',
+                }
+            };
+
+            const response = await fetch('https://us-central1-meu-expansivo-app.cloudfunctions.net/processMercadoPagoPayment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            if (result.status === 'pending' || result.status === 'approved') {
+                setPaymentResult(result);
+                setIsModalOpen(true);
+            } else {
+                alert("Erro ao gerar Pix: " + (result.message || JSON.stringify(result)));
+            }
+
+        } catch (error: any) {
+            console.error("Direct Pix Error:", error);
+            alert("Erro de conexão ao gerar Pix.");
+        } finally {
+            setIsLoadingPix(false);
+        }
+    };
+
     return (
         <div className="animate-fade-in-up space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -679,82 +706,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                 </button>
             </div>
 
-            {/* Seletor de Método de Pagamento */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
-                <div className="flex flex-wrap gap-3">
-                    <button
-                        onClick={() => setSelectedMethod('pix')}
-                        className={`px-4 py-2 rounded-full border-2 text-sm font-bold transition-all ${selectedMethod === 'pix' ? 'border-teal-500 bg-teal-50 text-teal-800' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
-                    >
-                        Pix (0%)
-                    </button>
-                    <button
-                        onClick={() => setSelectedMethod('debito')}
-                        className={`px-4 py-2 rounded-full border-2 text-sm font-bold transition-all ${selectedMethod === 'debito' ? 'border-blue-500 bg-blue-50 text-blue-800' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
-                    >
-                        Cartão Débito (+3%)
-                    </button>
-                    <button
-                        onClick={() => setSelectedMethod('credito')}
-                        className={`px-4 py-2 rounded-full border-2 text-sm font-bold transition-all ${selectedMethod === 'credito' ? 'border-purple-500 bg-purple-50 text-purple-800' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
-                    >
-                        Cartão Crédito {activeTab === 'mensalidades' ? '(+6%)' : '(Até 12x)'}
-                    </button>
-                    <button
-                        onClick={() => setSelectedMethod('boleto')}
-                        className={`px-4 py-2 rounded-full border-2 text-sm font-bold transition-all ${selectedMethod === 'boleto' ? 'border-orange-500 bg-orange-50 text-orange-800' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
-                    >
-                        Boleto Bancário
-                    </button>
-                </div>
-
-                {getFeeNotice() && (
-                    <div className="space-y-4">
-                        <div className="p-3 bg-amber-50 border border-amber-100 rounded-lg flex items-center gap-2">
-                            <AlertTriangle className="w-5 h-5 text-amber-600" />
-                            <p className="text-xs text-amber-800 font-medium italic">{getFeeNotice()}</p>
-                        </div>
-
-                        {activeTab === 'eventos' && selectedMethod === 'credito' && (
-                            <div className="flex flex-col gap-2 animate-fade-in">
-                                <label className="text-sm font-bold text-blue-900 ml-1">Número de Parcelas:</label>
-                                <select
-                                    value={selectedInstallments}
-                                    onChange={(e) => setSelectedInstallments(Number(e.target.value))}
-                                    className="w-full sm:w-80 p-3 bg-white border-2 border-blue-200 rounded-xl text-blue-900 font-bold focus:border-blue-500 focus:outline-none transition-colors"
-                                >
-                                    {[...Array(12)].map((_, i) => {
-                                        const count = i + 1;
-                                        const totalValueBase = totalSelectedValue;
-
-                                        let instValue: number;
-                                        let totalFinal: number;
-
-                                        if (count === 1) {
-                                            instValue = totalValueBase;
-                                            totalFinal = totalValueBase;
-                                        } else {
-                                            const monthlyRate = 0.0299; // 2.99% p.m.
-                                            // Fórmula PMT: P * (i * (1+i)^n) / ((1+i)^n - 1)
-                                            instValue = totalValueBase * (monthlyRate * Math.pow(1 + monthlyRate, count)) / (Math.pow(1 + monthlyRate, count) - 1);
-                                            totalFinal = instValue * count;
-                                        }
-
-                                        return (
-                                            <option key={count} value={count}>
-                                                {count}x de R$ {instValue.toFixed(2).replace('.', ',')} | Total: R$ {totalFinal.toFixed(2).replace('.', ',')}
-                                            </option>
-                                        );
-                                    })}
-                                </select>
-                                <p className="text-[10px] text-gray-400 ml-1 italic font-medium">
-                                    Simulação aproximada. O valor final pode variar conforme as taxas da bandeira do seu cartão.
-                                </p>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
+            {/* Seletor de Método de Pagamento removido em favor do modal unificado */}
 
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
                 <div className="overflow-x-auto">
@@ -1069,12 +1021,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2z" />
                             </svg>
-                            Pagar R$ {calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento').toFixed(2).replace('.', ',')} com {
-                                selectedMethod === 'pix' ? 'Pix' :
-                                    selectedMethod === 'debito' ? 'Cartão Débito' :
-                                        selectedMethod === 'credito' ? 'Cartão Crédito' :
-                                            'Boleto Bancário'
-                            }
+                            Pagar R$ {calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento').toFixed(2).replace('.', ',')} - Escolha como pagar
                         </>
                     )}
                 </Button>
@@ -1095,14 +1042,27 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
                     <div className="bg-white rounded-3xl p-4 sm:p-8 max-w-2xl w-full shadow-2xl animate-scale-in text-center space-y-6 max-h-[90vh] overflow-y-auto">
 
-                        {preferenceId ? (
+                        {(preferenceId || paymentResult) ? (
                             <div className="w-full">
                                 <div className="flex justify-between items-center mb-4">
-                                    <h4 className="text-xl font-bold text-gray-900">Finalizar Pagamento</h4>
-                                    <button onClick={handleCloseModal} className="text-gray-500 hover:text-red-500 font-bold">FECHAR X</button>
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={() => {
+                                                setIsModalOpen(false);
+                                                setPreferenceId(null); // Clear preference to force regeneration on new selection
+                                                setPaymentResult(null); // Clear result so it doesn't persist
+                                                setIsMethodSelectorOpen(true);
+                                            }}
+                                            className="text-gray-500 hover:text-blue-600 font-bold flex items-center gap-1 text-xs sm:text-sm bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200 transition-colors"
+                                        >
+                                            ⬅ Voltar
+                                        </button>
+                                        <h4 className="text-lg sm:text-xl font-bold text-gray-900">Finalizar</h4>
+                                    </div>
+                                    <button onClick={handleCloseModal} className="text-gray-400 hover:text-red-500 font-bold p-2">✕</button>
                                 </div>
 
-                                {!isBrickReady && (
+                                {!isBrickReady && !paymentResult && (
                                     <div className="h-64 flex items-center justify-center flex-col gap-4 text-blue-600">
                                         <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                                         <p>Carregando pagamento seguro...</p>
@@ -1122,11 +1082,11 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                 }}
                                                 customization={{
                                                     paymentMethods: {
-                                                        maxInstallments: selectedMethod === 'credito' ? 12 : 1,
+                                                        maxInstallments: (selectedMethod === 'credito' || selectedMethod === 'cartao') ? 12 : 1,
                                                         ticket: selectedMethod === 'boleto' ? 'all' : [],
                                                         bankTransfer: selectedMethod === 'pix' ? 'all' : [],
-                                                        creditCard: selectedMethod === 'credito' ? 'all' : [],
-                                                        debitCard: selectedMethod === 'debito' ? 'all' : [],
+                                                        creditCard: (selectedMethod === 'credito' || selectedMethod === 'cartao') ? 'all' : [],
+                                                        debitCard: (selectedMethod === 'debito' || selectedMethod === 'cartao') ? 'all' : [],
                                                     },
                                                     visual: {
                                                         style: {
@@ -1384,6 +1344,133 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
 
 
 
+            {/* Modal de Seleção de Método */}
+            {isMethodSelectorOpen && (
+                <div className="fixed inset-0 z-[105] bg-black/60 flex items-center justify-center p-4 animate-fade-in">
+                    <div className="bg-white rounded-3xl p-8 max-w-lg w-full text-center space-y-6 shadow-2xl animate-scale-in">
+                        <h3 className="text-xl font-bold text-gray-800">Escolha a Forma de Pagamento</h3>
+
+                        <div className="grid grid-cols-3 gap-3">
+                            <button
+                                onClick={() => setSelectedMethod('pix')}
+                                className={`p-4 border-2 rounded-xl flex flex-col items-center gap-2 transition-all hover:scale-105 ${selectedMethod === 'pix' ? 'border-teal-500 bg-teal-50 shadow-md ring-2 ring-teal-200' : 'border-gray-100 hover:border-gray-300'}`}
+                            >
+                                <span className="text-2xl">💠</span>
+                                <span className="text-xs font-bold text-gray-700">Pix</span>
+                                <span className="text-[10px] bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full font-bold">0% Taxa</span>
+                            </button>
+
+                            <button
+                                onClick={() => setSelectedMethod('cartao')}
+                                className={`p-4 border-2 rounded-xl flex flex-col items-center gap-2 transition-all hover:scale-105 ${selectedMethod === 'cartao' ? 'border-purple-500 bg-purple-50 shadow-md ring-2 ring-purple-200' : 'border-gray-100 hover:border-gray-300'}`}
+                            >
+                                <span className="text-2xl">💳</span>
+                                <span className="text-xs font-bold text-gray-700">Cartão</span>
+                                <span className="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-bold">+5% Taxa</span>
+                            </button>
+
+                            <button
+                                onClick={() => setSelectedMethod('boleto')}
+                                className={`p-4 border-2 rounded-xl flex flex-col items-center gap-2 transition-all hover:scale-105 ${selectedMethod === 'boleto' ? 'border-orange-500 bg-orange-50 shadow-md ring-2 ring-orange-200' : 'border-gray-100 hover:border-gray-300'}`}
+                            >
+                                <span className="text-2xl">📄</span>
+                                <span className="text-xs font-bold text-gray-700">Boleto</span>
+                                <span className="text-[10px] bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full font-bold">Taxa Fixa</span>
+                            </button>
+                        </div>
+
+                        <div className="bg-gray-50 p-4 rounded-xl space-y-2 border border-gray-100">
+                            {/* Breakdown of Fees/Fines/Interest */}
+                            {(() => {
+                                const rawItems = activeTab === 'mensalidades'
+                                    ? studentMensalidades.filter(m => selectedMensalidades.includes(m.id))
+                                    : studentEventos.filter(e => selectedEventIds.includes(e.id));
+
+                                let totalOriginal = 0;
+                                let totalFine = 0;
+                                let totalInterest = 0;
+
+                                rawItems.forEach(item => {
+                                    if (activeTab === 'mensalidades') {
+                                        const fin = calculateFinancials(item as Mensalidade);
+                                        totalOriginal += (item as Mensalidade).value;
+                                        totalFine += fin.fine;
+                                        totalInterest += fin.interest;
+                                    } else {
+                                        const qty = eventQuantities[item.id] || 1;
+                                        totalOriginal += item.value * qty;
+                                    }
+                                });
+
+                                const hasLateFees = totalFine > 0 || totalInterest > 0;
+                                const isCard = selectedMethod === 'cartao';
+                                // Calculate fee based on (Original + Fine + Interest)
+                                const totalWithLate = totalOriginal + totalFine + totalInterest;
+                                const cardFeeValue = isCard ? (totalWithLate * 0.05) : 0;
+                                // Recalculate Final Amount here to match display exactly
+                                const displayFinalAmount = totalWithLate + cardFeeValue;
+
+                                return (
+                                    <>
+                                        {totalFine > 0 && (
+                                            <div className="flex justify-between items-center text-xs text-red-600 font-bold bg-red-50 p-2 rounded border border-red-100 mb-1">
+                                                <span>Multa (2%):</span>
+                                                <span>+ R$ {totalFine.toFixed(2).replace('.', ',')}</span>
+                                            </div>
+                                        )}
+                                        {totalInterest > 0 && (
+                                            <div className="flex justify-between items-center text-xs text-red-600 font-bold bg-red-50 p-2 rounded border border-red-100">
+                                                <span>Juros (Diário):</span>
+                                                <span>+ R$ {totalInterest.toFixed(2).replace('.', ',')}</span>
+                                            </div>
+                                        )}
+                                        {isCard && (
+                                            <div className="flex justify-between items-center text-xs text-purple-700 font-bold bg-purple-50 p-2 rounded border border-purple-100">
+                                                <span>Taxa Admin. (Cartão 5%):</span>
+                                                <span>+ R$ {cardFeeValue.toFixed(2).replace('.', ',')}</span>
+                                            </div>
+                                        )}
+
+                                        <div className="border-t border-gray-200 pt-2 mt-2">
+                                            <p className="text-sm text-gray-500 uppercase font-bold tracking-wider">Valor Final a Pagar</p>
+                                            <div className="flex items-center justify-center gap-2">
+                                                <p className="text-3xl font-bold text-blue-950">
+                                                    R$ {displayFinalAmount.toFixed(2).replace('.', ',')}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </>
+                                );
+                            })()}
+                        </div>
+
+                        <div className="flex gap-3">
+                            <Button onClick={() => setIsMethodSelectorOpen(false)} variant="secondary" className="flex-1 py-3 text-base">Voltar</Button>
+                            <Button onClick={() => {
+                                setIsMethodSelectorOpen(false);
+                                setPaymentResult(null); // Clear previous results to prevent showing old QR codes
+                                if (selectedMethod === 'pix') {
+                                    setCpfInput(''); setNameInput(''); setPhoneInput(''); setEmailInput('');
+                                    setIsCpfModalOpen(true);
+                                } else if (selectedMethod === 'boleto') {
+                                    const amountToCheck = calculateValue(activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue, activeTab === 'mensalidades' ? 'mensalidade' : 'evento');
+                                    if (amountToCheck < 5) {
+                                        alert("O valor mínimo para pagamentos via Boleto é de R$ 5,00. Por favor, selecione mais itens ou utilize o Pix (sem valor mínimo).");
+                                        return;
+                                    }
+                                    setIsModalOpen(true);
+                                } else {
+                                    setCpfInput(''); setNameInput(''); setPhoneInput(''); setEmailInput('');
+                                    setIsCpfModalOpen(true);
+                                }
+                            }} className="flex-1 py-3 font-bold bg-blue-600 hover:bg-blue-700 shadow-lg text-base">
+                                Ir para Pagamento
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* MODAL DE INPUT DE CPF (NOVO) */}
             {
                 isCpfModalOpen && (
@@ -1415,7 +1502,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                     </Button>
                                     <Button
                                         onClick={() => {
-                                            if (!validateCPF(cpfInput)) {
+                                            if (!isValidCPF(cpfInput)) {
                                                 alert("CPF inválido. Verifique os números digitados.");
                                                 return;
                                             }
@@ -1426,10 +1513,15 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                             const payerEmail = student.email || 'financeiro@meuexpansivo.com.br'; // Fallback email (required by MP)
 
                                             setIsCpfModalOpen(false);
-                                            handleCreatePayment(cpfInput, payerName, payerPhone, payerEmail);
+
+                                            if (selectedMethod === 'pix') {
+                                                handleDirectPixPayment(cpfInput, payerName, payerEmail);
+                                            } else {
+                                                handleCreatePayment(cpfInput, payerName, payerPhone, payerEmail);
+                                            }
                                         }}
-                                        className="w-1/2 font-bold py-3"
-                                        disabled={!validateCPF(cpfInput)}
+                                        className={`w-1/2 font-bold py-3 transition-all ${isValidCPF(cpfInput) ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-300 cursor-not-allowed text-gray-500'}`}
+                                        disabled={!isValidCPF(cpfInput)}
                                     >
                                         Ir para Pagamento
                                     </Button>
@@ -1547,8 +1639,8 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                 <Button
                                     onClick={() => {
                                         // Validate
-                                        if (!validateCPF(tempCpf)) {
-                                            alert(`CPF inválido.`);
+                                        if (tempCpf.length < 11) {
+                                            alert(`CPF incompleto. Digitados: ${tempCpf.length}. Necessários: 11.`);
                                             return;
                                         }
                                         if (tempCep.length < 8) {
@@ -1584,7 +1676,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
 
                                         handleCreatePayment(cleanTempCpf, undefined, undefined, undefined, addr);
                                     }}
-                                    className="w-1/2 font-bold"
+                                    className="w-1/2 bg-blue-900 hover:bg-blue-800 font-bold"
                                 >
                                     Confirmar
                                 </Button>
