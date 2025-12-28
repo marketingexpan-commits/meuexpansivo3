@@ -571,7 +571,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             const payload = {
                 title: description, // Simplified Title
                 quantity: 1,
-                price: Number(amount.toFixed(2)), // Strict Rounding
+                price: Number((selectedMethod === 'cartao' ? amount * 1.05 : amount).toFixed(2)), // Strict Rounding & Card Fee
                 studentId: student.id,
                 mensalidadeIds: activeTab === 'mensalidades' ? selectedMensalidades : [],
                 eventIds: activeTab === 'eventos' ? selectedEventIds : [],
