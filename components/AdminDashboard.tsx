@@ -1807,7 +1807,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                             await db.collection('mensalidades').add({
                                                                 studentId: targetStudent.id,
                                                                 month: "Dezembro/2025",
-                                                                value: 1.00, // Value for testing interest logic
+                                                                value: 10.00, // Value for testing interest logic
                                                                 status: "Pendente",
                                                                 dueDate: "2025-12-10", // Late
                                                                 createdAt: new Date().toISOString()
