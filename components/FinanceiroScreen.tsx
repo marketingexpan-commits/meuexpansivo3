@@ -568,10 +568,14 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                 ];
             }
 
+            const finalPrice = Number((selectedMethod === 'cartao' ? amount * 1.05 : amount).toFixed(2));
+
             const payload = {
                 title: description, // Simplified Title
                 quantity: 1,
-                price: Number((selectedMethod === 'cartao' ? amount * 1.05 : amount).toFixed(2)), // Strict Rounding & Card Fee
+                price: finalPrice, // Strict Rounding & Card Fee
+                unit_price: finalPrice, // Ensure backend catches this if it expects standard naming
+                transaction_amount: finalPrice, // Fallback if backend looks for this
                 studentId: student.id,
                 mensalidadeIds: activeTab === 'mensalidades' ? selectedMensalidades : [],
                 eventIds: activeTab === 'eventos' ? selectedEventIds : [],
