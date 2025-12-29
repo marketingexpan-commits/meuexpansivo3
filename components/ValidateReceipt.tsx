@@ -124,7 +124,7 @@ export const ValidateReceipt: React.FC = () => {
                     </div>
 
                     {/* Receipt Data */}
-                    <div className="p-8 space-y-6 relative">
+                    <div className="p-8 pt-6 space-y-6 relative">
                         {/* Authentic Watermark */}
                         {isValid && (
                             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-5 pointer-events-none">
@@ -132,8 +132,8 @@ export const ValidateReceipt: React.FC = () => {
                             </div>
                         )}
 
-                        <div className="space-y-4 relative z-10">
-                            <div className="flex justify-between items-end border-b border-gray-100 pb-2">
+                        <div className="space-y-4 relative z-10 bg-white border border-gray-100 border-l-4 border-l-blue-950 rounded-xl p-6 shadow-sm">
+                            <div className="flex justify-between items-end border-b border-gray-50 pb-3">
                                 <span className="text-gray-400 text-xs uppercase font-bold tracking-wider">Referência</span>
                                 <span className="text-gray-800 font-bold text-lg">{receipt.month}</span>
                             </div>
