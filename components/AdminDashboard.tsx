@@ -92,7 +92,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [sValorMensalidade, setSValorMensalidade] = useState('');
     const [sScholarship, setSScholarship] = useState(false); // Novo Campo Valor
     const [sEmail, setSEmail] = useState('');
-    const [sPhone, setSPhone] = useState('');
+    const [sPhone, setSPhone] = useState('+55');
     const [sCode, setSCode] = useState('');
     const [sGrade, setSGrade] = useState(SCHOOL_GRADES_LIST[0]);
     const [sUnit, setSUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_1);
@@ -751,7 +751,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setSResponsavel(s.nome_responsavel || '');
         setSCpfResponsavel(s.cpf_responsavel || '');
         setSEmail(s.email_responsavel || '');
-        setSPhone(s.telefone_responsavel || '');
+        setSPhone(s.telefone_responsavel || '+55');
         setSCode(s.code);
         setSGrade(s.gradeLevel);
         setSUnit(s.unit);
@@ -773,7 +773,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setSResponsavel('');
         setSCpfResponsavel('');
         setSEmail('');
-        setSPhone('');
+        setSPhone('+55');
         setSCode('');
         setSCode('');
         setSPass('');
@@ -1081,7 +1081,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <div><label className="text-sm font-medium font-bold text-green-700">Valor da Mensalidade (R$)</label><input type="number" step="0.01" value={sValorMensalidade} onChange={e => setSValorMensalidade(e.target.value)} className="w-full p-2 border rounded font-bold text-green-800" placeholder="0.00" disabled={sScholarship} /></div>
                         <div className="grid grid-cols-2 gap-2">
                             <div><label className="text-sm font-medium">E-mail</label><input type="email" value={sEmail} onChange={e => setSEmail(e.target.value)} className="w-full p-2 border rounded" placeholder="email@exemplo.com" /></div>
-                            <div><label className="text-sm font-medium">Telefone</label><input type="tel" value={sPhone} onChange={e => { if (/^[0-9]*$/.test(e.target.value)) setSPhone(e.target.value); }} className="w-full p-2 border rounded" placeholder="Apenas números" maxLength={15} /></div>
+                            <div><label className="text-sm font-medium">Telefone</label><input type="text" value={sPhone} onChange={e => { if (/^[0-9+ ]*$/.test(e.target.value)) setSPhone(e.target.value); }} className="w-full p-2 border rounded" placeholder="+5584999999999" maxLength={15} /></div>
                         </div>
 
 
@@ -1941,12 +1941,64 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             return rec.month === targetReference;
                                         });
 
+                                        // Helper para calcular Multa e Juros (Lógica idêntica ao FinanceiroScreen do Aluno)
+                                        const calculateFinancials = (mensalidade: Mensalidade) => {
+                                            // 1. Se pago, retorna valor original
+                                            if (mensalidade.status === 'Pago') {
+                                                return { originalValue: mensalidade.value, total: mensalidade.value };
+                                            }
+
+                                            // 2. Data Base Vencimento: Dia 10 do mês do vencimento (Regra de Negócio)
+                                            const originalDate = new Date(mensalidade.dueDate);
+                                            // Força o dia 10 para cálculo, independente da data salva
+                                            const strictDueDate = new Date(originalDate.setDate(10));
+                                            strictDueDate.setHours(23, 59, 59, 999);
+
+                                            const today = new Date();
+                                            today.setHours(0, 0, 0, 0);
+
+                                            // 3. Verifica Atraso
+                                            let fine = 0;
+                                            let interest = 0;
+
+                                            if (today > strictDueDate) {
+                                                const diffTime = Math.abs(today.getTime() - strictDueDate.getTime());
+                                                const daysLate = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                                                // 4. Calcula Valores (Multa 2% + Juros 0.033%/dia)
+                                                fine = mensalidade.value * 0.02;
+                                                interest = mensalidade.value * (0.00033 * daysLate);
+                                            }
+
+                                            return {
+                                                originalValue: mensalidade.value,
+                                                fine,
+                                                interest,
+                                                total: mensalidade.value + fine + interest
+                                            };
+                                        };
+
                                         competencyRecords.forEach(rec => {
                                             const s = students.find(st => st.id === rec.studentId);
                                             totalExpected += rec.value;
+
                                             if (rec.status !== 'Pago') {
-                                                totalPending += rec.value;
-                                                delinquentStudents.push({ ...rec, studentName: s?.name, studentPhone: (s?.telefone_responsavel || s?.telefone || s?.phone || s?.contactPhone), studentShift: s?.shift, studentClass: s?.schoolClass, studentUnit: s?.unit });
+                                                const fin = calculateFinancials(rec);
+                                                // Soma o valor CORRIGIDO ao pendente
+                                                totalPending += fin.total;
+
+                                                delinquentStudents.push({
+                                                    ...rec,
+                                                    value: fin.total, // Atualiza o valor do objeto para exibição/cobrança
+                                                    originalValue: fin.originalValue,
+                                                    fine: fin.fine,
+                                                    interest: fin.interest,
+                                                    studentName: s?.name,
+                                                    studentPhone: (s?.telefone_responsavel || s?.telefone || s?.phone || s?.contactPhone),
+                                                    studentShift: s?.shift,
+                                                    studentClass: s?.schoolClass,
+                                                    studentUnit: s?.unit
+                                                });
                                             }
                                         });
 
@@ -2031,11 +2083,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                                         <tr key={idx} className="hover:bg-red-50/30">
                                                                             <td className="px-6 py-3 text-sm font-bold text-gray-800">{st.studentName}</td>
                                                                             <td className="px-6 py-3 text-sm text-gray-600">{st.studentClass} ({st.studentShift})</td>
-                                                                            <td className="px-6 py-3 text-sm font-bold text-red-600 text-right">R$ {st.value.toFixed(2)}</td>
+                                                                            <td className="px-6 py-3 text-right">
+                                                                                <div className="flex flex-col items-end">
+                                                                                    <span className="text-sm font-bold text-red-600">R$ {st.value.toFixed(2)}</span>
+                                                                                    {st.value > st.originalValue && (
+                                                                                        <span className="text-[10px] text-gray-400">
+                                                                                            (Orig: R$ {st.originalValue.toFixed(2)})
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
+                                                                            </td>
                                                                             <td className="px-6 py-3 text-center">
                                                                                 {st.studentPhone ? (
                                                                                     <a
-                                                                                        href={`https://wa.me/${st.studentPhone.replace(/\D/g, '')}?text=Prezado responsável, informamos que consta uma pendência financeira referente ao aluno(a) *${st.studentName}* relativa ao mês de *${st.month}*. Valor atualizado: *R$ ${st.value.toFixed(2)}*. Para regularizar e evitar multas adicionais, acesse a área financeira do nosso aplicativo: https://meuexpansivo.vercel.app/ . Caso já tenha efetuado o pagamento, por favor, desconsidere esta mensagem.`}
+                                                                                        href={`https://wa.me/${st.studentPhone.replace(/\D/g, '')}?text=Prezado responsável, informamos que consta uma pendência financeira referente ao aluno(a) *${st.studentName}* relativa ao mês de *${st.month}*. Valor atualizado (com juros/multa): *R$ ${st.value.toFixed(2)}*. Para regularizar, acesse a área financeira do nosso aplicativo: https://meuexpansivo.vercel.app/ . Caso já tenha efetuado o pagamento, por favor, desconsidere esta mensagem.`}
                                                                                         target="_blank"
                                                                                         rel="noreferrer"
                                                                                         className="inline-flex items-center gap-1 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold hover:bg-green-600"
