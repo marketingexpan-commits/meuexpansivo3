@@ -174,15 +174,68 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
             doc.setLineWidth(0.1);
             doc.roundedRect(startX, startY, cardW, cardH, 5, 5, 'FD');
 
-            // --- 3.3 Internal Padding Config (Crucial for Respiro) ---
-            const p = 8; // 10mm * 0.8
+            // --- 3.3 Internal Padding Config ---
+            const p = 8;
             const cX = startX + p;
             const cEnd = startX + cardW - p;
             const cW = cardW - (p * 2);
-            const contentStartX = cX;
-            const contentEndX = cEnd;
-            const contentWidth = cW;
 
+            // -------------------------------------------------------------------------
+            // PHASE 1: LAYOUT & BACKGROUNDS (Drawn before Watermark)
+            // -------------------------------------------------------------------------
+
+            // Header Heights
+            const logoWidth = 24;
+            const logoHeight = (logoImg.height * logoWidth) / logoImg.width;
+
+            // Y Anchors Calculation
+            const headerY = startY + 12.8;
+            const gridStartY = headerY + Math.max(logoHeight, 11.2) + 6.4;
+            const gridH = 31.2;
+
+            const paymentDetailsTitleY = gridStartY + gridH + 8;
+            const tableY = paymentDetailsTitleY + 3.2;
+            const tableH = 17.6;
+
+            const obsY = tableY + tableH + 8; // Approx
+            // Status block later
+
+            // --- Draw Student Info Box Background (White + Blue Strip) ---
+            // Drawn here so Watermark sits ON TOP
+            doc.setFillColor(3, 7, 53); // Blue-950 for rounding
+            doc.roundedRect(cX, gridStartY, cW, gridH, 3, 3, 'F');
+            doc.setFillColor(3, 7, 53);
+            doc.roundedRect(cX, gridStartY, cW, gridH, 3, 3, 'F');
+            doc.setFillColor(255, 255, 255);
+            doc.roundedRect(cX + 0.8, gridStartY, cW - 0.8, gridH, 3, 3, 'F');
+
+            // --- Draw Payment Table Background (Gray Header + White Body + Blue Strip) ---
+            // Drawn here so Watermark sits ON TOP
+            // Header Fill
+            doc.setFillColor(243, 244, 246);
+            doc.saveGraphicsState();
+            doc.roundedRect(cX, tableY, cW, 8, 3, 3, 'F');
+            doc.rect(cX, tableY + 4, cW, 4, 'F');
+            doc.restoreGraphicsState();
+
+            // Blue Strip Background logic
+            doc.setFillColor(3, 7, 53);
+            doc.roundedRect(cX, tableY, cW, tableH, 3, 3, 'F');
+
+            // Masks
+            // Header Mask
+            doc.setFillColor(243, 244, 246);
+            doc.roundedRect(cX + 0.8, tableY, cW - 0.8, 8, 3, 3, 'F');
+            doc.rect(cX + 0.8, tableY + 4, cW - 0.8, 4, 'F');
+
+            // Body Mask (White)
+            doc.setFillColor(255, 255, 255);
+            doc.roundedRect(cX + 0.8, tableY + 8, cW - 0.8, tableH - 8, 3, 3, 'F');
+            doc.rect(cX + 0.8, tableY + 8, cW - 0.8, 4, 'F');
+
+            // -------------------------------------------------------------------------
+            // PHASE 2: WATERMARK (Drawn ON TOP of Backgrounds)
+            // -------------------------------------------------------------------------
             // --- 3.4 Watermark (Subtle & Centered in Card) ---
             doc.saveGraphicsState();
             doc.setGState(new (doc as any).GState({ opacity: 0.04 }));
@@ -192,60 +245,50 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
             doc.addImage(watermarkImg, 'PNG', wmX, wmY, watermarkSize, (logoImg.height * watermarkSize) / logoImg.width);
             doc.restoreGraphicsState();
 
-            // --- 4. Header ---
-            let y = startY + 12.8; // 16 * 0.8
-            const logoWidth = 24; // 30 * 0.8
-            const logoHeight = (logoImg.height * logoWidth) / logoImg.width;
+            // -------------------------------------------------------------------------
+            // PHASE 3: CONTENT & TEXT (Drawn ON TOP of Watermark)
+            // -------------------------------------------------------------------------
 
+            // --- 4. Header Content ---
+            let y = headerY;
             doc.addImage(logoImg, 'PNG', cX, y, logoWidth, logoHeight);
 
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(14.4); // 18 * 0.8
-            doc.setTextColor(3, 7, 18); // Navy Deep
-            doc.text("Comprovante", cEnd, y + 4, { align: "right" }); // 5 * 0.8
+            doc.setFontSize(14.4);
+            doc.setTextColor(3, 7, 18);
+            doc.text("Comprovante", cEnd, y + 4, { align: "right" });
 
-            doc.setFontSize(6); // 7.5 * 0.8
+            doc.setFontSize(6);
             doc.setFont("helvetica", "normal");
-            doc.setTextColor(110, 110, 110); // Gray Label
+            doc.setTextColor(110, 110, 110);
             const dateStr = new Date(receiptData.paymentDate || new Date()).toLocaleString();
-            doc.text(`${dateStr}`, cEnd, y + 7.2, { align: "right" }); // 9 * 0.8
-            doc.text(`#${receiptId}`, cEnd, y + 10.4, { align: "right" }); // 13 * 0.8
+            doc.text(`${dateStr}`, cEnd, y + 7.2, { align: "right" });
+            doc.text(`#${receiptId}`, cEnd, y + 10.4, { align: "right" });
 
-            y += Math.max(logoHeight, 11.2) + 6.4; // 14 * 0.8, 8 * 0.8
+            // Jump to Student Info Grid
+            y = gridStartY;
 
-            // --- 5. Information Grid (3x2 High Fidelity) ---
-            const gridH = 31.2; // 39 * 0.8
-
-            // --- Ultra-Fidelity Rounded Left Border (Blue-950) ---
-            // Drawn BEFORE lines so mask works as background
-            // Using full width (cW) to ensure perfect radius matching with outer stroke
-            doc.setFillColor(3, 7, 53);
-            doc.roundedRect(cX, y, cW, gridH, 3, 3, 'F');
-            doc.setFillColor(255, 255, 255);
-            // Mask must be rounded to avoid "spikes" at corners
-            doc.roundedRect(cX + 0.8, y, cW - 0.8, gridH, 3, 3, 'F');
-
-            // Information Grid Container (Transparent + Gray Stroke)
-            // Stroke drawn LAST to cover mask edges
+            // --- 5. Information Grid Content ---
+            // Note: Backgrounds ALREADY drawn in Phase 1. Just text & lines now.
 
             const renderGridRow = (l1: string, v1: string, l2: string, v2: string, rowY: number, isLast: boolean) => {
                 // Labels (Gray, Small)
-                doc.setFontSize(5.2); doc.setTextColor(120, 120, 120); doc.setFont("helvetica", "bold"); // 6.5 * 0.8
-                doc.text(l1.toUpperCase(), cX + 4, rowY + 3.2); // 5 * 0.8, 4 * 0.8
-                doc.text(l2.toUpperCase(), cEnd - 3.2, rowY + 3.2, { align: "right" }); // 4 * 0.8
+                doc.setFontSize(5.2); doc.setTextColor(120, 120, 120); doc.setFont("helvetica", "bold");
+                doc.text(l1.toUpperCase(), cX + 4, rowY + 3.2);
+                doc.text(l2.toUpperCase(), cEnd - 3.2, rowY + 3.2, { align: "right" });
 
                 // Values (Navy, Bold)
-                doc.setFontSize(7.6); doc.setTextColor(3, 7, 18); doc.setFont("helvetica", "bold"); // 9.5 * 0.8
-                doc.text(v1.toUpperCase(), cX + 4, rowY + 7.2); // 5 * 0.8, 9 * 0.8
-                doc.text(v2.toUpperCase(), cEnd - 3.2, rowY + 7.2, { align: "right" }); // 4 * 0.8
+                doc.setFontSize(7.6); doc.setTextColor(3, 7, 18); doc.setFont("helvetica", "bold");
+                doc.text(v1.toUpperCase(), cX + 4, rowY + 7.2);
+                doc.text(v2.toUpperCase(), cEnd - 3.2, rowY + 7.2, { align: "right" });
 
                 // Bottom horizontal line (Except last row)
                 if (!isLast) {
                     doc.setDrawColor(229, 231, 235);
                     doc.setLineWidth(0.1);
-                    doc.line(cX + 0.8, rowY + 10.4, cEnd, rowY + 10.4); // Start at 0.8mm to touch blue bar
+                    doc.line(cX + 0.8, rowY + 10.4, cEnd, rowY + 10.4);
                 }
-                return rowY + 10.4; // 13 * 0.8
+                return rowY + 10.4;
             };
 
             let currentGridY = y;
@@ -253,114 +296,94 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
             currentGridY = renderGridRow("SÉRIE/ANO", student.gradeLevel, "TURMA/TURNO", `${student.schoolClass} - ${student.shift}`, currentGridY, false);
             currentGridY = renderGridRow("RESPONSÁVEL FINANCEIRO", (student.nome_responsavel || student.name), "CPF DO RESPONSÁVEL", maskCpfDisplay(student.cpf_responsavel), currentGridY, true);
 
-            // Draw Stroke LAST
+            // Draw Stroke LAST (Top Layer Stroke)
             doc.setDrawColor(229, 231, 235);
             doc.setLineWidth(0.1);
             doc.roundedRect(cX, y, cW, gridH, 3, 3, 'D');
 
-            y = currentGridY + 8; // 10 * 0.8
+            y = currentGridY + 8;
 
             // --- 6. DETALHAMENTO DO PAGAMENTO ---
-            doc.setFontSize(6.8); doc.setFont("helvetica", "bold"); doc.setTextColor(55, 65, 81); // 8.5 * 0.8
+            doc.setFontSize(6.8); doc.setFont("helvetica", "bold"); doc.setTextColor(55, 65, 81);
             doc.text("DETALHAMENTO DO PAGAMENTO", startX + cardW / 2, y, { align: "center" });
-            y += 3.2; // 4 * 0.8
+            y = tableY; // Force sync to pre-calculated Table Y
 
-            const tableH = 17.6; // 22 * 0.8
-            // Table Header Fill (Top part only)
-            doc.setFillColor(243, 244, 246);
-            doc.saveGraphicsState();
-            doc.roundedRect(cX, y, cW, 8, 3, 3, 'F'); // 10 * 0.8
-            doc.rect(cX, y + 4, cW, 4, 'F'); // 5 * 0.8
-            doc.restoreGraphicsState();
+            // Table Content (Backgrounds already drawn)
 
-            // --- Ultra-Fidelity Rounded Left Border (Table) ---
-            // Drawn AFTER header background
-            doc.setFillColor(3, 7, 53); // Blue-950
-            doc.roundedRect(cX, y, cW, tableH, 3, 3, 'F'); // Full width for perfect radius
-
-            // Mask 1: Header Part (Gray) - Rounded to avoid spikes
-            doc.setFillColor(243, 244, 246);
-            doc.roundedRect(cX + 0.8, y, cW - 0.8, 8, 3, 3, 'F');
-            doc.rect(cX + 0.8, y + 4, cW - 0.8, 4, 'F'); // Patch bottom to appear straight
-
-            // Mask 2: Body Part (White) - Rounded to avoid spikes
-            doc.setFillColor(255, 255, 255);
-            doc.roundedRect(cX + 0.8, y + 8, cW - 0.8, tableH - 8, 3, 3, 'F');
-            doc.rect(cX + 0.8, y + 8, cW - 0.8, 4, 'F'); // Patch top to appear straight
-
-            doc.setFontSize(6); doc.setTextColor(107, 114, 128); doc.setFont("helvetica", "bold"); // 7.5 * 0.8
-            doc.text("DESCRIÇÃO", cX + 4, y + 5.2); // 5 * 0.8, 6.5 * 0.8
+            // Header Text
+            doc.setFontSize(6); doc.setTextColor(107, 114, 128); doc.setFont("helvetica", "bold");
+            doc.text("DESCRIÇÃO", cX + 4, y + 5.2);
             doc.text("VALOR ORIG.", cX + (cW * 0.55), y + 5.2, { align: "right" });
             doc.text("JUROS/MULTA (+)", cX + (cW * 0.75), y + 5.2, { align: "right" });
-            doc.text("VALOR FINAL", cEnd - 4, y + 5.2, { align: "right" }); // 5 * 0.8
+            doc.text("VALOR FINAL", cEnd - 4, y + 5.2, { align: "right" });
 
             // Outer stroke (Last)
             doc.setDrawColor(229, 231, 235);
             doc.setLineWidth(0.2);
             doc.roundedRect(cX, y, cW, tableH, 3, 3, 'D');
 
-            // Table Content Row
-            y += 8; // 10 * 0.8
-            doc.setTextColor(31, 41, 55); doc.setFontSize(7.2); doc.setFont("helvetica", "bold"); // 9 * 0.8
-            doc.text("Mensalidade Escolar", cX + 4, y + 3.6); // 5 * 0.8, 4.5 * 0.8
-            doc.setFontSize(5.6); doc.setFont("helvetica", "normal"); doc.setTextColor(107, 114, 128); // 7 * 0.8
-            doc.text(receiptData.month, cX + 4, y + 6.4); // 5 * 0.8, 8 * 0.8
+            // Table Body Content Row
+            y += 8;
+            doc.setTextColor(31, 41, 55); doc.setFontSize(7.2); doc.setFont("helvetica", "bold");
+            doc.text("Mensalidade Escolar", cX + 4, y + 3.6);
+            doc.setFontSize(5.6); doc.setFont("helvetica", "normal"); doc.setTextColor(107, 114, 128);
+            doc.text(receiptData.month, cX + 4, y + 6.4);
 
             // Late Fees Breakdown (Mini-text if applicable)
             if (fin.fine > 0 || fin.interest > 0) {
-                doc.setFontSize(4.4); doc.setTextColor(185, 28, 28); // 5.5 * 0.8
+                doc.setFontSize(4.4); doc.setTextColor(185, 28, 28);
                 doc.text(`+ Multa: R$ ${fin.fine.toFixed(2).replace('.', ',')}`, cX + (cW * 0.75), y + 8.4, { align: "right" });
                 doc.text(`+ Juros: R$ ${fin.interest.toFixed(2).replace('.', ',')}`, cX + (cW * 0.75), y + 10.0, { align: "right" });
             }
 
-            doc.setTextColor(107, 114, 128); doc.setFontSize(6.8); // 8.5 * 0.8
-            doc.text(`R$ ${fin.originalValue.toFixed(2).replace('.', ',')}`, cX + (cW * 0.55), y + 4.8, { align: "right" }); // 6 * 0.8
+            doc.setTextColor(107, 114, 128); doc.setFontSize(6.8);
+            doc.text(`R$ ${fin.originalValue.toFixed(2).replace('.', ',')}`, cX + (cW * 0.55), y + 4.8, { align: "right" });
 
             const adjTotal = fin.fine + fin.interest;
-            doc.text(`R$ ${adjTotal.toFixed(2).replace('.', ',')}`, cX + (cW * 0.75), y + 4.8, { align: "right" }); // 6 * 0.8
+            doc.text(`R$ ${adjTotal.toFixed(2).replace('.', ',')}`, cX + (cW * 0.75), y + 4.8, { align: "right" });
 
-            doc.setTextColor(3, 7, 18); doc.setFontSize(8.4); doc.setFont("helvetica", "bold"); // 10.5 * 0.8
-            doc.text(`R$ ${fin.total.toFixed(2).replace('.', ',')}`, cEnd - 4, y + 4.8, { align: "right" }); // 5 * 0.8, 6 * 0.8
+            doc.setTextColor(3, 7, 18); doc.setFontSize(8.4); doc.setFont("helvetica", "bold");
+            doc.text(`R$ ${fin.total.toFixed(2).replace('.', ',')}`, cEnd - 4, y + 4.8, { align: "right" });
 
-            y += 16; // 20 * 0.8
+            y += 16;
 
             // --- 7. Observations Section ---
-            doc.setFontSize(6.4); doc.setFont("helvetica", "bold"); doc.setTextColor(107, 114, 128); // 8 * 0.8
+            doc.setFontSize(6.4); doc.setFont("helvetica", "bold"); doc.setTextColor(107, 114, 128);
             doc.text("OBSERVAÇÕES:", cX, y);
-            y += 2.8; // 3.5 * 0.8
+            y += 2.8;
             doc.setDrawColor(229, 231, 235);
             doc.setLineWidth(0.1);
             doc.line(cX, y, cEnd, y);
-            y += 4.8; // 6.0 * 0.8
+            y += 4.8;
             doc.line(cX, y, cEnd, y);
 
-            y += 5.6; // 7 * 0.8
+            y += 5.6;
 
             // --- 8. Status Block (Premium Dotted) ---
             doc.setDrawColor(180, 180, 180);
             doc.setLineDashPattern([1, 1], 0);
-            doc.roundedRect(cX, y, cW, 16, 3, 3, 'D'); // 20 * 0.8
+            doc.roundedRect(cX, y, cW, 16, 3, 3, 'D');
             doc.setLineDashPattern([], 0);
 
             // Ref & Method
-            doc.setFontSize(6); doc.setFont("helvetica", "normal"); doc.setTextColor(107, 114, 128); // 7.5 * 0.8
-            doc.text("Referência:", cX + 4, y + 6.4); // 5 * 0.8, 8 * 0.8
-            doc.text("Método:", cX + 4, y + 11.2); // 5 * 0.8, 14 * 0.8
+            doc.setFontSize(6); doc.setFont("helvetica", "normal"); doc.setTextColor(107, 114, 128);
+            doc.text("Referência:", cX + 4, y + 6.4);
+            doc.text("Método:", cX + 4, y + 11.2);
 
-            doc.setFont("helvetica", "bold"); doc.setTextColor(31, 41, 55); doc.setFontSize(6.8); // 8.5 * 0.8
-            doc.text(`Mensalidade - ${receiptData.month}`, cX + 17.6, y + 6.4); // 22 * 0.8
+            doc.setFont("helvetica", "bold"); doc.setTextColor(31, 41, 55); doc.setFontSize(6.8);
+            doc.text(`Mensalidade - ${receiptData.month}`, cX + 17.6, y + 6.4);
             doc.text(getPaymentMethodLabel(receiptData.paymentMethod), cX + 17.6, y + 11.2);
 
             // Vertical separator
             const separatorX = startX + cardW * 0.53;
             doc.setDrawColor(200, 200, 200);
             doc.setLineWidth(0.2);
-            doc.line(separatorX, y + 3.2, separatorX, y + 12.8); // 4 * 0.8, 16 * 0.8
+            doc.line(separatorX, y + 3.2, separatorX, y + 12.8);
 
             // PAGO Badge
-            const badgeW = 13.6; // Reduced from 17.6 to avoid value overlap
+            const badgeW = 13.6;
             const badgeH = 5.6;
-            const badgeX = separatorX + 2.4; // Shifted slightly left (3.2 -> 2.4)
+            const badgeX = separatorX + 2.4;
             const badgeY = y + 5.2;
             doc.setFillColor(232, 250, 237);
             doc.setDrawColor(34, 197, 94);
@@ -370,36 +393,36 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
             doc.setFontSize(6.4); doc.setTextColor(22, 101, 52); doc.setFont("helvetica", "bold");
             doc.text("PAGO", badgeX + 1.6, badgeY + 4);
 
-            // Checkmark (Tightened)
+            // Checkmark
             doc.setLineWidth(0.5);
             doc.setDrawColor(22, 101, 52);
             doc.line(badgeX + 8.8, badgeY + 3.2, badgeX + 10.0, badgeY + 4.4);
             doc.line(badgeX + 10.0, badgeY + 4.4, badgeX + 12.4, badgeY + 2.0);
 
             // Valor Pago Block
-            doc.setFontSize(6); doc.setTextColor(107, 114, 128); doc.setFont("helvetica", "bold"); // 7.5 * 0.8
-            doc.text("VALOR PAGO", cEnd - 4, y + 5.6, { align: "right" }); // 5 * 0.8, 7 * 0.8
-            doc.setFontSize(17.6); doc.setTextColor(3, 7, 18); // 22 * 0.8
-            doc.text(`R$ ${fin.total.toFixed(2).replace('.', ',')}`, cEnd - 4, y + 12.8, { align: "right" }); // 16 * 0.8
+            doc.setFontSize(6); doc.setTextColor(107, 114, 128); doc.setFont("helvetica", "bold");
+            doc.text("VALOR PAGO", cEnd - 4, y + 5.6, { align: "right" });
+            doc.setFontSize(17.6); doc.setTextColor(3, 7, 18);
+            doc.text(`R$ ${fin.total.toFixed(2).replace('.', ',')}`, cEnd - 4, y + 12.8, { align: "right" });
 
-            y += 24; // 30 * 0.8
+            y += 24;
 
             // --- 9. Footer Architecture ---
             doc.setDrawColor(220, 220, 220);
-            doc.setLineWidth(0.16); // 0.2 * 0.8
-            doc.line(cX, y, cEnd, y); // Full width line
+            doc.setLineWidth(0.16);
+            doc.line(cX, y, cEnd, y);
 
-            doc.setFontSize(6.4); doc.setFont("helvetica", "bold"); doc.setTextColor(3, 7, 18); // 8 * 0.8
-            doc.text("EXPANSIVO - REDE DE ENSINO", cX, y + 4.8); // 6 * 0.8
-            doc.setFontSize(5.6); doc.setFont("helvetica", "normal"); doc.setTextColor(107, 114, 128); // 7 * 0.8
-            doc.text(unitInfo.address, cX, y + 8); // 10 * 0.8
-            doc.text(`Financeiro: +55 (84) 98873-9180`, cX, y + 11.2); // 14 * 0.8
-            doc.text(`CNPJ: ${cnpj}`, cX, y + 14.4); // 18 * 0.8
+            doc.setFontSize(6.4); doc.setFont("helvetica", "bold"); doc.setTextColor(3, 7, 18);
+            doc.text("EXPANSIVO - REDE DE ENSINO", cX, y + 4.8);
+            doc.setFontSize(5.6); doc.setFont("helvetica", "normal"); doc.setTextColor(107, 114, 128);
+            doc.text(unitInfo.address, cX, y + 8);
+            doc.text(`Financeiro: +55 (84) 98873-9180`, cX, y + 11.2);
+            doc.text(`CNPJ: ${cnpj}`, cX, y + 14.4);
 
-            const qrSize = 17.6; // 22 * 0.8
-            doc.addImage(qrCodeUrl, 'PNG', cEnd - qrSize, y + 3.2, qrSize, qrSize); // 4 * 0.8
-            doc.setFontSize(4.8); doc.setTextColor(150, 150, 150); // 6 * 0.8
-            doc.text("Validação de Autenticidade", cEnd - (qrSize / 2), y + qrSize + 4.8, { align: "center" }); // 6 * 0.8
+            const qrSize = 17.6;
+            doc.addImage(qrCodeUrl, 'PNG', cEnd - qrSize, y + 3.2, qrSize, qrSize);
+            doc.setFontSize(4.8); doc.setTextColor(150, 150, 150);
+            doc.text("Validação de Autenticidade", cEnd - (qrSize / 2), y + qrSize + 4.8, { align: "center" });
 
             // Result: Bottom padding will now be approximately equal to top padding (~16mm)
             // Header starts at startY + 16. Footer ends around startY + 16 + internalHeight.
@@ -458,7 +481,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
                     </div>
 
                     {/* Student Info Box */}
-                    <div className="relative z-10 bg-white border border-gray-100 border-l-4 border-l-blue-950 rounded-xl p-6 shadow-sm mb-6 space-y-4">
+                    <div className="relative z-10 bg-transparent border border-gray-100 border-l-4 border-l-blue-950 rounded-xl p-6 shadow-sm mb-6 space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <p className="text-[10px] font-bold text-gray-400 uppercase mb-0.5">Aluno(a)</p>
@@ -502,7 +525,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
 
                     {/* Table */}
                     <div className="mb-6">
-                        <div className="bg-gray-100 px-4 py-2 rounded-t-lg flex text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                        <div className="bg-gray-100/80 border-b border-gray-200 px-4 py-2 rounded-t-lg flex text-[10px] font-bold text-gray-500 uppercase tracking-wider backdrop-blur-sm">
                             <div className="flex-grow">Descrição</div>
                             <div className="w-20 text-right hidden sm:block">Valor Orig.</div>
                             <div className="w-24 text-right hidden sm:block">Juros/Multa (+)</div>
