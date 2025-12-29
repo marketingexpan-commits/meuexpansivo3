@@ -471,9 +471,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         competencyRecords.forEach(rec => {
             const s = students.find(st => st.id === rec.studentId);
-            totalExpected += rec.value;
+
+            // Calculate financials for EVERYTHING to ensure "Potencial" reflects updated values
+            const fin = calculateFinancials(rec);
+            totalExpected += fin.total;
+
             if (rec.status !== 'Pago') {
-                const fin = calculateFinancials(rec);
                 totalPending += fin.total;
                 delinquentStudents.push({
                     ...rec,
