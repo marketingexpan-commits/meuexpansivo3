@@ -438,7 +438,7 @@ const AppContent: React.FC = () => {
   };
 
   /* --- FUNÇÃO DE GERAÇÃO DE MENSALIDADES --- */
-  const generate2026Fees = (student: Student, batch: firebase.firestore.WriteBatch, excludedMonths: string[] = []) => {
+  const generate2026Fees = (student: Student, batch: firebase.firestore.WriteBatch, excludedMonths: string[] = [], startMonthIndex: number = 0) => {
     const months = [
       'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
       'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
@@ -447,6 +447,9 @@ const AppContent: React.FC = () => {
     const value = student.valor_mensalidade || 0;
 
     months.forEach((month, index) => {
+      // Skip months before the start index (Proportional logic)
+      if (index < startMonthIndex) return;
+
       const monthStr = `${month}/${year}`;
       if (excludedMonths.includes(monthStr)) return; // Pula meses pagos/existentes solicitados
 
@@ -520,6 +523,22 @@ const AppContent: React.FC = () => {
     try {
       const batch = db.batch();
 
+      // --- LOGICA PROPORCIONAL ---
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      let startMonthIndex = 0; // Default: Jan
+
+      if (currentYear === 2026) {
+        startMonthIndex = now.getMonth(); // 0 = Jan, 3 = Abril, etc.
+      } else if (currentYear > 2026) {
+        // Se ja passou de 2026, tecnicamente nao deveria gerar nada proporcionalmente
+        // Mas vamos deixar gerar Dezembro se estiver no final do ano ou bloquear?
+        // User pediu especificamente 2026. Se for > 2026, vamos travar.
+        alert("O ano de 2026 já passou. Não é possível gerar novos carnês para este ano.");
+        return;
+      }
+      // ----------------------------
+
       // 1. Delete ALL Pending fees (Cleanup)
       let deletedCount = 0;
       for (const fee of pendingFees) {
@@ -530,14 +549,15 @@ const AppContent: React.FC = () => {
 
       // 2. Generate fees, EXCLUDING the months that are already Paid
       const paidMonths = paidFees.map(m => m.month);
-      generate2026Fees(student, batch, paidMonths);
+      generate2026Fees(student, batch, paidMonths, startMonthIndex);
 
       await batch.commit();
 
       if (existingFees2026.length > 0) {
         alert(`Carnê atualizado com sucesso! ${deletedCount} pendentes recriadas. ${paidFees.length} pagas mantidas.`);
       } else {
-        alert(`Carnê de 12 meses gerado com sucesso para ${student.name}`);
+        const monthsText = startMonthIndex === 0 ? "12 meses" : "proporcional";
+        alert(`Carnê ${monthsText} gerado com sucesso para ${student.name}`);
       }
 
     } catch (error) {
@@ -710,6 +730,19 @@ const AppContent: React.FC = () => {
       const batch = db.batch();
       let count = 0;
 
+      // --- LOGICA PROPORCIONAL ---
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      let startMonthIndex = 0; // Default: Jan
+
+      if (currentYear === 2026) {
+        startMonthIndex = now.getMonth();
+      } else if (currentYear > 2026) {
+        alert("O ano de 2026 já passou. Não é possível gerar novos carnês para este ano.");
+        return;
+      }
+      // ----------------------------
+
       // Filtra alunos que já têm mensalidades (otimização básica) ou checa na hora
       // Para simplificar e garantir, vamos iterar todos e verificar se já existe a mensalidade de Janeiro/2026
       // Se não existir, gera o ano todo.
@@ -731,14 +764,15 @@ const AppContent: React.FC = () => {
             skippedStudents.push(student.name);
             continue;
           }
-          generate2026Fees(student, batch);
+          generate2026Fees(student, batch, [], startMonthIndex);
           count++;
         }
       }
 
       if (count > 0) {
         await batch.commit();
-        let msg = `Sucesso! Carnês de 2026 gerados para ${count} alunos.`;
+        const monthsLabel = startMonthIndex === 0 ? "12 meses (Jan-Dez)" : "meses proporcionais";
+        let msg = `Sucesso! Carnês de 2026 (${monthsLabel}) gerados para ${count} alunos.`;
         if (skippedStudents.length > 0) {
           msg += `\n\nATENÇÃO: ${skippedStudents.length} alunos foram pulados pois não possuem valor de mensalidade definido:\n- ${skippedStudents.join('\n- ')}`;
         }

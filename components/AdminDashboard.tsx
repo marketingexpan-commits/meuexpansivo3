@@ -87,7 +87,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
     const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
     const [sName, setSName] = useState('');
-    const [sResponsavel, setSResponsavel] = useState(''); // Novo Campo
+    const [sResponsavel, setSResponsavel] = useState(''); // Nome do responsável
+    const [sCpfResponsavel, setSCpfResponsavel] = useState(''); // CPF do responsável
     const [sValorMensalidade, setSValorMensalidade] = useState('');
     const [sScholarship, setSScholarship] = useState(false); // Novo Campo Valor
     const [sEmail, setSEmail] = useState('');
@@ -748,6 +749,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setEditingStudentId(s.id);
         setSName(s.name);
         setSResponsavel(s.nome_responsavel || '');
+        setSCpfResponsavel(s.cpf_responsavel || '');
         setSEmail(s.email_responsavel || '');
         setSPhone(s.telefone_responsavel || '');
         setSCode(s.code);
@@ -769,6 +771,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setEditingStudentId(null);
         setSName('');
         setSResponsavel('');
+        setSCpfResponsavel('');
         setSEmail('');
         setSPhone('');
         setSCode('');
@@ -787,6 +790,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         const studentData: Partial<Student> = {
             name: sName,
             nome_responsavel: sResponsavel,
+            cpf_responsavel: sCpfResponsavel,
             email_responsavel: sEmail,
             telefone_responsavel: sPhone,
             code: sCode,
@@ -1039,6 +1043,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <div><label className="text-sm font-medium">Série</label><select value={sGrade} onChange={e => setSGrade(e.target.value)} className="w-full p-2 border rounded">{SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}</select></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">Turma</label><select value={sClass} onChange={e => setSClass(e.target.value as SchoolClass)} className="w-full p-2 border rounded">{SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}</select></div><div><label className="text-sm font-medium">Turno</label><select value={sShift} onChange={e => setSShift(e.target.value as SchoolShift)} className="w-full p-2 border rounded">{SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{s}</option>)}</select></div></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">Unidade</label>{isGeneralAdmin ? (<select value={sUnit} onChange={e => setSUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}</div><div><label className="text-sm font-medium text-blue-700 font-bold">Método Pagamento</label><select value={sMetodoPagamento} onChange={e => setSMetodoPagamento(e.target.value as 'Isaac' | 'Interno')} className="w-full p-2 border-2 border-blue-200 rounded font-semibold text-blue-900 focus:border-blue-500"><option value="Interno">Sistema Interno</option><option value="Isaac">Parceiro Isaac</option></select></div></div>
 
                         <div><label className="text-sm font-medium">Responsável Financeiro</label><input type="text" value={sResponsavel} onChange={e => setSResponsavel(e.target.value)} className="w-full p-2 border rounded" placeholder="Nome do responsável financeiro" /></div>
+
+                        <div>
+                            <label className="text-sm font-medium">CPF do Responsável</label>
+                            <input
+                                type="text"
+                                value={sCpfResponsavel}
+                                onChange={e => {
+                                    let v = e.target.value.replace(/\D/g, '');
+                                    if (v.length > 11) v = v.substring(0, 11);
+                                    if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+                                    else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{0,3})/, "$1.$2.$3");
+                                    else if (v.length > 3) v = v.replace(/(\d{3})(\d{0,3})/, "$1.$2");
+                                    setSCpfResponsavel(v);
+                                }}
+                                className="w-full p-2 border rounded"
+                                placeholder="000.000.000-00"
+                            />
+                        </div>
 
                         <div className="flex items-center gap-3 bg-yellow-50 p-3 rounded border border-yellow-200">
                             <input

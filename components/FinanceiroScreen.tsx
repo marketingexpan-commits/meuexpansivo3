@@ -40,6 +40,13 @@ const isValidCPF = (cpf: string): boolean => {
 
 initMercadoPago('APP_USR-e0a54aff-c482-451f-882c-e41a50bcde7d', { locale: 'pt-BR' });
 
+const maskCpfDisplay = (cpf: string | undefined): string => {
+    if (!cpf) return 'Não cadastrado';
+    const clean = cpf.replace(/\D/g, '');
+    if (clean.length !== 11) return cpf;
+    return `***.${clean.substring(3, 6)}.***-${clean.substring(9)}`;
+};
+
 interface FinanceiroScreenProps {
     student: Student;
     mensalidades: Mensalidade[];
@@ -680,7 +687,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                     <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Responsável Financeiro</h4>
                     <p className="font-bold text-lg text-blue-950">{student.nome_responsavel || student.name}</p>
                     <p className="text-sm text-gray-600 flex items-center gap-2">
-                        <span>CPF: {student.cpf_responsavel || 'Não cadastrado'}</span>
+                        <span>CPF: {maskCpfDisplay(student.cpf_responsavel)}</span>
                     </p>
                 </div>
                 <div className="flex flex-col gap-1 md:items-end md:text-right">
@@ -1506,6 +1513,21 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
 
                                 setIsMethodSelectorOpen(false);
                                 setPaymentResult(null);
+
+                                // Se já existe CPF cadastrado no aluno, pula o modal de confirmação de CPF
+                                if (student.cpf_responsavel && student.cpf_responsavel.replace(/\D/g, '').length === 11) {
+                                    const savedCpf = student.cpf_responsavel.replace(/\D/g, '');
+                                    const payerName = student.nome_responsavel || student.name;
+                                    const payerPhone = student.telefone_responsavel ? student.telefone_responsavel.replace(/\D/g, '') : (student.telefone ? student.telefone.replace(/\D/g, '') : '84999999999');
+                                    const payerEmail = student.email_responsavel || student.email || 'financeiro@meuexpansivo.com.br';
+
+                                    if (selectedMethod === 'pix') {
+                                        handleDirectPixPayment(savedCpf, payerName, payerEmail);
+                                    } else {
+                                        handleCreatePayment(savedCpf, payerName, payerPhone, payerEmail);
+                                    }
+                                    return;
+                                }
 
                                 if (selectedMethod === 'pix') {
                                     setCpfInput(''); setNameInput(''); setPhoneInput(''); setEmailInput('');
