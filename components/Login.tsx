@@ -104,6 +104,17 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
   // --- MODO SECRETO ---
   const [isAdminVisible, setIsAdminVisible] = useState(false);
+  const maskCPF = (value: string) => {
+    const v = value.replace(/\D/g, '');
+    if (v.length <= 11) {
+      return v
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    }
+    return v.substring(0, 11);
+  };
+
   const [secretClickCount, setSecretClickCount] = useState(0);
 
   const handleSecretClick = () => {
@@ -173,9 +184,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
         setIdentifier(val);
       }
     } else if (activeTab === 'teacher') {
-      // CPF: Apenas números (11 dígitos, sem máscara)
-      const numeric = val.replace(/\D/g, '').slice(0, 11);
-      setIdentifier(numeric);
+      // CPF: Apply mask
+      setIdentifier(maskCPF(val));
     } else {
       setIdentifier(val);
     }
@@ -350,12 +360,12 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                 <input
                   type="text"
                   inputMode={activeTab === 'student' || activeTab === 'teacher' ? 'numeric' : 'text'}
-                  maxLength={activeTab === 'student' ? 5 : activeTab === 'teacher' ? 11 : undefined}
+                  maxLength={activeTab === 'student' ? 5 : activeTab === 'teacher' ? 14 : undefined}
                   value={identifier}
                   onChange={handleIdentifierChange}
                   placeholder={
                     activeTab === 'student' ? 'Ex.: 12345 (Consulte a Secretaria)' :
-                      activeTab === 'teacher' ? 'Digite apenas os números (11 dígitos)' :
+                      activeTab === 'teacher' ? '000.000.000-00' :
                         'Usuário'
                   }
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-700 placeholder-gray-400 focus:outline-none focus:border-blue-950 transition-colors"

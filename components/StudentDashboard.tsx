@@ -9,6 +9,8 @@ import { SchoolLogo } from './SchoolLogo';
 import { MessageBox } from './MessageBox';
 import { FinanceiroScreen } from './FinanceiroScreen';
 import { useNavigate } from 'react-router-dom';
+import { Skeleton, TableSkeleton, GridSkeleton } from './Skeleton';
+import { ErrorState } from './ErrorState';
 import {
     Bot,
     CalendarDays,
@@ -688,13 +690,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             <div className="w-full bg-white p-6 border rounded-lg shadow-md h-[600px] flex flex-col">
                                 <div className="flex-1 overflow-y-auto pr-2">
                                     {isLoadingMaterials ? (
-                                        <div className="text-center py-10 text-gray-500">Carregando conteúdos...</div>
+                                        <GridSkeleton count={4} />
                                     ) : materialsError ? (
-                                        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-                                            <p className="font-bold">Erro ao carregar materiais:</p>
-                                            <p className="text-sm mt-1">{materialsError}</p>
-                                            <p className="text-xs mt-2 text-red-500">Se aparecer um link acima, peça para o administrador clicar nele.</p>
-                                        </div>
+                                        <ErrorState
+                                            title="Erro ao carregar materiais"
+                                            message={materialsError}
+                                            onRetry={() => {
+                                                setIsLoadingMaterials(true);
+                                                setMaterialsError(null);
+                                                // The actual listener is in App.tsx or managed by parent, 
+                                                // so we just reset state to trigger re-render if it's dynamic.
+                                            }}
+                                        />
                                     ) : classMaterials.length > 0 ? (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             {classMaterials.map(mat => (
@@ -917,16 +924,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             return (
                                                                 <React.Fragment key={key}>
                                                                     <td className="px-1 py-1 text-center text-gray-500 font-medium text-[10px] md:text-sm border-r border-gray-300 relative">
-                                                                        {bData.isApproved !== false ? formatGrade(bData.nota) : <span className="text-gray-300 pointer-events-none select-none cursor-help" title="Esta nota está em processo de atualização pela coordenação pedagógica.">-</span>}
-                                                                        {bData.isApproved === false && bData.nota !== null && (
+                                                                        {bData.isNotaApproved !== false ? formatGrade(bData.nota) : <span className="text-gray-300 pointer-events-none select-none cursor-help" title="Esta nota está em processo de atualização pela coordenação pedagógica.">-</span>}
+                                                                        {bData.isNotaApproved === false && (
                                                                             <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-400 rounded-full cursor-help" title="Esta nota está em processo de atualização pela coordenação pedagógica."></div>
-
                                                                         )}
                                                                     </td>
-                                                                    <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300">
-                                                                        {bData.isApproved !== false ? formatGrade(bData.recuperacao) : '-'}
+                                                                    <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 relative">
+                                                                        {bData.isRecuperacaoApproved !== false ? formatGrade(bData.recuperacao) : <span className="text-gray-300 pointer-events-none select-none cursor-help" title="Esta nota está em processo de atualização pela coordenação pedagógica.">-</span>}
+                                                                        {bData.isRecuperacaoApproved === false && (
+                                                                            <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-400 rounded-full cursor-help" title="Esta nota está em processo de atualização pela coordenação pedagógica."></div>
+                                                                        )}
                                                                     </td>
-                                                                    <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs">{bData.isApproved !== false ? formatGrade(bData.media) : '-'}</td>
+                                                                    <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs">{(bData.isNotaApproved !== false && bData.isRecuperacaoApproved !== false) ? formatGrade(bData.media) : '-'}</td>
                                                                     <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300">
                                                                         {bData.faltas !== undefined && bData.faltas !== null ? bData.faltas : (currentAbsences || '')}
                                                                     </td>
@@ -934,13 +943,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             );
                                                         })}
                                                         <td className="px-1 py-2 text-center font-bold text-gray-700 border-r border-gray-300 bg-gray-50 text-sm">
-                                                            {Object.values(grade.bimesters).every((b: any) => b.isApproved !== false) ? formatGrade(grade.mediaAnual) : '-'}
+                                                            {Object.values(grade.bimesters).every((b: any) => b.isNotaApproved !== false && b.isRecuperacaoApproved !== false) ? formatGrade(grade.mediaAnual) : '-'}
                                                         </td>
                                                         <td className={`px-1 py-1 text-center font-bold text-red-400 text-[10px] md:text-xs border-r border-gray-300 ${grade.recuperacaoFinalApproved === false ? 'bg-yellow-100' : ''}`}>
                                                             {grade.recuperacaoFinalApproved !== false ? formatGrade(grade.recuperacaoFinal) : <span className="text-gray-300">-</span>}
                                                         </td>
                                                         <td className="px-1 py-1 text-center font-extrabold text-blue-900 bg-blue-50/50 text-xs md:text-sm border-r border-gray-300">
-                                                            {(grade.recuperacaoFinalApproved !== false && Object.values(grade.bimesters).every((b: any) => b.isApproved !== false)) ? formatGrade(grade.mediaFinal) : '-'}
+                                                            {(grade.recuperacaoFinalApproved !== false && Object.values(grade.bimesters).every((b: any) => b.isNotaApproved !== false && b.isRecuperacaoApproved !== false)) ? formatGrade(grade.mediaFinal) : '-'}
                                                         </td>
                                                         <td className="px-1 py-2 text-center align-middle">
                                                             <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
@@ -1101,10 +1110,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             </h3>
 
                             {isLoadingStudentTickets ? (
-                                <div className="text-center py-12">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-2"></div>
-                                    <p className="text-gray-500 text-sm">Carregando...</p>
-                                </div>
+                                <TableSkeleton rows={3} />
                             ) : studentTickets.length === 0 ? (
                                 <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-100">
                                     <p className="text-gray-500">Você ainda não enviou dúvidas.</p>

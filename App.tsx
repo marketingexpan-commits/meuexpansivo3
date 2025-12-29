@@ -12,8 +12,10 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { db } from './firebaseConfig';
 import { BackToTopButton } from './components/BackToTopButton';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
+import { SchoolLogo } from './components/SchoolLogo';
 
 import { ValidateReceipt } from './components/ValidateReceipt';
+import { StudentDashboardSkeleton, TeacherDashboardSkeleton, AdminDashboardSkeleton } from './components/Skeleton';
 
 // Extracted Main Application Logic (formerly App)
 // Extracted Main Application Logic (formerly App)
@@ -51,78 +53,9 @@ const AppContent: React.FC = () => {
 
   const [isSeeding, setIsSeeding] = useState(false);
 
+  // 1. Static/Public Data (Loaded on mount)
   useEffect(() => {
-    const unsubStudents = db.collection('students').onSnapshot((snapshot) => {
-      const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Student));
-      setStudents(data);
-      setInitialLoad(prev => ({ ...prev, students: true }));
-    }, (error) => {
-      if (ALLOW_MOCK_LOGIN) { setStudents(MOCK_STUDENTS); }
-      setInitialLoad(prev => ({ ...prev, students: true }));
-    });
-
-    const unsubTeachers = db.collection('teachers').onSnapshot((snapshot) => {
-      const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Teacher));
-      setTeachers(data);
-      setInitialLoad(prev => ({ ...prev, teachers: true }));
-    }, (error) => {
-      if (ALLOW_MOCK_LOGIN) { setTeachers(MOCK_TEACHERS); }
-      setInitialLoad(prev => ({ ...prev, teachers: true }));
-    });
-
-    const unsubAdmins = db.collection('admins').onSnapshot((snapshot) => {
-      const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Admin));
-      setAdmins(data);
-      setInitialLoad(prev => ({ ...prev, admins: true }));
-    }, (error) => {
-      if (ALLOW_MOCK_LOGIN) { setAdmins(MOCK_ADMINS); }
-      setInitialLoad(prev => ({ ...prev, admins: true }));
-    });
-
-    const unsubGrades = db.collection('grades').onSnapshot((snapshot) => {
-      const data = snapshot.docs.map(doc => doc.data() as GradeEntry);
-      setGrades(data);
-      setInitialLoad(prev => ({ ...prev, grades: true }));
-    }, (error) => {
-      if (ALLOW_MOCK_LOGIN) { setGrades(FINAL_GRADES_CALCULATED); }
-      setInitialLoad(prev => ({ ...prev, grades: true }));
-    });
-
-    const unsubMessages = db.collection('schoolMessages').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SchoolMessage));
-      setSchoolMessages(data);
-      setInitialLoad(prev => ({ ...prev, messages: true }));
-    }, (error) => {
-      console.error("Erro ao carregar mensagens:", error);
-      setInitialLoad(prev => ({ ...prev, messages: true }));
-    });
-
-    const unsubAttendance = db.collection('attendance').onSnapshot((snapshot) => {
-      const data = snapshot.docs.map(doc => doc.data() as AttendanceRecord);
-      setAttendanceRecords(data);
-      setInitialLoad(prev => ({ ...prev, attendance: true }));
-    }, (error) => {
-      console.error("Erro ao carregar registros de chamada:", error);
-      setInitialLoad(prev => ({ ...prev, attendance: true }));
-    });
-
-    const unsubEarlyChildhoodReports = db.collection('earlyChildhoodReports').onSnapshot((snapshot) => {
-      const data = snapshot.docs.map(doc => {
-        const reportData = doc.data() as any;
-        if (reportData.bimester && !reportData.semester) {
-          reportData.semester = Math.ceil(reportData.bimester / 2) as 1 | 2;
-          delete reportData.bimester;
-        }
-        return reportData as EarlyChildhoodReport;
-      });
-      setEarlyChildhoodReports(data);
-      setInitialLoad(prev => ({ ...prev, earlyChildhoodReports: true }));
-    }, (error) => {
-      console.error("Erro ao carregar relatórios da educação infantil:", error);
-      setEarlyChildhoodReports([]);
-      setInitialLoad(prev => ({ ...prev, earlyChildhoodReports: true }));
-    });
-
+    // Only fetch relatively static or global configurations
     const unsubContacts = db.collection('unitContacts').onSnapshot((snapshot) => {
       const data = snapshot.docs.map(doc => doc.data() as UnitContact);
       setUnitContacts(data);
@@ -131,26 +64,6 @@ const AppContent: React.FC = () => {
       console.error("Erro ao carregar contatos:", error);
       setUnitContacts([]);
       setInitialLoad(prev => ({ ...prev, unitContacts: true }));
-    });
-
-    const unsubNotifications = db.collection('notifications').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
-      const data = snapshot.docs.map(doc => ({ ...doc.data() as AppNotification, id: doc.id }));
-      setNotifications(data);
-      setInitialLoad(prev => ({ ...prev, notifications: true }));
-    }, (error) => {
-      console.error("Erro ao carregar notificações:", error);
-      setNotifications([]);
-      setInitialLoad(prev => ({ ...prev, notifications: true }));
-    });
-
-    const unsubMensalidades = db.collection('mensalidades').onSnapshot((snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Mensalidade));
-      setMensalidades(data);
-      setInitialLoad(prev => ({ ...prev, mensalidades: true }));
-    }, (error) => {
-      console.error("Erro ao carregar mensalidades:", error);
-      setMensalidades([]);
-      setInitialLoad(prev => ({ ...prev, mensalidades: true }));
     });
 
     const unsubEventos = db.collection('eventos_escola').onSnapshot((snapshot) => {
@@ -163,20 +76,188 @@ const AppContent: React.FC = () => {
       setInitialLoad(prev => ({ ...prev, eventosFinanceiros: true }));
     });
 
+    const unsubAdmins = db.collection('admins').onSnapshot((snapshot) => {
+      const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Admin));
+      setAdmins(data);
+      setInitialLoad(prev => ({ ...prev, admins: true }));
+    }, (error) => {
+      if (ALLOW_MOCK_LOGIN) { setAdmins(MOCK_ADMINS); }
+      setInitialLoad(prev => ({ ...prev, admins: true }));
+    });
+
     return () => {
-      unsubStudents();
-      unsubTeachers();
-      unsubAdmins();
-      unsubGrades();
-      unsubMessages();
-      unsubAttendance();
-      unsubEarlyChildhoodReports();
       unsubContacts();
-      unsubNotifications();
-      unsubMensalidades();
       unsubEventos();
+      unsubAdmins();
     };
   }, []);
+
+  // 2. Role-Based Dynamic Data (Loaded after login)
+  useEffect(() => {
+    if (session.role === UserRole.NONE || !session.user) {
+      // Clear data on logout
+      setStudents([]);
+      setTeachers([]);
+      setAdmins([]);
+      setGrades([]);
+      setMensalidades([]);
+      setNotifications([]);
+      setSchoolMessages([]);
+      setAttendanceRecords([]);
+      setEarlyChildhoodReports([]);
+      return;
+    }
+
+    const unsubs: (() => void)[] = [];
+    const userUnit = (session.user as any).unit;
+    const userId = session.user.id;
+
+    if (session.role === UserRole.STUDENT) {
+      // Student Data Scoping
+      unsubs.push(db.collection('grades').where('studentId', '==', userId).onSnapshot(snap => {
+        setGrades(snap.docs.map(doc => doc.data() as GradeEntry));
+        setInitialLoad(prev => ({ ...prev, grades: true }));
+      }, (err) => {
+        console.error("Grades listen error:", err);
+        setInitialLoad(prev => ({ ...prev, grades: true }));
+      }));
+
+      unsubs.push(db.collection('mensalidades').where('studentId', '==', userId).onSnapshot(snap => {
+        setMensalidades(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Mensalidade)));
+        setInitialLoad(prev => ({ ...prev, mensalidades: true }));
+      }, (err) => {
+        console.error("Mensalidades listen error:", err);
+        setInitialLoad(prev => ({ ...prev, mensalidades: true }));
+      }));
+
+      unsubs.push(db.collection('notifications').where('studentId', '==', userId).orderBy('timestamp', 'desc').onSnapshot(snap => {
+        setNotifications(snap.docs.map(doc => ({ ...doc.data() as AppNotification, id: doc.id })));
+        setInitialLoad(prev => ({ ...prev, notifications: true }));
+      }, (err) => {
+        console.error("Notifications listen error (check if index is required):", err);
+        setInitialLoad(prev => ({ ...prev, notifications: true }));
+      }));
+
+      unsubs.push(db.collection('earlyChildhoodReports').where('studentId', '==', userId).onSnapshot(snap => {
+        setEarlyChildhoodReports(snap.docs.map(doc => doc.data() as EarlyChildhoodReport));
+        setInitialLoad(prev => ({ ...prev, earlyChildhoodReports: true }));
+      }, (err) => {
+        console.error("EarlyChildhoodReports listen error:", err);
+        setInitialLoad(prev => ({ ...prev, earlyChildhoodReports: true }));
+      }));
+
+      unsubs.push(db.collection('teachers').where('unit', '==', userUnit).onSnapshot(snap => {
+        setTeachers(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Teacher)));
+        setInitialLoad(prev => ({ ...prev, teachers: true }));
+      }, (err) => {
+        console.error("Teachers listen error:", err);
+        setInitialLoad(prev => ({ ...prev, teachers: true }));
+      }));
+
+      // Set others to ready for students
+      setInitialLoad(prev => ({ ...prev, students: true, admins: true, messages: true, attendance: true }));
+
+    } else if (session.role === UserRole.TEACHER) {
+      // Teacher Data Scoping
+      unsubs.push(db.collection('students').where('unit', '==', userUnit).onSnapshot(snap => {
+        setStudents(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Student)));
+        setInitialLoad(prev => ({ ...prev, students: true }));
+      }, (err) => {
+        console.error("Students listen error:", err);
+        setInitialLoad(prev => ({ ...prev, students: true }));
+      }));
+
+      unsubs.push(db.collection('attendance').where('unit', '==', userUnit).onSnapshot(snap => {
+        setAttendanceRecords(snap.docs.map(doc => doc.data() as AttendanceRecord));
+        setInitialLoad(prev => ({ ...prev, attendance: true }));
+      }, (err) => {
+        console.error("Attendance listen error:", err);
+        setInitialLoad(prev => ({ ...prev, attendance: true }));
+      }));
+
+      // Grades and EarlyChildhoodReports - ideally filtered by unit if schema allowed, for now fetch all for the unit if possible via multiple id queries? 
+      // Simplified for production: teachers still load unit-wide data.
+      unsubs.push(db.collection('grades').onSnapshot(snap => {
+        setGrades(snap.docs.map(doc => doc.data() as GradeEntry));
+        setInitialLoad(prev => ({ ...prev, grades: true }));
+      }, (err) => {
+        console.error("Grades listen error:", err);
+        setInitialLoad(prev => ({ ...prev, grades: true }));
+      }));
+
+      unsubs.push(db.collection('earlyChildhoodReports').onSnapshot(snap => {
+        setEarlyChildhoodReports(snap.docs.map(doc => doc.data() as EarlyChildhoodReport));
+        setInitialLoad(prev => ({ ...prev, earlyChildhoodReports: true }));
+      }, (err) => {
+        console.error("EarlyChildhoodReports listen error:", err);
+        setInitialLoad(prev => ({ ...prev, earlyChildhoodReports: true }));
+      }));
+
+      setInitialLoad(prev => ({ ...prev, teachers: true, admins: true, messages: true, notifications: true, mensalidades: true }));
+
+    } else if (session.role === UserRole.ADMIN) {
+      const isGeneral = !userUnit;
+
+      const studentsQuery = isGeneral ? db.collection('students') : db.collection('students').where('unit', '==', userUnit);
+      unsubs.push(studentsQuery.onSnapshot(snap => {
+        setStudents(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Student)));
+        setInitialLoad(prev => ({ ...prev, students: true }));
+      }, (err) => {
+        console.error("Students listen error:", err);
+        setInitialLoad(prev => ({ ...prev, students: true }));
+      }));
+
+      const teachersQuery = isGeneral ? db.collection('teachers') : db.collection('teachers').where('unit', '==', userUnit);
+      unsubs.push(teachersQuery.onSnapshot(snap => {
+        setTeachers(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Teacher)));
+        setInitialLoad(prev => ({ ...prev, teachers: true }));
+      }, (err) => {
+        console.error("Teachers listen error:", err);
+        setInitialLoad(prev => ({ ...prev, teachers: true }));
+      }));
+
+      // Admins already fetched globally for Login
+      setInitialLoad(prev => ({ ...prev, admins: true }));
+
+      unsubs.push(db.collection('grades').onSnapshot(snap => {
+        setGrades(snap.docs.map(doc => doc.data() as GradeEntry));
+        setInitialLoad(prev => ({ ...prev, grades: true }));
+      }, (err) => {
+        console.error("Grades listen error:", err);
+        setInitialLoad(prev => ({ ...prev, grades: true }));
+      }));
+
+      const messagesQuery = isGeneral ? db.collection('schoolMessages') : db.collection('schoolMessages').where('unit', '==', userUnit);
+      unsubs.push(messagesQuery.orderBy('timestamp', 'desc').onSnapshot(snap => {
+        setSchoolMessages(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as SchoolMessage)));
+        setInitialLoad(prev => ({ ...prev, messages: true }));
+      }, (err) => {
+        console.error("Messages listen error:", err);
+        setInitialLoad(prev => ({ ...prev, messages: true }));
+      }));
+
+      const attendanceQuery = isGeneral ? db.collection('attendance') : db.collection('attendance').where('unit', '==', userUnit);
+      unsubs.push(attendanceQuery.onSnapshot(snap => {
+        setAttendanceRecords(snap.docs.map(doc => doc.data() as AttendanceRecord));
+        setInitialLoad(prev => ({ ...prev, attendance: true }));
+      }, (err) => {
+        console.error("Attendance listen error:", err);
+        setInitialLoad(prev => ({ ...prev, attendance: true }));
+      }));
+
+      unsubs.push(db.collection('mensalidades').onSnapshot(snap => {
+        setMensalidades(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Mensalidade)));
+        setInitialLoad(prev => ({ ...prev, mensalidades: true }));
+      }, (err) => {
+        console.error("Mensalidades listen error:", err);
+        setInitialLoad(prev => ({ ...prev, mensalidades: true }));
+      }));
+
+      setInitialLoad(prev => ({ ...prev, notifications: true, earlyChildhoodReports: true }));
+    }
+
+    return () => unsubs.forEach(u => u());
+  }, [session.role, session.user]);
 
   const seedDatabase = async () => {
     if (!ALLOW_MOCK_LOGIN) return;
@@ -188,7 +269,18 @@ const AppContent: React.FC = () => {
     await batch.commit();
   };
 
-  const isDataReady = Object.values(initialLoad).every(Boolean);
+  // No data strictly required for login now (Login uses constants and public admins/contacts)
+  const isDataReady = (() => {
+    if (session.role === UserRole.NONE) {
+      return true; // Skip pre-loader for login screen
+    }
+    if (session.role === UserRole.STUDENT) {
+      // Essentials for student: Grades and Fees
+      return initialLoad.grades && initialLoad.mensalidades;
+    }
+    // Teachers and Admins still need more full sets
+    return Object.values(initialLoad).every(Boolean);
+  })();
 
   useEffect(() => {
     const checkAndSeedDatabase = async () => {
@@ -265,55 +357,102 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handleStudentLogin = (code: string, pass: string) => {
-    // Busca por Combinação: Buscar todos os documentos que correspondam ao código
-    let potentialStudents = students.filter(s => s.code === code);
+  const handleStudentLogin = async (code: string, pass: string) => {
+    try {
+      // Direct Firestore query instead of local filtering
+      const snapshot = await db.collection('students')
+        .where('code', '==', code)
+        .where('password', '==', pass)
+        .get();
 
-    // Mock Fallback
-    if (potentialStudents.length === 0 && ALLOW_MOCK_LOGIN && students.length === 0) {
-      potentialStudents = MOCK_STUDENTS.filter(s => s.code === code);
-    }
-
-    if (potentialStudents.length > 0) {
-      // Validação Dinâmica: Percorrer lista e verificar qual possui senha correspondente
-      const matchedStudent = potentialStudents.find(s => s.password === pass);
-
-      if (matchedStudent) {
-        // Login Transparente: Logar no perfil correto
-        if (matchedStudent.isBlocked) { setLoginError('Acesso negado. Entre em contato com a secretaria.'); return; }
-        setSession({ role: UserRole.STUDENT, user: matchedStudent }); setLoginError('');
-        logAccess(matchedStudent.id);
+      if (!snapshot.empty) {
+        const student = { ...snapshot.docs[0].data(), id: snapshot.docs[0].id } as Student;
+        if (student.isBlocked) {
+          setLoginError('Acesso negado. Entre em contato com a secretaria.');
+          return;
+        }
+        setSession({ role: UserRole.STUDENT, user: student });
+        setLoginError('');
+        logAccess(student.id);
       } else {
-        // Tratamento de Erro: Código existe mas senha não bate com nenhum
+        // Fallback to Mock if enabled and DB is empty
+        if (ALLOW_MOCK_LOGIN) {
+          const matchedStudent = MOCK_STUDENTS.find(s => s.code === code && s.password === pass);
+          if (matchedStudent) {
+            setSession({ role: UserRole.STUDENT, user: matchedStudent });
+            setLoginError('');
+            logAccess(matchedStudent.id);
+            return;
+          }
+        }
         setLoginError('Código ou senha incorretos');
       }
-    } else {
-      setLoginError('Código ou senha incorretos');
+    } catch (error) {
+      console.error("Login error:", error);
+      setLoginError('Erro ao conectar ao servidor. Tente novamente.');
     }
   };
 
-  const handleTeacherLogin = (cpf: string, pass: string, unit?: string) => {
-    let teacher = teachers.find(t => t.cpf === cpf && t.unit === unit);
-    if (!teacher && ALLOW_MOCK_LOGIN && teachers.length === 0) teacher = MOCK_TEACHERS.find(t => t.cpf === cpf && t.unit === unit);
-    if (!teacher) {
-      setLoginError(teachers.some(t => t.cpf === cpf) ? `Professor não encontrado na unidade ${unit}. Verifique seu cadastro.` : 'Professor não encontrado ou CPF inválido.');
-      return;
+  const handleTeacherLogin = async (cpf: string, pass: string, unit?: string) => {
+    try {
+      const snapshot = await db.collection('teachers')
+        .where('cpf', '==', cpf)
+        .where('password', '==', pass)
+        .where('unit', '==', unit)
+        .get();
+
+      if (!snapshot.empty) {
+        const teacher = { ...snapshot.docs[0].data(), id: snapshot.docs[0].id } as Teacher;
+        setSession({ role: UserRole.TEACHER, user: teacher });
+        setLoginError('');
+        logAccess(teacher.id);
+      } else {
+        if (ALLOW_MOCK_LOGIN) {
+          const teacher = MOCK_TEACHERS.find(t => t.cpf === cpf && t.password === pass && t.unit === unit);
+          if (teacher) {
+            setSession({ role: UserRole.TEACHER, user: teacher });
+            setLoginError('');
+            logAccess(teacher.id);
+            return;
+          }
+        }
+        setLoginError('Professor não encontrado, CPF ou senha inválidos.');
+      }
+    } catch (error) {
+      console.error("Teacher Login error:", error);
+      setLoginError('Erro ao conectar ao servidor.');
     }
-    if (teacher.password !== pass) { setLoginError('Senha inválida.'); return; }
-    setSession({ role: UserRole.TEACHER, user: teacher }); setLoginError('');
-    logAccess(teacher.id);
   };
 
-  const handleAdminLogin = (user: string, pass: string) => {
-    let admin = admins.find(a => a.username === user && a.password === pass);
-    if (!admin && ALLOW_MOCK_LOGIN && admins.length === 0) admin = MOCK_ADMINS.find(a => a.username === user && a.password === pass);
-    if (admin) {
-      setSession({ role: UserRole.ADMIN, user: admin });
-      setLoginError('');
-      logAccess(admin.id);
+  const handleAdminLogin = async (user: string, pass: string) => {
+    try {
+      const snapshot = await db.collection('admins')
+        .where('username', '==', user)
+        .where('password', '==', pass)
+        .get();
+
+      if (!snapshot.empty) {
+        const admin = { ...snapshot.docs[0].data(), id: snapshot.docs[0].id } as Admin;
+        setSession({ role: UserRole.ADMIN, user: admin });
+        setLoginError('');
+        logAccess(admin.id);
+      } else {
+        if (ALLOW_MOCK_LOGIN) {
+          const admin = MOCK_ADMINS.find(a => a.username === user && a.password === pass);
+          if (admin) {
+            setSession({ role: UserRole.ADMIN, user: admin });
+            setLoginError('');
+            logAccess(admin.id);
+            return;
+          }
+        }
+        setLoginError('Credenciais inválidas.');
+      }
+    } catch (error) {
+      console.error("Admin Login error:", error);
+      setLoginError('Erro ao conectar ao servidor.');
     }
-    else { setLoginError('Credenciais inválidas.'); }
-  }
+  };
 
   const handleLogout = () => { setSession({ role: UserRole.NONE, user: null }); setLoginError(''); };
 
@@ -832,11 +971,26 @@ const AppContent: React.FC = () => {
 
 
   if (!isDataReady) {
+    if (session.role === UserRole.STUDENT) return <StudentDashboardSkeleton />;
+    if (session.role === UserRole.TEACHER) return <TeacherDashboardSkeleton />;
+    if (session.role === UserRole.ADMIN) return <AdminDashboardSkeleton />;
+
+    // Fallback for unexpected states while loading
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 flex-col">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-950 mb-4"></div>
-        <p className="text-gray-600 font-semibold">Conectando ao banco de dados...</p>
-        <p className="text-xs text-gray-400 mt-2">Caso demore, o modo offline será ativado.</p>
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+        <div className="w-20 h-20 mb-6 animate-pulse opacity-50">
+          <SchoolLogo variant="login" />
+        </div>
+
+        <div className="space-y-4 w-full max-w-sm">
+          <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+            <div className="bg-blue-900 h-full animate-progress-indeterminate"></div>
+          </div>
+          <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+            <span>Sincronizando</span>
+            <span className="animate-pulse">Aguarde...</span>
+          </div>
+        </div>
       </div>
     );
   }

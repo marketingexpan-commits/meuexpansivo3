@@ -83,7 +83,9 @@ export interface BimesterData {
   media: number;
   faltas: number;
   difficultyTopic?: string;
-  isApproved?: boolean; // Novo: Indica se o bimestre foi aprovado pela coordenação
+  isApproved?: boolean; // Legado: Indica se o bimestre foi aprovado
+  isNotaApproved?: boolean; // Novo: Indica se a nota (N) foi aprovada
+  isRecuperacaoApproved?: boolean; // Novo: Indica se a recuperação (R) foi aprovada
 }
 
 export interface GradeEntry {

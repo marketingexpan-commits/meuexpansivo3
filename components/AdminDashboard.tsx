@@ -9,6 +9,8 @@ import { db } from '../firebaseConfig';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Rematricula } from './Rematricula';
+import { Shield, User, GraduationCap, LayoutDashboard, Clock, Globe, FileBarChart, RefreshCw } from 'lucide-react';
+import { TableSkeleton } from './Skeleton';
 
 interface AdminDashboardProps {
     admin: Admin;
@@ -79,6 +81,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
     // --- ESTADOS GERAIS ---
     const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+
+    // --- MASK HELPERS ---
+    const maskCPF = (value: string) => {
+        const v = value.replace(/\D/g, '');
+        if (v.length <= 11) {
+            return v
+                .replace(/(\d{3})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+        }
+        return v.substring(0, 11);
+    };
+
+    const maskPhone = (value: string) => {
+        let r = value.replace(/\D/g, '');
+        if (r.length > 11) r = r.substring(0, 11);
+        if (r.length > 7) {
+            r = `(${r.substring(0, 2)}) ${r.substring(2, 7)}-${r.substring(7)}`;
+        } else if (r.length > 2) {
+            r = `(${r.substring(0, 2)}) ${r.substring(2)}`;
+        } else if (r.length > 0) {
+            r = `(${r}`;
+        }
+        return r;
+    };
 
     // STATES PARA FINANCEIRO INDIVIDUAL
     const [isFinancialModalOpen, setIsFinancialModalOpen] = useState(false);
@@ -299,8 +326,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 if (coordinationFilterSubject && grade.subject !== coordinationFilterSubject) return;
 
                 // Check for unapproved bimesters OR unapproved final recovery
-                const hasPending = Object.values(grade.bimesters).some((b: any) => b.isApproved === false) ||
-                    grade.recuperacaoFinalApproved === false;
+                const hasPending = Object.values(grade.bimesters).some((b: any) =>
+                    b.isApproved === false || b.isNotaApproved === false || b.isRecuperacaoApproved === false
+                ) || grade.recuperacaoFinalApproved === false;
 
                 if (hasPending) {
                     if (!pendingMap[grade.studentId]) pendingMap[grade.studentId] = [];
@@ -331,9 +359,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 // Deep copy the specific bimester object before modifying
                 updatedBimesters[k] = { ...updatedBimesters[k] };
 
-                if (updatedBimesters[k].isApproved === false) {
-                    updatedBimesters[k].isApproved = true;
-                }
+                if (updatedBimesters[k].isApproved === false) updatedBimesters[k].isApproved = true;
+                if (updatedBimesters[k].isNotaApproved === false) updatedBimesters[k].isNotaApproved = true;
+                if (updatedBimesters[k].isRecuperacaoApproved === false) updatedBimesters[k].isRecuperacaoApproved = true;
             });
 
             let updatedRecFinalApproved = grade.recuperacaoFinalApproved;
@@ -895,14 +923,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         e.preventDefault();
         const unitToSave = isGeneralAdmin ? sUnit : adminUnit!;
 
+        // Validations
+        if (!sName.trim()) { alert("Erro: O nome do aluno é obrigatório."); return; }
+        if (!sCode.trim()) { alert("Erro: O código (matrícula) do aluno é obrigatório."); return; }
+        if (sEmail && !sEmail.includes('@')) { alert("Erro: O formato do e-mail é inválido."); return; }
+
         // Base student data
         const studentData: Partial<Student> = {
-            name: sName,
-            nome_responsavel: sResponsavel,
+            name: sName.trim(),
+            nome_responsavel: sResponsavel.trim(),
             cpf_responsavel: sCpfResponsavel,
-            email_responsavel: sEmail,
+            email_responsavel: sEmail.trim(),
             telefone_responsavel: sPhone,
-            code: sCode,
+            code: sCode.trim(),
             gradeLevel: sGrade,
             unit: unitToSave,
             shift: sShift,
@@ -996,13 +1029,53 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const initiateDeleteTeacher = (id: string) => setTeacherToDelete(id);
     const startEditingTeacher = (t: Teacher) => { setEditingTeacherId(t.id); setTName(t.name); setTCpf(t.cpf); setTPhone(t.phoneNumber || '+55'); setTUnit(t.unit); setTSubjects(t.subjects); setTPass(t.password); window.scrollTo({ top: 0, behavior: 'smooth' }); };
     const cancelEditingTeacher = () => { setEditingTeacherId(null); setTName(''); setTCpf(''); setTPhone('+55'); setTPass(''); setTSubjects([]); };
-    const fullHandleTeacherSubmit = (e: React.FormEvent) => { e.preventDefault(); const unitToSave = isGeneralAdmin ? tUnit : adminUnit!; if (editingTeacherId) { const original = teachers.find(t => t.id === editingTeacherId)!; onEditTeacher({ ...original, name: tName, cpf: tCpf, phoneNumber: tPhone, unit: unitToSave, subjects: tSubjects, password: tPass.trim() ? tPass : original.password }); alert("Atualizado!"); cancelEditingTeacher(); } else { onAddTeacher({ id: `teacher-${Date.now()}`, name: tName, cpf: tCpf, phoneNumber: tPhone, unit: unitToSave, subjects: tSubjects, password: tPass }); alert("Cadastrado!"); setTName(''); setTCpf(''); setTPass(''); } };
+    const fullHandleTeacherSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const unitToSave = isGeneralAdmin ? tUnit : adminUnit!;
+
+        // Validations
+        if (!tName.trim()) { alert("Erro: O nome do professor é obrigatório."); return; }
+        if (!tCpf || tCpf.length < 14) { alert("Erro: CPF inválido ou incompleto."); return; }
+        if (tSubjects.length === 0) { alert("Erro: Selecione ao menos uma matéria para o professor."); return; }
+
+        if (editingTeacherId) {
+            const original = teachers.find(t => t.id === editingTeacherId)!;
+            onEditTeacher({
+                ...original,
+                name: tName.trim(),
+                cpf: tCpf,
+                phoneNumber: tPhone,
+                unit: unitToSave,
+                subjects: tSubjects,
+                password: tPass.trim() ? tPass : original.password
+            });
+            alert("Professor atualizado com sucesso!");
+            cancelEditingTeacher();
+        } else {
+            if (!tPass.trim()) { alert("Erro: Defina uma senha para o novo professor."); return; }
+            onAddTeacher({
+                id: `teacher-${Date.now()}`,
+                name: tName.trim(),
+                cpf: tCpf,
+                phoneNumber: tPhone,
+                unit: unitToSave,
+                subjects: tSubjects,
+                password: tPass
+            });
+            alert("Professor cadastrado com sucesso!");
+            setTName('');
+            setTCpf('');
+            setTPass('');
+        }
+    };
     const handleAddSubject = () => { if (!tSubjects.includes(tempSubject)) setTSubjects([...tSubjects, tempSubject]); };
     const handleRemoveSubject = (s: Subject) => setTSubjects(tSubjects.filter(sub => sub !== s));
 
-    // Handlers de Telefone (Separados)
-    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => { if (/^[0-9+ ]*$/.test(e.target.value)) setTPhone(e.target.value); };
-    const handleContactPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => { if (/^[0-9+ ]*$/.test(e.target.value)) setContactPhone(e.target.value); };
+    // Handlers de Telefone & CPF com Máscara
+    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => { setTPhone(maskPhone(e.target.value)); };
+    const handleContactPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => { setContactPhone(maskPhone(e.target.value)); };
+    const handleTCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => { setTCpf(maskCPF(e.target.value)); };
+    const handleSPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => { setSPhone(maskPhone(e.target.value)); };
 
     // Handlers de Contatos
     const handleSaveContact = (role: ContactRole) => {
@@ -1158,14 +1231,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <input
                                 type="text"
                                 value={sCpfResponsavel}
-                                onChange={e => {
-                                    let v = e.target.value.replace(/\D/g, '');
-                                    if (v.length > 11) v = v.substring(0, 11);
-                                    if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-                                    else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{0,3})/, "$1.$2.$3");
-                                    else if (v.length > 3) v = v.replace(/(\d{3})(\d{0,3})/, "$1.$2");
-                                    setSCpfResponsavel(v);
-                                }}
+                                onChange={e => setSCpfResponsavel(maskCPF(e.target.value))}
                                 className="w-full p-2 border rounded"
                                 placeholder="000.000.000-00"
                             />
@@ -1190,7 +1256,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <div><label className="text-sm font-medium font-bold text-green-700">Valor da Mensalidade (R$)</label><input type="number" step="0.01" value={sValorMensalidade} onChange={e => setSValorMensalidade(e.target.value)} className="w-full p-2 border rounded font-bold text-green-800" placeholder="0.00" disabled={sScholarship} /></div>
                         <div className="grid grid-cols-2 gap-2">
                             <div><label className="text-sm font-medium">E-mail</label><input type="email" value={sEmail} onChange={e => setSEmail(e.target.value)} className="w-full p-2 border rounded" placeholder="email@exemplo.com" /></div>
-                            <div><label className="text-sm font-medium">Telefone</label><input type="text" value={sPhone} onChange={e => { if (/^[0-9+ ]*$/.test(e.target.value)) setSPhone(e.target.value); }} className="w-full p-2 border rounded" placeholder="+5584999999999" maxLength={15} /></div>
+                            <div><label className="text-sm font-medium">Telefone</label><input type="text" value={sPhone} onChange={handleSPhoneChange} className="w-full p-2 border rounded" placeholder="(84) 99999-9999" /></div>
                         </div>
 
 
@@ -1316,7 +1382,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             </div>
                         </div>
                     </div>)}
-                    {activeTab === 'teachers' && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-1"><div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"><div className="flex justify-between items-center mb-4"><h2 className="text-lg font-bold text-gray-800">{editingTeacherId ? 'Editar Professor' : 'Cadastrar Novo Professor'}</h2>{editingTeacherId && (<button onClick={cancelEditingTeacher} className="text-sm text-red-600 hover:underline">Cancelar</button>)}</div><form onSubmit={fullHandleTeacherSubmit} className="space-y-4"><div><label className="text-sm font-medium">Nome Completo</label><input type="text" value={tName} onChange={e => setTName(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Matérias</label><div className="flex gap-2"><select value={tempSubject} onChange={e => setTempSubject(e.target.value as Subject)} className="flex-1 p-2 border rounded">{sortedSubjects.map(s => <option key={s} value={s}>{s}</option>)}</select><button type="button" onClick={handleAddSubject} className="bg-blue-100 text-blue-950 px-3 rounded">Add</button></div><div className="flex flex-wrap gap-2 mt-2">{tSubjects.map(s => (<span key={s} className="bg-gray-100 px-2 rounded text-xs flex items-center gap-1">{s} <button type="button" onClick={() => handleRemoveSubject(s)}>&times;</button></span>))}</div></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">CPF</label><input type="text" value={tCpf} onChange={e => setTCpf(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Telefone</label><input type="text" value={tPhone} onChange={handlePhoneChange} className="w-full p-2 border rounded" maxLength={14} /></div></div><div><label className="text-sm font-medium">Unidade</label>{isGeneralAdmin ? (<select value={tUnit} onChange={e => setTUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}</div><div><label className="text-sm font-medium">Senha</label><div className="flex gap-2 relative"><input type={showTeacherPassword ? "text" : "password"} value={tPass} onChange={e => setTPass(e.target.value)} className="w-full p-2 border rounded" required={!editingTeacherId} /><button type="button" onClick={() => setShowTeacherPassword(!showTeacherPassword)} className="absolute right-16 top-2 text-gray-500">{showTeacherPassword ? <EyeOffIcon /> : <EyeIcon />}</button><button type="button" onClick={handleGenerateTeacherPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button></div><p className="text-xs text-gray-500 mt-1">Senha automática (8 caracteres).</p></div><Button type="submit" className="w-full">{editingTeacherId ? 'Salvar' : 'Cadastrar'}</Button></form></div></div><div className="lg:col-span-2"><div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"><div className="p-4 bg-gray-50 border-b flex flex-col gap-4">
+                    {activeTab === 'teachers' && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-1"><div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"><div className="flex justify-between items-center mb-4"><h2 className="text-lg font-bold text-gray-800">{editingTeacherId ? 'Editar Professor' : 'Cadastrar Novo Professor'}</h2>{editingTeacherId && (<button onClick={cancelEditingTeacher} className="text-sm text-red-600 hover:underline">Cancelar</button>)}</div><form onSubmit={fullHandleTeacherSubmit} className="space-y-4"><div><label className="text-sm font-medium">Nome Completo</label><input type="text" value={tName} onChange={e => setTName(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Matérias</label><div className="flex gap-2"><select value={tempSubject} onChange={e => setTempSubject(e.target.value as Subject)} className="flex-1 p-2 border rounded">{sortedSubjects.map(s => <option key={s} value={s}>{s}</option>)}</select><button type="button" onClick={handleAddSubject} className="bg-blue-100 text-blue-950 px-3 rounded">Add</button></div><div className="flex flex-wrap gap-2 mt-2">{tSubjects.map(s => (<span key={s} className="bg-gray-100 px-2 rounded text-xs flex items-center gap-1">{s} <button type="button" onClick={() => handleRemoveSubject(s)}>&times;</button></span>))}</div></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">CPF</label><input type="text" value={tCpf} onChange={handleTCpfChange} required className="w-full p-2 border rounded" placeholder="000.000.000-00" /></div><div><label className="text-sm font-medium">Telefone</label><input type="text" value={tPhone} onChange={handlePhoneChange} className="w-full p-2 border rounded" placeholder="(84) 99999-9999" /></div></div><div><label className="text-sm font-medium">Unidade</label>{isGeneralAdmin ? (<select value={tUnit} onChange={e => setTUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}</div><div><label className="text-sm font-medium">Senha</label><div className="flex gap-2 relative"><input type={showTeacherPassword ? "text" : "password"} value={tPass} onChange={e => setTPass(e.target.value)} className="w-full p-2 border rounded" required={!editingTeacherId} /><button type="button" onClick={() => setShowTeacherPassword(!showTeacherPassword)} className="absolute right-16 top-2 text-gray-500">{showTeacherPassword ? <EyeOffIcon /> : <EyeIcon />}</button><button type="button" onClick={handleGenerateTeacherPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button></div><p className="text-xs text-gray-500 mt-1">Senha automática (8 caracteres).</p></div><Button type="submit" className="w-full">{editingTeacherId ? 'Salvar' : 'Cadastrar'}</Button></form></div></div><div className="lg:col-span-2"><div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"><div className="p-4 bg-gray-50 border-b flex flex-col gap-4">
                         <h3 className="font-bold">Professores ({filteredTeachers.length})</h3>
                         <div className="flex flex-wrap gap-2 w-full">
                             {isGeneralAdmin && (
@@ -2504,10 +2570,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         activeTab === 'coordination' && (
                             <div className="animate-fade-in-up md:px-6 px-4">
                                 <div className="mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                                    <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                        <span className="bg-purple-100 text-purple-700 p-2 rounded-lg text-sm">🦉</span>
-                                        Coordenação Pedagógica
-                                    </h2>
+                                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                                        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                            <span className="bg-purple-100 text-purple-700 p-2 rounded-lg text-sm">🦉</span>
+                                            Coordenação Pedagógica
+                                        </h2>
+                                        <button
+                                            onClick={fetchPendingGrades}
+                                            disabled={isLoadingCoordination}
+                                            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-bold transition-all disabled:opacity-50 shadow-sm"
+                                        >
+                                            <RefreshCw className={`w-4 h-4 ${isLoadingCoordination ? 'animate-spin' : ''}`} />
+                                            Atualizar
+                                        </button>
+                                    </div>
 
                                     {/* FILTROS */}
                                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -2621,10 +2697,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                                             {/* Bimesters */}
                                                                             {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key, index) => {
                                                                                 const bData = grade.bimesters[key as keyof typeof grade.bimesters];
-                                                                                const isApproved = bData.isApproved !== false; // Default to true if undefined
-
                                                                                 // Calculate pending status
-                                                                                const isPending = bData.isApproved === false;
+                                                                                const isNotaPending = bData.isNotaApproved === false || (bData.isApproved === false && bData.nota !== null && bData.recuperacao === null);
+                                                                                const isRecPending = bData.isRecuperacaoApproved === false || (bData.isApproved === false && bData.recuperacao !== null);
 
                                                                                 // Dynamic Highlight Class
                                                                                 const cellClass = (pending: boolean) =>
@@ -2633,15 +2708,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                                                 return (
                                                                                     <React.Fragment key={key}>
                                                                                         {/* Nota */}
-                                                                                        <td className={cellClass(isPending && bData.nota !== null)}>
+                                                                                        <td className={cellClass(isNotaPending)}>
                                                                                             {formatGrade(bData.nota)}
-                                                                                            {isPending && bData.nota !== null && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" title="Nota Alterada"></span>}
+                                                                                            {isNotaPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" title="Nota Alterada"></span>}
                                                                                         </td>
 
                                                                                         {/* Recuperação */}
-                                                                                        <td className={cellClass(isPending && bData.recuperacao !== null)}>
+                                                                                        <td className={cellClass(isRecPending)}>
                                                                                             {formatGrade(bData.recuperacao)}
-                                                                                            {isPending && bData.recuperacao !== null && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" title="Recuperação Alterada"></span>}
+                                                                                            {isRecPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" title="Recuperação Alterada"></span>}
                                                                                         </td>
 
                                                                                         {/* Média */}
@@ -3051,14 +3126,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900 bg-opacity-70 backdrop-blur-sm animate-fade-in">
                         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] md:h-auto md:max-h-[90vh] flex flex-col overflow-hidden">
                             {/* HEADER MODAL */}
-                            <div className="flex justify-between items-center p-3 md:p-6 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-                                <div>
-                                    <h2 className="text-lg md:text-2xl font-bold text-gray-800 flex items-center gap-2">
-                                        📊 Registro de Acessos
-                                    </h2>
-                                    <p className="hidden md:block text-sm text-gray-500">Auditoria de logins no sistema</p>
+                            <div className="flex justify-between items-center p-3 md:p-6 bg-gradient-to-r from-blue-900 to-blue-950 border-b border-gray-200">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-white/10 p-2 rounded-lg backdrop-blur-sm">
+                                        <LayoutDashboard className="w-6 h-6 text-white" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-lg md:text-2xl font-bold text-white flex items-center gap-2">
+                                            Registro de Acessos
+                                        </h2>
+                                        <p className="hidden md:block text-sm text-blue-100/70">Auditoria em tempo real de logins no sistema</p>
+                                    </div>
                                 </div>
-                                <button onClick={() => setIsLogModalOpen(false)} className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-gray-200">
+                                <button onClick={() => setIsLogModalOpen(false)} className="text-white/70 hover:text-white transition-colors p-2 rounded-full hover:bg-white/10">
                                     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                 </button>
                             </div>
@@ -3132,33 +3212,46 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             {/* CONTEÚDO / TABELA */}
                             <div className="flex-1 overflow-y-auto overflow-x-auto p-0 bg-gray-50">
                                 {isLoadingLogs ? (
-                                    <div className="flex items-center justify-center h-64">
-                                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-950"></div>
-                                    </div>
+                                    <TableSkeleton rows={10} />
                                 ) : filteredAccessLogs.length > 0 ? (
                                     <table className="w-full min-w-[600px] text-sm text-left">
-                                        <thead className="bg-gray-100 text-gray-600 font-bold uppercase text-xs sticky top-0 shadow-sm z-10">
+                                        <thead className="bg-white text-gray-500 font-bold uppercase text-[10px] tracking-wider sticky top-0 shadow-sm z-10">
                                             <tr>
-                                                <th className="p-4">Data/Hora</th>
-                                                <th className="p-4">Usuário</th>
-                                                <th className="p-4">IP</th>
+                                                <th className="p-4 border-b border-gray-100 flex items-center gap-2"><Clock className="w-4 h-4" /> Data/Hora</th>
+                                                <th className="p-4 border-b border-gray-100"><span className="flex items-center gap-2"><User className="w-4 h-4" /> Usuário</span></th>
+                                                <th className="p-4 border-b border-gray-100"><span className="flex items-center gap-2"><Globe className="w-4 h-4" /> IP</span></th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100 bg-white">
-                                            {filteredAccessLogs.map((log) => (
-                                                <tr key={log.id} className="hover:bg-blue-50 transition-colors">
-                                                    <td className="p-4 font-mono text-gray-600 whitespace-nowrap">
-                                                        {new Date(log.date).toLocaleString('pt-BR')}
-                                                    </td>
-                                                    <td className="p-4 font-bold text-gray-800">
-                                                        {resolveUserName(log.user_id)}
-                                                        <div className="text-[10px] text-gray-400 font-normal">{log.user_id}</div>
-                                                    </td>
-                                                    <td className="p-4 text-gray-600 font-mono text-xs">
-                                                        {log.ip || 'N/A'}
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                            {filteredAccessLogs.map((log) => {
+                                                const info = getLogUserInfo(log.user_id);
+                                                const Icon = info.type === 'admin' ? Shield : info.type === 'teacher' ? GraduationCap : User;
+                                                const colorClass = info.type === 'admin' ? 'bg-purple-100 text-purple-700' : info.type === 'teacher' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700';
+
+                                                return (
+                                                    <tr key={log.id} className="hover:bg-blue-50/50 transition-colors group">
+                                                        <td className="p-4 font-mono text-gray-600 text-[11px] whitespace-nowrap">
+                                                            {new Date(log.date).toLocaleString('pt-BR')}
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={`p-2 rounded-lg ${colorClass} transition-transform group-hover:scale-110`}>
+                                                                    <Icon className="w-4 h-4" />
+                                                                </div>
+                                                                <div>
+                                                                    <div className="font-bold text-gray-800 text-sm">{info.name}</div>
+                                                                    <div className="text-[10px] text-gray-400 font-medium uppercase tracking-tight">{info.role} • ID: {log.user_id}</div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-4 text-gray-500 font-mono text-xs">
+                                                            <span className="bg-gray-100 px-2 py-1 rounded border border-gray-200">
+                                                                {log.ip || 'N/A'}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 ) : (

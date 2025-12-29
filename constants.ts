@@ -84,7 +84,7 @@ export const EARLY_CHILDHOOD_REPORT_TEMPLATE: ExperienceField[] = [
 
 // --- ADMINISTRADORES ---
 // SENHAS SIMPLIFICADAS PARA TESTE E ACESSO IMEDIATO
-export const MOCK_ADMINS: Admin[] = [
+const PRIVATE_MOCK_ADMINS: Admin[] = [
   { id: 'a1', username: 'admin_zn', password: 'admin', name: 'Direção Zona Norte', unit: SchoolUnit.UNIT_3 },
   { id: 'a2', username: 'admin_bs', password: 'admin', name: 'Direção Boa Sorte', unit: SchoolUnit.UNIT_1 },
   { id: 'a3', username: 'admin_ext', password: 'admin', name: 'Direção Extremoz', unit: SchoolUnit.UNIT_2 },
@@ -92,7 +92,9 @@ export const MOCK_ADMINS: Admin[] = [
   { id: 'a0', username: 'admin_geral', password: 'admin', name: 'Direção Geral' }
 ];
 
-export const DEFAULT_ADMIN_INIT = MOCK_ADMINS[0];
+export const MOCK_ADMINS: Admin[] = ALLOW_MOCK_LOGIN ? PRIVATE_MOCK_ADMINS : [];
+
+export const DEFAULT_ADMIN_INIT = PRIVATE_MOCK_ADMINS[0];
 
 export const SCHOOL_GRADES_LIST = [
   'Nível I - Edu. Infantil', 'Nível II - Edu. Infantil', 'Nível III - Edu. Infantil', 'Nível IV - Edu. Infantil', 'Nível V - Edu. Infantil',
@@ -101,7 +103,7 @@ export const SCHOOL_GRADES_LIST = [
   '1ª Série - Ens. Médio', '2ª Série - Ens. Médio', '3ª Série - Ens. Médio'
 ];
 
-export const MOCK_STUDENTS: Student[] = [
+export const MOCK_STUDENTS: Student[] = ALLOW_MOCK_LOGIN ? [
   {
     id: 's1',
     code: '12345',
@@ -124,10 +126,10 @@ export const MOCK_STUDENTS: Student[] = [
     unit: SchoolUnit.UNIT_1,
     isBlocked: false
   }
-];
+] : [];
 
 // --- PROFESSORES MOCKADOS ---
-export const MOCK_TEACHERS: Teacher[] = [
+export const MOCK_TEACHERS: Teacher[] = ALLOW_MOCK_LOGIN ? [
   {
     id: 't1',
     cpf: '12345678900',
@@ -164,7 +166,7 @@ export const MOCK_TEACHERS: Teacher[] = [
     phoneNumber: '+5584966666666',
     unit: SchoolUnit.UNIT_4
   }
-];
+] : [];
 
 export const SUBJECT_LIST = Object.values(Subject);
 export const SCHOOL_UNITS_LIST = Object.values(SchoolUnit);
@@ -254,7 +256,7 @@ export const INITIAL_GRADES_MOCK: GradeEntry[] = [
   }
 ];
 
-export const FINAL_GRADES_CALCULATED: GradeEntry[] = INITIAL_GRADES_MOCK.map(grade => {
+export const FINAL_GRADES_CALCULATED: GradeEntry[] = ALLOW_MOCK_LOGIN ? INITIAL_GRADES_MOCK.map(grade => {
   const calculatedBimesters: GradeEntry['bimesters'] = {
     bimester1: calculateBimesterMedia(grade.bimesters.bimester1),
     bimester2: calculateBimesterMedia(grade.bimesters.bimester2),
@@ -267,4 +269,4 @@ export const FINAL_GRADES_CALCULATED: GradeEntry[] = INITIAL_GRADES_MOCK.map(gra
     bimesters: calculatedBimesters,
     ...finalData,
   };
-});
+}) : [];

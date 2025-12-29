@@ -15,6 +15,7 @@ import {
 } from '../constants';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
+import { TableSkeleton } from './Skeleton';
 
 interface TeacherDashboardProps {
     teacher: Teacher;
@@ -255,17 +256,21 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                 faltas: faltasToSave,
                 media: 0,
                 difficultyTopic: topic,
-                isApproved: false // Reset approval on any change
+                isApproved: false, // Reset legacy approval
+                isNotaApproved: isRecoveryView ? (currentData.isNotaApproved ?? true) : false,
+                isRecuperacaoApproved: isRecoveryView ? false : (currentData.isRecuperacaoApproved ?? true)
             };
             newBimesters[bimesterKey] = calculateBimesterMedia(rawBimesterData);
         }
 
-        // Sanitize bimesters to ensure no undefined 'isApproved' values (legacy support)
+        // Sanitize bimesters to ensure no undefined values (legacy support)
         const sanitizedBimesters = Object.entries(newBimesters).reduce((acc, [key, data]) => {
             const bimesterData = data as BimesterData;
             acc[key as keyof typeof newBimesters] = {
                 ...bimesterData,
-                isApproved: bimesterData.isApproved ?? true // Default to true if missing (legacy)
+                isApproved: bimesterData.isApproved ?? true,
+                isNotaApproved: bimesterData.isNotaApproved ?? true,
+                isRecuperacaoApproved: bimesterData.isRecuperacaoApproved ?? true
             };
             return acc;
         }, {} as typeof newBimesters);
@@ -1437,10 +1442,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                 </h2>
 
                                 {isLoadingTickets ? (
-                                    <div className="text-center py-12">
-                                        <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-200 border-t-blue-950 mx-auto mb-4"></div>
-                                        <p className="text-gray-500">Carregando dúvidas...</p>
-                                    </div>
+                                    <TableSkeleton rows={5} />
                                 ) : tickets.length === 0 ? (
                                     <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
                                         <span className="text-4xl block mb-2">🎉</span>
