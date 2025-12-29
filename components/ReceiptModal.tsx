@@ -80,18 +80,18 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
     };
 
     const getPaymentMethodLabel = (method?: string) => {
-        if (!method) return 'Pix / Cartão';
+        if (!method) return 'Não Informado';
         const m = method.toLowerCase();
 
         // Mapeamento correto dos IDs do Mercado Pago
         if (m.includes('pix')) return 'Pix';
-        if (m.includes('boleto') || m.includes('bolbradesco') || m.includes('pec')) return 'Boleto Bancário';
+        if (m.includes('boleto') || m.includes('bolbradesco') || m.includes('ticket') || m.includes('pec')) return 'Boleto Bancário';
         if (m.includes('credit') || m.includes('credito') || m === 'master' || m === 'visa' || m === 'elo' || m === 'hipercard' || m === 'amex') return 'Cartão de Crédito';
         if (m.includes('debit') || m.includes('debito')) return 'Cartão de Débito';
         if (m.includes('account') || m.includes('money')) return 'Saldo Mercado Pago';
 
         // Tratamento de códigos internos/fallback
-        if (m.includes('mercadopago')) return 'Pix / Cartão';
+        if (m.includes('mercadopago')) return 'Mercado Pago (Online)';
 
         // Fallback final: Capitalizar primeira letra
         return method.charAt(0).toUpperCase() + method.slice(1);
