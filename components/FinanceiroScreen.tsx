@@ -483,12 +483,31 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             // Simplify Title to avoid special chars/long strings for Late Fees
             let description = `Mensalidade Ref ${activeTab === 'mensalidades' ? 'Mês Atual' : 'Eventos'}`;
             // Try to extract month from selected items if possible, or keep simple
-            if (activeTab === 'mensalidades' && selectedMensalidades.length === 1) {
-                const m = studentMensalidades.find(sm => sm.id === selectedMensalidades[0]);
-                if (m) description = `Mensalidade ${m.month}`;
+            if (activeTab === 'mensalidades') {
+                const selectedItems = studentMensalidades.filter(sm => selectedMensalidades.includes(sm.id));
+                if (selectedItems.length > 0) {
+                    // Sort by due date to keep chronological order in description
+                    selectedItems.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+
+                    if (selectedItems.length === 1) {
+                        description = `Mensalidade ${selectedItems[0].month}`;
+                    } else {
+                        // Join months: "Mensalidades: Maio/2026, Junho/2026"
+                        const months = selectedItems.map(i => i.month).join(', ');
+                        description = `Mensalidades: ${months}`;
+                    }
+                }
+            } else if (activeTab === 'eventos') {
+                const selectedItems = studentEventos.filter(e => selectedEventIds.includes(e.id));
+                if (selectedItems.length === 1) {
+                    description = selectedItems[0].title;
+                } else if (selectedItems.length > 0) {
+                    description = `Eventos: ${selectedItems.map(e => e.title).join(', ')}`;
+                }
             }
-            // Remove "Atrasada" or complex chars just in case
-            description = description.replace(/[^a-zA-Z0-9À-ÿ \-\/]/g, "").substring(0, 60);
+
+            // Remove "Atrasada" or complex chars just in case, but keep / for dates and , for lists
+            description = description.replace(/[^a-zA-Z0-9À-ÿ \-\/\,\.]/g, "").substring(0, 60);
 
             // Refined Name Logic
             const parts = rawName ? rawName.trim().split(' ') : ['Responsável'];
@@ -649,7 +668,19 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                     }
                 },
                 external_reference: activeTab === 'mensalidades' ? selectedMensalidades.join(',') : `student_${student.id}`,
-                description: `Pagamento Pix ${student.name} - ${activeTab}`,
+                description: (() => {
+                    // Re-use logic for Direct Pix
+                    let desc = `Pagamento Pix ${student.name} - ${activeTab}`;
+                    if (activeTab === 'mensalidades') {
+                        const selectedItems = studentMensalidades.filter(sm => selectedMensalidades.includes(sm.id));
+                        if (selectedItems.length > 0) {
+                            selectedItems.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+                            const months = selectedItems.map(i => i.month).join(', ');
+                            desc = selectedItems.length === 1 ? `Mensalidade ${months}` : `Mensalidades: ${months}`;
+                        }
+                    }
+                    return desc.replace(/[^a-zA-Z0-9À-ÿ \-\/\,\.]/g, "").substring(0, 60);
+                })(),
                 metadata: {
                     student_id: student.id,
                     mensalidade_ids: activeTab === 'mensalidades' ? selectedMensalidades.join(',') : '',
@@ -1487,7 +1518,28 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                             </div>
                                         )}
 
-                                        <div className="border-t border-gray-200 pt-2 mt-2">
+                                        <div className="border-t border-gray-200 pt-4 mt-4">
+                                            {/* Reference Display */}
+                                            <div className="mb-4 text-center">
+                                                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Referência do Pagamento</p>
+                                                <p className="text-sm font-bold text-blue-900 bg-blue-50 py-2 px-3 rounded-lg border border-blue-100 inline-block">
+                                                    {(() => {
+                                                        if (activeTab === 'mensalidades') {
+                                                            const selectedItems = studentMensalidades.filter(m => selectedMensalidades.includes(m.id));
+                                                            if (selectedItems.length === 0) return 'Selecione um item';
+                                                            selectedItems.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+                                                            const months = selectedItems.map(i => i.month).join(', ');
+                                                            return selectedItems.length === 1 ? `Mensalidade ${months}` : `Mensalidades: ${months}`;
+                                                        } else {
+                                                            const selectedItems = studentEventos.filter(e => selectedEventIds.includes(e.id));
+                                                            if (selectedItems.length === 0) return 'Selecione um evento';
+                                                            const titles = selectedItems.map(e => e.title).join(', ');
+                                                            return selectedItems.length === 1 ? titles : `Eventos: ${titles}`;
+                                                        }
+                                                    })()}
+                                                </p>
+                                            </div>
+
                                             <p className="text-sm text-gray-500 uppercase font-bold tracking-wider">Valor Final a Pagar</p>
                                             <div className="flex items-center justify-center gap-2">
                                                 <p className="text-3xl font-bold text-blue-950">
