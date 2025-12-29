@@ -611,8 +611,12 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             if (data.id) {
                 console.log("Preference ID válido recebido:", data.id);
                 setPreferenceId(data.id);
+
+                // Sincroniza fechamento e abertura para evitar lacunas visuais
+                setIsLoadingPix(false);
+                setIsMethodSelectorOpen(false);
                 setIsCpfModalOpen(false);
-                setIsLoadingPix(false); // Desativa antes para evitar sobreposição
+                setIsMissingDataModalOpen(false);
                 setIsModalOpen(true);
             } else {
                 console.error("Erro: Preference ID não retornado.", data);
@@ -661,7 +665,11 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             const result = await response.json();
             if (result.status === 'pending' || result.status === 'approved') {
                 setPaymentResult(result);
-                setIsLoadingPix(false); // Desativa antes
+
+                setIsLoadingPix(false);
+                setIsMethodSelectorOpen(false);
+                setIsCpfModalOpen(false);
+                setIsMissingDataModalOpen(false);
                 setIsModalOpen(true);
             } else {
                 alert("Erro ao gerar Pix: " + (result.message || JSON.stringify(result)));
@@ -675,24 +683,8 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
         }
     };
 
-    const LoadingOverlay = () => {
-        if (!isLoadingPix) return null;
-        return (
-            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/5 backdrop-blur-[2px] animate-fade-in">
-                <div className="bg-white/95 p-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/50 animate-scale-in">
-                    <div className="w-6 h-6 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                    <div className="flex flex-col">
-                        <span className="text-sm font-bold text-blue-950">Processando...</span>
-                        <span className="text-[10px] text-gray-400 font-medium uppercase tracking-tight">Preparando seu checkout</span>
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
     return (
         <div className="animate-fade-in-up space-y-6">
-            <LoadingOverlay />
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
                     <CreditCard className="w-8 h-8 text-blue-950" /> Financeiro Interno
@@ -1529,7 +1521,6 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                     }
                                 }
 
-                                setIsMethodSelectorOpen(false);
                                 setPaymentResult(null);
 
                                 // Se já existe CPF cadastrado no aluno, pula o modal de confirmação de CPF
@@ -1541,15 +1532,11 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                     const payerPhone = student.telefone_responsavel ? student.telefone_responsavel.replace(/\D/g, '') : (student.telefone ? student.telefone.replace(/\D/g, '') : '84999999999');
                                     const payerEmail = student.email_responsavel || student.email || 'financeiro@meuexpansivo.com.br';
 
-                                    // Pequeno timeout para garantir que o Loading apareça antes da troca de modais
-                                    setTimeout(() => {
-                                        setIsMethodSelectorOpen(false);
-                                        if (selectedMethod === 'pix') {
-                                            handleDirectPixPayment(savedCpf, payerName, payerEmail);
-                                        } else {
-                                            handleCreatePayment(savedCpf, payerName, payerPhone, payerEmail);
-                                        }
-                                    }, 100);
+                                    if (selectedMethod === 'pix') {
+                                        handleDirectPixPayment(savedCpf, payerName, payerEmail);
+                                    } else {
+                                        handleCreatePayment(savedCpf, payerName, payerPhone, payerEmail);
+                                    }
                                     return;
                                 }
 
@@ -1565,8 +1552,13 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                     setCpfInput(''); setNameInput(''); setPhoneInput(''); setEmailInput('');
                                     setIsCpfModalOpen(true);
                                 }
-                            }} className="flex-1 py-3 font-bold bg-blue-600 hover:bg-blue-700 shadow-lg text-base">
-                                Ir para Pagamento
+                            }} className="flex-1 py-3 font-bold bg-blue-600 hover:bg-blue-700 shadow-lg text-base" disabled={isLoadingPix}>
+                                {isLoadingPix ? (
+                                    <div className="flex items-center justify-center gap-2">
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        <span>Processando...</span>
+                                    </div>
+                                ) : "Ir para Pagamento"}
                             </Button>
                         </div>
                     </div>
@@ -1618,20 +1610,21 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                             const payerEmail = student.email || 'financeiro@meuexpansivo.com.br'; // Fallback email (required by MP)
 
                                             setIsLoadingPix(true);
-                                            setTimeout(() => {
-                                                setIsCpfModalOpen(false);
-
-                                                if (selectedMethod === 'pix') {
-                                                    handleDirectPixPayment(cpfInput, payerName, payerEmail);
-                                                } else {
-                                                    handleCreatePayment(cpfInput, payerName, payerPhone, payerEmail);
-                                                }
-                                            }, 100);
+                                            if (selectedMethod === 'pix') {
+                                                handleDirectPixPayment(cpfInput, payerName, payerEmail);
+                                            } else {
+                                                handleCreatePayment(cpfInput, payerName, payerPhone, payerEmail);
+                                            }
                                         }}
-                                        className={`w-1/2 font-bold py-3 transition-all ${isValidCPF(cpfInput) ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-300 cursor-not-allowed text-gray-500'}`}
-                                        disabled={!isValidCPF(cpfInput)}
+                                        className={`w-1/2 font-bold py-3 transition-all ${isValidCPF(cpfInput) && !isLoadingPix ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-300 cursor-not-allowed text-gray-500'}`}
+                                        disabled={!isValidCPF(cpfInput) || isLoadingPix}
                                     >
-                                        Ir para Pagamento
+                                        {isLoadingPix ? (
+                                            <div className="flex items-center justify-center gap-2">
+                                                <div className="w-4 h-4 border-2 border-blue-900/30 border-t-blue-900 rounded-full animate-spin"></div>
+                                                <span>...</span>
+                                            </div>
+                                        ) : "Confirmar"}
                                     </Button>
                                 </div>
                             </div>
@@ -1781,14 +1774,17 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                         };
 
                                         setIsLoadingPix(true);
-                                        setTimeout(() => {
-                                            setIsMissingDataModalOpen(false);
-                                            handleCreatePayment(cleanTempCpf, undefined, undefined, undefined, addr);
-                                        }, 100);
+                                        handleCreatePayment(cleanTempCpf, undefined, undefined, undefined, addr);
                                     }}
                                     className="w-1/2 bg-blue-900 hover:bg-blue-800 font-bold"
+                                    disabled={isLoadingPix}
                                 >
-                                    Confirmar
+                                    {isLoadingPix ? (
+                                        <div className="flex items-center justify-center gap-2 text-xs">
+                                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            <span>Validando...</span>
+                                        </div>
+                                    ) : "Confirmar"}
                                 </Button>
                             </div>
                         </div>
