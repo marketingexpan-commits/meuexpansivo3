@@ -426,6 +426,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
     const { totalGeneral, displayTotal, recordsByUnit } = getFinancialSummary();
 
+    const calculateFinancials = (mensalidade: Mensalidade) => {
+        const originalDate = new Date(mensalidade.dueDate);
+        const strictDueDate = new Date(originalDate.setDate(10));
+        strictDueDate.setHours(23, 59, 59, 999);
+
+        // Define a "data de referência" para o cálculo (hoje ou data do pagamento)
+        let referenceDate = new Date();
+        referenceDate.setHours(0, 0, 0, 0);
+
+        if (mensalidade.status === 'Pago' && mensalidade.paymentDate) {
+            referenceDate = new Date(mensalidade.paymentDate);
+            referenceDate.setHours(0, 0, 0, 0);
+        } else if (mensalidade.status === 'Pago' && !mensalidade.paymentDate) {
+            // Se pago mas sem data (legado/erro), não cobra juros
+            return { originalValue: mensalidade.value, total: mensalidade.value, fine: 0, interest: 0 };
+        }
+
+        let fine = 0;
+        let interest = 0;
+
+        // Se a data de referência (pagamento ou hoje) for maior que o vencimento
+        if (referenceDate > strictDueDate) {
+            const diffTime = Math.abs(referenceDate.getTime() - strictDueDate.getTime());
+            const daysLate = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            fine = mensalidade.value * 0.02;
+            interest = mensalidade.value * (0.00033 * daysLate);
+        }
+
+        return {
+            originalValue: mensalidade.value,
+            fine,
+            interest,
+            total: mensalidade.value + fine + interest
+        };
+    };
+
     const { totalExpected, totalPending, delinquentStudents, progress, totalReceived, receivedRecordsLength } = useMemo(() => {
         if (!historyFilterMonth) return { totalExpected: 0, totalPending: 0, delinquentStudents: [], progress: 0, totalReceived: 0, receivedRecordsLength: 0 };
 
@@ -438,30 +474,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         let totalPending = 0;
         const delinquentStudents: any[] = [];
 
-        const calculateFinancials = (mensalidade: Mensalidade) => {
-            if (mensalidade.status === 'Pago') {
-                return { originalValue: mensalidade.value, total: mensalidade.value };
-            }
-            const originalDate = new Date(mensalidade.dueDate);
-            const strictDueDate = new Date(originalDate.setDate(10));
-            strictDueDate.setHours(23, 59, 59, 999);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            let fine = 0;
-            let interest = 0;
-            if (today > strictDueDate) {
-                const diffTime = Math.abs(today.getTime() - strictDueDate.getTime());
-                const daysLate = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                fine = mensalidade.value * 0.02;
-                interest = mensalidade.value * (0.00033 * daysLate);
-            }
-            return {
-                originalValue: mensalidade.value,
-                fine,
-                interest,
-                total: mensalidade.value + fine + interest
-            };
-        };
+
 
         const competencyRecords = financialRecords.filter(rec => {
             const s = students.find(st => st.id === rec.studentId);
@@ -502,7 +515,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             return false;
         });
 
-        const totalReceived = receivedRecords.reduce((acc, rec) => acc + rec.value, 0);
+        const totalReceived = receivedRecords.reduce((acc, rec) => {
+            const fin = calculateFinancials(rec);
+            return acc + fin.total;
+        }, 0);
         const progress = totalExpected > 0 ? (totalReceived / totalExpected) * 100 : 0;
 
         return { totalExpected, totalPending, delinquentStudents, progress, totalReceived, receivedRecordsLength: receivedRecords.length };
@@ -1444,74 +1460,80 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 if (ya !== yb) return parseInt(ya) - parseInt(yb);
                                                 return monthsOrder[ma] - monthsOrder[mb];
                                             })
-                                            .map(fee => (
-                                                <div key={fee.id} className={`bg-white p-4 rounded-xl border-2 flex flex-col gap-2 shadow-sm ${fee.status === 'Pago' ? 'border-green-200' : (fee.status === 'Atrasado' ? 'border-red-200' : 'border-yellow-200')}`}>
-                                                    <div className="flex justify-between items-start">
-                                                        <span className="font-bold text-gray-800">{fee.month}</span>
-                                                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${fee.status === 'Pago' ? 'bg-green-100 text-green-700' : (fee.status === 'Atrasado' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700')}`}>
-                                                            {fee.status}
-                                                        </span>
-                                                    </div>
+                                            .map(fee => {
+                                                const fin = calculateFinancials(fee);
+                                                return (
+                                                    <div key={fee.id} className={`bg-white p-4 rounded-xl border-2 flex flex-col gap-2 shadow-sm ${fee.status === 'Pago' ? 'border-green-200' : (fee.status === 'Atrasado' ? 'border-red-200' : 'border-yellow-200')}`}>
+                                                        <div className="flex justify-between items-start">
+                                                            <span className="font-bold text-gray-800">{fee.month}</span>
+                                                            <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${fee.status === 'Pago' ? 'bg-green-100 text-green-700' : (fee.status === 'Atrasado' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700')}`}>
+                                                                {fee.status}
+                                                            </span>
+                                                        </div>
 
-                                                    <div className="mt-auto">
-                                                        <p className="text-lg font-bold text-gray-900">R$ {fee.value.toFixed(2)}</p>
-                                                        <p className="text-xs text-gray-500">Venc: {new Date(fee.dueDate).toLocaleDateString('pt-BR')}</p>
-                                                        {fee.paymentDate && <p className="text-xs text-green-700 font-bold">Pago: {new Date(fee.paymentDate).toLocaleDateString('pt-BR')}</p>}
-                                                    </div>
+                                                        <div className="mt-auto">
+                                                            <p className="text-lg font-bold text-gray-900">R$ {fin.total.toFixed(2)}</p>
+                                                            {fin.total > fin.originalValue && (
+                                                                <p className="text-[10px] text-gray-400 line-through">R$ {fin.originalValue.toFixed(2)}</p>
+                                                            )}
+                                                            <p className="text-xs text-gray-500">Venc: {new Date(fee.dueDate).toLocaleDateString('pt-BR')}</p>
+                                                            {fee.paymentDate && <p className="text-xs text-green-700 font-bold">Pago: {new Date(fee.paymentDate).toLocaleDateString('pt-BR')}</p>}
+                                                        </div>
 
-                                                    <div className="pt-3 mt-3 border-t border-gray-100 grid grid-cols-1 gap-2">
-                                                        {fee.status === 'Pago' ? (
-                                                            <button
-                                                                onClick={async () => {
-                                                                    if (!window.confirm("Admin: Desfazer pagamento?")) return;
-                                                                    try {
-                                                                        await db.collection('mensalidades').doc(fee.id).update({
-                                                                            status: 'Pendente',
-                                                                            paymentDate: null,
-                                                                            receiptUrl: null,
-                                                                            lastUpdated: new Date().toISOString()
-                                                                        });
-                                                                    } catch (e) { alert("Erro."); }
-                                                                }}
-                                                                className="py-1 text-xs font-bold text-gray-500 bg-gray-100 hover:bg-red-50 hover:text-red-600 rounded"
-                                                            >
-                                                                Desfazer
-                                                            </button>
-                                                        ) : (
-                                                            <button
-                                                                onClick={async () => {
-                                                                    if (!window.confirm("Admin: Confirmar recebimento manual?")) return;
-                                                                    try {
-                                                                        await db.collection('mensalidades').doc(fee.id).update({
-                                                                            status: 'Pago',
-                                                                            paymentDate: new Date().toISOString(),
-                                                                            lastUpdated: new Date().toISOString()
-                                                                        });
-                                                                    } catch (e) { alert("Erro."); }
-                                                                }}
-                                                                className="py-1 text-xs font-bold text-white bg-green-600 hover:bg-green-700 rounded shadow-sm"
-                                                            >
-                                                                Receber Manual
-                                                            </button>
-                                                        )}
-                                                        {isGeneralAdmin && (
-                                                            <button
-                                                                onClick={async () => {
-                                                                    if (!window.confirm("Admin: Tem certeza que deseja EXCLUIR permanentemente esta cobrança?")) return;
-                                                                    try {
-                                                                        await db.collection('mensalidades').doc(fee.id).delete();
-                                                                        // Update local state by removing the deleted item
-                                                                        setFinancialRecords(prev => prev.filter(item => item.id !== fee.id));
-                                                                    } catch (e) { alert("Erro ao excluir."); console.error(e); }
-                                                                }}
-                                                                className="py-1 text-xs font-bold text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                                                            >
-                                                                🗑️ Excluir
-                                                            </button>
-                                                        )}
+                                                        <div className="pt-3 mt-3 border-t border-gray-100 grid grid-cols-1 gap-2">
+                                                            {fee.status === 'Pago' ? (
+                                                                <button
+                                                                    onClick={async () => {
+                                                                        if (!window.confirm("Admin: Desfazer pagamento?")) return;
+                                                                        try {
+                                                                            await db.collection('mensalidades').doc(fee.id).update({
+                                                                                status: 'Pendente',
+                                                                                paymentDate: null,
+                                                                                receiptUrl: null,
+                                                                                lastUpdated: new Date().toISOString()
+                                                                            });
+                                                                        } catch (e) { alert("Erro."); }
+                                                                    }}
+                                                                    className="py-1 text-xs font-bold text-gray-500 bg-gray-100 hover:bg-red-50 hover:text-red-600 rounded"
+                                                                >
+                                                                    Desfazer
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={async () => {
+                                                                        if (!window.confirm("Admin: Confirmar recebimento manual?")) return;
+                                                                        try {
+                                                                            await db.collection('mensalidades').doc(fee.id).update({
+                                                                                status: 'Pago',
+                                                                                paymentDate: new Date().toISOString(),
+                                                                                lastUpdated: new Date().toISOString()
+                                                                            });
+                                                                        } catch (e) { alert("Erro."); }
+                                                                    }}
+                                                                    className="py-1 text-xs font-bold text-white bg-green-600 hover:bg-green-700 rounded shadow-sm"
+                                                                >
+                                                                    Receber Manual
+                                                                </button>
+                                                            )}
+                                                            {isGeneralAdmin && (
+                                                                <button
+                                                                    onClick={async () => {
+                                                                        if (!window.confirm("Admin: Tem certeza que deseja EXCLUIR permanentemente esta cobrança?")) return;
+                                                                        try {
+                                                                            await db.collection('mensalidades').doc(fee.id).delete();
+                                                                            // Update local state by removing the deleted item
+                                                                            setFinancialRecords(prev => prev.filter(item => item.id !== fee.id));
+                                                                        } catch (e) { alert("Erro ao excluir."); console.error(e); }
+                                                                    }}
+                                                                    className="py-1 text-xs font-bold text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                                                                >
+                                                                    🗑️ Excluir
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))
+                                                );
+                                            })
                                         }
                                         {mensalidades.filter(m => m.studentId === selectedStudentForFinancial.id).length === 0 && (
                                             <div className="col-span-3 text-center py-10 text-gray-400">
@@ -2338,7 +2360,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                                         )}
                                                                     </td>
                                                                     <td className="px-6 py-4 text-sm font-bold text-green-700 text-right">
-                                                                        R$ {rec.value.toFixed(2).replace('.', ',')}
+                                                                        {(() => {
+                                                                            const fin = calculateFinancials(rec);
+                                                                            return (
+                                                                                <div className="flex flex-col items-end">
+                                                                                    <span>R$ {fin.total.toFixed(2).replace('.', ',')}</span>
+                                                                                    {fin.total > fin.originalValue && (
+                                                                                        <span className="text-[10px] text-gray-400 font-normal">
+                                                                                            (Orig: R$ {fin.originalValue.toFixed(2)})
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
+                                                                            );
+                                                                        })()}
                                                                     </td>
                                                                 </tr>
                                                             );

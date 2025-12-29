@@ -309,8 +309,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
             // Late Fees Breakdown (Mini-text if applicable)
             if (fin.fine > 0 || fin.interest > 0) {
                 doc.setFontSize(4.4); doc.setTextColor(185, 28, 28); // 5.5 * 0.8
-                doc.text(`+ Multa (2%): R$ ${fin.fine.toFixed(2).replace('.', ',')}`, cX + 4, y + 8.4); // 10.5 * 0.8 approx
-                doc.text(`+ Juros (Diário): R$ ${fin.interest.toFixed(2).replace('.', ',')}`, cX + 4, y + 10.0); // 12.5 * 0.8 approx
+                doc.text(`+ Multa: R$ ${fin.fine.toFixed(2).replace('.', ',')}`, cX + (cW * 0.75), y + 8.4, { align: "right" });
+                doc.text(`+ Juros: R$ ${fin.interest.toFixed(2).replace('.', ',')}`, cX + (cW * 0.75), y + 10.0, { align: "right" });
             }
 
             doc.setTextColor(107, 114, 128); doc.setFontSize(6.8); // 8.5 * 0.8
@@ -512,15 +512,17 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
                             <div className="flex-grow pr-2">
                                 <span className="block font-bold text-gray-800 text-xs sm:text-sm">Mensalidade Escolar</span>
                                 <span className="text-[10px] sm:text-xs text-gray-500">{receiptData.month}</span>
+                            </div>
+                            <div className="w-20 text-right hidden sm:block text-gray-400 text-xs">R$ {fin.originalValue.toFixed(2).replace('.', ',')}</div>
+                            <div className="w-24 text-right hidden sm:block text-gray-400 text-xs">
+                                <span className="block">R$ {(fin.fine + fin.interest).toFixed(2).replace('.', ',')}</span>
                                 {(fin.fine > 0 || fin.interest > 0) && (
                                     <div className="mt-1 space-y-0.5">
-                                        <p className="text-[9px] text-red-600">+ Multa (2%): R$ {fin.fine.toFixed(2).replace('.', ',')}</p>
-                                        <p className="text-[9px] text-red-600">+ Juros (Diário): R$ {fin.interest.toFixed(2).replace('.', ',')}</p>
+                                        <p className="text-[9px] text-red-600">+ Multa: R$ {fin.fine.toFixed(2).replace('.', ',')}</p>
+                                        <p className="text-[9px] text-red-600">+ Juros: R$ {fin.interest.toFixed(2).replace('.', ',')}</p>
                                     </div>
                                 )}
                             </div>
-                            <div className="w-20 text-right hidden sm:block text-gray-400 text-xs">R$ {fin.originalValue.toFixed(2).replace('.', ',')}</div>
-                            <div className="w-24 text-right hidden sm:block text-gray-400 text-xs">R$ {(fin.fine + fin.interest).toFixed(2).replace('.', ',')}</div>
                             <div className="w-28 text-right font-black text-gray-900 text-sm">R$ {fin.total.toFixed(2).replace('.', ',')}</div>
                         </div>
                     </div>
