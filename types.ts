@@ -285,6 +285,7 @@ export interface Student {
   historico_escolar_2025?: string;
   gradeLevelSigla?: string; // New field to preserve original PDF sigla
   isScholarship?: boolean; // Indicates if the student is exempt from monthly fees
+  phoneNumber?: string;
 }
 
 export interface Teacher {

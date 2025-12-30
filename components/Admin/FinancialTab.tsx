@@ -11,6 +11,7 @@ import { SCHOOL_UNITS_LIST } from '../../constants';
 import { Button } from '../Button';
 import { db } from '../../firebaseConfig';
 import { calculateFinancials } from '../../utils/financialUtils';
+import { sanitizePhone } from '../../utils/formattingUtils';
 
 interface FinancialTabProps {
     isGeneralAdmin: boolean;
@@ -24,7 +25,6 @@ interface FinancialTabProps {
     setSelectedStudentForFinancial: (student: Student) => void;
     setIsFinancialModalOpen: (open: boolean) => void;
     setSelectedReceiptForModal: (receipt: Mensalidade) => void;
-    maskPhone: (val: string) => string;
 }
 
 export const FinancialTab: React.FC<FinancialTabProps> = ({
@@ -38,8 +38,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
     onFixDuplicates,
     setSelectedStudentForFinancial,
     setIsFinancialModalOpen,
-    setSelectedReceiptForModal,
-    maskPhone
+    setSelectedReceiptForModal
 }) => {
     // --- LOCAL STATES ---
     const [financialRecords, setFinancialRecords] = useState<Mensalidade[]>([]);
@@ -91,7 +90,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
 
     // --- HANDLERS ---
     const handleContactPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setContactPhone(maskPhone(e.target.value));
+        setContactPhone(e.target.value.replace(/\D/g, ''));
     };
 
     const handleSaveContact = () => {
@@ -449,7 +448,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
                                                         <td className="px-6 py-3 text-center">
                                                             {st.studentPhone ? (
                                                                 <a
-                                                                    href={`https://wa.me/${st.studentPhone.replace(/\D/g, '')}?text=Prezado responsável, informamos que consta uma pendência financeira referente ao aluno(a) *${st.studentName}* relativa ao mês de *${st.month}*. Valor atualizado (com juros/multa): *R$ ${st.value.toFixed(2)}*. Para regularizar, acesse a área financeira do nosso aplicativo: https://meuexpansivo.vercel.app/ . Caso já tenha efetuado o pagamento, por favor, desconsidere esta mensagem.`}
+                                                                    href={`https://wa.me/${st.studentPhone ? sanitizePhone(st.studentPhone) : ''}?text=Prezado responsável, informamos que consta uma pendência financeira referente ao aluno(a) *${st.studentName}* relativa ao mês de *${st.month}*. Valor atualizado (com juros/multa): *R$ ${st.value.toFixed(2)}*. Para regularizar, acesse a área financeira do nosso aplicativo: https://meuexpansivo.vercel.app/ . Caso já tenha efetuado o pagamento, por favor, desconsidere esta mensagem.`}
                                                                     target="_blank"
                                                                     rel="noreferrer"
                                                                     className="inline-flex items-center gap-1 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold hover:bg-green-600"
@@ -615,7 +614,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
 
                             const progressPercent = ((bulkCurrentIndex) / validList.length) * 100;
                             const messageText = `Prezado responsável, informamos que consta uma pendência financeira referente ao aluno(a) *${currentStudent.studentName}* relativa ao mês de *${currentStudent.month}*. Valor atualizado (com juros/multa): *R$ ${currentStudent.value.toFixed(2)}*. Para regularizar, acesse a área financeira do nosso aplicativo: https://meuexpansivo.vercel.app/ . Caso já tenha efetuado o pagamento, por favor, desconsidere esta mensagem.`;
-                            const waLink = `https://wa.me/${currentStudent.studentPhone.replace(/\D/g, '')}?text=${encodeURIComponent(messageText)}`;
+                            const waLink = `https://wa.me/${currentStudent.studentPhone ? sanitizePhone(currentStudent.studentPhone) : ''}?text=${encodeURIComponent(messageText)}`;
 
                             return (
                                 <div className="flex flex-col h-full">

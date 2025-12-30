@@ -13,7 +13,7 @@ import { Shield, User, GraduationCap, LayoutDashboard, Clock, Globe, FileBarChar
 import { TableSkeleton } from './Skeleton';
 import { CoordinationTab } from './Admin/CoordinationTab';
 import { FinancialTab } from './Admin/FinancialTab';
-import { maskPhone, maskCPF } from '../utils/formattingUtils';
+import { maskCPF, sanitizePhone } from '../utils/formattingUtils';
 import { calculateFinancials } from '../utils/financialUtils';
 import ManualPaymentModal from './Admin/ManualPaymentModal';
 import StudentFinancialModal from './Admin/StudentFinancialModal';
@@ -109,13 +109,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const maskPhone = (value: string) => {
         let r = value.replace(/\D/g, '');
         if (r.length > 11) r = r.substring(0, 11);
-        if (r.length > 7) {
-            r = `(${r.substring(0, 2)}) ${r.substring(2, 7)}-${r.substring(7)}`;
-        } else if (r.length > 2) {
-            r = `(${r.substring(0, 2)}) ${r.substring(2)}`;
-        } else if (r.length > 0) {
-            r = `(${r}`;
-        }
         return r;
     };
 
@@ -131,7 +124,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [sValorMensalidade, setSValorMensalidade] = useState('');
     const [sScholarship, setSScholarship] = useState(false); // Novo Campo Valor
     const [sEmail, setSEmail] = useState('');
-    const [sPhone, setSPhone] = useState('+55');
+    const [sPhone, setSPhone] = useState('55');
     const [sCode, setSCode] = useState('');
     const [sGrade, setSGrade] = useState(SCHOOL_GRADES_LIST[0]);
     const [sUnit, setSUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_1);
@@ -154,7 +147,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [editingTeacherId, setEditingTeacherId] = useState<string | null>(null);
     const [tName, setTName] = useState('');
     const [tCpf, setTCpf] = useState('');
-    const [tPhone, setTPhone] = useState('+55');
+    const [tPhone, setTPhone] = useState('55');
     const [tUnit, setTUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_1);
     const [tPass, setTPass] = useState('');
     const [showTeacherPassword, setShowTeacherPassword] = useState(false);
@@ -163,6 +156,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [teacherToDelete, setTeacherToDelete] = useState<string | null>(null);
     const [teacherSearchTerm, setTeacherSearchTerm] = useState(''); // Novo filtro nome
     const [teacherFilterUnit, setTeacherFilterUnit] = useState(''); // Novo filtro unidade
+    const [teacherFilterSubject, setTeacherFilterSubject] = useState('');
 
     const [editingAdminId, setEditingAdminId] = useState<string | null>(null);
     const [aName, setAName] = useState('');
@@ -690,7 +684,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         const matchesUnit = isGeneralAdmin ? (teacherFilterUnit ? teacher.unit === teacherFilterUnit : true) : teacher.unit === adminUnit;
         const term = teacherSearchTerm.toLowerCase();
         const matchesSearch = teacher.name.toLowerCase().includes(term);
-        return matchesUnit && matchesSearch;
+        const matchesSubject = teacherFilterSubject ? teacher.subjects.includes(teacherFilterSubject as Subject) : true;
+        return matchesUnit && matchesSearch && matchesSubject;
     });
     const filteredAdmins = admins.filter(a => a.id !== 'a0' && a.unit);
     const sortedSubjects = [...SUBJECT_LIST].sort((a, b) => a.localeCompare(b));
@@ -756,14 +751,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setSResponsavel(s.nome_responsavel || '');
         setSCpfResponsavel(s.cpf_responsavel || '');
         setSEmail(s.email_responsavel || '');
-        setSPhone(s.telefone_responsavel || '+55');
         setSCode(s.code);
         setSGrade(s.gradeLevel);
         setSUnit(s.unit);
-        setSShift(s.shift);
+        setSPhone(s.phoneNumber || '55');
         setSClass(s.schoolClass);
-        setSPass(s.password);
-        setSPass(s.password);
+        setSShift(s.shift);
+        setSPass(s.password || '');
         setSMetodoPagamento(s.metodo_pagamento || 'Interno');
         setSValorMensalidade(s.valor_mensalidade ? s.valor_mensalidade.toString() : '');
         setSScholarship(s.isScholarship || false);
@@ -802,7 +796,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             nome_responsavel: sResponsavel.trim(),
             cpf_responsavel: sCpfResponsavel,
             email_responsavel: sEmail.trim(),
-            telefone_responsavel: sPhone,
+            phoneNumber: sanitizePhone(sPhone),
             code: sCode.trim(),
             gradeLevel: sGrade,
             unit: unitToSave,
@@ -895,8 +889,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         }
     };
     const initiateDeleteTeacher = (id: string) => setTeacherToDelete(id);
-    const startEditingTeacher = (t: Teacher) => { setEditingTeacherId(t.id); setTName(t.name); setTCpf(t.cpf); setTPhone(t.phoneNumber || '+55'); setTUnit(t.unit); setTSubjects(t.subjects); setTPass(t.password); window.scrollTo({ top: 0, behavior: 'smooth' }); };
-    const cancelEditingTeacher = () => { setEditingTeacherId(null); setTName(''); setTCpf(''); setTPhone('+55'); setTPass(''); setTSubjects([]); };
+    const startEditingTeacher = (t: Teacher) => { setEditingTeacherId(t.id); setTName(t.name); setTCpf(t.cpf); setTPhone(t.phoneNumber || '55'); setTUnit(t.unit); setTSubjects(t.subjects); setTPass(t.password); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    const cancelEditingTeacher = () => { setEditingTeacherId(null); setTName(''); setTCpf(''); setTPhone('55'); setTPass(''); setTSubjects([]); };
     const fullHandleTeacherSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const unitToSave = isGeneralAdmin ? tUnit : adminUnit!;
@@ -912,7 +906,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 ...original,
                 name: tName.trim(),
                 cpf: tCpf,
-                phoneNumber: tPhone,
+                phoneNumber: sanitizePhone(tPhone),
                 unit: unitToSave,
                 subjects: tSubjects,
                 password: tPass.trim() ? tPass : original.password
@@ -925,7 +919,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 id: `teacher-${Date.now()}`,
                 name: tName.trim(),
                 cpf: tCpf,
-                phoneNumber: tPhone,
+                phoneNumber: sanitizePhone(tPhone), // Sanitize Teacher Phone
                 unit: unitToSave,
                 subjects: tSubjects,
                 password: tPass
@@ -940,19 +934,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const handleRemoveSubject = (s: Subject) => setTSubjects(tSubjects.filter(sub => sub !== s));
 
     // Handlers de Telefone & CPF com Máscara
-    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => { setTPhone(maskPhone(e.target.value)); };
-    const handleContactPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => { setContactPhone(maskPhone(e.target.value)); };
-    const handleTCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => { setTCpf(maskCPF(e.target.value)); };
-    const handleSPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => { setSPhone(maskPhone(e.target.value)); };
 
     // Handlers de Contatos
     const handleSaveContact = (role: ContactRole) => {
         if (!contactName || !contactPhone) return alert("Preencha nome e telefone.");
 
         const newContact: UnitContact = {
-            id: editingContactId || `contact-${Date.now()}`,
+            id: editingContactId || Date.now().toString(),
             name: contactName,
-            phoneNumber: contactPhone,
+            phoneNumber: sanitizePhone(contactPhone), // Garante formato 55XXXXXXXXXXX
             role: role,
             unit: contactUnit,
             ...(role === ContactRole.COORDINATOR ? { segment: contactSegment, password: contactPassword } : {}) // Salva segmento e senha se for Coordenação
@@ -968,7 +958,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         }
 
         setContactName('');
-        setContactPhone('+55');
+        setContactPhone('55');
         setContactSegment('all');
         setContactPassword('');
     };
@@ -985,7 +975,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const cancelEditingContact = () => {
         setEditingContactId(null);
         setContactName('');
-        setContactPhone('+55');
+        setContactPhone('55');
         setContactSegment('all');
         setContactPassword('');
     };
@@ -1159,7 +1149,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <div><label className="text-sm font-medium font-bold text-green-700">Valor da Mensalidade (R$)</label><input type="number" step="0.01" value={sValorMensalidade} onChange={e => setSValorMensalidade(e.target.value)} className="w-full p-2 border rounded font-bold text-green-800" placeholder="0.00" disabled={sScholarship} /></div>
                         <div className="grid grid-cols-2 gap-2">
                             <div><label className="text-sm font-medium">E-mail</label><input type="email" value={sEmail} onChange={e => setSEmail(e.target.value)} className="w-full p-2 border rounded" placeholder="email@exemplo.com" /></div>
-                            <div><label className="text-sm font-medium">Telefone</label><input type="text" value={sPhone} onChange={handleSPhoneChange} className="w-full p-2 border rounded" placeholder="(84) 99999-9999" /></div>
+                            <div>
+                                <label className="text-sm font-medium">Telefone</label>
+                                <input type="text" value={sPhone} onChange={e => setSPhone(e.target.value.replace(/\D/g, ''))} className="w-full p-2 border rounded" placeholder="Ex: 5584999999999" />
+                                <p className="text-xs text-gray-500 mt-1">Apenas números (Ex: 5584...)</p>
+                            </div>
                         </div>
 
 
@@ -1278,14 +1272,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     <table className="w-full min-w-[600px] text-sm text-left">
                                         <thead className="bg-gray-50 text-gray-500 uppercase text-xs"><tr><th className="p-3">Nome</th><th className="p-3">Código</th><th className="p-3">Unidade</th><th className="p-3">Ações</th></tr></thead>
                                         <tbody>{filteredStudents.map(s => (<tr key={s.id} className="border-b hover:bg-gray-50"><td className="p-3 font-medium text-gray-800">{s.name}{s.isBlocked && <span className="ml-2 bg-red-100 text-red-700 text-[9px] font-bold px-2 py-0.5 rounded-full">BLOQUEADO</span>}</td><td className="p-3 font-mono text-gray-600">{s.code}</td><td className="p-3">{s.unit}</td><td className="p-3 flex gap-3 text-xs font-medium">
-                                            <button onClick={() => { setSelectedStudentForFinancial(s); setIsFinancialModalOpen(true); }} className="text-green-700 bg-green-50 px-2 py-1 rounded hover:bg-green-100 border border-green-200">💲 Fin.</button>
-                                            <button onClick={() => startEditingStudent(s)} className="text-blue-950 hover:underline">Editar</button><button onClick={() => onToggleBlockStudent(s.id)} className={`hover:underline ${s.isBlocked ? 'text-green-600' : 'text-yellow-600'}`}>{s.isBlocked ? 'Desbloquear' : 'Bloquear'}</button><button onClick={() => initiateDeleteStudent(s.id)} className="text-red-600 hover:underline">Excluir</button></td></tr>))}</tbody>
+                                            <button
+                                                onClick={() => { setSelectedStudentForFinancial(s); setIsFinancialModalOpen(true); }}
+                                                className="text-green-700 bg-green-50 px-2 py-1 rounded hover:bg-green-100 border border-green-200"
+                                            >
+                                                💲 Fin.
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    const phone = s.phoneNumber ? sanitizePhone(s.phoneNumber) : '';
+                                                    if (phone) window.open(`https://wa.me/${phone}`, '_blank');
+                                                }}
+                                                className="text-green-600 hover:text-green-800"
+                                                title="WhatsApp"
+                                            >
+                                                📱
+                                            </button>
+                                            <button onClick={() => startEditingStudent(s)} className="text-blue-950 hover:underline">Editar</button>
+                                            <button onClick={() => onToggleBlockStudent(s.id)} className={`hover:underline ${s.isBlocked ? 'text-green-600' : 'text-yellow-600'}`}>{s.isBlocked ? 'Desbloquear' : 'Bloquear'}</button>
+                                            <button onClick={() => initiateDeleteStudent(s.id)} className="text-red-600 hover:underline">Excluir</button>
+                                        </td></tr>))}</tbody>
                                     </table>
                                 </div>
                             </div>
                         </div>
                     </div>)}
-                    {activeTab === 'teachers' && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-1"><div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"><div className="flex justify-between items-center mb-4"><h2 className="text-lg font-bold text-gray-800">{editingTeacherId ? 'Editar Professor' : 'Cadastrar Novo Professor'}</h2>{editingTeacherId && (<button onClick={cancelEditingTeacher} className="text-sm text-red-600 hover:underline">Cancelar</button>)}</div><form onSubmit={fullHandleTeacherSubmit} className="space-y-4"><div><label className="text-sm font-medium">Nome Completo</label><input type="text" value={tName} onChange={e => setTName(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Matérias</label><div className="flex gap-2"><select value={tempSubject} onChange={e => setTempSubject(e.target.value as Subject)} className="flex-1 p-2 border rounded">{sortedSubjects.map(s => <option key={s} value={s}>{s}</option>)}</select><button type="button" onClick={handleAddSubject} className="bg-blue-100 text-blue-950 px-3 rounded">Add</button></div><div className="flex flex-wrap gap-2 mt-2">{tSubjects.map(s => (<span key={s} className="bg-gray-100 px-2 rounded text-xs flex items-center gap-1">{s} <button type="button" onClick={() => handleRemoveSubject(s)}>&times;</button></span>))}</div></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">CPF</label><input type="text" value={tCpf} onChange={handleTCpfChange} required className="w-full p-2 border rounded" placeholder="000.000.000-00" /></div><div><label className="text-sm font-medium">Telefone</label><input type="text" value={tPhone} onChange={handlePhoneChange} className="w-full p-2 border rounded" placeholder="(84) 99999-9999" /></div></div><div><label className="text-sm font-medium">Unidade</label>{isGeneralAdmin ? (<select value={tUnit} onChange={e => setTUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}</div><div><label className="text-sm font-medium">Senha</label><div className="flex gap-2 relative"><input type={showTeacherPassword ? "text" : "password"} value={tPass} onChange={e => setTPass(e.target.value)} className="w-full p-2 border rounded" required={!editingTeacherId} /><button type="button" onClick={() => setShowTeacherPassword(!showTeacherPassword)} className="absolute right-16 top-2 text-gray-500">{showTeacherPassword ? <EyeOffIcon /> : <EyeIcon />}</button><button type="button" onClick={handleGenerateTeacherPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button></div><p className="text-xs text-gray-500 mt-1">Senha automática (8 caracteres).</p></div><Button type="submit" className="w-full">{editingTeacherId ? 'Salvar' : 'Cadastrar'}</Button></form></div></div><div className="lg:col-span-2"><div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"><div className="p-4 bg-gray-50 border-b flex flex-col gap-4">
+                    {activeTab === 'teachers' && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-1"><div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"><div className="flex justify-between items-center mb-4"><h2 className="text-lg font-bold text-gray-800">{editingTeacherId ? 'Editar Professor' : 'Cadastrar Novo Professor'}</h2>{editingTeacherId && (<button onClick={cancelEditingTeacher} className="text-sm text-red-600 hover:underline">Cancelar</button>)}</div><form onSubmit={fullHandleTeacherSubmit} className="space-y-4"><div><label className="text-sm font-medium">Nome Completo</label><input type="text" value={tName} onChange={e => setTName(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Matérias</label><div className="flex gap-2"><select value={tempSubject} onChange={e => setTempSubject(e.target.value as Subject)} className="flex-1 p-2 border rounded">{sortedSubjects.map(s => <option key={s} value={s}>{s}</option>)}</select><button type="button" onClick={handleAddSubject} className="bg-blue-100 text-blue-950 px-3 rounded">Add</button></div><div className="flex flex-wrap gap-2 mt-2">{tSubjects.map(s => (<span key={s} className="bg-gray-100 px-2 rounded text-xs flex items-center gap-1">{s} <button type="button" onClick={() => handleRemoveSubject(s)}>&times;</button></span>))}</div></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">CPF</label><input type="text" value={tCpf} onChange={e => setTCpf(maskCPF(e.target.value))} className="w-full p-2 border rounded" placeholder="000.000.000-00" /></div>
+                        <div>
+                            <label className="text-sm font-medium">Telefone</label>
+                            <input type="text" value={tPhone} onChange={e => setTPhone(e.target.value.replace(/\D/g, ''))} className="w-full p-2 border rounded" placeholder="Ex: 5584999999999" />
+                            <p className="text-xs text-gray-500 mt-1">Apenas números (Ex: 5584...)</p>
+                        </div>
+                    </div><div><label className="text-sm font-medium">Unidade</label>{isGeneralAdmin ? (<select value={tUnit} onChange={e => setTUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}</div><div><label className="text-sm font-medium">Senha</label><div className="flex gap-2 relative"><input type={showTeacherPassword ? "text" : "password"} value={tPass} onChange={e => setTPass(e.target.value)} className="w-full p-2 border rounded" required={!editingTeacherId} /><button type="button" onClick={() => setShowTeacherPassword(!showTeacherPassword)} className="absolute right-16 top-2 text-gray-500">{showTeacherPassword ? <EyeOffIcon /> : <EyeIcon />}</button><button type="button" onClick={handleGenerateTeacherPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button></div><p className="text-xs text-gray-500 mt-1">Senha automática (8 caracteres).</p></div><Button type="submit" className="w-full">{editingTeacherId ? 'Salvar' : 'Cadastrar'}</Button></form></div></div><div className="lg:col-span-2"><div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"><div className="p-4 bg-gray-50 border-b flex flex-col gap-4">
                         <h3 className="font-bold">Professores ({filteredTeachers.length})</h3>
                         <div className="flex flex-wrap gap-2 w-full">
                             {isGeneralAdmin && (
@@ -1300,15 +1318,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     ))}
                                 </select>
                             )}
-                            <input
-                                type="text"
-                                placeholder="Buscar professor..."
-                                value={teacherSearchTerm}
-                                onChange={e => setTeacherSearchTerm(e.target.value)}
-                                className="p-2 border rounded text-sm w-full md:w-64 focus:ring-blue-950 focus:border-blue-950"
-                            />
+                            <select
+                                value={teacherFilterSubject}
+                                onChange={(e) => setTeacherFilterSubject(e.target.value)}
+                                className="p-2 border rounded text-sm bg-white text-gray-700 focus:ring-blue-950 focus:border-blue-950 flex-grow md:flex-grow-0 md:w-auto w-full"
+                            >
+                                <option value="">Todas as Matérias</option>
+                                {sortedSubjects.map(s => (
+                                    <option key={s} value={s}>{s}</option>
+                                ))}
+                            </select>
                         </div>
-                    </div><div className="overflow-x-auto"><table className="w-full min-w-[600px] text-sm text-left"><thead className="bg-gray-50 text-gray-500"><tr><th className="p-3">Nome</th><th className="p-3">Matérias</th><th className="p-3">Unidade</th><th className="p-3">Ações</th></tr></thead><tbody>{filteredTeachers.map(t => (<tr key={t.id} className="border-b"><td className="p-3">{t.name}</td><td className="p-3"><div className="flex flex-wrap gap-1">{t.subjects.map(s => <span key={s} className="bg-gray-100 px-2 rounded text-xs">{s}</span>)}</div></td><td className="p-3">{t.unit}</td><td className="p-3 flex gap-2"><button onClick={() => startEditingTeacher(t)} className="text-blue-950 hover:underline">Editar</button><button onClick={() => initiateDeleteTeacher(t.id)} className="text-red-600 hover:underline">Excluir</button></td></tr>))}</tbody></table></div></div></div></div>)}
+                    </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-gray-50 text-gray-500 uppercase text-xs"><tr><th className="p-3">Nome</th><th className="p-3">Matérias</th><th className="p-3">Unidade</th><th className="p-3">Ações</th></tr></thead>
+                                <tbody>{filteredTeachers.map(t => (<tr key={t.id} className="border-b hover:bg-gray-50">
+                                    <td className="p-3 font-medium text-gray-800">{t.name}</td>
+                                    <td className="p-3"><div className="flex flex-wrap gap-1">{t.subjects.map(s => <span key={s} className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[10px]">{s}</span>)}</div></td>
+                                    <td className="p-3">{t.unit}</td>
+                                    <td className="p-3 flex gap-2">
+                                        <button className="text-blue-950 hover:underline" onClick={() => { setEditingTeacherId(t.id); setTName(t.name); setTCpf(t.cpf); setTPhone(t.phoneNumber || '55'); setTSubjects(t.subjects); setTUnit(t.unit); setTPass(t.password); }}>Editar</button>
+                                        <button onClick={() => setTeacherToDelete(t.id)} className="text-red-600 hover:underline">Excluir</button>
+                                    </td>
+                                </tr>))}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                        </div>
+                    </div>)}
+
                     {activeTab === 'messages' && (<div className="animate-fade-in-up"><div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-4 border-b"><h2 className="text-2xl font-bold text-gray-800 mb-3 sm:mb-0">Central de Mensagens</h2><div className="flex items-center gap-2 p-1 bg-gray-200 rounded-lg"><button onClick={() => setMessageFilter('new')} className={`px-3 py-1 text-sm rounded-md font-medium ${messageFilter === 'new' ? 'bg-white shadow text-blue-950' : 'text-gray-600'}`}>Não Lidas</button><button onClick={() => setMessageFilter('all')} className={`px-3 py-1 text-sm rounded-md font-medium ${messageFilter === 'all' ? 'bg-white shadow text-blue-950' : 'text-gray-600'}`}>Todas</button></div></div>{filteredMessages.length > 0 ? (<div className="space-y-4">{filteredMessages.map(message => {
                         const sender = students.find(s => s.id === message.studentId);
                         const typeStyles = { [MessageType.COMPLIMENT]: { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-800' }, [MessageType.SUGGESTION]: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-800' }, [MessageType.COMPLAINT]: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-800' }, }; const style = typeStyles[message.messageType]; return (<div key={message.id} className={`p-5 rounded-lg shadow-sm border ${message.status === 'new' ? 'bg-white border-l-4 border-l-blue-950' : 'bg-gray-50 border-gray-200'}`}><div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 pb-3 border-b"><div><p className="font-bold text-gray-800">{message.studentName}</p><p className="text-xs text-gray-500">Unidade: <span className="font-semibold">{message.unit}</span></p> {sender && (<p className="text-xs text-gray-600 font-medium mt-0.5">{sender.gradeLevel} - {sender.schoolClass} ({sender.shift})</p>)}</div><p className="text-xs text-gray-400 mt-2 sm:mt-0">{formatDate(message.timestamp)}</p></div><div className="flex gap-4 mb-4"><span className={`px-2 py-1 text-xs font-bold rounded ${style.bg} ${style.border} ${style.text}`}>{message.messageType}</span><span className="text-xs text-gray-500 font-medium self-center">Para: <span className="font-bold text-gray-700">{message.recipient}</span></span></div><p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p><div className="mt-4 pt-3 border-t flex justify-end"><button onClick={() => onUpdateMessageStatus(message.id, message.status === 'new' ? 'read' : 'new')} className={`text-xs font-bold py-1 px-3 rounded-full transition-colors ${message.status === 'new' ? 'bg-blue-100 text-blue-950 hover:bg-blue-200' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>{message.status === 'new' ? 'Marcar como Lida' : 'Marcar como Não Lida'}</button></div></div>);
@@ -1443,7 +1482,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             </div>
                                             <div>
                                                 <label className="text-sm font-medium">Telefone (WhatsApp)</label>
-                                                <input type="text" value={contactPhone} onChange={handleContactPhoneChange} className="w-full p-2 border rounded" placeholder="Ex: 5584999999999" />
+                                                <input type="text" value={contactPhone} onChange={e => setContactPhone(e.target.value.replace(/\D/g, ''))} className="w-full p-2 border rounded" placeholder="Ex: 5584999999999" />
                                                 <p className="text-xs text-gray-500 mt-1">Apenas números, com DDD (Ex: 5584...)</p>
                                             </div>
 
@@ -1568,6 +1607,131 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             </div>
                         )
                     }
+                    {activeTab === 'teachers' && (
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <div className="lg:col-span-1">
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h2 className="text-lg font-bold text-gray-800">{editingTeacherId ? 'Editar Professor' : 'Cadastrar Novo Professor'}</h2>
+                                        {editingTeacherId && (
+                                            <button onClick={cancelEditingTeacher} className="text-sm text-red-600 hover:underline">Cancelar</button>
+                                        )}
+                                    </div>
+                                    <form onSubmit={fullHandleTeacherSubmit} className="space-y-4">
+                                        <div>
+                                            <label className="text-sm font-medium">Nome Completo</label>
+                                            <input type="text" value={tName} onChange={e => setTName(e.target.value)} required className="w-full p-2 border rounded" />
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium">Matérias</label>
+                                            <div className="flex gap-2">
+                                                <select value={tempSubject} onChange={e => setTempSubject(e.target.value as Subject)} className="flex-1 p-2 border rounded">
+                                                    {sortedSubjects.map(s => <option key={s} value={s}>{s}</option>)}
+                                                </select>
+                                                <button type="button" onClick={handleAddSubject} className="bg-blue-100 text-blue-950 px-3 rounded">Add</button>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2 mt-2">
+                                                {tSubjects.map(s => (
+                                                    <span key={s} className="bg-gray-100 px-2 rounded text-xs flex items-center gap-1">{s} <button type="button" onClick={() => handleRemoveSubject(s)}>&times;</button></span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <label className="text-sm font-medium">CPF</label>
+                                                <input type="text" value={tCpf} onChange={e => setTCpf(maskCPF(e.target.value))} className="w-full p-2 border rounded" placeholder="000.000.000-00" />
+                                            </div>
+                                            <div>
+                                                <label className="text-sm font-medium">Telefone</label>
+                                                <input type="text" value={tPhone} onChange={e => setTPhone(e.target.value.replace(/\D/g, ''))} className="w-full p-2 border rounded" placeholder="Ex: 5584999999999" />
+                                                <p className="text-xs text-gray-500 mt-1">Apenas números (Ex: 5584...)</p>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium">Unidade</label>
+                                            {isGeneralAdmin ? (
+                                                <select value={tUnit} onChange={e => setTUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">
+                                                    {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}
+                                                </select>
+                                            ) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium">Senha</label>
+                                            <div className="flex gap-2 relative">
+                                                <input type={showTeacherPassword ? "text" : "password"} value={tPass} onChange={e => setTPass(e.target.value)} className="w-full p-2 border rounded" required={!editingTeacherId} />
+                                                <button type="button" onClick={() => setShowTeacherPassword(!showTeacherPassword)} className="absolute right-16 top-2 text-gray-500">{showTeacherPassword ? <EyeOffIcon /> : <EyeIcon />}</button>
+                                                <button type="button" onClick={handleGenerateTeacherPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button>
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-1">Senha automática (8 caracteres).</p>
+                                        </div>
+                                        <Button type="submit" className="w-full">{editingTeacherId ? 'Salvar' : 'Cadastrar'}</Button>
+                                    </form>
+                                </div>
+                            </div>
+                            <div className="lg:col-span-2">
+                                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                    <div className="p-4 bg-gray-50 border-b flex flex-col gap-4">
+                                        <h3 className="font-bold">Professores ({filteredTeachers.length})</h3>
+                                        <div className="flex flex-wrap gap-2 w-full">
+                                            {isGeneralAdmin && (
+                                                <select
+                                                    value={teacherFilterUnit}
+                                                    onChange={(e) => setTeacherFilterUnit(e.target.value)}
+                                                    className="p-2 border border-gray-300 rounded-lg text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                                >
+                                                    <option value="all">Todas as Unidades</option>
+                                                    {SCHOOL_UNITS_LIST.map(unit => (
+                                                        <option key={unit} value={unit}>{unit}</option>
+                                                    ))}
+                                                </select>
+                                            )}
+                                            <select
+                                                value={teacherFilterSubject}
+                                                onChange={(e) => setTeacherFilterSubject(e.target.value)}
+                                                className="p-2 border border-gray-300 rounded-lg text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                            >
+                                                <option value="all">Todas as Matérias</option>
+                                                {sortedSubjects.map(subject => (
+                                                    <option key={subject} value={subject}>{subject}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full min-w-[600px] text-sm text-left">
+                                            <thead className="bg-gray-50">
+                                                <tr>
+                                                    <th className="p-3">Nome</th>
+                                                    <th className="p-3">Matérias</th>
+                                                    <th className="p-3">Unidade</th>
+                                                    <th className="p-3">Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {filteredTeachers.map(t => (
+                                                    <tr key={t.id} className="border-b">
+                                                        <td className="p-3 font-medium">{t.name}</td>
+                                                        <td className="p-3">
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {t.subjects.map(s => (
+                                                                    <span key={s} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{s}</span>
+                                                                ))}
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-3"><span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">{t.unit}</span></td>
+                                                        <td className="p-3 flex gap-2">
+                                                            <button onClick={() => startEditingTeacher(t)} className="text-blue-950 hover:underline">Editar</button>
+                                                            <button onClick={() => initiateDeleteTeacher(t.id)} className="text-red-600 hover:underline">Excluir</button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {activeTab === 'admins' && isGeneralAdmin && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-1"><div className="bg-white p-6 rounded-xl shadow-sm border border-purple-200"><h2 className="text-lg font-bold text-purple-800 mb-4">{editingAdminId ? 'Editar Admin' : 'Novo Admin de Unidade'}</h2><form onSubmit={handleAdminSubmit} className="space-y-4"><div><label className="text-sm font-medium">Nome (Descrição)</label><input type="text" value={aName} onChange={e => setAName(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Usuário de Login</label><input type="text" value={aUser} onChange={e => setAUser(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Unidade Responsável</label><select value={aUnit} onChange={e => setAUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select></div><div><label className="text-sm font-medium">Senha</label><div className="flex gap-2 relative"><input type={showAdminPassword ? "text" : "password"} value={aPass} onChange={e => setAPass(e.target.value)} required={!editingAdminId} className="w-full p-2 border rounded" /><button type="button" onClick={() => setShowAdminPassword(!showAdminPassword)} className="absolute right-16 top-2 text-gray-500">{showAdminPassword ? <EyeOffIcon /> : <EyeIcon />}</button><button type="button" onClick={handleGenerateAdminPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button></div></div><Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700">Salvar Admin</Button></form></div></div><div className="lg:col-span-2"><div className="bg-white rounded-xl shadow-sm border border-gray-200"><div className="p-4 bg-purple-50 border-b border-purple-100"><h3 className="font-bold text-purple-900">Administradores Cadastrados</h3></div><div className="overflow-x-auto"><table className="w-full min-w-[600px] text-sm text-left"><thead className="bg-gray-50"><tr><th className="p-3">Nome</th><th className="p-3">Usuário</th><th className="p-3">Unidade</th><th className="p-3">Ações</th></tr></thead><tbody>{filteredAdmins.map(a => (<tr key={a.id} className="border-b"><td className="p-3 font-medium">{a.name}</td><td className="p-3 font-mono text-gray-600">{a.username}</td><td className="p-3"><span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{a.unit}</span></td><td className="p-3 flex gap-2"><button onClick={() => startEditingAdmin(a)} className="text-blue-950 hover:underline">Editar</button><button onClick={() => initiateDeleteAdmin(a.id)} className="text-red-600 hover:underline">Excluir</button></td></tr>))}</tbody></table></div></div></div></div>)}
                     {
@@ -1598,7 +1762,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 setSelectedStudentForFinancial={setSelectedStudentForFinancial}
                                 setIsFinancialModalOpen={setIsFinancialModalOpen}
                                 setSelectedReceiptForModal={setSelectedReceiptForModal}
-                                maskPhone={maskPhone}
                             />
                         )
                     }

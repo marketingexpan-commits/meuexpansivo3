@@ -111,6 +111,7 @@ export interface Student {
   shift: SchoolShift;
   unit: SchoolUnit;
   isBlocked: boolean;
+  phoneNumber?: string;
   valor_mensalidade?: number;
   isScholarship?: boolean;
 }
@@ -208,7 +209,7 @@ export interface UnitContact {
   id: string;
   name: string;
   role: string; // 'Coordenador', 'Diretor', etc.
-  phone: string; // Whatsapp formatting
+  phoneNumber: string; // Whatsapp formatting
   unit: SchoolUnit;
   segment?: CoordinationSegment; // Segmento de atuação
   password?: string; // Senha de acesso para coordenadores

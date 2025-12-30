@@ -10,8 +10,10 @@ import {
 import {
     SCHOOL_UNITS_LIST,
     SCHOOL_GRADES_LIST,
-    SCHOOL_CLASSES_LIST
+    SCHOOL_CLASSES_LIST,
+    SUBJECT_LIST
 } from '../../constants';
+import { sanitizePhone } from '../../utils/formattingUtils';
 import { Button } from '../Button'; // Assuming Button is in components/Button or similar
 
 interface CoordinationTabProps {
@@ -161,6 +163,22 @@ export const CoordinationTab: React.FC<CoordinationTabProps> = ({
                                 </div>
                                 <div className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full">
                                     {pendingGradesMap[student.id]?.length} Pendência(s)
+                                </div>
+                                <div>
+                                    <button
+                                        onClick={() => {
+                                            const phone = student.phone ? sanitizePhone(student.phone) : '';
+                                            if (phone) {
+                                                window.open(`https://wa.me/${phone}?text=Olá, responsável pelo aluno(a) ${student.name}. Gostaria de tratar sobre as notas pendentes.`, '_blank');
+                                            } else {
+                                                alert('Telefone não cadastrado');
+                                            }
+                                        }}
+                                        className="ml-2 text-green-600 hover:text-green-800"
+                                        title="Contatar via WhatsApp"
+                                    >
+                                        📱
+                                    </button>
                                 </div>
                             </div>
                             <div className="p-0">
