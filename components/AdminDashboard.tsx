@@ -968,7 +968,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <SchoolLogo variant="header" />
                             <div>
                                 <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white mb-0.5 shadow-black drop-shadow-sm">
-                                    Meu Expansivo (V2) - SISTEMA ATUALIZADO
+                                    Meu Expansivo
                                 </h1>
                                 <div className="flex items-center gap-2 text-blue-200 text-xs md:text-sm font-medium">
                                     <span>Administração ({adminUnit || 'GERAL'})</span>
