@@ -1,11 +1,12 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+const https = require('https');
 
 // -------------------------------------------------------------
 // CONFIGURAÇÃO ZENVIA (Lê do .env)
 // -------------------------------------------------------------
 const ZENVIA_API_TOKEN = process.env.ZENVIA_API_TOKEN;
-const ZENVIA_SENDER_ID = 'Expansivo';
+const ZENVIA_SENDER_ID = process.env.ZENVIA_SENDER_ID || 'marketing.expan';
 
 // Helper para enviar SMS via Zenvia API (v2)
 async function sendZenviaSMS(phoneNumber, messageText) {
@@ -14,49 +15,59 @@ async function sendZenviaSMS(phoneNumber, messageText) {
         return false;
     }
 
-    try {
-        const url = 'https://api.zenvia.com/v2/channels/sms/messages';
+    // Debug Log
+    console.log("Using Zenvia Token:", ZENVIA_API_TOKEN ? "YES (Hidden)" : "NO");
 
+    return new Promise((resolve, reject) => {
         // Formatar telefone: Remover não- dígitos. Se não começar com 55, adicionar.
         let cleanPhone = phoneNumber.replace(/\D/g, '');
         if (!cleanPhone.startsWith('55')) {
             cleanPhone = '55' + cleanPhone;
         }
 
-        const payload = {
+        const data = JSON.stringify({
             from: ZENVIA_SENDER_ID,
             to: cleanPhone,
-            contents: [
-                {
-                    type: 'text',
-                    text: messageText
-                }
-            ]
-        };
+            contents: [{ type: 'text', text: messageText }]
+        });
 
-        const response = await fetch(url, {
+        const options = {
+            hostname: 'api.zenvia.com',
+            path: '/v2/channels/sms/messages',
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-API-TOKEN': ZENVIA_API_TOKEN
-            },
-            body: JSON.stringify(payload)
+                'X-API-TOKEN': ZENVIA_API_TOKEN,
+                'Content-Length': data.length
+            }
+        };
+
+        const req = https.request(options, (res) => {
+            let responseBody = '';
+
+            res.on('data', (chunk) => {
+                responseBody += chunk;
+            });
+
+            res.on('end', () => {
+                console.log(`✅ [Zenvia] Status: ${res.statusCode} | Body: ${responseBody}`);
+                if (res.statusCode >= 200 && res.statusCode < 300) {
+                    resolve(true);
+                } else {
+                    console.error(`❌ [Zenvia] Erro ${res.statusCode}:`, responseBody);
+                    resolve(false);
+                }
+            });
         });
 
-        if (!response.ok) {
-            const errText = await response.text();
-            console.error(`❌ [Zenvia] Erro ${response.status}:`, errText);
-            return false;
-        }
+        req.on('error', (error) => {
+            console.error("❌ [Zenvia] Network Error:", error);
+            resolve(false);
+        });
 
-        const data = await response.json();
-        console.log(`✅ [Zenvia] SMS enviado para ${cleanPhone}. ID:`, data.id);
-        return true;
-
-    } catch (error) {
-        console.error("❌ [Zenvia] Exceção ao enviar SMS:", error);
-        return false;
-    }
+        req.write(data);
+        req.end();
+    });
 }
 
 // -------------------------------------------------------------
