@@ -2,23 +2,22 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 
 // -------------------------------------------------------------
-// CONFIGURAÇÃO ZENVIA (Insira seu Token abaixo)
+// CONFIGURAÇÃO ZENVIA (Lê do .env)
 // -------------------------------------------------------------
-const ZENVIA_API_TOKEN = 'COLOQUE_AQUI_SEU_TOKEN';
+const ZENVIA_API_TOKEN = process.env.ZENVIA_API_TOKEN;
 const ZENVIA_SENDER_ID = 'Expansivo';
 
 // Helper para enviar SMS via Zenvia API (v2)
 async function sendZenviaSMS(phoneNumber, messageText) {
-    // Modo Simulação (Para teste local ou se o token não for inserido)
     if (!ZENVIA_API_TOKEN || ZENVIA_API_TOKEN.includes('COLOQUE_AQUI')) {
-        console.warn("⚠️ [Zenvia Simulation] Token não configurado. Mensagem seria:", messageText);
+        console.warn("⚠️ [Zenvia Simulation] Token não configurado ou inválido.", messageText);
         return false;
     }
 
     try {
         const url = 'https://api.zenvia.com/v2/channels/sms/messages';
 
-        // Formatar telefone: Remover +55 se houver, garantir formato '5584999999999'
+        // Formatar telefone: Remover não- dígitos. Se não começar com 55, adicionar.
         let cleanPhone = phoneNumber.replace(/\D/g, '');
         if (!cleanPhone.startsWith('55')) {
             cleanPhone = '55' + cleanPhone;
@@ -78,7 +77,7 @@ exports.checkAndSendSms = functions.pubsub.schedule('every day 08:00').timeZone(
     overdueDate.setDate(today.getDate() - 1);
     const overdueStr = overdueDate.toISOString().split('T')[0];
 
-    console.log(`🔎 [SMS Job] Iniciando varredura.`);
+    console.log(`🔎 [SMS Job] Iniciando varredura para: Reminder=${reminderStr}, Today=${todayStr}, Overdue=${overdueStr}`);
 
     let totalSent = 0;
 
@@ -116,6 +115,7 @@ exports.checkAndSendSms = functions.pubsub.schedule('every day 08:00').timeZone(
             totalSent++;
         }
 
+        console.log(`✅ [SMS Job] Finalizado. Total de tentativas: ${totalSent}`);
         return null;
     } catch (error) {
         console.error("❌ Erro fatal no Job de SMS:", error);
@@ -130,16 +130,18 @@ async function processFee(doc, type, db) {
 
     try {
         // Buscar dados do aluno para pegar o telefone
-        // (Otimização: idealmente o telefone estaria na mensalidade, mas vamos buscar para garantir)
         const studentSnap = await db.collection('students').doc(fee.studentId).get();
         if (!studentSnap.exists) return;
 
         const student = studentSnap.data();
 
-        // Prioridade de Telefone: Financeiro > Pessoal > Contato
-        const rawPhone = student.telefone_responsavel || student.contactPhone || student.phone || student.telefone;
+        // Prioridade de Telefone: Novo Standard 'phoneNumber' > Legado
+        const rawPhone = student.phoneNumber || student.contactPhone || student.telefone_responsavel || student.phone || student.telefone;
 
-        if (!rawPhone || rawPhone.length < 10) return;
+        if (!rawPhone || rawPhone.length < 10) {
+            console.log(`⚠️ Aluno ${student.name} sem telefone válido.`);
+            return;
+        }
 
         const monthName = fee.month || 'Mês Atual';
         const valueFormatted = fee.value ? `R$ ${fee.value.toFixed(2).replace('.', ',')}` : 'Valor Pendente';
@@ -152,10 +154,8 @@ async function processFee(doc, type, db) {
         if (type === 'reminder') {
             message = `Expansivo: Ola! A mensalidade de ${monthName} vence em 3 dias. Valor: ${valueFormatted}. Acesse: ${link}`;
         } else if (type === 'due_today') {
-            // "Expansivo: A mensalidade de ${referencia} vence HOJE! Evite juros e multa pagando agora em: https://meuexpansivo.app"
             message = `Expansivo: A mensalidade de ${monthName} vence HOJE! Evite juros e multa pagando agora em: ${link}`;
         } else if (type === 'overdue') {
-            // "Expansivo: A mensalidade de ${referencia} venceu ontem. Evite multa e o acúmulo de juros, regularizando agora em: https://meuexpansivo.app"
             message = `Expansivo: A mensalidade de ${monthName} venceu ontem. Evite multa e o acúmulo de juros, regularizando agora em: ${link}`;
         }
 
