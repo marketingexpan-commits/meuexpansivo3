@@ -16,10 +16,20 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
   const [selectedCoordinatorId, setSelectedCoordinatorId] = useState<string>('');
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
 
+  // Determine relevant segment for the student
+  const studentSegment = React.useMemo(() => {
+    const gl = student.gradeLevel.toLowerCase();
+    if (gl.includes('infantil') || gl.includes('fundamental i') || gl.includes('nível')) return 'infantil_fund1';
+    if (gl.includes('fundamental ii') || gl.includes('médio') || gl.includes('medio')) return 'fund2_medio';
+    return 'geral';
+  }, [student.gradeLevel]);
+
   const coordinators = unitContacts.filter(c =>
     c.unit === student.unit &&
-    (c.role === ContactRole.COORDINATOR || c.role?.toString().toUpperCase() === 'COORDENADOR')
+    (c.role === ContactRole.COORDINATOR || c.role?.toString().toUpperCase() === 'COORDENADOR') &&
+    (!c.segment || c.segment === 'geral' || c.segment === 'all' || c.segment === studentSegment)
   );
+
   const unitTeachers = teachers.filter(t => t.unit === student.unit);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -144,7 +154,7 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
                       <option value="">-- Selecione --</option>
                       {coordinators.map(c => (
                         <option key={c.id} value={c.id}>
-                          {c.name} {c.segment && c.segment !== 'all' ? `(${c.segment === 'infantil' ? 'Ed. Infantil' : 'Fund./Médio'})` : ''}
+                          {c.name} {c.segment && c.segment !== 'geral' && c.segment !== 'all' ? `(${c.segment === 'infantil_fund1' ? 'Inf./Fund. I' : 'Fund. II/Médio'})` : ''}
                         </option>
                       ))}
                     </select>

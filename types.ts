@@ -189,14 +189,21 @@ export enum ContactRole {
   FINANCIAL = 'FINANCEIRO'
 }
 
+export enum CoordinationSegment {
+  INFANTIL_FUND1 = 'infantil_fund1',
+  FUND2_MEDIO = 'fund2_medio',
+  GERAL = 'geral'
+}
+
 export interface UnitContact {
   id: string;
   name: string;
   phoneNumber: string; // Formato com DDD (ex: 5584999999999)
-  email?: string; // Novo: Email para contato
-  role: ContactRole;
+  phone?: string; // Backwards compatibility if needed, or unify to phone
+  email?: string;
+  role: ContactRole | string; // Allow string for legacy/flexibility
   unit: SchoolUnit;
-  segment?: 'infantil' | 'fundamental_medio' | 'all'; // Novo: Segmento do coordenador
+  segment?: CoordinationSegment;
 }
 // --- FIM ---
 

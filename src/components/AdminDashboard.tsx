@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
-import { db } from '../firebaseConfig';
-import { Admin, Student, Teacher, SchoolUnit, Subject, SchoolShift, SchoolClass } from '../types';
+import { db } from '../../firebaseConfig';
+import { Admin, Student, Teacher, SchoolUnit, Subject, SchoolShift, SchoolClass, UnitContact, CoordinationSegment } from '../types';
 import { SCHOOL_UNITS_LIST, SUBJECT_LIST, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST, SCHOOL_GRADES_LIST } from '../constants';
 import { Button } from './Button';
-import { SchoolLogo } from './SchoolLogo';
+// import { SchoolLogo } from './SchoolLogo';
 
 interface AdminDashboardProps {
     admin: Admin;
@@ -21,6 +21,11 @@ interface AdminDashboardProps {
     onAddAdmin?: (admin: Admin) => void; // Novo
     onEditAdmin?: (admin: Admin) => void; // Novo
     onDeleteAdmin?: (id: string) => void; // Novo
+    // Unit Contacts
+    unitContacts?: UnitContact[];
+    onAddUnitContact?: (contact: UnitContact) => void;
+    onEditUnitContact?: (contact: UnitContact) => void;
+    onDeleteUnitContact?: (id: string) => void;
     onLogout: () => void;
 }
 
@@ -39,9 +44,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     onAddAdmin,
     onEditAdmin,
     onDeleteAdmin,
+    unitContacts = [],
+    onAddUnitContact,
+    onEditUnitContact,
+    onDeleteUnitContact,
     onLogout
 }) => {
-    const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'admins'>('students');
+    const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'admins' | 'contacts'>('students');
 
     const adminUnit = admin.unit;
     const isGeneralAdmin = !adminUnit;
@@ -81,6 +90,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [showAdminPassword, setShowAdminPassword] = useState(false);
     const [adminToDelete, setAdminToDelete] = useState<string | null>(null);
 
+    // Contact (Coordenação)
+    const [editingContactId, setEditingContactId] = useState<string | null>(null);
+    const [cName, setCName] = useState('');
+    const [cRole, setCRole] = useState('Coordenador');
+    const [cPhone, setCPhone] = useState('+55');
+    const [cUnit, setCUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_1);
+    const [cSegment, setCSegment] = useState<CoordinationSegment | undefined>(undefined);
+    const [contactToDelete, setContactToDelete] = useState<string | null>(null);
+
+
     const isPasswordValid = (pass: string) => pass.length >= 6;
 
     // --- GERADOR DE SENHA ---
@@ -113,6 +132,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     });
 
     const filteredAdmins = admins.filter(a => a.id !== 'a0' && a.unit);
+
+    const filteredContacts = (unitContacts || []).filter(c => {
+        const matchesUnit = isGeneralAdmin ? true : c.unit === adminUnit;
+        return matchesUnit;
+    });
 
     // Ordenação de Matérias
     const sortedSubjects = [...SUBJECT_LIST].sort((a, b) => a.localeCompare(b));
@@ -165,6 +189,44 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
     const initiateDeleteAdmin = (id: string) => setAdminToDelete(id);
     const confirmDeleteAdmin = () => { if (onDeleteAdmin && adminToDelete) { onDeleteAdmin(adminToDelete); setAdminToDelete(null); } };
+
+    // Handlers Contact
+    const handleContactSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!onAddUnitContact || !onEditUnitContact) return;
+        const unitToSave = isGeneralAdmin ? cUnit : adminUnit!;
+
+        const contactData: UnitContact = {
+            id: editingContactId || Date.now().toString(),
+            name: cName,
+            role: cRole,
+            phone: cPhone,
+            unit: unitToSave,
+            segment: cSegment // Save the segment
+        };
+
+        if (editingContactId) {
+            onEditUnitContact(contactData);
+            alert("Contato atualizado!");
+            setEditingContactId(null); setCName(''); setCRole('Coordenador'); setCPhone('+55'); setCSegment(undefined);
+        } else {
+            onAddUnitContact(contactData);
+            alert("Contato criado!");
+            setCName(''); setCRole('Coordenador'); setCPhone('+55'); setCSegment(undefined);
+        }
+    };
+
+    const startEditingContact = (c: UnitContact) => {
+        setEditingContactId(c.id);
+        setCName(c.name);
+        setCRole(c.role);
+        setCPhone(c.phone);
+        setCUnit(c.unit);
+        setCSegment(c.segment);
+    };
+
+    const initiateDeleteContact = (id: string) => setContactToDelete(id);
+
 
     // Handlers Aluno
     const initiateDeleteStudent = (id: string) => setStudentToDelete(id);
@@ -253,7 +315,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <Button variant="danger" onClick={() => {
                                 if (studentToDelete) { onDeleteStudent(studentToDelete); setStudentToDelete(null); }
                                 if (teacherToDelete) { onDeleteTeacher(teacherToDelete); setTeacherToDelete(null); }
+                                if (teacherToDelete) { onDeleteTeacher(teacherToDelete); setTeacherToDelete(null); }
                                 if (adminToDelete && onDeleteAdmin) { onDeleteAdmin(adminToDelete); setAdminToDelete(null); }
+                                if (contactToDelete && onDeleteUnitContact) { onDeleteUnitContact(contactToDelete); setContactToDelete(null); }
                             }} className="w-full">Sim, Excluir</Button>
                         </div>
                     </div>
@@ -263,9 +327,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <header className="bg-white shadow-sm border-b border-gray-200">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                        <SchoolLogo variant="header" />
+
                         <div>
-                            <h1 className="text-xl font-bold text-gray-900">Meu Expansivo</h1>
+                            <h1 className="text-xl font-bold text-gray-900">Meu Expansivo (V2) - SISTEMA ATUALIZADO</h1>
                             <p className="text-sm text-gray-500">Administração ({adminUnit || 'GERAL'}) - {admin.name}</p>
                         </div>
                     </div>
@@ -284,6 +348,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             Gerenciar Admins
                         </button>
                     )}
+                    <button onClick={() => setActiveTab('contacts')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeTab === 'contacts' ? 'bg-green-800 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>
+                        Contatos / Coordenação
+                    </button>
                 </div>
 
                 {/* --- CONTEÚDO ALUNOS --- */}
@@ -482,6 +549,74 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 </td>
                                             </tr>
                                         ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+
+                {/* --- CONTEÚDO CONTATOS / COORDENAÇÃO --- */}
+                {activeTab === 'contacts' && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-1">
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-green-200">
+                                <h2 className="text-lg font-bold text-green-800 mb-4">{editingContactId ? 'Editar Contato/Coord.' : 'Novo Contato'}</h2>
+                                <form onSubmit={handleContactSubmit} className="space-y-4">
+                                    <div><label className="text-sm font-medium">Nome</label><input type="text" value={cName} onChange={e => setCName(e.target.value)} required className="w-full p-2 border rounded" placeholder="Ex: Coord. Pedagógica" /></div>
+                                    <div><label className="text-sm font-medium">Cargo/Função</label><input type="text" value={cRole} onChange={e => setCRole(e.target.value)} required className="w-full p-2 border rounded" placeholder="Ex: Coordenador" /></div>
+                                    <div><label className="text-sm font-medium">Whatsapp</label><input type="text" value={cPhone} onChange={e => setCPhone(e.target.value)} required className="w-full p-2 border rounded" /></div>
+
+                                    <div>
+                                        <label className="text-sm font-medium">Segmento de Atuação</label>
+                                        <select value={cSegment || ''} onChange={e => setCSegment(e.target.value as CoordinationSegment)} className="w-full p-2 border rounded">
+                                            <option value="">-- Selecione (Opcional) --</option>
+                                            <option value="infantil_fund1">Educação Infantil / Fundamental I</option>
+                                            <option value="fund2_medio">Fundamental II / Ensino Médio</option>
+                                            <option value="geral">Geral / Ambos</option>
+                                        </select>
+                                        <p className="text-xs text-gray-500 mt-1">Define para quais alunos aparecerá no Fale com a Escola.</p>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-sm font-medium">Unidade</label>
+                                        {isGeneralAdmin ? (
+                                            <select value={cUnit} onChange={e => setCUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>
+                                        ) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}
+                                    </div>
+
+                                    <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">{editingContactId ? 'Salvar Coord.' : 'Cadastrar Coord.'}</Button>
+                                    {editingContactId && <button type="button" onClick={() => { setEditingContactId(null); setCName(''); setCPhone(''); setCSegment(undefined); }} className="w-full text-center text-sm text-gray-500 mt-2">Cancelar</button>}
+                                </form>
+                            </div>
+                        </div>
+
+                        <div className="lg:col-span-2">
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                                <div className="p-4 bg-green-50 border-b border-green-100"><h3 className="font-bold text-green-900">Coordenação Cadastrada ({filteredContacts.length})</h3></div>
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-gray-50"><tr><th className="p-3">Nome/Cargo</th><th className="p-3">Segmento</th><th className="p-3">Whatsapp</th><th className="p-3">Ações</th></tr></thead>
+                                    <tbody>
+                                        {filteredContacts.map(c => (
+                                            <tr key={c.id} className="border-b">
+                                                <td className="p-3">
+                                                    <div className="font-bold">{c.name}</div>
+                                                    <div className="text-gray-500 text-xs">{c.role} ({c.unit})</div>
+                                                </td>
+                                                <td className="p-3">
+                                                    {c.segment === CoordinationSegment.INFANTIL_FUND1 && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">Infantil/Fund I</span>}
+                                                    {c.segment === CoordinationSegment.FUND2_MEDIO && <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">Fund II/Médio</span>}
+                                                    {(c.segment === CoordinationSegment.GERAL || !c.segment) && <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs">Geral</span>}
+                                                </td>
+                                                <td className="p-3 text-xs font-mono">{c.phone}</td>
+                                                <td className="p-3 flex gap-2">
+                                                    <button onClick={() => startEditingContact(c)} className="text-blue-600 hover:underline">Editar</button>
+                                                    <button onClick={() => initiateDeleteContact(c.id)} className="text-red-600 hover:underline">Excluir</button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {filteredContacts.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-gray-500">Nenhum coordenador cadastrado.</td></tr>}
                                     </tbody>
                                 </table>
                             </div>

@@ -111,6 +111,8 @@ export interface Student {
   shift: SchoolShift;
   unit: SchoolUnit;
   isBlocked: boolean;
+  valor_mensalidade?: number;
+  isScholarship?: boolean;
 }
 
 export interface Teacher {
@@ -151,6 +153,64 @@ export interface AttendanceRecord {
   teacherId: string;
   teacherName: string;
   studentStatus: Record<string, AttendanceStatus>; // studentId -> status
+}
+
+export interface EarlyChildhoodReport {
+  id: string;
+  studentId: string;
+  teacherId: string;
+  unit: SchoolUnit;
+  semester: 1 | 2;
+  year: number;
+  content: string; // JSON string with specific skills
+  timestamp: string;
+}
+
+export interface Mensalidade {
+  id: string;
+  studentId: string;
+  month: string; // "Janeiro/2025"
+  value: number;
+  dueDate: string; // YYYY-MM-DD
+  status: 'Pendente' | 'Pago' | 'Atrasado';
+  paidDate?: string;
+  publicUrl?: string; // Link do recibo/fatura
+  lastUpdated?: string;
+}
+
+export interface EventoFinanceiro {
+  id?: string;
+  title: string;
+  description?: string;
+  value: number;
+  dueDate: string; // YYYY-MM-DD ou ISO
+  unit?: SchoolUnit; 
+  active: boolean;
+}
+
+export interface AppNotification {
+  id: string;
+  studentId: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+}
+
+// NOVO: Tipos para Segmentação da Coordenação (Solicitado)
+export enum CoordinationSegment {
+  INFANTIL_FUND1 = 'Educação Infantil / Fundamental I',
+  FUND2_MEDIO = 'Fundamental II / Ensino Médio',
+  GERAL = 'Geral (Ambos)'
+}
+
+export interface UnitContact {
+  id: string;
+  name: string;
+  role: string; // 'Coordenador', 'Diretor', etc.
+  phone: string; // Whatsapp formatting
+  unit: SchoolUnit;
+  segment?: CoordinationSegment; // Segmento de atuação
 }
 
 // NOVO: Tipos para o sistema de Tickets (Dúvidas)

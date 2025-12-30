@@ -968,7 +968,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <SchoolLogo variant="header" />
                             <div>
                                 <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white mb-0.5 shadow-black drop-shadow-sm">
-                                    Meu Expansivo
+                                    Meu Expansivo (V2) - SISTEMA ATUALIZADO
                                 </h1>
                                 <div className="flex items-center gap-2 text-blue-200 text-xs md:text-sm font-medium">
                                     <span>Administração ({adminUnit || 'GERAL'})</span>
@@ -1392,9 +1392,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                     onChange={e => setContactSegment(e.target.value as any)}
                                                     className="w-full p-2 border rounded"
                                                 >
-                                                    <option value="all">Geral / Ambos</option>
-                                                    <option value="infantil">Educação Infantil</option>
-                                                    <option value="fundamental_medio">Ens. Fundamental/Médio</option>
+                                                    <option value="geral">Geral / Ambos</option>
+                                                    <option value="infantil_fund1">Educação Infantil / Fundamental I</option>
+                                                    <option value="fund2_medio">Fundamental II / Ensino Médio</option>
                                                 </select>
                                             </div>
                                             <div className="pt-2 grid grid-cols-2 gap-3">
@@ -1404,9 +1404,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 <Button onClick={() => handleSaveContact(ContactRole.COORDINATOR)} className="w-full bg-orange-600 hover:bg-orange-700">
                                                     Salvar Coord.
                                                 </Button>
-                                                <Button onClick={() => handleSaveContact(ContactRole.FINANCIAL)} className="w-full bg-green-600 hover:bg-green-700 col-span-2">
-                                                    Salvar Financeiro
-                                                </Button>
+
                                             </div>
                                         </div>
                                     </div>
@@ -1462,7 +1460,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                                 {c.name}
                                                                 {c.segment && c.segment !== 'all' && (
                                                                     <span className="block text-[10px] text-gray-500 uppercase bg-gray-100 px-1 rounded w-fit mt-1">
-                                                                        {c.segment === 'infantil' ? 'Infantil' : 'Fund/Médio'}
+                                                                        {c.segment === 'infantil_fund1' ? 'Infantil / Fund I' : c.segment === 'fund2_medio' ? 'Fund II / Médio' : 'Geral'}
                                                                     </span>
                                                                 )}
                                                             </td>
@@ -1481,35 +1479,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         )}
                                     </div>
 
-                                    {/* FINANCEIRO */}
-                                    <div className="bg-white rounded-xl shadow-sm border border-green-200 overflow-x-auto mt-6">
-                                        <div className="p-4 bg-green-50 border-b border-green-100 flex justify-between items-center min-w-[500px]">
-                                            <h3 className="font-bold text-green-900 flex items-center gap-2">
-                                                <span className="text-xl">💰</span> Setor Financeiro
-                                            </h3>
-                                            <span className="text-xs font-semibold bg-green-200 text-green-800 px-2 py-1 rounded-full">{financialContacts.length} cadastrados</span>
-                                        </div>
-                                        {financialContacts.length > 0 ? (
-                                            <table className="min-w-full text-sm text-left">
-                                                <thead className="bg-gray-50 text-gray-500"><tr><th className="p-3">Nome</th><th className="p-3">Telefone</th><th className="p-3">Unidade</th><th className="p-3 text-right">Ação</th></tr></thead>
-                                                <tbody>
-                                                    {financialContacts.map(c => (
-                                                        <tr key={c.id} className="border-b last:border-0 hover:bg-gray-50">
-                                                            <td className="p-3 font-medium">{c.name}</td>
-                                                            <td className="p-3 font-mono text-gray-600">{c.phoneNumber}</td>
-                                                            <td className="p-3"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{c.unit}</span></td>
-                                                            <td className="p-3 text-right flex justify-end gap-2">
-                                                                <button onClick={() => startEditingContact(c)} className="text-blue-950 hover:underline text-xs font-bold px-2 py-1">Editar</button>
-                                                                <button onClick={() => onDeleteUnitContact && onDeleteUnitContact(c.id)} className="text-red-600 hover:text-red-800 text-xs font-bold bg-red-50 px-2 py-1 rounded border border-red-100">Remover</button>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        ) : (
-                                            <div className="p-8 text-center text-gray-400 italic">Nenhum contato financeiro cadastrado para esta seleção.</div>
-                                        )}
-                                    </div>
+                                    {/* FINANCEIRO REMOVED */}
                                 </div>
                             </div>
                         )
