@@ -772,14 +772,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setSResponsavel('');
         setSCpfResponsavel('');
         setSEmail('');
-        setSPhone('+55');
+        setSPhone('55');
         setSCode('');
-        setSCode('');
+        setSGrade(SCHOOL_GRADES_LIST[0]);
+        setSClass(SchoolClass.A);
+        setSShift(SchoolShift.MORNING);
         setSPass('');
         setSValorMensalidade('');
         setSScholarship(false);
-
-
+        setSMetodoPagamento('Interno');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
     const fullHandleStudentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -1162,7 +1164,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <div className="flex gap-2 relative"><input type={showStudentPassword ? "text" : "password"} value={sPass} onChange={e => setSPass(e.target.value)} className="w-full p-2 border rounded" required={!editingStudentId} /><button type="button" onClick={() => setShowStudentPassword(!showStudentPassword)} className="absolute right-16 top-2 text-gray-500">{showStudentPassword ? <EyeOffIcon /> : <EyeIcon />}</button><button type="button" onClick={handleGenerateStudentPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button></div><p className="text-xs text-gray-500 mt-1">Senha automática (8 caracteres).</p></div>
 
                         <div className="flex gap-2">
-                            <Button type="submit" className="w-full flex-1">{editingStudentId ? 'Salvar Alterações' : 'Cadastrar Aluno'}</Button>
+                            <Button type="submit" className="flex-1">{editingStudentId ? 'Salvar Alterações' : 'Cadastrar Aluno'}</Button>
+                            <Button type="button" variant="secondary" onClick={cancelEditingStudent} className="flex-none bg-gray-200 text-gray-700 hover:bg-gray-300">
+                                {editingStudentId ? 'Cancelar / Novo' : 'Limpar'}
+                            </Button>
+                        </div>
+                        <div className="flex gap-2 mt-2">
                             {onGenerateIndividualFees && (
                                 <button
 
