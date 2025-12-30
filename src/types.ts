@@ -184,7 +184,7 @@ export interface EventoFinanceiro {
   description?: string;
   value: number;
   dueDate: string; // YYYY-MM-DD ou ISO
-  unit?: SchoolUnit; 
+  unit?: SchoolUnit;
   active: boolean;
 }
 
@@ -211,6 +211,7 @@ export interface UnitContact {
   phone: string; // Whatsapp formatting
   unit: SchoolUnit;
   segment?: CoordinationSegment; // Segmento de atuação
+  password?: string; // Senha de acesso para coordenadores
 }
 
 // NOVO: Tipos para o sistema de Tickets (Dúvidas)

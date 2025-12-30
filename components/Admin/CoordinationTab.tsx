@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { RefreshCw } from 'lucide-react';
 import {
     SchoolUnit,
     GradeEntry,
     Student,
-    SchoolClass
+    SchoolClass,
+    UnitContact
 } from '../../types';
 import {
     SCHOOL_UNITS_LIST,
@@ -28,6 +29,7 @@ interface CoordinationTabProps {
     pendingGradesStudents: Student[];
     pendingGradesMap: Record<string, GradeEntry[]>;
     handleApproveGrade: (grade: GradeEntry) => Promise<void>;
+    coordinatorSession?: UnitContact | null;
 }
 
 export const CoordinationTab: React.FC<CoordinationTabProps> = ({
@@ -44,9 +46,37 @@ export const CoordinationTab: React.FC<CoordinationTabProps> = ({
     isLoadingCoordination,
     pendingGradesStudents,
     pendingGradesMap,
-    handleApproveGrade
+    handleApproveGrade,
+    coordinatorSession
 }) => {
     const formatGrade = (val: number | null | undefined) => (val !== null && val !== undefined) ? val.toFixed(1) : '-';
+
+    // Filter students based on coordinator segment
+    const filteredStudents = useMemo(() => {
+        if (isGeneralAdmin) return pendingGradesStudents;
+        if (!coordinatorSession || !coordinatorSession.segment || coordinatorSession.segment === 'geral' as any) return pendingGradesStudents;
+
+        const segment = coordinatorSession.segment;
+        return pendingGradesStudents.filter(student => {
+            const grade = student.gradeLevel.toLowerCase();
+
+            if (segment === 'infantil_fund1') {
+                // Infantil: Nível I-V, Maternal etc. | Fund1: 1º ao 5º ano
+                const isInfantil = grade.includes('nível') || grade.includes('nivel') || grade.includes('infantil') || grade.includes('maternal') || grade.includes('berçário');
+                const isFund1 = ['1º ano', '2º ano', '3º ano', '4º ano', '5º ano'].some(g => grade.includes(g));
+                return isInfantil || isFund1;
+            }
+
+            if (segment === 'fund2_medio') {
+                // Fund2: 6º ao 9º ano | Médio: 1ª a 3ª série
+                const isFund2 = ['6º ano', '7º ano', '8º ano', '9º ano'].some(g => grade.includes(g));
+                const isMedio = grade.includes('série') || grade.includes('serie') || grade.includes('médio');
+                return isFund2 || isMedio;
+            }
+
+            return true;
+        });
+    }, [pendingGradesStudents, coordinatorSession, isGeneralAdmin]);
 
     return (
         <div className="animate-fade-in-up md:px-6 px-4">
@@ -116,13 +146,13 @@ export const CoordinationTab: React.FC<CoordinationTabProps> = ({
 
             {isLoadingCoordination ? (
                 <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600"></div></div>
-            ) : pendingGradesStudents.length === 0 ? (
+            ) : filteredStudents.length === 0 ? (
                 <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
                     <p className="text-gray-500 font-medium">Nenhuma nota pendente de aprovação com os filtros atuais. 🎉</p>
                 </div>
             ) : (
                 <div className="space-y-4">
-                    {pendingGradesStudents.map(student => (
+                    {filteredStudents.map(student => (
                         <div key={student.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                             <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
                                 <div>

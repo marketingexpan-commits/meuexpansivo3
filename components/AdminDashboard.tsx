@@ -82,8 +82,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 }) => {
     const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'admins' | 'messages' | 'attendance' | 'contacts' | 'rematricula' | 'financial' | 'tickets'>('students');
 
-    const adminUnit = admin.unit;
-    const isGeneralAdmin = !adminUnit;
+    // --- ESTADOS DE SIMULAÇÃO (Para Admin Geral testar visões específicas) ---
+    const [simulatedUnit, setSimulatedUnit] = useState<SchoolUnit | null>(null);
+
+    // Se houver unidade simulada, usamos ela. Caso contrário, usamos a unidade real do admin.
+    const adminUnit = simulatedUnit || admin.unit;
+
+    // É Admin Geral apenas se não tiver unidade fixa E não estiver simulando uma.
+    const isGeneralAdmin = !admin.unit && !simulatedUnit;
 
     // --- ESTADOS GERAIS ---
     const [isLogModalOpen, setIsLogModalOpen] = useState(false);
@@ -203,6 +209,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [contactPhone, setContactPhone] = useState('+55');
     const [contactUnit, setContactUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_1);
     const [contactSegment, setContactSegment] = useState<'infantil' | 'fundamental_medio' | 'all'>('all'); // Novo state
+    const [contactPassword, setContactPassword] = useState(''); // Novo state para senha de coordenador
+
+    // --- COORDENAÇÃO SESSION ---
+    const [coordinatorSession, setCoordinatorSession] = useState<UnitContact | null>(null);
+    const [showCoordinatorLogin, setShowCoordinatorLogin] = useState(false);
+    const [coordLoginId, setCoordLoginId] = useState('');
+    const [coordLoginPass, setCoordLoginPass] = useState('');
 
     // Estados para Cobrança em Massa
     // --- BULK SENDING STATES --- (Removed, handled in FinancialTab)
@@ -239,12 +252,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         }
     };
 
-    // --- COORDENAÇÃO: FETCH PENDING GRADES ---
+    // --- COORDENAÇÃO: FETCH PENDING GRADES & LOGIN CHECK ---
     useEffect(() => {
         if (activeTab === 'coordination') {
-            fetchPendingGrades();
+            if (!isGeneralAdmin && !coordinatorSession) {
+                setShowCoordinatorLogin(true);
+            } else {
+                fetchPendingGrades();
+            }
         }
-    }, [activeTab, coordinationFilterUnit, coordinationFilterGrade, coordinationFilterClass, coordinationFilterSubject]);
+    }, [activeTab, coordinationFilterUnit, coordinationFilterGrade, coordinationFilterClass, coordinationFilterSubject, coordinatorSession]);
+
+    const handleCoordinatorLogin = (e: React.FormEvent) => {
+        e.preventDefault();
+        const coord = unitContacts.find(c => c.id === coordLoginId);
+        if (!coord) {
+            alert("Coordenador não encontrado.");
+            return;
+        }
+        if (coord.password !== coordLoginPass) {
+            alert("Senha incorreta.");
+            return;
+        }
+        setCoordinatorSession(coord);
+        setShowCoordinatorLogin(false);
+        setCoordLoginId('');
+        setCoordLoginPass('');
+    };
 
     const fetchPendingGrades = async () => {
         setIsLoadingCoordination(true);
@@ -921,7 +955,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             phoneNumber: contactPhone,
             role: role,
             unit: contactUnit,
-            ...(role === ContactRole.COORDINATOR ? { segment: contactSegment } : {}) // Salva apenas se for Coordenação
+            ...(role === ContactRole.COORDINATOR ? { segment: contactSegment, password: contactPassword } : {}) // Salva segmento e senha se for Coordenação
         };
 
         if (editingContactId && onEditUnitContact) {
@@ -936,6 +970,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setContactName('');
         setContactPhone('+55');
         setContactSegment('all');
+        setContactPassword('');
     };
 
     const startEditingContact = (contact: UnitContact) => {
@@ -944,6 +979,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setContactPhone(contact.phoneNumber);
         setContactUnit(contact.unit);
         setContactSegment(contact.segment || 'all');
+        setContactPassword(contact.password || '');
     };
 
     const cancelEditingContact = () => {
@@ -951,6 +987,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setContactName('');
         setContactPhone('+55');
         setContactSegment('all');
+        setContactPassword('');
     };
 
     const EyeIcon = () => (<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>);
@@ -1010,6 +1047,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         </div>
                                     </button>
                                 </>
+                            )}
+
+                            {/* CONTROLE DE SIMULAÇÃO (Apenas para o verdadeiro Admin Geral) */}
+                            {!admin.unit && (
+                                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors border ${simulatedUnit ? 'bg-amber-100 border-amber-300' : 'bg-white/10 border-transparent hover:bg-white/20'}`}>
+                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${simulatedUnit ? 'text-amber-800' : 'text-blue-200'}`}>
+                                        {simulatedUnit ? 'Simulando:' : 'Simular Unidade:'}
+                                    </span>
+                                    <select
+                                        value={simulatedUnit || ''}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setSimulatedUnit(val ? val as SchoolUnit : null);
+                                            setActiveTab('students');
+                                        }}
+                                        className={`text-xs p-1 rounded border-none outline-none font-bold cursor-pointer ${simulatedUnit ? 'bg-amber-200 text-amber-900' : 'bg-blue-950 text-white'}`}
+                                    >
+                                        <option value="">(Visão Geral)</option>
+                                        {SCHOOL_UNITS_LIST.map(u => (
+                                            <option key={u} value={u}>{u}</option>
+                                        ))}
+                                    </select>
+                                    {simulatedUnit && (
+                                        <button
+                                            onClick={() => setSimulatedUnit(null)}
+                                            title="Sair do Modo de Simulação"
+                                            className="text-amber-700 hover:text-amber-900 ml-1"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                        </button>
+                                    )}
+                                </div>
                             )}
 
                             <div className="flex items-center gap-3">
@@ -1377,6 +1446,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 <input type="text" value={contactPhone} onChange={handleContactPhoneChange} className="w-full p-2 border rounded" placeholder="Ex: 5584999999999" />
                                                 <p className="text-xs text-gray-500 mt-1">Apenas números, com DDD (Ex: 5584...)</p>
                                             </div>
+
+                                            {isGeneralAdmin && (
+                                                <div className="animate-fade-in-up">
+                                                    <label className="text-sm font-medium text-gray-800">Senha de Acesso (Login)</label>
+                                                    <input
+                                                        type="text"
+                                                        value={contactPassword}
+                                                        onChange={e => setContactPassword(e.target.value)}
+                                                        className="w-full p-2 border rounded border-blue-200 bg-blue-50"
+                                                        placeholder="Crie uma senha para este coordenador"
+                                                    />
+                                                    <p className="text-xs text-blue-600 mt-1">* Visível e editável apenas por Admin Geral</p>
+                                                </div>
+                                            )}
+
                                             <div>
                                                 <label className="text-sm font-medium">Unidade</label>
                                                 {isGeneralAdmin ? (
@@ -1629,22 +1713,94 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     {/* TAB COORDENAÇÃO (APROVAÇÃO) */}
                     {
                         activeTab === 'coordination' && (
-                            <CoordinationTab
-                                isGeneralAdmin={isGeneralAdmin}
-                                coordinationFilterUnit={coordinationFilterUnit}
-                                setCoordinationFilterUnit={setCoordinationFilterUnit}
-                                coordinationFilterGrade={coordinationFilterGrade}
-                                setCoordinationFilterGrade={setCoordinationFilterGrade}
-                                coordinationFilterClass={coordinationFilterClass}
-                                setCoordinationFilterClass={setCoordinationFilterClass}
-                                coordinationFilterSubject={coordinationFilterSubject}
-                                setCoordinationFilterSubject={setCoordinationFilterSubject}
-                                fetchPendingGrades={fetchPendingGrades}
-                                isLoadingCoordination={isLoadingCoordination}
-                                pendingGradesStudents={pendingGradesStudents}
-                                pendingGradesMap={pendingGradesMap}
-                                handleApproveGrade={handleApproveGrade}
-                            />
+                            showCoordinatorLogin && !isGeneralAdmin ? (
+                                <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-90 backdrop-blur-sm p-4">
+                                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-8 animate-fade-in-up border border-gray-200">
+                                        <div className="text-center mb-6">
+                                            <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                            </div>
+                                            <h2 className="text-2xl font-bold text-gray-800">Acesso Restrito</h2>
+                                            <p className="text-gray-500 mt-2">Área exclusiva para Coordenação Pedagógica</p>
+                                        </div>
+
+                                        <form onSubmit={handleCoordinatorLogin} className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Selecione seu Nome</label>
+                                                <select
+                                                    value={coordLoginId}
+                                                    onChange={e => setCoordLoginId(e.target.value)}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                                                    required
+                                                >
+                                                    <option value="">-- Selecione --</option>
+                                                    {unitContacts
+                                                        .filter(c => c.unit === adminUnit && (c.role === ContactRole.COORDINATOR || c.role === 'Coordenador'))
+                                                        .map(c => (
+                                                            <option key={c.id} value={c.id}>{c.name}</option>
+                                                        ))
+                                                    }
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Senha de Acesso</label>
+                                                <input
+                                                    type="password"
+                                                    value={coordLoginPass}
+                                                    onChange={e => setCoordLoginPass(e.target.value)}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                    placeholder="Sua senha"
+                                                    required
+                                                />
+                                            </div>
+                                            <Button type="submit" className="w-full py-3 text-lg font-bold shadow-lg">
+                                                Acessar Painel
+                                            </Button>
+                                            <div className="text-center pt-2">
+                                                <button type="button" onClick={() => setActiveTab('students')} className="text-sm text-gray-400 hover:text-gray-600 hover:underline">
+                                                    Voltar para Alunos
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    {!isGeneralAdmin && coordinatorSession && (
+                                        <div className="bg-blue-50 border border-blue-200 p-4 mb-4 rounded-lg flex justify-between items-center shadow-sm">
+                                            <div className="flex items-center gap-3">
+                                                <div className="bg-blue-100 p-2 rounded-full">
+                                                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-blue-800 font-bold">Logado como: <span className="text-blue-950 text-base">{coordinatorSession.name}</span></p>
+                                                    <p className="text-xs text-blue-600 font-medium">Segmento: {coordinatorSession.segment === 'infantil_fund1' ? 'Educação Infantil / Fund. I' : coordinatorSession.segment === 'fund2_medio' ? 'Fundamental II / Médio' : 'Geral / Ambos'}</p>
+                                                </div>
+                                            </div>
+                                            <button onClick={() => setCoordinatorSession(null)} className="text-sm text-red-600 font-bold hover:text-red-800 hover:bg-red-50 px-3 py-1.5 rounded transition-colors">
+                                                Sair / Trocar
+                                            </button>
+                                        </div>
+                                    )}
+                                    <CoordinationTab
+                                        isGeneralAdmin={isGeneralAdmin}
+                                        coordinationFilterUnit={coordinationFilterUnit}
+                                        setCoordinationFilterUnit={setCoordinationFilterUnit}
+                                        coordinationFilterGrade={coordinationFilterGrade}
+                                        setCoordinationFilterGrade={setCoordinationFilterGrade}
+                                        coordinationFilterClass={coordinationFilterClass}
+                                        setCoordinationFilterClass={setCoordinationFilterClass}
+                                        coordinationFilterSubject={coordinationFilterSubject}
+                                        setCoordinationFilterSubject={setCoordinationFilterSubject}
+                                        fetchPendingGrades={fetchPendingGrades}
+                                        isLoadingCoordination={isLoadingCoordination}
+                                        pendingGradesStudents={pendingGradesStudents}
+                                        pendingGradesMap={pendingGradesMap}
+                                        handleApproveGrade={handleApproveGrade}
+                                        coordinatorSession={coordinatorSession} // Pass session down
+                                    />
+                                </>
+                            )
                         )
                     }
 
