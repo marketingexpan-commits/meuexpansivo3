@@ -262,3 +262,69 @@ exports.verifyPaymentStatus = functions.https.onRequest((req, res) => {
 // 5. SMS SCHEDULER (Automação de Cobrança)
 // --------------------------------------------------------
 exports.smsScheduler = require('./smsScheduler').checkAndSendSms;
+
+// --------------------------------------------------------
+// 6. TEST BATCH SEND (Manual Trigger)
+// --------------------------------------------------------
+exports.sendTestBatch = functions.https.onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            const { codes } = req.body; // Expects { codes: ['11111', '54321', ...] }
+            if (!codes || !Array.isArray(codes)) {
+                // If no codes provided, default to the list requested by user
+                const defaultCodes = ['11111', '54321', '77777', '1256', '00000', '88888', '33333'];
+                console.log("⚠️ No codes provided, using default list:", defaultCodes);
+                return await processBatch(defaultCodes, res);
+            }
+            await processBatch(codes, res);
+
+        } catch (error) {
+            console.error("❌ Erro no Batch Test:", error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+});
+
+async function processBatch(codes, res) {
+    const { sendZenviaSMS } = require('./smsScheduler');
+    const db = admin.firestore();
+    let sentCount = 0;
+    const results = [];
+
+    console.log(`🚀 Iniciando envio em lote para códigos: ${codes.join(', ')}`);
+
+    for (const code of codes) {
+        // Find student by code
+        const snapshot = await db.collection('students').where('code', '==', String(code)).get();
+
+        if (snapshot.empty) {
+            console.warn(`⚠️ Aluno com código ${code} não encontrado.`);
+            results.push({ code, status: 'Not Found' });
+            continue;
+        }
+
+        // Could be multiple if duplicates exist, but assume first
+        const student = snapshot.docs[0].data();
+        const phoneNumber = student.phoneNumber || student.contactPhone || student.telefone_responsavel || student.phone || student.telefone;
+
+        if (!phoneNumber) {
+            console.warn(`⚠️ Aluno ${student.name} (${code}) sem telefone.`);
+            results.push({ code, name: student.name, status: 'No Phone' });
+            continue;
+        }
+
+        const message = 'Teste de integração sms Meu Expansivo concluído com sucesso!';
+        const success = await sendZenviaSMS(phoneNumber, message);
+
+        if (success) {
+            console.log(`✅ SMS enviado para ${student.name} (${code}) - ${phoneNumber}`);
+            sentCount++;
+            results.push({ code, name: student.name, phone: phoneNumber, status: 'Sent' });
+        } else {
+            console.error(`❌ Falha ao enviar para ${student.name} (${code})`);
+            results.push({ code, name: student.name, status: 'Failed' });
+        }
+    }
+
+    res.json({ success: true, sent: sentCount, details: results });
+}

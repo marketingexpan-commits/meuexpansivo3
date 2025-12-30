@@ -167,3 +167,5 @@ async function processFee(doc, type, db) {
         console.error(`Erro processando mensalidade ${doc.id}:`, err);
     }
 }
+
+exports.sendZenviaSMS = sendZenviaSMS;
