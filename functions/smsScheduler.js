@@ -6,7 +6,7 @@ const https = require('https');
 // CONFIGURAÇÃO ZENVIA (Lê do .env)
 // -------------------------------------------------------------
 const ZENVIA_API_TOKEN = process.env.ZENVIA_API_TOKEN;
-const ZENVIA_SENDER_ID = process.env.ZENVIA_SENDER_ID || 'marketing.expan';
+const ZENVIA_SENDER_ID = 'marketing.expan'; // FIXO conforme suporte
 
 // Helper para enviar SMS via Zenvia API (v2)
 async function sendZenviaSMS(phoneNumber, messageText) {
@@ -50,12 +50,18 @@ async function sendZenviaSMS(phoneNumber, messageText) {
             });
 
             res.on('end', () => {
-                console.log(`✅ [Zenvia] Status: ${res.statusCode} | Body: ${responseBody}`);
-                if (res.statusCode >= 200 && res.statusCode < 300) {
-                    resolve(true);
-                } else {
-                    console.error(`❌ [Zenvia] Erro ${res.statusCode}:`, responseBody);
-                    resolve(false);
+                try {
+                    const responseJson = JSON.parse(responseBody);
+                    console.log(`✅ [Zenvia] Status: ${res.statusCode} | ID: ${responseJson.id}`);
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        resolve(responseJson.id); // Retornar o ID
+                    } else {
+                        console.error(`❌ [Zenvia] Erro ${res.statusCode}:`, responseBody);
+                        resolve(false);
+                    }
+                } catch (e) {
+                    console.log(`✅ [Zenvia] Status: ${res.statusCode} | Body: ${responseBody}`);
+                    resolve(res.statusCode === 200);
                 }
             });
         });
@@ -135,6 +141,12 @@ exports.checkAndSendSms = functions.pubsub.schedule('every day 08:00').timeZone(
 });
 
 // Lógica de Processamento Individual
+// Helper para remover acentuação
+function removeAccents(str) {
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+// Lógica de Processamento Individual
 async function processFee(doc, type, db) {
     const fee = doc.data();
     if (!fee.studentId) return;
@@ -154,23 +166,25 @@ async function processFee(doc, type, db) {
             return;
         }
 
-        const monthName = fee.month || 'Mês Atual';
-        const valueFormatted = fee.value ? `R$ ${fee.value.toFixed(2).replace('.', ',')}` : 'Valor Pendente';
-
-        // NOVO DOMÍNIO
+        const monthName = removeAccents(fee.month || 'Mes Atual');
         const link = "https://meuexpansivo.app";
 
         let message = "";
 
+        // TEMPLATES ATUALIZADOS (Sem acento, < 160 chars, marketing.expan)
         if (type === 'reminder') {
-            message = `Expansivo: Ola! A mensalidade de ${monthName} vence em 3 dias. Valor: ${valueFormatted}. Acesse: ${link}`;
+            message = `EXPANSIVO: Ola. A mensalidade de ${monthName} vence em 3 dias. Evite juros. Acesse: ${link}`;
         } else if (type === 'due_today') {
-            message = `Expansivo: A mensalidade de ${monthName} vence HOJE! Evite juros e multa pagando agora em: ${link}`;
+            message = `EXPANSIVO: A mensalidade de ${monthName} vence HOJE. Evite multa pagando agora em: ${link}`;
         } else if (type === 'overdue') {
-            message = `Expansivo: A mensalidade de ${monthName} venceu ontem. Evite multa e o acúmulo de juros, regularizando agora em: ${link}`;
+            message = `EXPANSIVO: A mensalidade de ${monthName} venceu ontem. Regularize agora para evitar bloqueio: ${link}`;
         }
 
         if (message) {
+            // Garantir limite de 160 chars (apenas segurança, templates já são curtos)
+            if (message.length > 160) {
+                message = message.substring(0, 157) + "...";
+            }
             await sendZenviaSMS(rawPhone, message);
         }
 
