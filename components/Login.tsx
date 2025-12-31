@@ -10,12 +10,13 @@ interface LoginProps {
   onLoginStudent: (code: string, pass: string) => void;
   onLoginTeacher: (cpf: string, pass: string, unit?: string) => void;
   onLoginAdmin: (user: string, pass: string) => void;
+  onLoginCoordinator: (name: string, pass: string, unit: string) => void;
   onResetSystem: () => void;
   error?: string;
   adminsList?: Admin[];
 }
 
-export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, onLoginAdmin, onResetSystem, error, adminsList }) => {
+export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, onLoginAdmin, onLoginCoordinator, onResetSystem, error, adminsList }) => {
   // --- SPLASH SCREEN STATE ---
   // --- SPLASH SCREEN STATE ---
   const [showSplash, setShowSplash] = useState(true);
@@ -78,12 +79,13 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
     };
   }, []);
 
-  const [activeTab, setActiveTab] = useState<'student' | 'teacher' | 'admin'>('student');
+  const [activeTab, setActiveTab] = useState<'student' | 'teacher' | 'admin' | 'coordinator'>('student');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
 
   const [selectedAdminUnit, setSelectedAdminUnit] = useState('');
   const [selectedTeacherUnit, setSelectedTeacherUnit] = useState(SCHOOL_UNITS_LIST[0]);
+  const [selectedCoordinatorUnit, setSelectedCoordinatorUnit] = useState(SCHOOL_UNITS_LIST[0]);
 
   const [isMuralOpen, setIsMuralOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
@@ -103,7 +105,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
   }, []);
 
   // --- MODO SECRETO ---
-  const [isAdminVisible, setIsAdminVisible] = useState(false);
+  const [showHiddenTabs, setShowHiddenTabs] = useState(false);
   const maskCPF = (value: string) => {
     const v = value.replace(/\D/g, '');
     if (v.length <= 11) {
@@ -118,14 +120,14 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
   const [secretClickCount, setSecretClickCount] = useState(0);
 
   const handleSecretClick = () => {
-    if (isAdminVisible) return;
+    if (showHiddenTabs) return;
 
     const newCount = secretClickCount + 1;
     setSecretClickCount(newCount);
 
     if (newCount === 5) {
-      setIsAdminVisible(true);
-      alert("🔐 Modo Administrativo Desbloqueado!");
+      setShowHiddenTabs(true);
+      alert("🔐 Modo Administrativo/Coordenação Desbloqueado!");
     }
   };
   // --------------------
@@ -165,15 +167,22 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
       onLoginTeacher(identifier, password, selectedTeacherUnit);
     } else if (activeTab === 'admin') {
       onLoginAdmin(identifier, password);
+    } else if (activeTab === 'coordinator') {
+      if (!selectedCoordinatorUnit) {
+        alert("Por favor, selecione a unidade escolar.");
+        return;
+      }
+      onLoginCoordinator(identifier, password, selectedCoordinatorUnit);
     }
   };
 
-  const switchTab = (tab: 'student' | 'teacher' | 'admin') => {
+  const switchTab = (tab: 'student' | 'teacher' | 'admin' | 'coordinator') => {
     setActiveTab(tab);
     setIdentifier('');
     setPassword('');
     setSelectedAdminUnit('');
     if (tab === 'teacher') setSelectedTeacherUnit(SCHOOL_UNITS_LIST[0]);
+    if (tab === 'coordinator') setSelectedCoordinatorUnit(SCHOOL_UNITS_LIST[0]);
   };
 
   const handleIdentifierChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -300,16 +309,26 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
               Professores
             </button>
 
-            {/* ABA ADMIN (CONDICIONAL - MODO SECRETO) */}
-            {isAdminVisible && (
-              <button
-                className={`flex-1 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 ${activeTab === 'admin' ? 'text-blue-900 border-blue-900 bg-white' : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-100'
-                  }`}
-                style={{ WebkitTapHighlightColor: 'transparent' }}
-                onClick={() => switchTab('admin')}
-              >
-                Admin
-              </button>
+            {/* ABAS OCULTAS (ADMIN / COORDENADOR) */}
+            {showHiddenTabs && (
+              <>
+                <button
+                  className={`flex-1 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 ${activeTab === 'coordinator' ? 'text-purple-800 border-purple-800 bg-purple-50' : 'text-gray-500 border-transparent hover:text-purple-600 hover:bg-purple-50'
+                    }`}
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
+                  onClick={() => switchTab('coordinator')}
+                >
+                  Coord.
+                </button>
+                <button
+                  className={`flex-1 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 ${activeTab === 'admin' ? 'text-blue-900 border-blue-900 bg-white' : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-100'
+                    }`}
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
+                  onClick={() => switchTab('admin')}
+                >
+                  Admin
+                </button>
+              </>
             )}
           </div>
 
@@ -351,11 +370,27 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                   </select>
                 </div>
               )}
+              {activeTab === 'coordinator' && (
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-1">Selecione a Unidade</label>
+                  <select
+                    value={selectedCoordinatorUnit}
+                    onChange={(e) => setSelectedCoordinatorUnit(e.target.value as SchoolUnit)}
+                    className="w-full px-4 py-3 border border-purple-300 rounded-lg text-gray-700 focus:outline-none focus:border-purple-900 bg-purple-50 transition-colors"
+                    required
+                  >
+                    {SCHOOL_UNITS_LIST.map(unit => (
+                      <option key={unit} value={unit}>{unit}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">
                   {activeTab === 'student' ? 'Código de Matrícula' :
-                    activeTab === 'teacher' ? 'CPF do Professor' : 'Usuário'}
+                    activeTab === 'teacher' ? 'CPF do Professor' :
+                      activeTab === 'coordinator' ? 'Nome do Coordenador' : 'Usuário'}
                 </label>
                 <input
                   type="text"
@@ -366,7 +401,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                   placeholder={
                     activeTab === 'student' ? 'Ex.: 12345 (Consulte a Secretaria)' :
                       activeTab === 'teacher' ? '000.000.000-00' :
-                        'Usuário'
+                        activeTab === 'coordinator' ? 'Ex: Maria Silva' :
+                          'Usuário'
                   }
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-700 placeholder-gray-400 focus:outline-none focus:border-blue-950 transition-colors"
                   required
@@ -381,7 +417,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-700 placeholder-gray-400 focus:outline-none focus:border-blue-950 transition-colors pr-10"
+                    className={`w-full px-4 py-3 border rounded-lg text-gray-700 placeholder-gray-400 focus:outline-none transition-colors pr-10 ${activeTab === 'coordinator' ? 'border-purple-300 focus:border-purple-900' : 'border-gray-300 focus:border-blue-950'
+                      }`}
                     required
                   />
                   <button
@@ -421,8 +458,12 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                 </div>
               )}
 
-              {/* Botão Acessar Portal - Cor Sólida Laranja (Tom do Logo), Sem Gradiente */}
-              <button type="submit" className="w-full py-3.5 text-lg font-bold text-white rounded-lg transition-all transform active:scale-95 bg-orange-600 hover:bg-orange-700 shadow-lg">
+              {/* Botão Acessar Portal */}
+              <button
+                type="submit"
+                className={`w-full py-3.5 text-lg font-bold text-white rounded-lg transition-all transform active:scale-95 shadow-lg ${activeTab === 'coordinator' ? 'bg-purple-700 hover:bg-purple-800' : 'bg-orange-600 hover:bg-orange-700'
+                  }`}
+              >
                 Acessar
               </button>
 

@@ -9,13 +9,14 @@ import { Login } from './components/Login';
 import { StudentDashboard } from './components/StudentDashboard';
 import { TeacherDashboard } from './components/TeacherDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
+import { CoordinatorDashboard } from './components/CoordinatorDashboard';
 import { db } from './firebaseConfig';
 import { BackToTopButton } from './components/BackToTopButton';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { SchoolLogo } from './components/SchoolLogo';
 
 import { ValidateReceipt } from './components/ValidateReceipt';
-import { StudentDashboardSkeleton, TeacherDashboardSkeleton, AdminDashboardSkeleton } from './components/Skeleton';
+import { StudentDashboardSkeleton, TeacherDashboardSkeleton, AdminDashboardSkeleton, CoordinatorDashboardSkeleton } from './components/Skeleton';
 
 // Extracted Main Application Logic (formerly App)
 // Extracted Main Application Logic (formerly App)
@@ -254,6 +255,24 @@ const AppContent: React.FC = () => {
       }));
 
       setInitialLoad(prev => ({ ...prev, notifications: true, earlyChildhoodReports: true }));
+
+    } else if (session.role === UserRole.COORDINATOR) {
+      // Coordinator manages their own data fetch in the dashboard or doesn't need global data pre-loaded
+      // We just need to signal that the "initial load" is complete so the router can proceed.
+      setInitialLoad(prev => ({
+        ...prev,
+        students: true,
+        teachers: true,
+        admins: true,
+        grades: true,
+        messages: true,
+        attendance: true,
+        earlyChildhoodReports: true,
+        unitContacts: true,
+        notifications: true,
+        mensalidades: true,
+        eventosFinanceiros: true
+      }));
     }
 
     return () => unsubs.forEach(u => u());
@@ -424,6 +443,7 @@ const AppContent: React.FC = () => {
     }
   };
 
+
   const handleAdminLogin = async (user: string, pass: string) => {
     try {
       const snapshot = await db.collection('admins')
@@ -450,6 +470,31 @@ const AppContent: React.FC = () => {
       }
     } catch (error) {
       console.error("Admin Login error:", error);
+      setLoginError('Erro ao conectar ao servidor.');
+    }
+  };
+
+  const handleCoordinatorLogin = async (name: string, pass: string, unit: string) => {
+    try {
+      // Verify against unitContacts where role matches potential coordinator roles?
+      // Actually, simply query unitContacts by name/pass/unit
+      const snapshot = await db.collection('unitContacts')
+        .where('name', '==', name.trim())
+        .where('password', '==', pass)
+        .where('unit', '==', unit)
+        .get();
+
+      if (!snapshot.empty) {
+        const coord = { ...snapshot.docs[0].data(), id: snapshot.docs[0].id } as UnitContact;
+        setSession({ role: UserRole.COORDINATOR, user: coord });
+        setLoginError('');
+        logAccess(coord.id);
+      } else {
+        setLoginError('Coordenador não encontrado ou senha incorreta.');
+      }
+
+    } catch (error) {
+      console.error("Coordinator Login error:", error);
       setLoginError('Erro ao conectar ao servidor.');
     }
   };
@@ -974,6 +1019,7 @@ const AppContent: React.FC = () => {
     if (session.role === UserRole.STUDENT) return <StudentDashboardSkeleton />;
     if (session.role === UserRole.TEACHER) return <TeacherDashboardSkeleton />;
     if (session.role === UserRole.ADMIN) return <AdminDashboardSkeleton />;
+    if (session.role === UserRole.COORDINATOR) return <CoordinatorDashboardSkeleton />;
 
     // Fallback for unexpected states while loading
     return (
@@ -998,7 +1044,19 @@ const AppContent: React.FC = () => {
   if (session.role === UserRole.NONE) {
     return (
       <>
-        <Login onLoginStudent={handleStudentLogin} onLoginTeacher={handleTeacherLogin} onLoginAdmin={handleAdminLogin} onResetSystem={handleResetSystem} error={loginError} adminsList={admins} />
+        <Login onLoginStudent={handleStudentLogin} onLoginTeacher={handleTeacherLogin} onLoginAdmin={handleAdminLogin} onLoginCoordinator={handleCoordinatorLogin} onResetSystem={handleResetSystem} error={loginError} adminsList={admins} />
+        <BackToTopButton />
+      </>
+    );
+  }
+
+  if (session.role === UserRole.COORDINATOR && session.user) {
+    return (
+      <>
+        <CoordinatorDashboard
+          coordinator={session.user as UnitContact}
+          onLogout={handleLogout}
+        />
         <BackToTopButton />
       </>
     );

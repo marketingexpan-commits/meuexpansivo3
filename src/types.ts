@@ -4,6 +4,7 @@ export enum UserRole {
   STUDENT = 'STUDENT',
   TEACHER = 'TEACHER',
   ADMIN = 'ADMIN',
+  COORDINATOR = 'COORDINATOR',
   NONE = 'NONE'
 }
 
@@ -136,7 +137,7 @@ export interface Admin {
 
 export interface UserSession {
   role: UserRole;
-  user: Student | Teacher | Admin | null;
+  user: Student | Teacher | Admin | UnitContact | null;
 }
 
 // NOVO: Tipos para o sistema de chamada
