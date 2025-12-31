@@ -155,8 +155,22 @@ const AppContent: React.FC = () => {
         setInitialLoad(prev => ({ ...prev, teachers: true }));
       }));
 
+      // Fetch Attendance for the specific class
+      const studentUser = session.user as Student;
+      unsubs.push(db.collection('attendance')
+        .where('unit', '==', userUnit)
+        .where('gradeLevel', '==', studentUser.gradeLevel)
+        .where('schoolClass', '==', studentUser.schoolClass)
+        .onSnapshot(snap => {
+          setAttendanceRecords(snap.docs.map(doc => doc.data() as AttendanceRecord));
+          setInitialLoad(prev => ({ ...prev, attendance: true }));
+        }, (err) => {
+          console.error("Attendance listen error:", err);
+          setInitialLoad(prev => ({ ...prev, attendance: true }));
+        }));
+
       // Set others to ready for students
-      setInitialLoad(prev => ({ ...prev, students: true, admins: true, messages: true, attendance: true }));
+      setInitialLoad(prev => ({ ...prev, students: true, admins: true, messages: true }));
 
     } else if (session.role === UserRole.TEACHER) {
       // Teacher Data Scoping
