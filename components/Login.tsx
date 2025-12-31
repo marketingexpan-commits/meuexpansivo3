@@ -291,42 +291,43 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
           </div>
 
           {/* --- MENU DE ABAS --- */}
-          <div className="flex border-b border-gray-200 bg-gray-50 rounded-t-2xl -mt-6 relative z-10 overflow-hidden box-border justify-center">
+          {/* justify-between ou w-full com flex-1 em cada item para garantir distribuição igualitária */}
+          <div className="flex w-full border-b border-gray-200 bg-gray-50 rounded-t-2xl -mt-6 relative z-10 overflow-hidden box-border">
             <button
-              className={`flex-1 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 flex items-center justify-center ${activeTab === 'student' ? 'text-blue-900 border-blue-900 bg-white' : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-100'
+              className={`flex-1 min-w-0 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 flex items-center justify-center ${activeTab === 'student' ? 'text-blue-900 border-blue-900 bg-white' : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-100'
                 }`}
               style={{ WebkitTapHighlightColor: 'transparent' }}
               onClick={() => switchTab('student')}
             >
-              Família / Aluno
+              <span className="truncate px-1">Família / Aluno</span>
             </button>
             <button
-              className={`flex-1 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 flex items-center justify-center ${activeTab === 'teacher' ? 'text-blue-900 border-blue-900 bg-white' : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-100'
+              className={`flex-1 min-w-0 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 flex items-center justify-center ${activeTab === 'teacher' ? 'text-blue-900 border-blue-900 bg-white' : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-100'
                 }`}
               style={{ WebkitTapHighlightColor: 'transparent' }}
               onClick={() => switchTab('teacher')}
             >
-              Professores
+              <span className="truncate px-1">Professores</span>
             </button>
 
             {/* ABAS OCULTAS (ADMIN / COORDENADOR) */}
             {showHiddenTabs && (
               <>
                 <button
-                  className={`flex-1 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 flex items-center justify-center ${activeTab === 'coordinator' ? 'text-purple-800 border-purple-800 bg-purple-50' : 'text-gray-500 border-transparent hover:text-purple-600 hover:bg-purple-50'
+                  className={`flex-1 min-w-0 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 flex items-center justify-center ${activeTab === 'coordinator' ? 'text-purple-800 border-purple-800 bg-purple-50' : 'text-gray-500 border-transparent hover:text-purple-600 hover:bg-purple-50'
                     }`}
                   style={{ WebkitTapHighlightColor: 'transparent' }}
                   onClick={() => switchTab('coordinator')}
                 >
-                  Coord.
+                  <span className="truncate px-1">Coord.</span>
                 </button>
                 <button
-                  className={`flex-1 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 flex items-center justify-center ${activeTab === 'admin' ? 'text-blue-900 border-blue-900 bg-white' : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-100'
+                  className={`flex-1 min-w-0 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 flex items-center justify-center ${activeTab === 'admin' ? 'text-blue-900 border-blue-900 bg-white' : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-100'
                     }`}
                   style={{ WebkitTapHighlightColor: 'transparent' }}
                   onClick={() => switchTab('admin')}
                 >
-                  Admin
+                  <span className="truncate px-1">Admin</span>
                 </button>
               </>
             )}
