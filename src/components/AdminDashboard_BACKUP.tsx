@@ -4,13 +4,7 @@ import { db } from '../../firebaseConfig';
 import { Admin, Student, Teacher, SchoolUnit, Subject, SchoolShift, SchoolClass, UnitContact, CoordinationSegment } from '../types';
 import { SCHOOL_UNITS_LIST, SUBJECT_LIST, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST, SCHOOL_GRADES_LIST } from '../constants';
 import { Button } from './Button';
-import { Card, CardContent, CardHeader, CardTitle } from './Card';
-import { Input } from './Input';
-import { Select } from './Select';
-import { Sidebar, SidebarToggle } from './Sidebar';
-import { SidebarCategory } from './SidebarCategory';
-import { SidebarItem } from './SidebarItem';
-import { GraduationCap, Users } from 'lucide-react';
+// import { SchoolLogo } from './SchoolLogo';
 
 interface AdminDashboardProps {
     admin: Admin;
@@ -57,7 +51,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     onLogout
 }) => {
     const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'admins' | 'contacts'>('students');
-    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     const adminUnit = admin.unit;
     const isGeneralAdmin = !adminUnit;
