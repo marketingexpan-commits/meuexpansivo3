@@ -5,7 +5,6 @@ import { Button } from './Button';
 import { Input } from './Input';
 import { studentService } from '../services/studentService';
 import { generateSchoolDeclaration } from '../utils/schoolDeclarationGenerator';
-import type { Student } from '../types';
 
 interface DeclarationSearchModalProps {
     onClose: () => void;

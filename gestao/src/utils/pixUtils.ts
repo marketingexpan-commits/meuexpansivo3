@@ -11,11 +11,9 @@ interface PixParams {
 export const generatePixPayload = ({ key, name, city, amount, txid = '***' }: PixParams): string => {
     // IDs do Payload do Pix (EMVCo)
     const ID_PAYLOAD_FORMAT_INDICATOR = '00';
-    const ID_POINT_OF_INITIATION_METHOD = '01';
     const ID_MERCHANT_ACCOUNT_INFORMATION = '26';
     const ID_MERCHANT_ACCOUNT_INFORMATION_GUI = '00';
     const ID_MERCHANT_ACCOUNT_INFORMATION_KEY = '01';
-    const ID_MERCHANT_ACCOUNT_INFORMATION_DESCRIPTION = '02';
     const ID_MERCHANT_CATEGORY_CODE = '52';
     const ID_TRANSACTION_CURRENCY = '53';
     const ID_TRANSACTION_AMOUNT = '54';
