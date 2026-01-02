@@ -1,5 +1,6 @@
 import type { Student } from '../types';
 import { generatePixPayload } from './pixUtils';
+import { UNIT_DETAILS } from './receiptGenerator';
 
 interface Installment {
     month: string;
@@ -19,6 +20,7 @@ export const generateCarne = (student: Student, installments: Installment[]) => 
     if (!printWindow) return;
 
     const PIX_KEY = 'expansivo.unidadeboasorte@gmail.com';
+    const unitInfo = UNIT_DETAILS[student.unit] || UNIT_DETAILS['Zona Norte'];
 
     const sortedInstallments = installments.sort((a, b) => {
         const months = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -89,11 +91,11 @@ export const generateCarne = (student: Student, installments: Installment[]) => 
                 .row { display: flex; gap: 10px; margin-top: 5px; } /* Margin reduzida */
                 .field { flex: 1; display: flex; flex-direction: column; }
                 .label { font-size: 7px; color: #666; font-weight: bold; text-transform: uppercase; }
-                .value { font-size: 10px; font-weight: bold; border-bottom: 1px solid #eee; padding: 2px 0; }
+                .value { font-size: 10px; font-weight: bold; border-bottom: 1px solid #e0e0e0; padding: 2px 0; }
                 
                 .qr-section { display: flex; gap: 10px; align-items: center; margin-top: 5px; } /* Margin reduzida */
-                .qr-box { border: 1px solid #000; padding: 2px; text-align: center; width: 70px; } /* Box menor */
-                .baixa-box { border: 2px solid #000; padding: 2px; text-align: center; flex: 1; }
+                .qr-box { text-align: center; width: 70px; }
+                .baixa-box { text-align: center; width: 100px; }
 
                 .watermark { 
                     position: absolute; top: 50%; left: 55%; transform: translate(-50%, -50%);
@@ -139,53 +141,65 @@ export const generateCarne = (student: Student, installments: Installment[]) => 
                             <img src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png" class="watermark">
                             
                             <div class="school-copy">
-                                <div style="text-align:center; font-weight:bold; border-bottom:1px solid #000;">CONTROLE</div>
-                                <div class="field"><span class="label">Vencimento</span><span class="value">${formatDate(inst.dueDate)}</span></div>
+                                <div style="display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 8px; border-bottom: 1px solid #e0e0e0; padding-bottom: 5px;">
+                                    <img src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png" style="height: 30px; width: auto; object-fit: contain;">
+                                    <div style="display: flex; flex-direction: column; align-items: flex-start;">
+                                        <div style="font-weight:900; font-size: 10px; text-transform:uppercase; line-height: 1; letter-spacing: -0.5px;">EXPANSIVO</div>
+                                        <div style="font-weight:700; font-size: 6px; text-transform:uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">REDE DE ENSINO</div>
+                                        <div style="font-size: 7px; color: #444;">Unidade ${student.unit}</div>
+                                    </div>
+                                </div>
+                                <div class="field" style="margin-top: 5px;"><span class="label">Vencimento</span><span class="value">${formatDate(inst.dueDate)}</span></div>
                                 <div class="field"><span class="label">Valor</span><span class="value">R$ ${inst.value.toFixed(2)}</span></div>
                                 <div class="field"><span class="label">Mês Ref.</span><span class="value">${inst.month}</span></div>
-                                <div class="field"><span class="label">Matrícula</span><span class="value">${student.code}</span></div>
-                                <div style="margin-top:10px; border-top:1px solid #000; font-size:7px; text-align:center;"><br>Visto Escola</div>
+                                <div class="field"><span class="label">Código/Matrícula</span><span class="value">${student.code}</span></div>
+                                <div class="field"><span class="label">Cód. Baixa</span><span class="value">${inst.documentNumber || '---'}</span></div>
+                                <div style="margin-top:auto; border-top:1px solid #000; font-size:7px; text-align:center;"><br>Visto Escola</div>
                             </div>
 
                             <div class="payer-copy">
                                 <div class="header">
-                                    <img src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png" class="logo-img">
-                                    <div style="flex:1">
-                                        <div style="font-weight:bold; font-size:12px;">MEU EXPANSIVO</div>
-                                        <div style="font-size:8px;">Recibo de Mensalidade - Unidade: ${student.unit || 'Natal'}</div>
+                                    <div class="logo-container" style="display: flex; align-items: center; justify-content: center; width: 50px;">
+                                         <img src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png" class="logo-img" style="width: 100%; height: auto; object-fit: contain;">
                                     </div>
-                                    <div style="text-align:right">
+                                    <div style="flex:1; margin-left: 8px; display: flex; flex-direction: column; justify-content: center;">
+                                        <div style="font-weight:800; font-size:12px; text-transform:uppercase; line-height: 1.1;">Expansivo Rede de Ensino</div>
+                                        <div style="font-weight:700; font-size:9px; margin-bottom:1px;">Unidade ${student.unit}</div>
+                                        <div style="font-size:7px; color:#444; line-height: 1.1;">${unitInfo.address}</div>
+                                        <div style="font-size:7px; color:#444; line-height: 1.1;">CNPJ: ${unitInfo.cnpj} | Tel: ${unitInfo.phone}</div>
+                                    </div>
+                                    <div style="text-align:right; display: flex; flex-direction: column; justify-content: center;">
                                         <div style="font-size:14px; font-weight:bold;">R$ ${inst.value.toFixed(2)}</div>
                                         <div style="font-size:9px;">Vencimento: ${formatDate(inst.dueDate)}</div>
                                     </div>
                                 </div>
 
                                 <div class="row">
-                                    <div class="field" style="flex:2"><span class="label">Pagador / Aluno</span><span class="value">${student.name}</span></div>
-                                    <div class="field"><span class="label">Matrícula</span><span class="value">${student.code}</span></div>
+                                    <div class="field" style="flex:2"><span class="label">Aluno (a)</span><span class="value">${student.name}</span></div>
+                                    <div class="field"><span class="label">Código/Matrícula</span><span class="value">${student.code}</span></div>
                                 </div>
 
                                 <div class="row">
-                                    <div class="field"><span class="label">Série/Turma</span><span class="value">${student.gradeLevel}</span></div>
-                                    <div class="field"><span class="label">Parcela/Mês</span><span class="value">${inst.month.toUpperCase()}</span></div>
+                                    <div class="field"><span class="label">Série/Turma/Turno</span><span class="value">${student.gradeLevel} - ${student.schoolClass} / ${student.shift}</span></div>
+                                    <div class="field"><span class="label">Mensal./Mês</span><span class="value">${inst.month.toUpperCase()}</span></div>
                                     <div class="field"><span class="label">Data Doc.</span><span class="value">${new Date().toLocaleDateString('pt-BR')}</span></div>
                                 </div>
 
-                                <div class="qr-section">
-                                    <div class="field" style="flex:1.5"><span class="label">Instruções</span><div style="font-size:7px;">Multa de 2% após o vencimento.<br>Juros de 1% ao mês.<br>Pagamento preferencial via PIX.</div></div>
-                                    <div class="qr-box">
-                                        <span class="label" style="display:block; font-size:6px;">PAGUE PIX</span>
-                                        <img src="${qrUrl}" style="width:45px; height:45px;">
-                                    </div>
-                                    <div class="baixa-box">
+                                <div class="row" style="margin-top: 10px;">
+                                    <div class="field"><span class="label">Instruções</span><div style="font-size:7px;">Multa de 2% após o vencimento.<br>Juros de 1% ao mês.<br>Pagamento preferencial via PIX.</div></div>
+                                    <div class="field">
                                         <span class="label">CÓDIGO BAIXA</span>
-                                        <div style="font-size:14px; font-weight:bold; margin-top:5px;">${inst.documentNumber || '---'}</div>
+                                        <div style="font-size:14px; font-weight:bold; margin-top:2px;">${inst.documentNumber || '---'}</div>
+                                    </div>
+                                    <div class="field" style="align-items: flex-end; margin-top: -15px; margin-right: 5px;">
+                                        <span class="label" style="display:block; font-size:6px; text-align: center; width: 66px;">PAGUE PIX</span>
+                                        <img src="${qrUrl}" style="width:66px; height:66px;">
                                     </div>
                                 </div>
                                 
                                 <div class="barcode-section">
-                                    <div class="barcode-strip"></div>
-                                    <div class="barcode-text">${inst.barcode || ''}</div>
+                                    <img src="https://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(inst.barcode || '237933812860083013528560000633077890000001000')}&scale=1&height=10&incltext=false" style="width: 85%; height: 32px; object-fit: fill;">
+                                    <div class="barcode-text">${inst.barcode || '23793.38128 60083.01352 85600.00633 0 77890000001000'}</div>
                                 </div>
                             </div>
                         </div>`;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/Card';
+import { Card, CardContent, CardHeader } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Select } from '../components/Select';
@@ -8,14 +8,16 @@ import { Plus, Search, Filter, Loader2, Printer } from 'lucide-react';
 import { studentService } from '../services/studentService';
 import type { Student } from '../types';
 import { EDUCATION_LEVELS, GRADES_BY_LEVEL, SCHOOL_SHIFTS, SCHOOL_CLASSES_OPTIONS } from '../types';
-import { normalizeClass } from '../utils/academicUtils';
+
 import { financialService } from '../services/financialService';
 import { generateCarne } from '../utils/carneGenerator';
+import { generateStudentList } from '../utils/studentListGenerator';
+import { FileText, Pencil } from 'lucide-react';
 
 export function Matriculas() {
     const [isFormOpen, setIsFormOpen] = useState(false);
-    const [isFiltersOpen, setIsFiltersOpen] = useState(false); // Toggle filtros
     const [students, setStudents] = useState<Student[]>([]);
+
     const [searchTerm, setSearchTerm] = useState('');
 
     // Estados dos filtros
@@ -24,8 +26,11 @@ export function Matriculas() {
     const [filterShift, setFilterShift] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
 
+    const hasActiveFilters = filterGrade || filterClass || filterShift || filterStatus || searchTerm;
+
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+
 
     const loadStudents = async () => {
         try {
@@ -71,7 +76,14 @@ export function Matriculas() {
             (student.cpf_aluno && student.cpf_aluno.includes(searchLower))
         );
 
-        const matchesGrade = !filterGrade || student.gradeLevel === filterGrade;
+        const matchesGrade = !filterGrade || (() => {
+            // Case 1: Filter is a broad Level (e.g. "Ensino Médio") - check if student grade allows any of the level's grades
+            if (GRADES_BY_LEVEL[filterGrade]) {
+                return GRADES_BY_LEVEL[filterGrade].some(g => student.gradeLevel && student.gradeLevel.includes(g));
+            }
+            // Case 2: Filter is a specific Grade (e.g. "1ª Série") - check if student grade string contains the filter
+            return student.gradeLevel && student.gradeLevel.includes(filterGrade);
+        })();
         const matchesClass = !filterClass || student.schoolClass === filterClass;
         const matchesShift = !filterShift || student.shift === filterShift;
         const matchesStatus = !filterStatus || (filterStatus === 'active' ? !student.isBlocked : student.isBlocked);
@@ -123,33 +135,7 @@ export function Matriculas() {
         }
     };
 
-    const handleBatchFix = async () => {
-        if (!confirm("Isso irá converter turmas '3' para 'A' e '4' para 'B' em TODOS os alunos. Deseja continuar?")) return;
-        try {
-            setIsLoading(true);
-            const count = await studentService.batchUpdateClassesNumericalToLetter();
-            alert(`Correção finalizada! ${count} alunos atualizados.`);
-            loadStudents();
-        } catch (error) {
-            alert("Erro ao executar correção.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
 
-    const handleBatchFixDefault = async () => {
-        if (!confirm("Isso irá definir a turma como 'A' para TODOS os alunos sem turma (vazios). Use isto se a maioria das suas turmas forem únicas (Turma A). Deseja continuar?")) return;
-        try {
-            setIsLoading(true);
-            const count = await studentService.batchFixMissingClassesDefaultA();
-            alert(`Processo finalizado! ${count} alunos foram atualizados para Turma A.`);
-            loadStudents();
-        } catch (error) {
-            alert("Erro ao executar atualização.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
 
 
     return (
@@ -161,14 +147,6 @@ export function Matriculas() {
                     <p className="text-slate-500 text-sm">Gerencie alunos, enturmações e vagas escolares.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button
-                        variant={isFiltersOpen ? "primary" : "outline"}
-                        className="hidden sm:flex"
-                        onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                    >
-                        <Filter className="w-4 h-4 mr-2" />
-                        Filtros
-                    </Button>
                     <Button onClick={() => setIsFormOpen(true)}>
                         <Plus className="w-4 h-4 mr-2" />
                         Nova Matrícula
@@ -194,157 +172,201 @@ export function Matriculas() {
                     </CardContent>
                 </Card>
 
-                {isFiltersOpen && (
-                    <Card className="border-slate-200 shadow-sm bg-slate-50">
-                        <CardContent className="p-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
-                                <div className="sm:col-span-2 lg:col-span-1">
-                                    <Button variant="ghost" onClick={handleBatchFix} className="text-xs text-orange-500 hover:bg-orange-50 w-full">
-                                        Corrigir Turmas (3→A)
-                                    </Button>
-                                </div>
-                                <div className="sm:col-span-2 lg:col-span-1 hidden">
-                                    {/* Secret or visible tool based on user request */}
-                                    <Button variant="ghost" onClick={handleBatchFix} className="text-xs text-orange-500 hover:bg-orange-50">
-                                        Corrigir Turmas (3→A)
-                                    </Button>
-                                </div>
-                                <div className="sm:col-span-2 lg:col-span-1">
-                                    <Button variant="ghost" onClick={handleBatchFixDefault} className="text-xs text-blue-600 hover:bg-blue-50 w-full" title="Define a turma como 'A' para todos os alunos que estão sem turma">
-                                        Preencher Vazios (Padrão A)
-                                    </Button>
-                                </div>
-
-
-
-                                <Select
-                                    label="Nível/Série"
-                                    value={filterGrade}
-                                    onChange={(e) => setFilterGrade(e.target.value)}
-                                    options={[
-                                        ...EDUCATION_LEVELS, // Allow filtering by Level broadly? Or just Grades? 
-                                        // The original had mixed level and grades.
-                                        // Let's offer all grades flattened + levels if needed. 
-                                        // Actually, user wants "levels, grades... according to app".
-                                        // Usually filters are specific.
-                                        // Let's flattening all grades:
-                                        ...Object.values(GRADES_BY_LEVEL).flat().map(g => ({ label: g, value: g }))
-                                    ]}
-                                />
-                                <Select
-                                    label="Turma"
-                                    value={filterClass}
-                                    onChange={(e) => setFilterClass(e.target.value)}
-                                    options={SCHOOL_CLASSES_OPTIONS}
-                                />
-                                <Select
-                                    label="Turno"
-                                    value={filterShift}
-                                    onChange={(e) => setFilterShift(e.target.value)}
-                                    options={SCHOOL_SHIFTS}
-                                />
-                                <Select
-                                    label="Situação"
-                                    value={filterStatus}
-                                    onChange={(e) => setFilterStatus(e.target.value)}
-                                    options={[
-                                        { label: 'Ativo', value: 'active' },
-                                        { label: 'Bloqueado', value: 'blocked' },
-                                    ]}
-                                />
-                                <Button variant="ghost" onClick={clearFilters} className="w-full text-slate-500 hover:text-red-500 hover:bg-red-50">
-                                    Limpar Filtros
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
+                <Card className="border-slate-200 shadow-sm bg-slate-50">
+                    <CardContent className="p-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+                            <Select
+                                label="Nível/Série"
+                                value={filterGrade}
+                                onChange={(e) => setFilterGrade(e.target.value)}
+                                options={[
+                                    ...EDUCATION_LEVELS, // Allow filtering by Level broadly? Or just Grades? 
+                                    // The original had mixed level and grades.
+                                    // Let's offer all grades flattened + levels if needed. 
+                                    // Actually, user wants "levels, grades... according to app".
+                                    // Usually filters are specific.
+                                    // Let's flattening all grades:
+                                    ...Object.values(GRADES_BY_LEVEL).flat().map(g => ({ label: g, value: g }))
+                                ]}
+                            />
+                            <Select
+                                label="Turma"
+                                value={filterClass}
+                                onChange={(e) => setFilterClass(e.target.value)}
+                                options={SCHOOL_CLASSES_OPTIONS}
+                            />
+                            <Select
+                                label="Turno"
+                                value={filterShift}
+                                onChange={(e) => setFilterShift(e.target.value)}
+                                options={SCHOOL_SHIFTS}
+                            />
+                            <Select
+                                label="Situação"
+                                value={filterStatus}
+                                onChange={(e) => setFilterStatus(e.target.value)}
+                                options={[
+                                    { label: 'Ativo', value: 'active' },
+                                    { label: 'Bloqueado', value: 'blocked' },
+                                ]}
+                            />
+                            <Button variant="ghost" onClick={clearFilters} className="w-full text-slate-500 hover:text-red-500 hover:bg-red-50">
+                                Limpar Filtros
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
-            {/* Students Table */}
-            <Card className="border-slate-200 shadow-sm">
-                <CardHeader className="border-b border-slate-100 bg-slate-50/50 py-4">
-                    <CardTitle className="text-sm font-medium text-slate-700">Listagem de Alunos ({filteredStudents.length})</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <div className="relative overflow-x-auto">
-                        <table className="w-full text-sm text-left text-slate-500">
-                            <thead className="text-xs text-slate-700 uppercase bg-slate-50">
-                                <tr>
-                                    <th scope="col" className="px-6 py-3">Aluno</th>
-                                    <th scope="col" className="px-6 py-3">Matrícula</th>
-                                    <th scope="col" className="px-6 py-3">Série/Turma</th>
-                                    <th scope="col" className="px-6 py-3">Situação</th>
-                                    <th scope="col" className="px-6 py-3 text-right">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {isLoading ? (
-                                    <tr className="bg-white border-b">
-                                        <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                                            <div className="flex justify-center items-center gap-2">
-                                                <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-                                                <span>Carregando alunos...</span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ) : filteredStudents.length === 0 ? (
-                                    <tr className="bg-white border-b hover:bg-slate-50">
-                                        <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
-                                            <div className="flex flex-col items-center justify-center gap-2">
-                                                <Search className="w-8 h-8 text-slate-200" />
-                                                <span>Nenhum aluno encontrado.</span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filteredStudents.map((student) => (
-                                        <tr key={student.id} className="bg-white border-b hover:bg-slate-50">
-                                            <td className="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">
-                                                <div className="flex flex-col">
-                                                    <span>{student.name}</span>
-                                                    <span className="text-xs text-slate-500">{student.cpf_aluno || 'CPF não inf.'}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">{student.code || '-'}</td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col">
-                                                    <span>{student.gradeLevel || '-'}</span>
-                                                    {(student.schoolClass || student.shift) && (
-                                                        <span className="text-xs text-slate-500 font-medium">
-                                                            {normalizeClass(student.schoolClass)}{student.schoolClass && student.shift ? ', ' : ''}{student.shift}
-                                                        </span>
-                                                    )}
-                                                    <span className="text-xs text-slate-400 capitalize">{student.unit}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={student.isBlocked ? "text-red-600 bg-red-50 px-2 py-1 rounded text-xs font-medium" : "text-green-600 bg-green-50 px-2 py-1 rounded text-xs font-medium"}>
-                                                    {student.isBlocked ? 'Bloqueado' : 'Ativo'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right flex justify-end gap-2">
-                                                <Button variant="ghost" size="sm" onClick={() => {
-                                                    const keys = Object.keys(student).sort().join('\n');
-                                                    alert(`Campos encontrados:\n${keys}\n\n---- DADOS COMPLETOS ----\n${JSON.stringify(student, null, 2)}`);
-                                                }} title="Ver Estrutura de Dados">
-                                                    <Search className="w-4 h-4 text-slate-400" />
-                                                </Button>
-                                                <Button variant="outline" size="sm" onClick={() => handleEdit(student)}>
-                                                    Editar
-                                                </Button>
-                                                <Button variant="secondary" size="sm" onClick={() => handlePrintCarne(student)} title="Imprimir Carnê">
-                                                    <Printer className="w-4 h-4 text-slate-600" />
-                                                </Button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </CardContent>
-            </Card>
+            {/* Students List Grouped by Class */}
+            {!hasActiveFilters ? (
+                <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50 border-2 border-dashed border-slate-200 rounded-xl">
+                    <Filter className="w-12 h-12 text-slate-300 mb-4" />
+                    <h3 className="text-lg font-semibold text-slate-700">Selecione filtros para visualizar</h3>
+                    <p className="text-slate-500 max-w-md text-center">Use a barra de pesquisa ou os filtros acima para encontrar turmas e alunos específicos.</p>
+                </div>
+            ) : (
+                <div className="space-y-6">
+                    {Object.entries(
+                        filteredStudents.reduce((acc, student) => {
+                            const key = (student.gradeLevel && student.schoolClass && student.shift)
+                                ? `${student.gradeLevel} - Turma ${student.schoolClass} / ${student.shift}`
+                                : 'Sem Enturmação / Outros';
+
+                            if (!acc[key]) acc[key] = [];
+                            acc[key].push(student);
+                            return acc;
+                        }, {} as Record<string, Student[]>)
+                    )
+                        .sort(([keyA], [keyB]) => {
+                            // Custom sort logic to respect academic levels
+                            const getLevelIndex = (str: string) => {
+                                // Key ex: "1ª Série - Ens. Médio - Turma A / Matutino"
+                                // Key ex: "Nível V - Edu. Infantil - Turma A / Matutino"
+                                // Key ex: "6º Ano - Fundamental II - Turma A / Matutino"
+
+                                if (str.includes('Edu. Infantil') || str.includes('Nível')) return 0;
+                                if (str.includes('Fundamental I') || (str.includes('Ano') && ['1º', '2º', '3º', '4º', '5º'].some(g => str.startsWith(g)))) return 1;
+                                if (str.includes('Fundamental II') || (str.includes('Ano') && ['6º', '7º', '8º', '9º'].some(g => str.startsWith(g)))) return 2;
+                                if (str.includes('Ens. Médio') || str.includes('Série')) return 3;
+                                return 4; // Outros
+                            };
+
+                            const levelA = getLevelIndex(keyA);
+                            const levelB = getLevelIndex(keyB);
+
+                            if (levelA !== levelB) return levelA - levelB;
+                            return keyA.localeCompare(keyB, undefined, { numeric: true });
+                        })
+                        .map(([groupName, studentsInGroup]) => (
+                            <Card key={groupName} className="border-slate-200 shadow-sm overflow-hidden">
+                                <CardHeader className="bg-slate-50/80 border-b border-slate-100 py-3 px-4 flex flex-row items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className={`w-2 h-8 rounded-full ${groupName.includes('Ens. Médio') ? 'bg-indigo-500' :
+                                            groupName.includes('Fundamental II') ? 'bg-blue-500' :
+                                                groupName.includes('Fundamental I') ? 'bg-sky-500' :
+                                                    groupName.includes('Infantil') ? 'bg-rose-400' : 'bg-slate-400'
+                                            }`}></div>
+                                        <div>
+                                            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-tight">{groupName}</h3>
+                                            <p className="text-xs text-slate-500 font-medium">{studentsInGroup.length} aluno(s)</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-[10px] text-slate-400 uppercase font-bold mr-1 hidden sm:inline">Imprimir Relação de Alunos:</span>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 px-2 text-xs text-slate-500 hover:text-blue-600 hover:bg-blue-50"
+                                            onClick={() => generateStudentList(studentsInGroup, groupName, 'simple')}
+                                            title="Lista Simples (A4 Retrato)"
+                                        >
+                                            <FileText className="w-3 h-3 mr-1" />
+                                            Simples
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 px-2 text-xs text-slate-500 hover:text-indigo-600 hover:bg-indigo-50"
+                                            onClick={() => generateStudentList(studentsInGroup, groupName, 'complete')}
+                                            title="Lista Completa (A4 Paisagem)"
+                                        >
+                                            <Printer className="w-3 h-3 mr-1" />
+                                            Completa
+                                        </Button>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                    <div className="relative overflow-x-auto">
+                                        <table className="w-full text-sm text-left text-slate-500">
+                                            <thead className="text-xs text-slate-700 uppercase bg-white border-b border-slate-100">
+                                                <tr>
+                                                    <th scope="col" className="px-6 py-3 w-[40%]">Aluno</th>
+                                                    <th scope="col" className="px-6 py-3">Matrícula</th>
+                                                    <th scope="col" className="px-6 py-3 text-center">Situação</th>
+                                                    <th scope="col" className="px-6 py-3 text-right">Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {studentsInGroup.sort((a, b) => a.name.localeCompare(b.name)).map((student) => (
+                                                    <tr key={student.id} className="bg-white hover:bg-slate-50 transition-colors">
+                                                        <td className="px-6 py-3 font-medium text-slate-900 whitespace-nowrap">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-sm font-semibold">{student.name}</span>
+                                                                <span className="text-[11px] text-slate-400">{student.cpf_aluno || 'CPF não inf.'}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-3 text-xs font-mono text-slate-600">{student.code || '-'}</td>
+                                                        <td className="px-6 py-3 text-center">
+                                                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border ${student.isBlocked
+                                                                ? "bg-red-50 text-red-700 border-red-100"
+                                                                : "bg-emerald-50 text-emerald-700 border-emerald-100"
+                                                                }`}>
+                                                                {student.isBlocked ? 'Bloqueado' : 'Ativo'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-3 text-right flex justify-end gap-2 items-center">
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => handleEdit(student)}
+                                                                className="h-7 px-3 text-xs font-medium text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300"
+                                                            >
+                                                                <Pencil className="w-3 h-3 mr-1.5" />
+                                                                Editar
+                                                            </Button>
+                                                            <Button variant="ghost" size="sm" onClick={() => handlePrintCarne(student)} className="h-8 w-8 p-0 rounded-full hover:bg-purple-50 hover:text-purple-600" title="Imprimir Carnê">
+                                                                <Printer className="w-4 h-4" />
+                                                            </Button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+
+                    {filteredStudents.length === 0 && !isLoading && (
+                        <Card className="border-dashed border-2 border-slate-200 shadow-none bg-slate-50/50">
+                            <CardContent className="px-6 py-12 text-center text-slate-400">
+                                <div className="flex flex-col items-center justify-center gap-2">
+                                    <Search className="w-8 h-8 text-slate-300" />
+                                    <span>Nenhum aluno encontrado com os filtros atuais.</span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {isLoading && (
+                        <div className="flex justify-center items-center py-12">
+                            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
+

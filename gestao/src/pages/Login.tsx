@@ -99,7 +99,7 @@ export function Login() {
                                     variant="primary"
                                 >
                                     <LockKeyhole className="w-4 h-4 mr-2" />
-                                    Entrar no Sistema
+                                    Entrar
                                 </Button>
                             </div>
 

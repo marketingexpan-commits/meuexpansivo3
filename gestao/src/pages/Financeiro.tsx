@@ -649,19 +649,19 @@ export function Financeiro() {
             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-fit">
                 <button
                     onClick={() => setActiveTab('recebimentos')}
-                    className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'recebimentos' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    className={`cursor-pointer px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'recebimentos' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                 >
                     Receitas
                 </button>
                 <button
                     onClick={() => setActiveTab('pagamentos')}
-                    className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'pagamentos' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    className={`cursor-pointer px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'pagamentos' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                 >
                     Pagamentos
                 </button>
                 <button
                     onClick={() => setActiveTab('fluxo')}
-                    className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'fluxo' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    className={`cursor-pointer px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'fluxo' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                 >
                     Fluxo de Caixa
                 </button>

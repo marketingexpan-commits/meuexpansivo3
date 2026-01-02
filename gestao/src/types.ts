@@ -296,8 +296,13 @@ export interface Student {
   nome_mae?: string;
   nome_responsavel?: string;
   cpf_responsavel?: string;
-  email_responsavel?: string; // Novo
-  telefone_responsavel?: string; // Novo
+  email_responsavel?: string;
+  telefone_responsavel?: string;
+
+  // Alias / Novos campos para compatibilidade
+  financialResponsible?: string;
+  phone?: string;
+  contactPhone?: string;
 
   // Financeiro
   valor_mensalidade?: number; // Novo

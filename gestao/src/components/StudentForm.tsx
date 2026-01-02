@@ -274,7 +274,14 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                                     <Input key="resp-name-input" name="nome_responsavel" value={formData.nome_responsavel} onChange={handleChange} label="Nome do Responsável" placeholder="Nome completo do responsável" className="col-span-2" />
                                     <Input name="cpf_responsavel" value={formData.cpf_responsavel} onChange={handleChange} label="CPF do Responsável" placeholder="000.000.000-00" />
                                     <Input name="rg_responsavel" value={formData.rg_responsavel} onChange={handleChange} label="RG do Responsável" placeholder="Documento de identidade" />
-                                    <Input name="telefone_responsavel" value={formData.telefone_responsavel} onChange={handleChange} label="Telefone (WhatsApp)" placeholder="(84) 90000-0000" />
+                                    <Input
+                                        name="telefone_responsavel"
+                                        value={formData.telefone_responsavel}
+                                        onChange={handleChange}
+                                        label="Telefone (WhatsApp)"
+                                        placeholder="5584999999999"
+                                        helperText="Apenas números (Ex: 5584...)"
+                                    />
                                     <Input name="email_responsavel" value={formData.email_responsavel} onChange={handleChange} label="E-mail" type="email" placeholder="email@exemplo.com" />
                                 </div>
                             </div>
