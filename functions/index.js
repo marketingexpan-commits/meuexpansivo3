@@ -201,6 +201,69 @@ exports.processMercadoPagoPayment = functions.https.onRequest((req, res) => {
 });
 
 // --------------------------------------------------------
+// 3. GENERATE BOLETO (Gerar Boleto Específico)
+// --------------------------------------------------------
+exports.generateBoleto = functions.https.onRequest((req, res) => {
+    cors(req, res, async () => {
+        try {
+            const { studentId, amount, dueDate, description, payer } = req.body;
+
+            console.log(`🎫 Gerando boleto para aluno ${studentId} - Valor: ${amount}`);
+
+            const payment = new Payment(client);
+
+            const paymentData = {
+                transaction_amount: Number(amount),
+                description: description,
+                payment_method_id: 'bolbradesco', // Boleto Bradesco (comumente usado no MP)
+                payer: {
+                    email: payer.email,
+                    first_name: payer.firstName,
+                    last_name: payer.lastName,
+                    identification: {
+                        type: 'CPF',
+                        number: payer.cpf.replace(/\D/g, '')
+                    },
+                    address: {
+                        zip_code: payer.address.zipCode.replace(/\D/g, ''),
+                        street_name: payer.address.streetName,
+                        street_number: payer.address.streetNumber,
+                        neighborhood: payer.address.neighborhood,
+                        city: payer.address.city,
+                        federal_unit: payer.address.state
+                    }
+                },
+                date_of_expiration: dueDate, // Data de vencimento ISO
+                external_reference: `boleto_${studentId}_${Date.now()}`
+            };
+
+            const result = await payment.create({ body: paymentData });
+
+            console.log(`✅ Boleto gerado: ${result.id}`);
+
+            const barcode = result.barcode ? result.barcode.content : (result.transaction_details ? result.transaction_details.barcode.content : null);
+            const ticketUrl = result.transaction_details ? result.transaction_details.external_resource_url : null;
+            const qrCode = result.point_of_interaction?.transaction_data?.qr_code;
+            const qrCodeBase64 = result.point_of_interaction?.transaction_data?.qr_code_base64;
+
+
+            res.json({
+                id: result.id,
+                status: result.status,
+                barcode: barcode, // Linha digitável
+                ticketUrl: ticketUrl, // Link do PDF
+                qrCode: qrCode,
+                qrCodeBase64: qrCodeBase64
+            });
+
+        } catch (error) {
+            console.error("❌ Erro ao gerar boleto:", error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+});
+
+// --------------------------------------------------------
 // 4. VERIFY PAYMENT STATUS (Endpoint para verificação manual)
 // --------------------------------------------------------
 exports.verifyPaymentStatus = functions.https.onRequest((req, res) => {
