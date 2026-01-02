@@ -1972,25 +1972,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         )
                     }
 
-                    {/* TAB FINANCEIRO */}
-                    {
-                        activeTab === 'financial' && (
-                            <FinancialTab
-                                isGeneralAdmin={isGeneralAdmin}
-                                adminUnit={adminUnit}
-                                unitContacts={unitContacts}
-                                students={students}
-                                onAddUnitContact={onAddUnitContact}
-                                onEditUnitContact={onEditUnitContact}
-                                onGenerateFees={onGenerateFees}
-                                onFixDuplicates={onFixDuplicates}
-                                setSelectedStudentForFinancial={setSelectedStudentForFinancial}
-                                setIsFinancialModalOpen={setIsFinancialModalOpen}
-                                setSelectedReceiptForModal={setSelectedReceiptForModal}
-                                maskPhone={maskPhone}
-                            />
-                        )
-                    }
+
                 </div >
             </div >
 

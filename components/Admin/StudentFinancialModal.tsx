@@ -3,6 +3,7 @@ import { db } from '../../firebaseConfig';
 import { calculateFinancials } from '../../utils/financialUtils';
 import { Student, Mensalidade } from '../../types';
 import { Button } from '../Button';
+import { FileText, X } from 'lucide-react';
 
 interface StudentFinancialModalProps {
     isOpen: boolean;
@@ -35,18 +36,23 @@ const StudentFinancialModal: React.FC<StudentFinancialModalProps> = ({
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-scale-in">
                 {/* HEADER */}
-                <div className="bg-gradient-to-r from-blue-900 to-blue-800 p-6 text-white">
+                <div className="bg-gradient-to-br from-blue-950 to-slate-900 p-6 text-white border-b border-blue-900">
                     <div className="flex justify-between items-start">
-                        <div>
-                            <h2 className="text-2xl font-black flex items-center gap-2">
-                                📊 Gestão Financeira: {student.name}
-                            </h2>
-                            <p className="text-blue-100/80 text-sm mt-1">
-                                {student.gradeLevel} - {student.schoolClass} • {student.unit}
-                            </p>
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-white/10 rounded-xl backdrop-blur-sm">
+                                <FileText className="w-8 h-8 text-blue-200" />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-bold flex items-center gap-2">
+                                    Gestão Financeira: {student.name}
+                                </h2>
+                                <p className="text-blue-200/80 text-sm mt-1">
+                                    {student.gradeLevel} - {student.schoolClass} • {student.unit}
+                                </p>
+                            </div>
                         </div>
-                        <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/70 hover:text-white">
+                            <X className="w-6 h-6" />
                         </button>
                     </div>
                 </div>
