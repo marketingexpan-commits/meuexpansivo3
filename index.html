@@ -1,30 +1,47 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Meu Expansivo</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-      body {
-        font-family: 'Inter', sans-serif;
-        background-color: #f3f4f6;
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meu Expansivo</title>
+  <link rel="icon" type="image/png" href="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f3f4f6;
+    }
+
+    @keyframes progress-indeterminate {
+      0% {
+        transform: translateX(-100%);
+        width: 30%;
       }
-      @keyframes progress-indeterminate {
-        0% { transform: translateX(-100%); width: 30%; }
-        50% { transform: translateX(100%); width: 60%; }
-        100% { transform: translateX(300%); width: 30%; }
+
+      50% {
+        transform: translateX(100%);
+        width: 60%;
       }
-      .animate-progress-indeterminate {
-        animation: progress-indeterminate 2s infinite linear;
-        transform-origin: left;
+
+      100% {
+        transform: translateX(300%);
+        width: 30%;
       }
-    </style>
+    }
+
+    .animate-progress-indeterminate {
+      animation: progress-indeterminate 2s infinite linear;
+      transform-origin: left;
+    }
+  </style>
 
 </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
-  </body>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
 </html>
