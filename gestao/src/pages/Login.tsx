@@ -61,7 +61,7 @@ export function Login() {
                     />
                     <div className="flex flex-col">
                         <h1 className="text-2xl font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
-                        <p className="text-slate-500 text-xs font-semibold uppercase tracking-wide">GESTÃO ESCOLAR</p>
+                        <p className="text-slate-500 text-xs font-semibold uppercase tracking-wide mt-1">GESTÃO ESCOLAR</p>
                     </div>
                 </div>
 
