@@ -11,13 +11,14 @@
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = function () {
+        console.log('Favicon image loaded successfully');
         const canvas = document.createElement('canvas');
         canvas.width = 128;
         canvas.height = 128;
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, 128, 128);
         ctx.translate(64, 64);
-        ctx.rotate(6 * Math.PI / 180);
+        ctx.rotate(7 * Math.PI / 180);
         ctx.drawImage(img, -64, -64, 128, 128);
 
         const newLink = document.createElement('link');
@@ -30,6 +31,10 @@
         const oldLinks = document.querySelectorAll('link[rel*="icon"]');
         oldLinks.forEach(link => head.removeChild(link));
         head.appendChild(newLink);
+        console.log('Favicon rotated and injected');
+      };
+      img.onerror = function () {
+        console.error('Failed to load favicon image for rotation');
       };
       img.src = 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png?v=' + Date.now();
     })();
