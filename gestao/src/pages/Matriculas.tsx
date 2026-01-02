@@ -143,7 +143,21 @@ export function Matriculas() {
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Gestão de Matrículas</h1>
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Gestão de Matrículas</h1>
+                        {students.length > 0 && (
+                            <div className="flex items-center gap-2">
+                                <span className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border border-blue-100 shadow-sm">
+                                    {students.length} Alunos
+                                </span>
+                                {hasActiveFilters && filteredStudents.length !== students.length && (
+                                    <span className="bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border border-indigo-100 shadow-sm animate-in fade-in slide-in-from-left-2 transition-all">
+                                        {filteredStudents.length} Filtrados
+                                    </span>
+                                )}
+                            </div>
+                        )}
+                    </div>
                     <p className="text-slate-500 text-sm">Gerencie alunos, enturmações e vagas escolares.</p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -218,6 +232,41 @@ export function Matriculas() {
                 </Card>
             </div>
 
+            {/* Results Summary */}
+            {hasActiveFilters && filteredStudents.length > 0 && (() => {
+                const missingEnturmacao = filteredStudents.filter(s => !s.schoolClass || !s.shift).length;
+                return (
+                    <div className="flex flex-col sm:flex-row items-center gap-3 justify-center bg-white border border-slate-200 py-3 px-6 rounded-2xl shadow-sm animate-in fade-in slide-in-from-top-2">
+                        <div className="flex items-center gap-2 text-slate-700 font-semibold whitespace-nowrap">
+                            <span className="text-indigo-600 flex items-center justify-center bg-indigo-50 w-6 h-6 rounded-full text-xs">
+                                <Search className="w-3.5 h-3.5" />
+                            </span>
+                            <span>Resultado da Pesquisa:</span>
+                            <span className="bg-slate-900 text-white px-2.5 py-0.5 rounded-lg font-bold text-xs tabular-nums">
+                                {filteredStudents.length} {filteredStudents.length === 1 ? 'aluno' : 'alunos'}
+                            </span>
+                        </div>
+
+                        <div className="hidden sm:block text-slate-300">|</div>
+
+                        <div className="flex items-center gap-3 text-sm">
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                <span className="text-slate-500 font-medium">Enturmados:</span>
+                                <span className="text-slate-900 font-bold tabular-nums">{filteredStudents.length - missingEnturmacao}</span>
+                            </div>
+                            {missingEnturmacao > 0 && (
+                                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-50 rounded-lg border border-amber-100">
+                                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                                    <span className="text-amber-700 font-medium">Sem Turma/Turno:</span>
+                                    <span className="text-amber-900 font-bold tabular-nums">{missingEnturmacao}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            })()}
+
             {/* Students List Grouped by Class */}
             {!hasActiveFilters ? (
                 <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50 border-2 border-dashed border-slate-200 rounded-xl">
@@ -229,9 +278,18 @@ export function Matriculas() {
                 <div className="space-y-6">
                     {Object.entries(
                         filteredStudents.reduce((acc, student) => {
-                            const key = (student.gradeLevel && student.schoolClass && student.shift)
-                                ? `${student.gradeLevel} - Turma ${student.schoolClass} / ${student.shift}`
-                                : 'Sem Enturmação / Outros';
+                            // Normalizar String da Série
+                            const normalizedGrade = student.gradeLevel
+                                ? student.gradeLevel.trim().toUpperCase()
+                                    .replace(/\s+/g, ' ')
+                                    .replace('NÍVEL 5', 'NÍVEL V')
+                                    .replace('NIVEL 5', 'NÍVEL V')
+                                    .replace('NIVEL V', 'NÍVEL V')
+                                : 'Série não informada';
+
+                            const key = (student.schoolClass && student.shift)
+                                ? `${normalizedGrade} - Turma ${student.schoolClass} / ${student.shift}`
+                                : `${normalizedGrade} - Pendente de Enturmação`;
 
                             if (!acc[key]) acc[key] = [];
                             acc[key].push(student);
@@ -260,15 +318,19 @@ export function Matriculas() {
                         })
                         .map(([groupName, studentsInGroup]) => (
                             <Card key={groupName} className="border-slate-200 shadow-sm overflow-hidden">
-                                <CardHeader className="bg-slate-50/80 border-b border-slate-100 py-3 px-4 flex flex-row items-center justify-between">
+                                <CardHeader className={`${groupName.includes('Pendente') ? 'bg-amber-50/50' : 'bg-slate-50/80'} border-b border-slate-100 py-3 px-4 flex flex-row items-center justify-between`}>
                                     <div className="flex items-center gap-2">
-                                        <div className={`w-2 h-8 rounded-full ${groupName.includes('Ens. Médio') ? 'bg-indigo-500' :
-                                            groupName.includes('Fundamental II') ? 'bg-blue-500' :
-                                                groupName.includes('Fundamental I') ? 'bg-sky-500' :
-                                                    groupName.includes('Infantil') ? 'bg-rose-400' : 'bg-slate-400'
+                                        <div className={`w-2 h-8 rounded-full ${groupName.includes('Pendente') ? 'bg-amber-400' :
+                                            groupName.includes('ENS. MÉDIO') ? 'bg-indigo-500' :
+                                                groupName.includes('FUNDAMENTAL II') ? 'bg-blue-500' :
+                                                    groupName.includes('FUNDAMENTAL I') ? 'bg-sky-500' :
+                                                        groupName.includes('INFANTIL') || groupName.includes('NÍVEL') ? 'bg-rose-400' : 'bg-slate-400'
                                             }`}></div>
                                         <div>
-                                            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-tight">{groupName}</h3>
+                                            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-tight">
+                                                {groupName}
+                                                {groupName.includes('Pendente') && <span className="ml-2 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200">Atenção</span>}
+                                            </h3>
                                             <p className="text-xs text-slate-500 font-medium">{studentsInGroup.length} aluno(s)</p>
                                         </div>
                                     </div>
@@ -318,12 +380,19 @@ export function Matriculas() {
                                                         </td>
                                                         <td className="px-6 py-3 text-xs font-mono text-slate-600">{student.code || '-'}</td>
                                                         <td className="px-6 py-3 text-center">
-                                                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border ${student.isBlocked
-                                                                ? "bg-red-50 text-red-700 border-red-100"
-                                                                : "bg-emerald-50 text-emerald-700 border-emerald-100"
-                                                                }`}>
-                                                                {student.isBlocked ? 'Bloqueado' : 'Ativo'}
-                                                            </span>
+                                                            <div className="flex flex-col items-center gap-1">
+                                                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${(!student.status || student.status === 'CURSANDO' || student.status === 'ATIVO')
+                                                                        ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                                                                        : (student.status === 'REPROVADO' || student.status === 'EVADIDO' || student.status === 'TRANSFERIDO')
+                                                                            ? "bg-red-50 text-red-700 border-red-100"
+                                                                            : "bg-slate-50 text-slate-600 border-slate-200"
+                                                                    }`}>
+                                                                    {student.status || 'CURSANDO'}
+                                                                </span>
+                                                                <span className={`text-[9px] font-medium ${student.isBlocked ? 'text-red-400' : 'text-slate-400'}`}>
+                                                                    {student.isBlocked ? 'Acesso Bloqueado' : 'Acesso Ativo'}
+                                                                </span>
+                                                            </div>
                                                         </td>
                                                         <td className="px-6 py-3 text-right flex justify-end gap-2 items-center">
                                                             <Button

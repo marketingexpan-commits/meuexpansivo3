@@ -21,6 +21,7 @@ export const generateStudentList = (students: Student[], groupTitle: string, typ
         <html>
         <head>
             <title>Relação de Alunos - ${groupTitle}</title>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
             <style>
                 @page {
                     size: ${isLandscape ? 'landscape' : 'portrait'};
@@ -33,7 +34,7 @@ export const generateStudentList = (students: Student[], groupTitle: string, typ
                     box-sizing: border-box;
                 }
                 body {
-                    font-family: Arial, sans-serif;
+                    font-family: 'Inter', Arial, sans-serif;
                     background: #fff;
                     margin: 0;
                     padding: 0;

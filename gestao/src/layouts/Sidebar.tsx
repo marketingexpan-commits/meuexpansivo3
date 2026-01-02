@@ -5,7 +5,8 @@ import {
     Users,
     FileText,
     BarChart3,
-    Coins,
+    FileCheck,
+    Wallet,
     LogOut,
     Menu,
     ChevronRight,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { DeclarationSearchModal } from '../components/DeclarationSearchModal';
 
 interface SidebarItemProps {
     icon: React.ElementType;
@@ -59,6 +61,8 @@ function SidebarItem({ icon: Icon, label, path, collapsed }: SidebarItemProps) {
 
 export function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
+    const [showDeclarationModal, setShowDeclarationModal] = useState(false);
+    const [isMatriculasOpen, setIsMatriculasOpen] = useState(true);
 
     const handleLogout = () => {
         // Clear auth data
@@ -91,8 +95,8 @@ export function Sidebar() {
                                 className="h-8 object-contain"
                             />
                             <div className="flex flex-col">
-                                <span className="font-extrabold text-blue-950 text-sm leading-none tracking-tight">Meu Expansivo</span>
-                                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Gestão Escolar</span>
+                                <span className="font-bold text-blue-950 text-sm leading-none tracking-tight">Meu Expansivo</span>
+                                <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">Gestão Escolar</span>
                             </div>
                         </>
                     )}
@@ -106,7 +110,41 @@ export function Sidebar() {
                 </div>
 
                 <SidebarItem icon={School} label="Escola" path="/dashboard" collapsed={collapsed} />
-                <SidebarItem icon={Users} label="Matrículas" path="/matriculas" collapsed={collapsed} />
+
+                <div className="space-y-0.5">
+                    <div className="relative group">
+                        <SidebarItem
+                            icon={Users}
+                            label="Matrículas"
+                            path="/matriculas"
+                            collapsed={collapsed}
+                        />
+                        {!collapsed && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsMatriculasOpen(!isMatriculasOpen);
+                                }}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded text-slate-400"
+                            >
+                                <ChevronRight className={clsx("w-3.5 h-3.5 transition-transform", isMatriculasOpen && "rotate-90")} />
+                            </button>
+                        )}
+                    </div>
+
+                    {isMatriculasOpen && !collapsed && (
+                        <div className="ml-4 pl-4 border-l border-slate-100 space-y-0.5 animate-in slide-in-from-top-2 duration-200">
+                            <button
+                                onClick={() => setShowDeclarationModal(true)}
+                                className="flex items-center w-full p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all text-xs font-medium cursor-pointer"
+                            >
+                                <FileCheck className="w-4 h-4 mr-2 text-slate-400" />
+                                Declaração
+                            </button>
+                        </div>
+                    )}
+                </div>
+
                 <SidebarItem icon={FileText} label="Arquivos" collapsed={collapsed} />
                 <SidebarItem icon={BarChart3} label="Relatórios" collapsed={collapsed} />
 
@@ -116,7 +154,7 @@ export function Sidebar() {
                     {!collapsed ? "Gestão" : "..."}
                 </div>
 
-                <SidebarItem icon={Coins} label="Financeiro" path="/financeiro" collapsed={collapsed} />
+                <SidebarItem icon={Wallet} label="Financeiro" path="/financeiro" collapsed={collapsed} />
                 <SidebarItem icon={Database} label="Tabelas" collapsed={collapsed} />
                 <SidebarItem icon={Briefcase} label="Utilitários" collapsed={collapsed} />
                 <SidebarItem icon={Layers} label="Extras" collapsed={collapsed} />
@@ -148,6 +186,10 @@ export function Sidebar() {
                     )}
                 </div>
             </div>
+
+            {showDeclarationModal && (
+                <DeclarationSearchModal onClose={() => setShowDeclarationModal(false)} />
+            )}
         </aside>
     );
 }

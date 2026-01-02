@@ -10,7 +10,7 @@ import {
     CheckCircle2,
     Clock,
     Download,
-    Receipt,
+    ScrollText,
     Loader2,
     Calendar,
     Plus,
@@ -19,7 +19,7 @@ import {
     ChevronRight,
     Wallet,
     ArrowUpCircle,
-    Banknote,
+    Landmark,
     PieChart as PieChartIcon,
     BarChart as BarChartIcon,
     Barcode,
@@ -64,6 +64,8 @@ interface EnrichedMensalidade {
     paidValue?: number;
     interestValue?: number;
     penaltyValue?: number;
+    barcode?: string;
+    ticketUrl?: string;
 }
 
 export function Financeiro() {
@@ -206,7 +208,11 @@ export function Financeiro() {
                 }));
 
                 if (selectedStudentId) {
-                    enrichedData.sort((a: EnrichedMensalidade, b: EnrichedMensalidade) => b.month.localeCompare(a.month));
+                    enrichedData.sort((a: EnrichedMensalidade, b: EnrichedMensalidade) => {
+                        const monthA = a.month.split('/')[0];
+                        const monthB = b.month.split('/')[0];
+                        return months.indexOf(monthA) - months.indexOf(monthB);
+                    });
                 } else {
                     enrichedData.sort((a: EnrichedMensalidade, b: EnrichedMensalidade) => a.studentName.localeCompare(b.studentName));
                 }
@@ -380,16 +386,16 @@ export function Financeiro() {
             for (const inst of pendingInstallments) {
                 // Payer Data
                 const payer = {
-                    email: student.email || 'email@padrao.com', // Fallback se não tiver email
+                    email: student.email_responsavel || 'email@padrao.com',
                     firstName: student.name.split(' ')[0],
                     lastName: student.name.split(' ').slice(1).join(' '),
-                    cpf: student.cpf || student.responsibleCpf || '00000000000', // Fallback
+                    cpf: student.cpf_responsavel || '00000000000',
                     address: {
-                        zipCode: student.zipCode || '59000000',
-                        streetName: student.address || 'Endereço não informado',
+                        zipCode: student.cep || '59000000',
+                        streetName: student.endereco_logradouro || 'Endereço não informado',
                         streetNumber: 'S/N',
-                        neighborhood: student.neighborhood || 'Bairro',
-                        city: student.city || 'Natal',
+                        neighborhood: student.endereco_bairro || 'Bairro',
+                        city: student.endereco_cidade || 'Natal',
                         state: 'RN'
                     }
                 };
@@ -443,6 +449,10 @@ export function Financeiro() {
         s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         s.code.includes(searchTerm)
     ).slice(0, 5);
+
+    const eligibleForBoletos = selectedStudentId
+        ? mensalidades.filter(m => m.studentId === selectedStudentId && m.status !== 'Pago' && !m.barcode).length
+        : 0;
 
     // Dados para Gráficos
     const chartData = months.map((m, i) => {
@@ -598,27 +608,27 @@ export function Financeiro() {
                     {activeTab === 'recebimentos' && (
                         <Button
                             onClick={() => setIsInstallmentModalOpen(true)}
-                            className="bg-purple-600 hover:bg-purple-700 text-white shadow-sm flex-1 sm:flex-none"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md border-b-4 border-indigo-800 h-11 px-6 font-bold flex-1 sm:flex-none transition-all active:translate-y-0.5 active:border-b-0"
                         >
-                            <Banknote className="w-4 h-4 mr-2" />
+                            <Landmark className="w-5 h-5 mr-2" />
                             Gerador de Carnês
                         </Button>
                     )}
                     {activeTab === 'recebimentos' && (
                         <Button
                             onClick={() => setIsDischargeModalOpen(true)}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex-1 sm:flex-none"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md border-b-4 border-emerald-800 h-11 px-6 font-bold flex-1 sm:flex-none transition-all active:translate-y-0.5 active:border-b-0"
                         >
-                            <CheckCircle2 className="w-4 h-4 mr-2" />
+                            <CheckCircle2 className="w-5 h-5 mr-2" />
                             Baixa Manual
                         </Button>
                     )}
                     {activeTab === 'pagamentos' && (
                         <Button
                             onClick={() => setIsExpenseModalOpen(true)}
-                            className="bg-rose-600 hover:bg-rose-700 text-white shadow-sm flex-1 sm:flex-none"
+                            className="bg-rose-600 hover:bg-rose-700 text-white shadow-md border-b-4 border-rose-800 h-11 px-6 font-bold flex-1 sm:flex-none transition-all active:translate-y-0.5 active:border-b-0"
                         >
-                            <Plus className="w-4 h-4 mr-2" />
+                            <Plus className="w-5 h-5 mr-2" />
                             Nova Despesa
                         </Button>
                     )}
@@ -626,19 +636,22 @@ export function Financeiro() {
                         onClick={handleExportFinancials}
                         variant="secondary"
                         title="Exportar dados para Excel/CSV"
-                        className="w-full sm:w-auto"
+                        className="w-full sm:w-auto h-11 bg-white border-2 border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
                     >
-                        <Download className="w-4 h-4 text-slate-600" />
+                        <Download className="w-5 h-5" />
                     </Button>
 
                     {selectedStudentId && activeTab === 'recebimentos' && (
                         <Button
                             onClick={handleGenerateBoletos}
                             isLoading={isGenerating}
-                            className="bg-sky-600 hover:bg-sky-700 text-white shadow-sm flex-1 sm:flex-none"
-                            title="Gera boletos no Mercado Pago para parcelas pendentes"
+                            disabled={eligibleForBoletos === 0}
+                            className={`h-11 px-6 font-bold flex-1 sm:flex-none transition-all ${eligibleForBoletos > 0
+                                ? 'bg-sky-500 hover:bg-sky-600 text-white shadow-lg ring-4 ring-sky-100 animate-pulse'
+                                : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none ring-0'}`}
+                            title={eligibleForBoletos > 0 ? "Gera boletos no Mercado Pago para parcelas pendentes" : "Não há parcelas pendentes sem boleto para este aluno"}
                         >
-                            <Barcode className="w-4 h-4 mr-2" />
+                            <Barcode className="w-5 h-5 mr-2" />
                             Gerar Boletos
                         </Button>
                     )}
@@ -678,7 +691,7 @@ export function Financeiro() {
                             >
                                 <CardContent className="p-5 flex items-center gap-4">
                                     <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
-                                        <Banknote className="w-5 h-5" />
+                                        <Wallet className="w-5 h-5" />
                                     </div>
                                     <div>
                                         <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Arrecadado</p>
@@ -723,7 +736,7 @@ export function Financeiro() {
                             >
                                 <CardContent className="p-5 flex items-center gap-4">
                                     <div className="p-3 bg-slate-50 text-slate-600 rounded-xl group-hover:bg-slate-800 group-hover:text-white transition-all duration-300">
-                                        <Receipt className="w-5 h-5" />
+                                        <ScrollText className="w-5 h-5" />
                                     </div>
                                     <div>
                                         <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Inadimplência</p>
@@ -836,7 +849,14 @@ export function Financeiro() {
                                             <th className="px-6 py-4">Referência</th>
                                             <th className="px-6 py-4">Valor</th>
                                             <th className="px-6 py-4">Status</th>
-                                            <th className="px-6 py-4 text-right">Ações</th>
+                                            <th className="px-6 py-4 text-right">
+                                                <div className="flex justify-end gap-2 text-[9px] font-extrabold text-slate-400 uppercase tracking-tighter">
+                                                    <span className="w-9 text-center">Recibo</span>
+                                                    <span className="w-9 text-center">Zap</span>
+                                                    <span className="w-9 text-center">Baixa</span>
+                                                    <span className="w-9 text-center">Excluir</span>
+                                                </div>
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50">
@@ -890,44 +910,44 @@ export function Financeiro() {
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
-                                                        <div className="flex items-center justify-end gap-1 opacity-10 group-hover:opacity-100 transition-opacity">
+                                                        <div className="grid grid-cols-4 gap-2 w-fit ml-auto">
                                                             <Button
                                                                 size="icon"
                                                                 variant="ghost"
-                                                                className="h-8 w-8 text-blue-600 hover:bg-blue-50"
-                                                                onClick={() => generateReceipt(m)}
-                                                                title="Gerar Recibo"
+                                                                className={`h-9 w-9 rounded-lg transition-all ${m.status === 'Pago' ? 'text-blue-600 hover:bg-blue-50 bg-blue-50/30' : 'text-slate-300 bg-slate-50/50 cursor-not-allowed'}`}
+                                                                onClick={() => m.status === 'Pago' && generateReceipt(m)}
+                                                                disabled={m.status !== 'Pago'}
+                                                                title={m.status === 'Pago' ? "Gerar Recibo" : "Disponível apenas após o pagamento"}
                                                             >
-                                                                <Receipt className="w-4 h-4" />
+                                                                <ScrollText className="w-5 h-5" />
                                                             </Button>
                                                             <Button
                                                                 size="icon"
                                                                 variant="ghost"
-                                                                className="h-8 w-8 text-indigo-600 hover:bg-indigo-50"
+                                                                className="h-9 w-9 rounded-lg text-indigo-600 hover:bg-indigo-50 bg-indigo-50/30 transition-all"
                                                                 onClick={() => sendWhatsAppMessage(m)}
                                                                 title="Cobrança via WhatsApp"
                                                             >
-                                                                <MessageCircle className="w-4 h-4" />
+                                                                <MessageCircle className="w-5 h-5" />
                                                             </Button>
-                                                            {m.status !== 'Pago' && (
-                                                                <Button
-                                                                    size="icon"
-                                                                    variant="ghost"
-                                                                    title="Baixa Manual (Calculada)"
-                                                                    className="h-8 w-8 hover:bg-emerald-50 text-emerald-600"
-                                                                    onClick={() => handleMarkAsPaid(m.id)}
-                                                                >
-                                                                    <CheckCircle2 className="w-4 h-4" />
-                                                                </Button>
-                                                            )}
+                                                            <Button
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                title={m.status !== 'Pago' ? "Baixa Manual (Calculada)" : "Já Pago"}
+                                                                className={`h-9 w-9 rounded-lg transition-all ${m.status !== 'Pago' ? 'hover:bg-emerald-50 text-emerald-600 bg-emerald-50/30' : 'text-slate-300 bg-slate-50/50 cursor-not-allowed'}`}
+                                                                onClick={() => m.status !== 'Pago' && handleMarkAsPaid(m.id)}
+                                                                disabled={m.status === 'Pago'}
+                                                            >
+                                                                <CheckCircle2 className="w-5 h-5" />
+                                                            </Button>
                                                             <Button
                                                                 size="icon"
                                                                 variant="ghost"
                                                                 title="Excluir"
-                                                                className="h-8 w-8 text-slate-300 hover:text-rose-500 hover:bg-rose-50"
+                                                                className="h-9 w-9 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 bg-slate-50/30 transition-all"
                                                                 onClick={() => handleDeleteFee(m.id)}
                                                             >
-                                                                <Trash2 className="w-4 h-4" />
+                                                                <Trash2 className="w-5 h-5" />
                                                             </Button>
                                                         </div>
                                                     </td>
@@ -1006,7 +1026,12 @@ export function Financeiro() {
                                             <th className="px-6 py-4">Vencimento</th>
                                             <th className="px-6 py-4">Valor</th>
                                             <th className="px-6 py-4">Status</th>
-                                            <th className="px-6 py-4 text-right">Ações</th>
+                                            <th className="px-6 py-4 text-right">
+                                                <div className="flex justify-end gap-2 text-[9px] font-extrabold text-slate-400 uppercase tracking-tighter">
+                                                    <span className="w-9 text-center">Baixa</span>
+                                                    <span className="w-9 text-center">Excluir</span>
+                                                </div>
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50">
@@ -1045,28 +1070,27 @@ export function Financeiro() {
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
-                                                        <div className="flex items-center justify-end gap-1">
-                                                            {e.status !== 'Pago' && (
-                                                                <Button
-                                                                    size="icon"
-                                                                    variant="ghost"
-                                                                    title="Marcar como pago"
-                                                                    className="h-8 w-8 hover:bg-emerald-50 text-emerald-600"
-                                                                    onClick={async () => {
-                                                                        if (confirm("Deseja marcar esta despesa como PAGA?")) {
-                                                                            await financialService.updateExpense(e.id!, { status: 'Pago', paymentDate: new Date().toISOString() });
-                                                                            loadData();
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    <CheckCircle2 className="w-4 h-4" />
-                                                                </Button>
-                                                            )}
+                                                        <div className="grid grid-cols-2 gap-2 w-fit ml-auto">
+                                                            <Button
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                title={e.status !== 'Pago' ? "Marcar como pago" : "Já Pago"}
+                                                                className={`h-9 w-9 rounded-lg transition-all ${e.status !== 'Pago' ? 'hover:bg-emerald-50 text-emerald-600 bg-emerald-50/30' : 'text-slate-300 bg-slate-50/50 cursor-not-allowed'}`}
+                                                                onClick={async () => {
+                                                                    if (e.status !== 'Pago' && confirm("Deseja marcar esta despesa como PAGA?")) {
+                                                                        await financialService.updateExpense(e.id!, { status: 'Pago', paymentDate: new Date().toISOString() });
+                                                                        loadData();
+                                                                    }
+                                                                }}
+                                                                disabled={e.status === 'Pago'}
+                                                            >
+                                                                <CheckCircle2 className="w-5 h-5" />
+                                                            </Button>
                                                             <Button
                                                                 size="icon"
                                                                 variant="ghost"
                                                                 title="Excluir"
-                                                                className="h-8 w-8 text-slate-300 hover:text-rose-500 hover:bg-rose-50"
+                                                                className="h-9 w-9 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 bg-slate-50/30 transition-all"
                                                                 onClick={async () => {
                                                                     if (confirm("Tem certeza que deseja excluir esta despesa?")) {
                                                                         await financialService.deleteExpense(e.id!);
@@ -1074,7 +1098,7 @@ export function Financeiro() {
                                                                     }
                                                                 }}
                                                             >
-                                                                <Trash2 className="w-4 h-4" />
+                                                                <Trash2 className="w-5 h-5" />
                                                             </Button>
                                                         </div>
                                                     </td>
@@ -1097,7 +1121,7 @@ export function Financeiro() {
                             <Card className="bg-white border-slate-200 shadow-sm overflow-hidden p-6 border-t-4 border-t-indigo-500">
                                 <div className="flex flex-col items-center text-center">
                                     <div className="p-4 bg-indigo-50 text-indigo-600 rounded-full mb-4">
-                                        <Banknote className="w-8 h-8" />
+                                        <Wallet className="w-8 h-8" />
                                     </div>
                                     <h4 className="text-slate-500 font-bold text-xs uppercase tracking-widest mb-1">Total Recebido</h4>
                                     <p className="text-3xl font-black text-slate-800">R$ {summary.paidValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
@@ -1130,7 +1154,7 @@ export function Financeiro() {
                         {/* Projeção de Futuro */}
                         <Card className="bg-slate-900 text-white border-none shadow-xl p-8 overflow-hidden relative">
                             <div className="absolute top-0 right-0 p-8 opacity-10">
-                                <Receipt className="w-32 h-32" />
+                                <ScrollText className="w-32 h-32" />
                             </div>
                             <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
                                 <div>

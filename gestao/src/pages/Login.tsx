@@ -60,8 +60,8 @@ export function Login() {
                         className="h-14 object-contain"
                     />
                     <div className="flex flex-col">
-                        <h1 className="text-2xl font-black text-blue-950 tracking-tighter leading-none">Meu Expansivo</h1>
-                        <p className="text-slate-500 text-[10px] mt-1 font-bold uppercase tracking-widest bg-slate-100 px-1.5 py-0.5 rounded inline-block w-fit">Gestão Escolar</p>
+                        <h1 className="text-2xl font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
+                        <p className="text-slate-500 text-[10px] mt-1 font-semibold uppercase tracking-widest bg-slate-100 px-1.5 py-0.5 rounded inline-block w-fit">Gestão Escolar</p>
                     </div>
                 </div>
 

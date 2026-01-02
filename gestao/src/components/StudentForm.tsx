@@ -2,11 +2,23 @@ import { useState } from 'react';
 import { Input } from './Input';
 import { Select } from './Select';
 import { Button } from './Button';
-import { User, MapPin, Users, GraduationCap, X, Loader2 } from 'lucide-react';
+import { User, MapPin, Users, GraduationCap, X, Loader2, Camera, Upload } from 'lucide-react';
 import { clsx } from 'clsx';
 import { studentService } from '../services/studentService';
 import type { Student } from '../types';
 import { EDUCATION_LEVELS, GRADES_BY_LEVEL, SCHOOL_SHIFTS, SCHOOL_CLASSES_OPTIONS } from '../types';
+
+const STUDENT_STATUS_OPTIONS = [
+    { label: 'CURSANDO', value: 'CURSANDO' },
+    { label: 'TRANSFERIDO', value: 'TRANSFERIDO' },
+    { label: 'EVADIDO', value: 'EVADIDO' },
+    { label: 'TRANCADO', value: 'TRANCADO' },
+    { label: 'RESERVADO', value: 'RESERVADO' },
+    { label: 'REPROVADO', value: 'REPROVADO' },
+    { label: 'APROVADO', value: 'APROVADO' },
+    { label: 'ATIVO', value: 'ATIVO' },
+    { label: 'INATIVO', value: 'INATIVO' },
+];
 
 interface StudentFormProps {
     onClose: (shouldRefresh?: boolean) => void;
@@ -58,6 +70,8 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
             rg_responsavel: '',
             telefone_responsavel: '',
             email_responsavel: '',
+            photoUrl: '',
+            status: 'CURSANDO', // Default status for new students
 
             cep: '',
             endereco_logradouro: '',
@@ -98,7 +112,69 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
     };
 
     const handleSelectChange = (name: string, value: string) => {
-        setFormData((prev: any) => ({ ...prev, [name]: value }));
+        setFormData((prev: any) => {
+            const newData = { ...prev, [name]: value };
+
+            // Lógica de Automação: Bloquear acesso se não estiver ATIVO ou CURSANDO
+            if (name === 'status') {
+                const isActive = value === 'CURSANDO' || value === 'ATIVO' || value === 'APROVADO';
+                newData.isBlocked = !isActive;
+            }
+
+            return newData;
+        });
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // 1. Validar tipo
+        if (!file.type.startsWith('image/')) {
+            alert('Por favor, selecione uma imagem válida.');
+            return;
+        }
+
+        // 2. Validar tamanho original (máximo 1MB para evitar travamentos no processamento)
+        if (file.size > 1 * 1024 * 1024) {
+            alert('A imagem original é muito grande. Por favor, escolha um arquivo com menos de 1MB.');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const img = new Image();
+            img.onload = () => {
+                // 3. Otimização: Redimensionar para 3x4 (300x400px) usando Canvas
+                const targetWidth = 300;
+                const targetHeight = 400;
+
+                const canvas = document.createElement('canvas');
+                canvas.width = targetWidth;
+                canvas.height = targetHeight;
+
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return;
+
+                // Desenhar mantendo o aspecto (cortando excessos se necessário)
+                const scale = Math.max(targetWidth / img.width, targetHeight / img.height);
+                const x = (targetWidth / 2) - (img.width / 2) * scale;
+                const y = (targetHeight / 2) - (img.height / 2) * scale;
+
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, targetWidth, targetHeight);
+                ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+
+                // 4. Exportar como JPEG comprimido (qualidade 0.7)
+                const optimizedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                console.log('Original size:', (reader.result as string).length);
+                console.log('Optimized size:', optimizedBase64.length);
+
+                setFormData((prev: any) => ({ ...prev, photoUrl: optimizedBase64 }));
+            };
+            img.src = reader.result as string;
+        };
+        reader.readAsDataURL(file);
     };
 
     // Helper state for Level dropdown
@@ -185,28 +261,84 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-6">
                     {activeTab === 'personal' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Input name="name" value={formData.name} onChange={handleChange} label="Nome Completo do Aluno" placeholder="Nome completo" className="col-span-2" />
-                            <Input name="cpf_aluno" value={formData.cpf_aluno} onChange={handleChange} label="CPF" placeholder="000.000.000-00" />
-                            <Input name="data_nascimento" value={formData.data_nascimento} onChange={handleChange} label="Data de Nascimento" type="date" />
-                            <Input name="identidade_rg" value={formData.identidade_rg} onChange={handleChange} label="RG" placeholder="Número do RG" />
-                            <Input name="rg_emissor" value={formData.rg_emissor} onChange={handleChange} label="Órgão Emissor" placeholder="Ex: ITEP/RN" />
-                            <Select
-                                label="Sexo"
-                                value={formData.sexo}
-                                onChange={(e) => handleSelectChange('sexo', e.target.value)}
-                                options={[
-                                    { label: 'Masculino', value: 'M' },
-                                    { label: 'Feminino', value: 'F' }
-                                ]}
-                            />
-                            <Input name="naturalidade" value={formData.naturalidade} onChange={handleChange} label="Naturalidade" placeholder="Cidade de nascimento" />
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {/* Photo Upload Section */}
+                            <div className="md:col-span-2 lg:col-span-1 flex flex-col items-center">
+                                <label className="text-sm font-medium text-gray-700 mb-2 block w-full text-center md:text-left">Foto 3x4</label>
+                                <div className="relative group">
+                                    <div className="w-32 h-40 bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg overflow-hidden flex flex-col items-center justify-center transition-all group-hover:border-blue-400 group-hover:bg-blue-50/30">
+                                        {formData.photoUrl ? (
+                                            <img src={formData.photoUrl} alt="Preview" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="flex flex-col items-center text-slate-400 p-2 text-center">
+                                                <Camera className="w-8 h-8 mb-2 opacity-50" />
+                                                <span className="text-[10px] font-medium leading-tight">Clique para anexar foto 3x4</span>
+                                            </div>
+                                        )}
+
+                                        {/* Overlay on Hover */}
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <Upload className="w-6 h-6 text-white" />
+                                        </div>
+                                    </div>
+
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleFileChange}
+                                        className="absolute inset-0 opacity-0 cursor-pointer"
+                                        title="Anexar foto 3x4"
+                                    />
+
+                                    {formData.photoUrl && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData((prev: any) => ({ ...prev, photoUrl: '' }))}
+                                            className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-lg hover:bg-red-600 transition-colors z-10"
+                                            title="Remover foto"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="mt-2 text-center md:text-left">
+                                    <p className="text-[10px] text-slate-500 font-medium">Padrão 3x4 (JPEG/PNG)</p>
+                                    <p className="text-[9px] text-slate-400">O sistema otimiza o peso automaticamente</p>
+                                </div>
+                            </div>
+
+                            <div className="md:col-span-2 lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Input name="name" value={formData.name} onChange={handleChange} label="Nome Completo do Aluno" placeholder="Nome completo" className="col-span-2" />
+                                <Input name="cpf_aluno" value={formData.cpf_aluno} onChange={handleChange} label="CPF" placeholder="000.000.000-00" />
+                                <Input name="data_nascimento" value={formData.data_nascimento} onChange={handleChange} label="Data de Nascimento" type="date" />
+                                <Input name="identidade_rg" value={formData.identidade_rg} onChange={handleChange} label="RG" placeholder="Número do RG" />
+                                <Input name="rg_emissor" value={formData.rg_emissor} onChange={handleChange} label="Órgão Emissor" placeholder="Ex: ITEP/RN" />
+                                <Select
+                                    label="Sexo"
+                                    value={formData.sexo}
+                                    onChange={(e) => handleSelectChange('sexo', e.target.value)}
+                                    options={[
+                                        { label: 'Masculino', value: 'M' },
+                                        { label: 'Feminino', value: 'F' }
+                                    ]}
+                                />
+                                <Input name="naturalidade" value={formData.naturalidade} onChange={handleChange} label="Naturalidade" placeholder="Cidade de nascimento" />
+                            </div>
                         </div>
                     )}
 
 
                     {activeTab === 'academic' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Select
+                                label="Situação da Matrícula"
+                                value={formData.status || 'CURSANDO'}
+                                onChange={(e) => handleSelectChange('status', e.target.value)}
+                                options={STUDENT_STATUS_OPTIONS}
+                                className="bg-blue-50/30 border-blue-100"
+                            />
+                            <div className="hidden md:block"></div> {/* Spacer */}
+
                             <Select
                                 label="Unidade Escolar"
                                 value={formData.unit}

@@ -34,12 +34,13 @@ export const generateCarne = (student: Student, installments: Installment[]) => 
         <html>
         <head>
             <title>Carnê de Pagamento - ${student.name}</title>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
             <style>
                 /* --- RESET E GABARITO --- */
                 * { box-sizing: border-box; margin: 0; padding: 0; }
                 
                 body { 
-                    font-family: Arial, sans-serif; 
+                    font-family: 'Inter', Arial, sans-serif; 
                     background-color: #525659; 
                     display: block; 
                     padding: 20px 0;
@@ -64,7 +65,7 @@ export const generateCarne = (student: Student, installments: Installment[]) => 
                     display: flex;
                     flex-direction: row;
                     border-bottom: 1px dashed #000;
-                    padding: 4mm 5mm 8mm 5mm; /* Topo reduzido para caber conteúdo, mantendo área de corte abaixo */
+                    padding: 4mm 5mm 8mm 15mm; /* Topo reduzido para caber conteúdo, mantendo área de corte abaixo. Margem esquerda de 15mm para grampeamento */
                     position: relative;
                 }
 
