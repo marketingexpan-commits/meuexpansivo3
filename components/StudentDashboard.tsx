@@ -499,7 +499,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             <SchoolLogo variant="login" />
                                         </div>
                                         <div>
-                                            <h2 className="text-xl font-extrabold text-blue-950 tracking-tight leading-tight">Meu Expansivo</h2>
+                                            <h2 className="text-xl font-bold text-blue-950 tracking-tight leading-tight">Meu Expansivo</h2>
                                         </div>
                                     </div>
                                 </div>
