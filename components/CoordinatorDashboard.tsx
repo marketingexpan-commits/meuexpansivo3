@@ -166,66 +166,48 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans">
             <div className="w-full max-w-7xl bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col">
 
-                {/* HEADER ROXO - Now inside the card */}
-                <header className="bg-gradient-to-r from-purple-900 to-indigo-900 text-white shadow-lg p-6 pb-6 shrink-0 relative overflow-hidden">
+                {/* MAIN CONTENT */}
+                <main className="flex-1 w-full p-4 md:p-8 bg-gray-50/50 overflow-y-auto">
 
-                    {/* Decorative Elements */}
-                    <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl pointer-events-none"></div>
-                    <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-48 h-48 bg-purple-500 opacity-20 rounded-full blur-3xl pointer-events-none"></div>
-
-                    <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center relative z-10 gap-4 md:gap-0">
-                        <div className="flex items-center gap-4">
-                            <SchoolLogo variant="header" />
-                            <div>
-                                <h1 className="text-2xl font-bold tracking-tight shadow-black drop-shadow-sm flex items-center gap-2">
-                                    Área Pedagógica
-                                    <span className="bg-white/20 text-white text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">Coordenação</span>
-                                </h1>
-                                <div className="flex items-center gap-2 text-purple-200 text-sm font-medium mt-1">
-                                    <span className="bg-purple-800/50 px-2 py-0.5 rounded border border-purple-700/50">{coordinator.unit}</span>
-                                    <span className="w-1 h-1 rounded-full bg-purple-400"></span>
-                                    <span>{coordinator.name}</span>
-                                </div>
+                    {/* Welcome Card with inline header info */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-6 mb-8">
+                        {/* Compact top bar with logout */}
+                        <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <span className="font-medium text-gray-800">{coordinator.name}</span>
+                                <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                                <span className="text-xs">{coordinator.unit}</span>
+                                {coordinator.segment && (
+                                    <>
+                                        <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                                        <span className="text-xs text-gray-500">
+                                            {coordinator.segment === CoordinationSegment.INFANTIL_FUND1 ? 'Infantil & Fund. I' :
+                                                coordinator.segment === CoordinationSegment.FUND2_MEDIO ? 'Fund. II & Médio' : 'Geral'}
+                                        </span>
+                                    </>
+                                )}
                             </div>
-                        </div>
-
-                        <div className="flex items-center gap-4">
-                            {/* Segment Badge */}
-                            {coordinator.segment && (
-                                <div className="hidden md:flex flex-col items-end mr-4">
-                                    <span className="text-[10px] uppercase text-purple-300 font-bold tracking-wider">Segmento</span>
-                                    <span className="text-sm font-semibold">
-                                        {coordinator.segment === CoordinationSegment.INFANTIL_FUND1 ? 'Infantil & Fund. I' :
-                                            coordinator.segment === CoordinationSegment.FUND2_MEDIO ? 'Fund. II & Médio' : 'Geral'}
-                                    </span>
-                                </div>
-                            )}
-
                             <Button
                                 variant="secondary"
                                 onClick={onLogout}
-                                className="!bg-white/10 hover:!bg-white/20 !text-white border-none shadow-none text-sm font-semibold backdrop-blur-sm"
+                                className="text-sm font-semibold py-1.5 px-4"
                             >
                                 Sair
                             </Button>
                         </div>
-                    </div>
-                </header>
 
-                {/* MAIN CONTENT */}
-                <main className="flex-1 w-full p-4 md:p-8 bg-gray-50/50 overflow-y-auto">
-
-                    {/* Introduction / Welcome Card */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-6 mb-8 flex items-start gap-4">
-                        <div className="p-3 bg-purple-100 text-purple-700 rounded-xl shrink-0">
-                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
-                        </div>
-                        <div>
-                            <h2 className="text-xl font-bold text-gray-800 mb-1">Painel de Acompanhamento Pedagógico</h2>
-                            <p className="text-gray-600">
-                                Olá, <strong>{coordinator.name}</strong>. Utilize os filtros abaixo para localizar turmas e aprovar notas ou alterações pendentes de professores.
-                                Este ambiente é focado exclusivamente em rotinas pedagógicas.
-                            </p>
+                        {/* Welcome Message */}
+                        <div className="flex items-start gap-4">
+                            <div className="p-3 bg-purple-100 text-purple-700 rounded-xl shrink-0">
+                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-800 mb-1">Painel de Acompanhamento Pedagógico</h2>
+                                <p className="text-gray-600">
+                                    Utilize os filtros abaixo para localizar turmas e aprovar notas ou alterações pendentes de professores.
+                                    Este ambiente é focado exclusivamente em rotinas pedagógicas.
+                                </p>
+                            </div>
                         </div>
                     </div>
 
