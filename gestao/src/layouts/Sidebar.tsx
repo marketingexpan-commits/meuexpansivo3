@@ -84,9 +84,12 @@ export function Sidebar() {
             <div className="h-16 flex items-center px-4 border-b border-slate-100 bg-white">
                 <div className={clsx("flex items-center gap-3 overflow-hidden transition-all duration-300", collapsed ? "justify-center w-full" : "")}>
                     {collapsed ? (
-                        <div className="p-1.5 bg-orange-600 rounded-md shrink-0">
-                            <School className="w-5 h-5 text-white" />
-                        </div>
+                        <img
+                            src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"
+                            alt="Logo"
+                            className="h-8 w-auto object-contain"
+                            style={{ filter: 'brightness(0) saturate(100%) invert(9%) sepia(62%) saturate(4383%) hue-rotate(227deg) brightness(60%) contrast(100%)' }}
+                        />
                     ) : (
                         <>
                             <img
