@@ -218,7 +218,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
     const val = e.target.value;
 
     if (activeTab === 'student') {
-      if (/^\d{0, 5}$/.test(val)) {
+      if (/^\d{0,5}$/.test(val)) {
         setIdentifier(val);
       }
     } else if (activeTab === 'teacher') {
