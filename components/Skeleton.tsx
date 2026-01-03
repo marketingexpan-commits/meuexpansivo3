@@ -114,31 +114,33 @@ export const StudentDashboardSkeleton: React.FC = () => {
 export const TeacherDashboardSkeleton: React.FC = () => {
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans">
-            <div className="w-full max-w-7xl bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col">
-                <div className="bg-gradient-to-br from-blue-950 to-slate-900 p-6 relative shrink-0">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-white/10 animate-pulse" />
-                        <div className="space-y-2">
-                            <Skeleton width={180} height={20} className="bg-white/20" />
-                            <Skeleton width={120} height={14} className="bg-white/10" />
-                        </div>
+            <div className="w-full max-w-md bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col p-4 md:p-6">
+
+                {/* Header Actions (Notifications + Sair) */}
+                <div className="flex justify-end mb-6 gap-2">
+                    <Skeleton circle width={40} height={40} />
+                    <Skeleton width={60} height={32} className="rounded" />
+                </div>
+
+                {/* Branding Block */}
+                <div className="flex items-center gap-2 mb-4">
+                    <Skeleton width={36} height={36} />
+                    <div className="space-y-1">
+                        <Skeleton width={60} height={10} />
+                        <Skeleton width={140} height={20} />
                     </div>
                 </div>
-                <div className="p-6 flex-1 flex flex-col">
-                    <div className="flex gap-6 mb-8 border-b border-gray-100 pb-3">
-                        {Array.from({ length: 4 }).map((_, i) => (
-                            <Skeleton key={i} width={120} height={24} className="rounded" />
-                        ))}
-                    </div>
-                    <div className="flex flex-col md:flex-row gap-8 flex-1">
-                        <div className="w-full md:w-1/3 space-y-6">
-                            <Skeleton height={180} className="rounded-xl" />
-                            <Skeleton height={350} className="rounded-xl" />
-                        </div>
-                        <div className="w-full md:w-2/3">
-                            <Skeleton height="100%" className="rounded-xl min-h-[400px]" />
-                        </div>
-                    </div>
+
+                {/* Intro Text */}
+                <div className="pb-4">
+                    <Skeleton width={200} height={14} />
+                </div>
+
+                {/* Grid Buttons */}
+                <div className="grid grid-cols-2 gap-4">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                        <Skeleton key={i} height={140} className="rounded-xl" />
+                    ))}
                 </div>
             </div>
         </div>
