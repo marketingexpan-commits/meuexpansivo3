@@ -132,7 +132,7 @@ export function Login() {
                     </CardContent>
                 </Card>
 
-                <div className="mt-4 text-center border-t border-slate-200/50 pt-4">
+                <div className="mt-2 text-center border-t border-slate-200/50 pt-4">
                     <p className="text-xs text-slate-500 font-medium mb-1">Sistema Meu Expansivo - Gestão Escolar v1.0</p>
                     <p className="text-[10px] text-slate-400">© 2026 Expansivo Rede de Ensino. Todos os direitos reservados.</p>
                     <p className="text-[10px] text-slate-400 mt-1">
