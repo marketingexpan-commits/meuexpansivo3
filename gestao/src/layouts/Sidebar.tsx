@@ -92,12 +92,13 @@ export function Sidebar() {
                             <img
                                 src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"
                                 alt="Meu Expansivo"
-                                className="h-8 object-contain"
+                                className="h-9 object-contain"
                                 style={{ filter: 'brightness(0) saturate(100%) invert(9%) sepia(62%) saturate(4383%) hue-rotate(227deg) brightness(60%) contrast(100%)' }}
                             />
-                            <div className="flex flex-col">
-                                <span className="font-bold text-blue-950 text-sm leading-none tracking-tight">Meu Expansivo</span>
-                                <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">Gestão Escolar</span>
+                            <div className="flex flex-col justify-center">
+                                <span className="text-[7px] text-blue-950 font-bold uppercase tracking-widest leading-none mb-0.5">Sistema</span>
+                                <h1 className="text-lg font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
+                                <span className="text-[7px] text-blue-950/60 font-semibold uppercase tracking-wider leading-none mt-0.5">Gestão Escolar</span>
                             </div>
                         </>
                     )}

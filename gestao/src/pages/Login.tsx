@@ -61,9 +61,10 @@ export function Login() {
                         className="h-14 object-contain"
                         style={{ filter: 'brightness(0) saturate(100%) invert(9%) sepia(62%) saturate(4383%) hue-rotate(227deg) brightness(60%) contrast(100%)' }}
                     />
-                    <div className="flex flex-col">
+                    <div className="flex flex-col justify-center">
+                        <span className="text-[9px] text-blue-950 font-bold uppercase tracking-widest leading-none mb-1">Sistema</span>
                         <h1 className="text-2xl font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
-                        <p className="text-slate-500 text-xs font-semibold uppercase tracking-wide mt-1">GESTÃO ESCOLAR</p>
+                        <span className="text-[9px] text-blue-950/60 font-semibold uppercase tracking-widest leading-none mt-1">Gestão Escolar</span>
                     </div>
                 </div>
 
