@@ -1151,8 +1151,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <div className="flex items-center gap-4">
                             <SidebarToggle onClick={() => setIsSidebarOpen(true)} />
                             <div className="flex flex-col">
-                                <h1 className="text-lg font-bold text-slate-800 leading-none">Meu Expansivo</h1>
-                                <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-1">
+                                <span className="text-xs font-bold text-slate-700 uppercase tracking-widest leading-none">
                                     {adminUnit || 'Administração Geral'}
                                 </span>
                             </div>
