@@ -828,9 +828,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         <SchoolLogo className="!h-full w-auto drop-shadow-sm" />
                                     </div>
                                     <div className="flex flex-col justify-center">
-                                        <span className="text-[9px] text-blue-950 font-bold uppercase tracking-widest leading-none mb-0.5">Aplicativo</span>
+                                        <span className="text-[7px] text-blue-950 font-bold uppercase tracking-widest leading-none mb-0">Aplicativo</span>
                                         <h1 className="text-lg font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
-                                        <span className="text-[7px] text-blue-950/60 font-semibold uppercase tracking-wider leading-none mt-0.5">Portal do Professor</span>
+                                        <span className="text-[7px] text-blue-950/60 font-semibold uppercase tracking-wider leading-none mt-1.5">Portal do Professor</span>
                                     </div>
                                 </div>
                                 <div className="text-left pb-4">
