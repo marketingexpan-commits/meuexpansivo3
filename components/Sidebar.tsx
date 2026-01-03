@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Menu, ChevronRight, LogOut, School } from 'lucide-react';
+import { SchoolLogo } from './SchoolLogo';
 
 interface SidebarProps {
     isOpen: boolean;
@@ -57,17 +58,15 @@ export function Sidebar({ isOpen, onClose, children, userName = "Admin", onLogou
                                 <School className="w-5 h-5 text-white" />
                             </div>
                         ) : (
-                            <>
-                                <img
-                                    src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"
-                                    alt="Meu Expansivo"
-                                    className="h-8 object-contain"
-                                />
-                                <div className="flex flex-col">
-                                    <span className="font-bold text-blue-950 text-sm leading-none tracking-tight">Meu Expansivo</span>
-                                    <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">Portal do Aluno</span>
+                            <div className="flex items-center gap-2 w-full px-2">
+                                <div className="h-9 w-auto shrink-0">
+                                    <SchoolLogo className="!h-full w-auto drop-shadow-sm" />
                                 </div>
-                            </>
+                                <div className="flex flex-col justify-center overflow-hidden">
+                                    <span className="text-[9px] text-blue-950 font-bold uppercase tracking-widest leading-none mb-0.5 truncate">Aplicativo</span>
+                                    <h1 className="text-lg font-bold text-blue-950 tracking-tight leading-none truncate">Meu Expansivo</h1>
+                                </div>
+                            </div>
                         )}
                     </div>
                     {/* Mobile Close Button */}

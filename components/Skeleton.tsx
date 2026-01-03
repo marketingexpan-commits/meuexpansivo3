@@ -61,22 +61,50 @@ export const GridSkeleton: React.FC<{ count?: number }> = ({ count = 4 }) => {
 export const StudentDashboardSkeleton: React.FC = () => {
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans">
-            <div className="w-full max-w-md bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col">
-                <div className="bg-gradient-to-br from-blue-950 to-slate-900 p-6 pb-12 relative shrink-0">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-white/10 animate-pulse" />
+            <div className="w-full max-w-md bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col p-4 md:p-6">
+
+                {/* Rematrícula Banner + Actions */}
+                <div className="flex gap-3 mb-4">
+                    <Skeleton className="flex-1 h-24 rounded-xl" />
+                    <div className="flex flex-col items-end gap-2">
+                        <Skeleton circle width={40} height={40} />
+                        <Skeleton width={60} height={32} className="rounded" />
+                    </div>
+                </div>
+
+                {/* Student Info Card */}
+                <div className="bg-blue-50/50 py-3 px-4 rounded-lg border border-blue-100 mb-4">
+                    <div className="flex justify-between items-center">
                         <div className="space-y-2">
-                            <Skeleton width={140} height={16} className="bg-white/20" />
-                            <Skeleton width={100} height={12} className="bg-white/10" />
+                            <Skeleton width={60} height={10} />
+                            <Skeleton width={120} height={16} />
+                        </div>
+                        <div className="flex flex-col items-end space-y-2">
+                            <Skeleton width={80} height={10} />
+                            <Skeleton width={100} height={16} />
                         </div>
                     </div>
                 </div>
-                <div className="p-6 flex-1 -mt-6 bg-white rounded-t-3xl relative z-10">
-                    <div className="grid grid-cols-2 gap-4">
-                        {Array.from({ length: 6 }).map((_, i) => (
-                            <Skeleton key={i} height={110} className="rounded-2xl" />
-                        ))}
+
+                {/* Branding Block - Matching new Spacing */}
+                <div className="flex items-center gap-2 mt-12 mb-14">
+                    <Skeleton width={36} height={36} />
+                    <div className="space-y-1">
+                        <Skeleton width={60} height={10} />
+                        <Skeleton width={140} height={20} />
                     </div>
+                </div>
+
+                {/* Select Option Text */}
+                <div className="pb-4">
+                    <Skeleton width={180} height={14} />
+                </div>
+
+                {/* Grid Buttons */}
+                <div className="grid grid-cols-2 gap-4">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                        <Skeleton key={i} height={120} className="rounded-xl" />
+                    ))}
                 </div>
             </div>
         </div>

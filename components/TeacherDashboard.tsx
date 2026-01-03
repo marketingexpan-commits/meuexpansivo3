@@ -27,14 +27,16 @@ interface TeacherDashboardProps {
     onSaveAttendance: (record: AttendanceRecord) => Promise<void>;
     onSaveEarlyChildhoodReport: (report: EarlyChildhoodReport) => Promise<void>;
     onLogout: () => void;
+    notifications?: AppNotification[];
+    onMarkNotificationAsRead?: (id: string) => Promise<void>;
 }
 
 const formatGrade = (value: number | undefined | null) => {
     return value !== undefined && value !== null ? value.toFixed(1) : '-';
 };
 
-export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, students, grades, attendanceRecords, earlyChildhoodReports, onSaveGrade, onSaveAttendance, onSaveEarlyChildhoodReport, onLogout }) => {
-    const [activeTab, setActiveTab] = useState<'grades' | 'attendance' | 'tickets' | 'materials'>('grades');
+export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, students, grades, attendanceRecords, earlyChildhoodReports, onSaveGrade, onSaveAttendance, onSaveEarlyChildhoodReport, onLogout, notifications = [], onMarkNotificationAsRead }) => {
+    const [activeTab, setActiveTab] = useState<'menu' | 'grades' | 'attendance' | 'tickets' | 'materials'>('menu');
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const activeUnit = teacher.unit;
@@ -101,6 +103,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     const [uploadError, setUploadError] = useState<string | null>(null);
     const [uploadedMaterials, setUploadedMaterials] = useState<ClassMaterial[]>([]);
     const [isLoadingMaterials, setIsLoadingMaterials] = useState(false);
+
+    // Estados para Notificações
+    const [showNotifications, setShowNotifications] = useState(false);
 
     const MONTH_NAMES = [
         "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -546,6 +551,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
 
     const pendingTicketsCount = tickets.filter(t => t.status === TicketStatus.PENDING).length;
 
+    // Calculate unread notifications count
+    const unreadNotifications = useMemo(() => {
+        return notifications.filter(n => !n.read).length;
+    }, [notifications]);
+
     // --- MATERIALS LOGIC ---
     // Load Materials on Tab Switch or Mount
     useEffect(() => {
@@ -708,73 +718,172 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
 
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans">
-            <div className="w-full max-w-7xl bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col">
+            <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${activeTab === 'menu' ? 'max-w-md' : 'max-w-5xl'}`}>
 
-                {/* HEADER */}
-                <div className="bg-gradient-to-br from-blue-950 to-slate-900 p-6 pb-6 shadow-md relative shrink-0">
-                    <div className="flex flex-row justify-between items-center relative z-10">
-                        <div className="flex items-center gap-4 text-white">
-                            <SchoolLogo variant="header" /> {/* Assuming SchoolLogo can take size/variant or fits well */}
-                            <div>
-                                <h1 className="text-2xl font-bold tracking-tight text-white mb-0.5 shadow-black drop-shadow-sm">
-                                    Painel do Professor
-                                </h1>
-                                <div className="flex items-center gap-2 text-blue-200 text-sm font-medium">
-                                    <span>{teacher.name}</span>
-                                    <span className="w-1 h-1 rounded-full bg-blue-400"></span>
-                                    <span className="text-blue-200">{activeUnit}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                            {pendingTicketsCount > 0 && (
-                                <button
-                                    onClick={() => setActiveTab('tickets')}
-                                    className="relative p-2 text-blue-200 hover:text-white transition-colors mr-2"
-                                    title="Dúvidas Pendentes"
-                                >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-                                    <span className="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-red-100 transform translate-x-1/4 -translate-y-1/4 bg-red-600 rounded-full animate-pulse">
-                                        {pendingTicketsCount}
-                                    </span>
-                                </button>
-                            )}
-                            <Button variant="secondary" onClick={onLogout} className="!bg-transparent border-none !text-white font-medium hover:!text-gray-200 shadow-none !px-0">
-                                Sair
-                            </Button>
+                {/* Minimal Header Bar */}
+                <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white shrink-0">
+                    <div className="flex items-center gap-3">
+                        {activeTab !== 'menu' && (
+                            <button
+                                onClick={() => setActiveTab('menu')}
+                                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                            </button>
+                        )}
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <span className="font-medium text-gray-800">{teacher.name}</span>
+                            <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                            <span className="text-xs">{activeUnit}</span>
                         </div>
                     </div>
-                    {/* Decorative Elements (Circles) - visual consistency */}
-                    <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob pointer-events-none"></div>
-                    <div className="absolute top-0 right-20 -mt-10 w-64 h-64 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000 pointer-events-none"></div>
+
+                    <div className="flex items-center gap-3">
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowNotifications(!showNotifications)}
+                                className="p-2 text-gray-600 hover:text-gray-800 transition-colors relative hover:bg-gray-100 rounded-full"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                                {unreadNotifications > 0 && (
+                                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-[20px] h-[20px] px-1 flex items-center justify-center rounded-full border-2 border-white shadow-sm transform scale-100">
+                                        {unreadNotifications}
+                                    </span>
+                                )}
+                            </button>
+                            {showNotifications && (
+                                <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden ring-1 ring-black ring-opacity-5 text-left">
+                                    <div className="p-3 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
+                                        <h4 className="font-bold text-blue-900 text-sm">Notificações</h4>
+                                        <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-gray-600">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                        </button>
+                                    </div>
+                                    <div className="max-h-60 overflow-y-auto">
+                                        {notifications.length > 0 ? (
+                                            notifications.map(n => (
+                                                <div
+                                                    key={n.id}
+                                                    className={`p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer ${!n.read ? 'bg-blue-50/30' : ''}`}
+                                                    onClick={() => {
+                                                        if (!n.read && onMarkNotificationAsRead) onMarkNotificationAsRead(n.id);
+
+                                                        // Smart Navigation: Pre-select student
+                                                        if (n.studentId) {
+                                                            const student = students.find(s => s.id === n.studentId);
+                                                            if (student) {
+                                                                setSearchTerm(''); // Clear search to ensure student is visible
+                                                                setSelectedStudent(student);
+                                                                // Auto-set filters to match student context
+                                                                setFilterGrade(student.gradeLevel);
+                                                                setFilterShift(student.shift);
+                                                                // activeUnit is derived from teacher.unit, so no need/way to set it
+                                                            }
+                                                        }
+
+                                                        const titleLower = n.title.toLowerCase();
+                                                        const messageLower = n.message.toLowerCase();
+
+                                                        if (titleLower.includes('dúvida') || titleLower.includes('pergunta') || messageLower.includes('dúvida')) {
+                                                            setActiveTab('tickets');
+                                                        } else if (titleLower.includes('nota') || titleLower.includes('aprovação') || messageLower.includes('aprovada')) {
+                                                            setActiveTab('grades');
+                                                        } else if (titleLower.includes('material') || messageLower.includes('material')) {
+                                                            setActiveTab('materials');
+                                                        }
+
+                                                        setShowNotifications(false);
+                                                    }}
+                                                >
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <span className="font-bold text-xs text-gray-800">{n.title}</span>
+                                                        <span className="text-[10px] text-gray-400">{new Date(n.timestamp).toLocaleDateString()}</span>
+                                                    </div>
+                                                    <p className="text-xs text-gray-600 line-clamp-2">{n.message}</p>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="p-4 text-center text-gray-500 text-xs italic">
+                                                Nenhuma notificação.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <Button variant="secondary" onClick={onLogout} className="text-sm font-semibold py-1.5 px-4">
+                            Sair
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="p-4 md:p-6 flex-1 flex flex-col">
 
-                    {/* TABS */}
-                    <div className="flex mb-6 border-b w-full">
-                        <button onClick={() => setActiveTab('grades')} className={`flex-1 pb-3 px-1 font-semibold border-b-2 text-center transition-colors ${activeTab === 'grades' ? 'text-blue-950 border-blue-950' : 'text-gray-500 border-transparent hover:text-gray-700'}`}>
-                            {selectedStudent && isEarlyChildhoodStudent ? 'Lançar Relatório' : 'Lançar Notas'}
-                        </button>
-                        <button onClick={() => setActiveTab('attendance')} className={`flex-1 pb-3 px-1 font-semibold border-b-2 text-center transition-colors ${activeTab === 'attendance' ? 'text-blue-950 border-blue-950' : 'text-gray-500 border-transparent hover:text-gray-700'}`}>
-                            Chamada Diária
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('tickets')}
-                            className={`flex-1 pb-3 px-1 font-semibold border-b-2 text-center transition-colors flex items-center justify-center gap-2 ${activeTab === 'tickets' ? 'text-blue-950 border-blue-950' : 'text-gray-500 border-transparent hover:text-gray-700'}`}
-                        >
-                            Dúvidas dos Alunos
-                            {pendingTicketsCount > 0 && (
-                                <span className="ml-2 bg-red-500 text-white rounded-full px-2 py-0.5 text-xs animate-bounce">
-                                    {pendingTicketsCount}
-                                </span>
-                            )}
-                        </button>
-                        <button onClick={() => setActiveTab('materials')} className={`flex-1 pb-3 px-1 font-semibold border-b-2 text-center transition-colors ${activeTab === 'materials' ? 'text-blue-950 border-blue-950' : 'text-gray-500 border-transparent hover:text-gray-700'}`}>
-                            Materiais de Aula
-                        </button>
-                    </div>
+                    {/* MENU VIEW */}
+                    {activeTab === 'menu' && (
+                        <div className="animate-fade-in-up flex flex-col h-full justify-between w-full">
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <div className="h-9 w-auto">
+                                        <SchoolLogo className="!h-full w-auto drop-shadow-sm" />
+                                    </div>
+                                    <div className="flex flex-col justify-center">
+                                        <span className="text-[9px] text-blue-950 font-bold uppercase tracking-widest leading-none mb-0.5">Aplicativo</span>
+                                        <h1 className="text-lg font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
+                                    </div>
+                                </div>
+                                <div className="text-left pb-4">
+                                    <p className="text-gray-500 text-sm">Selecione uma opção para gerenciar suas atividades.</p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button
+                                        onClick={() => setActiveTab('grades')}
+                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-500 hover:shadow-md transition-all group aspect-square"
+                                    >
+                                        <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                            <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                                        </div>
+                                        <h3 className="font-bold text-gray-800 text-sm text-center">Lançar Notas</h3>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setActiveTab('attendance')}
+                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-green-500 hover:shadow-md transition-all group aspect-square"
+                                    >
+                                        <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-green-100 transition-colors">
+                                            <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                                        </div>
+                                        <h3 className="font-bold text-gray-800 text-sm text-center">Chamada Diária</h3>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setActiveTab('tickets')}
+                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-yellow-500 hover:shadow-md transition-all group aspect-square relative"
+                                    >
+                                        <div className="w-12 h-12 bg-yellow-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-yellow-100 transition-colors">
+                                            <svg className="w-7 h-7 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                        </div>
+                                        <h3 className="font-bold text-gray-800 text-sm text-center">Dúvidas dos Alunos</h3>
+                                        {pendingTicketsCount > 0 && (
+                                            <span className="absolute top-2 right-2 bg-red-500 text-white rounded-full px-2 py-0.5 text-xs font-bold animate-pulse">
+                                                {pendingTicketsCount}
+                                            </span>
+                                        )}
+                                    </button>
+
+                                    <button
+                                        onClick={() => setActiveTab('materials')}
+                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-purple-500 hover:shadow-md transition-all group aspect-square"
+                                    >
+                                        <div className="w-12 h-12 bg-purple-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-purple-100 transition-colors">
+                                            <svg className="w-7 h-7 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                                        </div>
+                                        <h3 className="font-bold text-gray-800 text-sm text-center">Materiais de Aula</h3>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* CONTEÚDO TAB: MATERIAIS */}
                     {activeTab === 'materials' && (
@@ -782,7 +891,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                             {/* FORMULÁRIO DE UPLOAD */}
                             <div className="w-full md:w-1/3 p-6 border rounded-lg shadow-md bg-white">
                                 <h2 className="text-xl font-bold mb-4 text-blue-950 flex items-center gap-2">
-                                    <span className="text-xl">📤</span> Enviar Material
+                                    <div className="w-8 h-8 bg-purple-50 rounded-full flex items-center justify-center">
+                                        <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                                    </div>
+                                    Enviar Material
                                 </h2>
                                 <form onSubmit={handleUploadMaterial} className="space-y-4">
                                     <div>
@@ -966,7 +1078,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         // --- PAINEL DE RELATÓRIO INFANTIL ---
                                         <div>
                                             <h2 className="text-xl font-bold mb-6 text-blue-950 flex items-center">
-                                                <span className="bg-blue-100 text-blue-950 rounded-full w-8 h-8 flex items-center justify-center mr-3 text-sm">🌿</span>
+                                                <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center mr-3">
+                                                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                                                </div>
                                                 Relatório de Desenvolvimento Infantil
                                             </h2>
                                             <form onSubmit={handleReportSubmit} className="bg-white p-6 rounded-lg shadow-sm">
@@ -1038,7 +1152,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         <div>
                                             <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-2">
                                                 <h2 className="text-xl font-bold text-blue-950 flex items-center">
-                                                    <span className="bg-blue-100 text-blue-950 rounded-full w-8 h-8 flex items-center justify-center mr-3 text-sm">📝</span>
+                                                    <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center mr-3">
+                                                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                                                    </div>
                                                     Lançamento de Notas
                                                 </h2>
                                                 {selectedStudent && (
@@ -1250,7 +1366,12 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                     {activeTab === 'attendance' && (
                         <div className="animate-fade-in-up">
                             <div className="p-6 border rounded-lg shadow-md bg-white">
-                                <h2 className="text-xl font-bold mb-4 text-blue-950">Chamada Diária</h2>
+                                <h2 className="text-xl font-bold mb-4 text-blue-950 flex items-center gap-2">
+                                    <div className="w-8 h-8 bg-green-50 rounded-full flex items-center justify-center">
+                                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                                    </div>
+                                    Chamada Diária
+                                </h2>
                                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-gray-50 rounded-lg border mb-6">
                                     <div>
                                         <label className="text-sm font-bold text-gray-700 mb-1 block">Série/Ano</label>
@@ -1438,7 +1559,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                         <div className="animate-fade-in-up">
                             <div className="p-6 border rounded-lg shadow-md bg-white">
                                 <h2 className="text-xl font-bold mb-6 text-blue-950 flex items-center gap-2">
-                                    <span className="text-2xl">📧</span> Dúvidas e Perguntas
+                                    <div className="w-8 h-8 bg-yellow-50 rounded-full flex items-center justify-center">
+                                        <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    </div>
+                                    Dúvidas e Perguntas
                                 </h2>
 
                                 {isLoadingTickets ? (

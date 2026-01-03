@@ -372,42 +372,28 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans transition-all duration-500 ease-in-out print:min-h-0 print:h-auto print:bg-white print:p-0 print:block print:overflow-visible">
             <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${currentView === 'menu' ? 'max-w-md' : 'max-w-5xl'} print:min-h-0 print:h-auto print:shadow-none print:rounded-none`}>
-                <div className="bg-gradient-to-br from-blue-950 to-slate-900 p-6 pb-12 shadow-md relative shrink-0 print:hidden">
-                    <div className="flex flex-row justify-between items-center relative">
-                        <div className="flex items-center gap-3 text-white">
-                            {currentView !== 'menu' && (
-                                <button
-                                    onClick={() => setCurrentView('menu')}
-                                    className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors backdrop-blur-sm text-white border border-white/20"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                                </button>
-                            )}
-                            <div className="flex items-start gap-3">
-                                <div className="bg-white/10 p-2 rounded-lg backdrop-blur-sm shrink-0">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2 mb-0.5">
-                                        <h3 className="text-white font-bold text-sm tracking-wide">Rematrículas Abertas 2026</h3>
-                                        <span className="bg-green-500 text-[9px] px-1.5 py-0.5 rounded text-white font-extrabold uppercase tracking-wide">Novo</span>
-                                    </div>
-                                    <p className="text-blue-100 text-[10px] leading-tight max-w-[200px] opacity-90">
-                                        Garanta sua renovação com condições especiais até o final do mês. Procure a secretaria!
-                                    </p>
-                                </div>
-                            </div>
+
+                {/* Minimal Header Bar - For all views EXCEPT menu */}
+                {currentView !== 'menu' && (
+                    <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white shrink-0 print:hidden">
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setCurrentView('menu')}
+                                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                            </button>
                         </div>
 
                         <div className="flex items-center gap-2">
                             <div className="relative">
                                 <button
                                     onClick={() => setShowNotifications(!showNotifications)}
-                                    className="p-2 text-white/80 hover:text-white transition-colors relative hover:bg-white/10 rounded-full"
+                                    className="p-2 text-gray-600 hover:text-gray-800 transition-colors relative hover:bg-gray-100 rounded-full"
                                 >
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
                                     {unreadNotifications > 0 && (
-                                        <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold w-3.5 h-3.5 flex items-center justify-center rounded-full border border-blue-900 animate-pulse">
+                                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-[20px] h-[20px] px-1 flex items-center justify-center rounded-full border-2 border-white shadow-sm transform scale-100">
                                             {unreadNotifications}
                                         </span>
                                     )}
@@ -463,44 +449,130 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     </div>
                                 )}
                             </div>
-                            <Button variant="secondary" onClick={onLogout} className="!bg-transparent border-none !text-white font-medium hover:!text-gray-200 shadow-none !px-0 text-xs py-1 px-2 h-auto min-h-0">Sair</Button>
-                        </div>
-                    </div>
-                </div>
-
-                {currentView !== 'grades' && currentView !== 'early_childhood' && currentView !== 'financeiro' && (
-                    <div className="flex flex-col border-b border-gray-100 bg-white rounded-t-3xl -mt-6 relative z-10 overflow-hidden shrink-0 shadow-sm mx-0">
-                        <div className="bg-blue-50/50 py-3 px-4 md:px-6 flex items-center justify-between border-b-2 border-blue-900">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Aluno(a)</span>
-                                <span className="text-sm font-bold text-blue-900 truncate max-w-[180px] leading-tight">{student.name}</span>
-                            </div>
-                            <div className="flex flex-col items-end">
-                                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Turma / Turno</span>
-                                <div className="text-right">
-                                    <span className="text-xs font-bold text-gray-700 bg-white px-2 py-0.5 rounded border border-gray-200 block">
-                                        {student.gradeLevel || 'N/A'} <span className="text-gray-300">|</span> {student.shift}
-                                    </span>
-                                    <span className="text-[10px] font-semibold text-gray-500 mt-0.5 block">{student.unit}</span>
-                                </div>
-                            </div>
+                            <Button variant="secondary" onClick={onLogout} className="text-sm font-semibold py-1.5 px-4">Sair</Button>
                         </div>
                     </div>
                 )}
 
-                <div className={`p-4 md:p-6 pt-2 bg-white min-h-[500px] ${(currentView === 'grades' || currentView === 'early_childhood') ? 'rounded-t-3xl -mt-6 relative z-10 print:mt-0 print:rounded-none' : ''}`}>
+                <div className={`p-4 md:p-6 pt-2 bg-white min-h-[500px] ${(currentView === 'grades' || currentView === 'early_childhood') ? 'print:mt-0' : ''}`}>
 
                     {currentView === 'menu' && (
                         <div className="animate-fade-in-up flex flex-col h-full justify-between">
                             <div className="space-y-1">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-12">
-                                            <SchoolLogo variant="login" />
+                                {/* Informational Banner Area */}
+                                <div className="flex gap-3 mb-4">
+                                    <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 flex-1 flex flex-col justify-center">
+                                        <div className="flex items-start gap-3">
+                                            <div className="bg-blue-500 p-2 rounded-lg shrink-0">
+                                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <h3 className="text-blue-900 font-bold text-sm tracking-wide">Rematrículas Abertas 2026</h3>
+                                                    <span className="bg-green-500 text-[9px] px-1.5 py-0.5 rounded text-white font-extrabold uppercase tracking-wide">Novo</span>
+                                                </div>
+                                                <p className="text-blue-700 text-xs leading-tight">
+                                                    Garanta sua renovação com condições especiais até o final do mês. Procure a secretaria!
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h2 className="text-xl font-bold text-blue-950 tracking-tight leading-tight">Meu Expansivo</h2>
+                                    </div>
+
+                                    {/* Buttons separate column */}
+                                    <div className="flex flex-col items-end justify-center gap-2 shrink-0">
+                                        <div className="relative">
+                                            <button
+                                                onClick={() => setShowNotifications(!showNotifications)}
+                                                className="p-2 text-gray-600 hover:text-gray-800 transition-colors relative hover:bg-gray-100 rounded-full"
+                                            >
+                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                                                {unreadNotifications > 0 && (
+                                                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-[20px] h-[20px] px-1 flex items-center justify-center rounded-full border-2 border-white shadow-sm transform scale-100">
+                                                        {unreadNotifications}
+                                                    </span>
+                                                )}
+                                            </button>
+                                            {showNotifications && (
+                                                <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden ring-1 ring-black ring-opacity-5 text-left">
+                                                    <div className="p-3 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
+                                                        <h4 className="font-bold text-blue-900 text-sm">Notificações</h4>
+                                                        <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-gray-600">
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                        </button>
+                                                    </div>
+                                                    <div className="max-h-60 overflow-y-auto">
+                                                        {notifications.length > 0 ? (
+                                                            notifications.map(n => (
+                                                                <div
+                                                                    key={n.id}
+                                                                    className={`p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer ${!n.read ? 'bg-blue-50/30' : ''}`}
+                                                                    onClick={() => {
+                                                                        if (!n.read && onMarkNotificationAsRead) onMarkNotificationAsRead(n.id);
+
+                                                                        const titleLower = n.title.toLowerCase();
+                                                                        const messageLower = n.message.toLowerCase();
+
+                                                                        if (titleLower.includes('boletim') || titleLower.includes('nota') || messageLower.includes('boletim')) {
+                                                                            setCurrentView(isEarlyChildhood ? 'early_childhood' : 'grades');
+                                                                        } else if (titleLower.includes('frequência') || titleLower.includes('falta')) {
+                                                                            setCurrentView('attendance');
+                                                                        } else if (titleLower.includes('financeiro') || titleLower.includes('mensalidade') || titleLower.includes('pagamento')) {
+                                                                            setCurrentView('financeiro');
+                                                                        } else if (titleLower.includes('material') || titleLower.includes('conteúdo') || titleLower.includes('aula')) {
+                                                                            setCurrentView('materials');
+                                                                        } else {
+                                                                            setCurrentView('tickets');
+                                                                        }
+
+                                                                        setShowNotifications(false);
+                                                                    }}
+                                                                >
+                                                                    <div className="flex justify-between items-start mb-1">
+                                                                        <span className="font-bold text-xs text-gray-800">{n.title}</span>
+                                                                        <span className="text-[10px] text-gray-400">{new Date(n.timestamp).toLocaleDateString()}</span>
+                                                                    </div>
+                                                                    <p className="text-xs text-gray-600 line-clamp-2">{n.message}</p>
+                                                                </div>
+                                                            ))
+                                                        ) : (
+                                                            <div className="p-4 text-center text-gray-500 text-xs italic">
+                                                                Nenhuma notificação.
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
+                                        <Button variant="secondary" onClick={onLogout} className="text-sm font-semibold py-1.5 px-4">Sair</Button>
+                                    </div>
+                                </div>
+
+                                {/* Student Info Card */}
+                                <div className="bg-blue-50/50 py-3 px-4 rounded-lg border border-blue-100 mb-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Aluno(a)</span>
+                                            <span className="text-sm font-bold text-blue-900 leading-tight">{student.name}</span>
+                                        </div>
+                                        <div className="flex flex-col items-end">
+                                            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Turma / Turno</span>
+                                            <div className="text-right">
+                                                <span className="text-xs font-bold text-gray-700 bg-white px-2 py-0.5 rounded border border-gray-200 block">
+                                                    {student.gradeLevel || 'N/A'} <span className="text-gray-300">|</span> {student.shift}
+                                                </span>
+                                                <span className="text-[10px] font-semibold text-gray-500 mt-0.5 block">{student.unit}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 mt-12 mb-14">
+                                    <div className="h-9 w-auto">
+                                        <SchoolLogo className="!h-full w-auto drop-shadow-sm" />
+                                    </div>
+                                    <div className="flex flex-col justify-center">
+                                        <span className="text-[9px] text-blue-950 font-bold uppercase tracking-widest leading-none mb-0.5">Aplicativo</span>
+                                        <h1 className="text-lg font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
                                     </div>
                                 </div>
                                 <div className="text-left pb-4">

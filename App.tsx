@@ -208,7 +208,16 @@ const AppContent: React.FC = () => {
         setInitialLoad(prev => ({ ...prev, earlyChildhoodReports: true }));
       }));
 
-      setInitialLoad(prev => ({ ...prev, teachers: true, admins: true, messages: true, notifications: true, mensalidades: true }));
+      // Load teacher notifications
+      unsubs.push(db.collection('notifications').where('teacherId', '==', userId).orderBy('timestamp', 'desc').onSnapshot(snap => {
+        setNotifications(snap.docs.map(doc => ({ ...doc.data() as AppNotification, id: doc.id })));
+        setInitialLoad(prev => ({ ...prev, notifications: true }));
+      }, (err) => {
+        console.error("Teacher Notifications listen error (check if index is required):", err);
+        setInitialLoad(prev => ({ ...prev, notifications: true }));
+      }));
+
+      setInitialLoad(prev => ({ ...prev, teachers: true, admins: true, messages: true, mensalidades: true }));
 
     } else if (session.role === UserRole.ADMIN) {
       const isGeneral = !userUnit;
@@ -516,15 +525,17 @@ const AppContent: React.FC = () => {
   const handleLogout = () => { setSession({ role: UserRole.NONE, user: null }); setLoginError(''); };
 
   // Helper para criar notificação interna
-  const createNotification = async (studentId: string, title: string, message: string) => {
+  const createNotification = async (title: string, message: string, studentId?: string, teacherId?: string) => {
     const notification: AppNotification = {
       id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-      studentId,
+      ...(studentId && { studentId }),
+      ...(teacherId && { teacherId }),
       title,
       message,
       timestamp: new Date().toISOString(),
       read: false
     };
+
     try {
       await db.collection('notifications').doc(notification.id).set(notification);
     } catch (e) {
@@ -534,12 +545,18 @@ const AppContent: React.FC = () => {
 
   const handleSaveGrade = async (grade: GradeEntry) => {
     try {
-      await db.collection('grades').doc(grade.id).set(grade);
+      // Add teacherId if it's a teacher saving the grade
+      const gradeToSave = {
+        ...grade,
+        ...(session.role === UserRole.TEACHER && { teacherId: session.user?.id })
+      };
+
+      await db.collection('grades').doc(grade.id).set(gradeToSave);
       // Cria notificação automática
       await createNotification(
-        grade.studentId,
         'Boletim Atualizado',
-        `Sua nota de ${grade.subject} foi atualizada pelo professor.`
+        `Sua nota de ${grade.subject} foi atualizada pelo professor.`,
+        grade.studentId
       );
     }
     catch (error) {
@@ -560,9 +577,9 @@ const AppContent: React.FC = () => {
       await db.collection('earlyChildhoodReports').doc(report.id).set(report);
       // Cria notificação automática
       await createNotification(
-        report.studentId,
         'Relatório Disponível',
-        `O relatório de desenvolvimento do ${report.semester}º Semestre foi atualizado.`
+        `O relatório de desenvolvimento do ${report.semester}º Semestre foi atualizado.`,
+        report.studentId
       );
     } catch (error) {
       console.error("Erro ao salvar relatório:", error);
@@ -1070,6 +1087,7 @@ const AppContent: React.FC = () => {
         <CoordinatorDashboard
           coordinator={session.user as UnitContact}
           onLogout={handleLogout}
+          onCreateNotification={createNotification}
         />
         <BackToTopButton />
       </>
@@ -1101,7 +1119,7 @@ const AppContent: React.FC = () => {
   if (session.role === UserRole.TEACHER && session.user) {
     return (
       <>
-        <TeacherDashboard teacher={session.user as Teacher} students={students} grades={grades} onSaveGrade={handleSaveGrade} onLogout={handleLogout} attendanceRecords={attendanceRecords} onSaveAttendance={handleSaveAttendance} earlyChildhoodReports={earlyChildhoodReports} onSaveEarlyChildhoodReport={handleSaveEarlyChildhoodReport} />
+        <TeacherDashboard teacher={session.user as Teacher} students={students} grades={grades} onSaveGrade={handleSaveGrade} onLogout={handleLogout} attendanceRecords={attendanceRecords} onSaveAttendance={handleSaveAttendance} earlyChildhoodReports={earlyChildhoodReports} onSaveEarlyChildhoodReport={handleSaveEarlyChildhoodReport} notifications={notifications} onMarkNotificationAsRead={handleMarkNotificationAsRead} />
         <BackToTopButton />
       </>
     );

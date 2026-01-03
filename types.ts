@@ -92,6 +92,7 @@ export interface BimesterData {
 export interface GradeEntry {
   id: string;
   studentId: string;
+  teacherId?: string; // ID do professor que lançou a nota
   subject: string;
   bimesters: {
     bimester1: BimesterData;
@@ -212,7 +213,8 @@ export interface UnitContact {
 // --- NOVO: TIPO PARA NOTIFICAÇÕES ---
 export interface AppNotification {
   id: string;
-  studentId: string;
+  studentId?: string;
+  teacherId?: string;
   title: string;
   message: string;
   timestamp: string;

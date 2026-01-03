@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebaseConfig';
 import { UnitContact, SchoolUnit, CoordinationSegment, Subject, SchoolClass, SchoolShift } from '../types';
 import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, SUBJECT_LIST } from '../constants';
@@ -25,16 +25,66 @@ interface GradeEntry {
 interface CoordinatorDashboardProps {
     coordinator: UnitContact;
     onLogout: () => void;
+    onCreateNotification?: (title: string, message: string, studentId?: string, teacherId?: string) => Promise<void>;
 }
 
-export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coordinator, onLogout }) => {
+export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coordinator, onLogout, onCreateNotification }) => {
     // --- STATE ---
-    const [selectedClass, setSelectedClass] = useState<SchoolClass | ''>('');
-    const [selectedSubject, setSelectedSubject] = useState<Subject | ''>('');
-    const [selectedShift, setSelectedShift] = useState<SchoolShift | ''>(SchoolShift.MORNING);
+
+    const [quickClassFilter, setQuickClassFilter] = useState<string>('all'); // NEW: Quick Filter
+    const [quickGradeFilter, setQuickGradeFilter] = useState<string>('all'); // NEW: Filter by Grade
+    const [quickShiftFilter, setQuickShiftFilter] = useState<string>('all'); // NEW: Filter by Shift
+    const [quickSubjectFilter, setQuickSubjectFilter] = useState<string>('all'); // NEW: Filter by Subject
 
     const [pendingGradesStudents, setPendingGradesStudents] = useState<any[]>([]);
     const [pendingGradesMap, setPendingGradesMap] = useState<Record<string, GradeEntry[]>>({});
+
+    // --- COMPUTED ---
+    const uniqueClasses = useMemo(() => {
+        const classes = new Set<string>();
+        pendingGradesStudents.forEach(s => {
+            if (s.schoolClass) classes.add(s.schoolClass);
+        });
+        return Array.from(classes).sort(); // Sorted alphabetically
+    }, [pendingGradesStudents]);
+
+    const uniqueGrades = useMemo(() => {
+        const grades = new Set<string>();
+        pendingGradesStudents.forEach(s => {
+            if (s.gradeLevel) grades.add(s.gradeLevel);
+        });
+        return Array.from(grades).sort(); // Sorted alphabetically
+    }, [pendingGradesStudents]);
+
+    const uniqueShifts = useMemo(() => {
+        const shifts = new Set<string>();
+        pendingGradesStudents.forEach(s => {
+            if (s.shift) shifts.add(s.shift);
+        });
+        return Array.from(shifts).sort();
+    }, [pendingGradesStudents]);
+
+    const uniqueSubjects = useMemo(() => {
+        const subjects = new Set<string>();
+        (Object.values(pendingGradesMap) as GradeEntry[][]).forEach(grades => {
+            grades.forEach(g => subjects.add(g.subject));
+        });
+        return Array.from(subjects).sort();
+    }, [pendingGradesMap]);
+
+    const filteredDisplayStudents = useMemo(() => {
+        return pendingGradesStudents.filter(s => {
+            const matchesClass = quickClassFilter === 'all' || s.schoolClass === quickClassFilter;
+            const matchesGrade = quickGradeFilter === 'all' || s.gradeLevel === quickGradeFilter;
+            const matchesShift = quickShiftFilter === 'all' || s.shift === quickShiftFilter;
+
+            const studentGrades = pendingGradesMap[s.id] || [];
+            const matchesSubject = quickSubjectFilter === 'all' || studentGrades.some(g => g.subject === quickSubjectFilter);
+
+            return matchesClass && matchesGrade && matchesShift && matchesSubject;
+        });
+    }, [pendingGradesStudents, quickClassFilter, quickGradeFilter, quickShiftFilter, quickSubjectFilter, pendingGradesMap]);
+
     const [teachersMap, setTeachersMap] = useState<Record<string, string>>({}); // ID -> Name
     const [loading, setLoading] = useState(false);
 
@@ -58,14 +108,6 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
             // 1. Fetch Students for Unit + Shift (conditional) + Class (conditional)
             let studentsQuery = db.collection('students')
                 .where('unit', '==', coordinator.unit);
-
-            if (selectedShift) {
-                studentsQuery = studentsQuery.where('shift', '==', selectedShift);
-            }
-
-            if (selectedClass) {
-                studentsQuery = studentsQuery.where('schoolClass', '==', selectedClass);
-            }
 
             const studentsSnap = await studentsQuery.limit(200).get();
             const studentsData = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -98,7 +140,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
             const studentsWithPending: Set<string> = new Set();
 
             allGrades.forEach(grade => {
-                if (selectedSubject && grade.subject !== selectedSubject) return;
+
 
                 const hasPending = Object.values(grade.bimesters).some((b: any) =>
                     b.isApproved === false || b.isNotaApproved === false || b.isRecuperacaoApproved === false
@@ -142,6 +184,51 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                 bimesters: updatedBimesters,
                 recuperacaoFinalApproved: updatedRecFinalApproved
             });
+
+            // Create notification for teacher if teacherId exists
+            console.log('[CoordinatorDashboard] Aprovação de nota:', {
+                gradeId: grade.id,
+                subject: grade.subject,
+                studentId: grade.studentId,
+                teacherId: grade.teacherId,
+                hasOnCreateNotification: !!onCreateNotification
+            });
+
+            if (onCreateNotification) {
+                const student = pendingGradesStudents.find((s: any) => s.id === grade.studentId);
+                const studentName = student?.name || 'o aluno';
+
+                try {
+                    // 1. Notify Student (Always)
+                    await onCreateNotification(
+                        'Nota Aprovada',
+                        `Sua nota de ${grade.subject} foi aprovada pela coordenação.`,
+                        grade.studentId,
+                        undefined
+                    );
+
+                    // 2. Notify Teacher (If exists)
+                    if (grade.teacherId) {
+                        console.log('[CoordinatorDashboard] Criando notificação para professor:', {
+                            teacherId: grade.teacherId,
+                            studentName,
+                            subject: grade.subject
+                        });
+
+                        await onCreateNotification(
+                            'Nota Aprovada',
+                            `Sua nota de ${grade.subject} para ${studentName} foi aprovada pela coordenação.`,
+                            undefined,
+                            grade.teacherId
+                        );
+                        console.log('[CoordinatorDashboard] Notificações criadas com sucesso!');
+                    } else {
+                        console.warn('[CoordinatorDashboard] Nota sem teacherId - notificação prof. não enviada.');
+                    }
+                } catch (error) {
+                    console.error('[CoordinatorDashboard] Erro ao criar notificação:', error);
+                }
+            }
 
             // Update UI
             setPendingGradesMap(prev => {
@@ -197,66 +284,36 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                         </div>
 
                         {/* Welcome Message */}
-                        <div className="flex items-start gap-4">
-                            <div className="p-3 bg-purple-100 text-purple-700 rounded-xl shrink-0">
-                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                        <div className="flex flex-col items-start text-left">
+                            <div className="flex items-center gap-2 mt-4 mb-6">
+                                <div className="h-9 w-auto">
+                                    <SchoolLogo className="!h-full w-auto drop-shadow-sm" />
+                                </div>
+                                <div className="flex flex-col justify-center">
+                                    <span className="text-[9px] text-blue-950 font-bold uppercase tracking-widest leading-none mb-0.5">Aplicativo</span>
+                                    <h1 className="text-lg font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
+                                </div>
                             </div>
-                            <div>
-                                <h2 className="text-xl font-bold text-gray-800 mb-1">Painel de Acompanhamento Pedagógico</h2>
-                                <p className="text-gray-600">
-                                    Utilize os filtros abaixo para localizar turmas e aprovar notas ou alterações pendentes de professores.
-                                    Este ambiente é focado exclusivamente em rotinas pedagógicas.
-                                </p>
-                            </div>
+                            <p className="text-gray-600 max-w-2xl">
+                                Utilize os filtros abaixo para localizar turmas e aprovar notas ou alterações pendentes de professores.
+                                Este ambiente é focado exclusivamente em rotinas pedagógicas.
+                            </p>
                         </div>
                     </div>
 
                     {/* FILTERS CARD */}
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Turno</label>
-                                <select
-                                    value={selectedShift}
-                                    onChange={e => setSelectedShift(e.target.value as SchoolShift)}
-                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all outline-none"
-                                >
-                                    <option value="">Todos</option>
-                                    {SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Turma</label>
-                                <select
-                                    value={selectedClass}
-                                    onChange={e => setSelectedClass(e.target.value as SchoolClass)}
-                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all outline-none"
-                                >
-                                    <option value="">Todas</option>
-                                    {SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Disciplina (Opcional)</label>
-                                <select
-                                    value={selectedSubject}
-                                    onChange={e => setSelectedSubject(e.target.value as Subject)}
-                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all outline-none"
-                                >
-                                    <option value="">Todas</option>
-                                    {SUBJECT_LIST.map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <Button
-                                    onClick={handleFetchPendingGrades}
-                                    disabled={loading}
-                                    className="w-full py-3 !bg-purple-700 hover:!bg-purple-800 shadow-lg text-white font-bold"
-                                >
-                                    {loading ? 'Carregando...' : '🔍 Buscar Pendências'}
-                                </Button>
-                            </div>
+
+                        <div className="w-full">
+                            <Button
+                                onClick={handleFetchPendingGrades}
+                                disabled={loading}
+                                className="w-full py-4 text-lg !bg-purple-700 hover:!bg-purple-800 shadow-xl text-white font-bold rounded-xl transition-all transform hover:scale-[1.01]"
+                            >
+                                {loading ? 'Carregando...' : '🔍 Buscar Todas as Pendências'}
+                            </Button>
                         </div>
+
                     </div>
 
                     {/* RESULTS AREA */}
@@ -270,9 +327,105 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                         </div>
                     )}
 
+                    {/* QUICK FILTERS BAR */}
+                    {pendingGradesStudents.length > 0 && (
+                        <div className="mb-6 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+                            <div className="flex flex-wrap gap-4 items-end">
+
+                                {/* CLASS FILTER (Turma) */}
+                                {uniqueClasses.length > 0 && (
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Filtrar por Turma</label>
+                                        <select
+                                            value={quickClassFilter}
+                                            onChange={(e) => setQuickClassFilter(e.target.value)}
+                                            className="p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-purple-500 outline-none shadow-sm min-w-[120px]"
+                                        >
+                                            <option value="all">Todas</option>
+                                            {uniqueClasses.map(cls => (
+                                                <option key={cls} value={cls}>{cls}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
+                                {/* SHIFT FILTER (Turno) */}
+                                {uniqueShifts.length > 0 && (
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Filtrar por Turno</label>
+                                        <select
+                                            value={quickShiftFilter}
+                                            onChange={(e) => setQuickShiftFilter(e.target.value)}
+                                            className="p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-purple-500 outline-none shadow-sm min-w-[150px]"
+                                        >
+                                            <option value="all">Todos os Turnos</option>
+                                            {uniqueShifts.map(s => (
+                                                <option key={s} value={s}>{s}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
+                                {/* GRADE FILTER (Série) */}
+                                {uniqueGrades.length > 0 && (
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Filtrar por Série</label>
+                                        <select
+                                            value={quickGradeFilter}
+                                            onChange={(e) => setQuickGradeFilter(e.target.value)}
+                                            className="p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-purple-500 outline-none shadow-sm min-w-[250px]"
+                                        >
+                                            <option value="all">Todas as Séries</option>
+                                            {uniqueGrades.map(grade => (
+                                                <option key={grade} value={grade}>{grade}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
+                                {/* SUBJECT FILTER (Disciplina) */}
+                                {uniqueSubjects.length > 0 && (
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Filtrar por Disciplina</label>
+                                        <select
+                                            value={quickSubjectFilter}
+                                            onChange={(e) => setQuickSubjectFilter(e.target.value)}
+                                            className="p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-purple-500 outline-none shadow-sm min-w-[200px]"
+                                        >
+                                            <option value="all">Todas as Disciplinas</option>
+                                            {uniqueSubjects.map(sub => (
+                                                <option key={sub} value={sub}>{sub}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
+                                {(quickClassFilter !== 'all' || quickGradeFilter !== 'all' || quickShiftFilter !== 'all' || quickSubjectFilter !== 'all') && (
+                                    <button
+                                        onClick={() => { setQuickClassFilter('all'); setQuickGradeFilter('all'); setQuickShiftFilter('all'); setQuickSubjectFilter('all'); }}
+                                        className="mb-1 text-purple-600 text-xs font-bold hover:text-purple-800 underline px-2 transition-colors"
+                                    >
+                                        Limpar Filtros
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* EMPTY STATE FOR FILTER */}
+                    {filteredDisplayStudents.length === 0 && pendingGradesStudents.length > 0 && (
+                        <div className="text-center py-12 bg-gray-50 rounded-xl border border-gray-200 border-dashed mb-6">
+                            <p className="text-gray-500 italic">Nenhum aluno encontrado com os filtros selecionados.</p>
+                            <button onClick={() => { setQuickClassFilter('all'); setQuickGradeFilter('all'); setQuickShiftFilter('all'); setQuickSubjectFilter('all'); }} className="text-purple-600 font-bold text-sm mt-2 hover:underline">Limpar filtros</button>
+                        </div>
+                    )}
+
                     <div className="space-y-6">
-                        {pendingGradesStudents.map((student: any) => {
-                            const grades = pendingGradesMap[student.id] || [];
+                        {filteredDisplayStudents.map((student: any) => {
+                            let grades = pendingGradesMap[student.id] || [];
+                            if (quickSubjectFilter !== 'all') {
+                                grades = grades.filter(g => g.subject === quickSubjectFilter);
+                            }
                             if (grades.length === 0) return null;
 
                             return (
@@ -410,7 +563,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                     </div>
 
                 </main>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
