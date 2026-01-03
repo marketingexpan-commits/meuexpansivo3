@@ -1152,7 +1152,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <SidebarToggle onClick={() => setIsSidebarOpen(true)} />
                             <div className="flex flex-col">
                                 <span className="text-xs font-bold text-slate-700 uppercase tracking-widest leading-none">
-                                    {adminUnit || 'Administração Geral'}
+                                    {adminUnit ? `Unidade ${adminUnit}` : 'Administração Geral'}
                                 </span>
                             </div>
                         </div>
