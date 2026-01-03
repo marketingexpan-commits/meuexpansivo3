@@ -277,8 +277,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
             onClick={handleSecretClick}
           >
             {/* LOGO ESTÁTICO - Posicionado ABSOLUTAMENTE para coincidir exatamente com a animação */}
-            <div className={`absolute top-5 left-5 sm:top-8 sm:left-8 transition-opacity duration-0 ${showStaticLogo ? 'opacity-100' : 'opacity-0'}`}>
-              <SchoolLogo variant="login" />
+            <div className={`absolute top-5 left-5 sm:top-8 sm:left-8 h-12 sm:h-16 w-32 sm:w-48 transition-opacity duration-0 ${showStaticLogo ? 'opacity-100' : 'opacity-0'}`}>
+              <SchoolLogo />
             </div>
 
             <div className="flex w-full justify-end items-center">

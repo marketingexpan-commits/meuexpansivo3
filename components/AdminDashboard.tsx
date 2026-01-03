@@ -9,10 +9,42 @@ import { db } from '../firebaseConfig';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Rematricula } from './Rematricula';
-import { Shield, User, GraduationCap, LayoutDashboard, Clock, Globe, FileBarChart, RefreshCw } from 'lucide-react';
 import { TableSkeleton } from './Skeleton';
 import { CoordinationTab } from './Admin/CoordinationTab';
 import { FinancialTab } from './Admin/FinancialTab';
+import { Sidebar, SidebarToggle } from './Sidebar';
+import { SidebarCategory } from './SidebarCategory';
+import { SidebarItem } from './SidebarItem';
+import {
+    Users,
+    User,
+    UserCheck,
+    Settings,
+    MessageSquare,
+    Calendar,
+    Phone,
+    GraduationCap,
+    DollarSign,
+    ShieldAlert,
+    HelpCircle,
+    LayoutDashboard,
+    Clock,
+    Globe,
+    FileBarChart,
+    RefreshCw,
+    Shield,
+    Menu,
+    X,
+    ChevronDown,
+    ChevronRight,
+    LogOut,
+    School,
+    FileText,
+    Brain,
+    Search,
+    Pencil,
+    Trash2
+} from 'lucide-react';
 import { maskCPF, sanitizePhone } from '../utils/formattingUtils';
 import { calculateFinancials } from '../utils/financialUtils';
 import ManualPaymentModal from './Admin/ManualPaymentModal';
@@ -80,7 +112,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     mensalidades = [],
     onLogout
 }) => {
-    const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'admins' | 'messages' | 'attendance' | 'contacts' | 'rematricula' | 'financial' | 'tickets'>('students');
+    const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'admins' | 'messages' | 'attendance' | 'contacts' | 'rematricula' | 'financial' | 'tickets' | 'coordination'>('students');
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     // --- ESTADOS DE SIMULAÇÃO (Para Admin Geral testar visões específicas) ---
     const [simulatedUnit, setSimulatedUnit] = useState<SchoolUnit | null>(null);
@@ -986,66 +1019,151 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const EyeOffIcon = () => (<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>);
 
     return (
-        <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans">
-            {(studentToDelete || teacherToDelete || adminToDelete) && (<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900 bg-opacity-50 backdrop-blur-sm"><div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6 animate-fade-in-up"><h3 className="text-lg font-bold text-center text-gray-900 mb-2">Confirmar Exclusão</h3><p className="text-sm text-center text-gray-500 mb-6">Tem certeza? Essa ação não pode ser desfeita.</p><div className="flex gap-3 justify-center"><Button variant="secondary" onClick={() => { setStudentToDelete(null); setTeacherToDelete(null); setAdminToDelete(null); }} className="w-full">Cancelar</Button><Button variant="danger" onClick={() => { if (studentToDelete) { onDeleteStudent(studentToDelete); setStudentToDelete(null); } if (teacherToDelete) { onDeleteTeacher(teacherToDelete); setTeacherToDelete(null); } if (adminToDelete && onDeleteAdmin) { onDeleteAdmin(adminToDelete); setAdminToDelete(null); } }} className="w-full">Sim, Excluir</Button></div></div></div>)}
-
-            <div className="w-full max-w-7xl bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col">
-                {/* HEADER */}
-                <div className="bg-gradient-to-br from-blue-950 to-slate-900 p-4 md:p-6 shadow-md relative shrink-0">
-                    <div className="flex flex-col md:flex-row justify-between items-center relative z-10 gap-4 md:gap-0">
-                        <div className="flex items-center gap-3 md:gap-4 text-white w-full md:w-auto">
-                            <SchoolLogo variant="header" />
-                            <div>
-                                <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white mb-0.5 shadow-black drop-shadow-sm">
-                                    Meu Expansivo
-                                </h1>
-                                <div className="flex items-center gap-2 text-blue-200 text-xs md:text-sm font-medium">
-                                    <span>Administração ({adminUnit || 'GERAL'})</span>
-                                    <span className="w-1 h-1 rounded-full bg-blue-400"></span>
-                                    <span className="text-blue-200">{admin.name}</span>
+        <>
+            <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
+                {/* MODAIS DE CONFIRMAÇÃO DE EXCLUSÃO */}
+                {(studentToDelete || teacherToDelete || adminToDelete) && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-fade-in">
+                        <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 animate-fade-in-up border border-slate-100">
+                            <div className="flex flex-col items-center text-center">
+                                <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4 border-4 border-red-100">
+                                    <ShieldAlert className="w-8 h-8 text-red-600" />
+                                </div>
+                                <h3 className="text-xl font-bold text-slate-900 mb-2">Confirmar Exclusão</h3>
+                                <p className="text-sm text-slate-500 mb-8 leading-relaxed">
+                                    Tem certeza? Esta ação é irreversível e removerá permanentemente os dados do sistema.
+                                </p>
+                                <div className="flex gap-3 w-full">
+                                    <Button variant="secondary" onClick={() => { setStudentToDelete(null); setTeacherToDelete(null); setAdminToDelete(null); }} className="flex-1">
+                                        Cancelar
+                                    </Button>
+                                    <Button variant="danger" onClick={() => {
+                                        if (studentToDelete) { onDeleteStudent(studentToDelete); setStudentToDelete(null); }
+                                        if (teacherToDelete) { onDeleteTeacher(teacherToDelete); setTeacherToDelete(null); }
+                                        if (adminToDelete && onDeleteAdmin) { onDeleteAdmin(adminToDelete); setAdminToDelete(null); }
+                                    }} className="flex-1 shadow-md shadow-red-200">
+                                        Sim, Excluir
+                                    </Button>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                )}
 
+                <Sidebar
+                    isOpen={isSidebarOpen}
+                    onClose={() => setIsSidebarOpen(false)}
+                    userName={admin.name}
+                    onLogout={onLogout}
+                >
+                    <SidebarCategory icon={<LayoutDashboard size={20} />} title="Gestão Escolar" defaultOpen>
+                        <SidebarItem
+                            icon={<Users size={18} />}
+                            label="Alunos"
+                            isActive={activeTab === 'students'}
+                            onClick={() => { setActiveTab('students'); setIsSidebarOpen(false); }}
+                        />
+                        <SidebarItem
+                            icon={<GraduationCap size={18} />}
+                            label="Professores"
+                            isActive={activeTab === 'teachers'}
+                            onClick={() => { setActiveTab('teachers'); setIsSidebarOpen(false); }}
+                        />
+                        {isGeneralAdmin && (
+                            <SidebarItem
+                                icon={<Shield size={18} />}
+                                label="Administradores"
+                                isActive={activeTab === 'admins'}
+                                onClick={() => { setActiveTab('admins'); setIsSidebarOpen(false); }}
+                            />
+                        )}
+                    </SidebarCategory>
 
-                        {/* STATS WIDGET (TOP RIGHT) - Somente para Admin Geral */}
-                        <div className="flex items-center gap-3 md:gap-6 w-full md:w-auto justify-between md:justify-start">
-                            {isGeneralAdmin && dailyLoginsCount !== null && (
-                                <>
-                                    <div className="flex flex-col items-end text-white/90 p-2 rounded-lg transition-all" title="Visualizações na tela de login">
-                                        <span className="text-[10px] uppercase tracking-wider font-semibold opacity-70">Visitas Login</span>
-                                        <div className="flex items-baseline gap-2">
-                                            <div className="flex flex-col items-end">
-                                                <span className="text-xl font-bold leading-none">{loginPageViewsToday !== null ? loginPageViewsToday : '-'}</span>
-                                                <span className="text-[9px] opacity-70 leading-none">HOJE</span>
-                                            </div>
-                                            <div className="w-px h-6 bg-white/20"></div>
-                                            <div className="flex flex-col items-start">
-                                                <span className="text-xl font-bold leading-none">{loginPageViews !== null ? loginPageViews : '-'}</span>
-                                                <span className="text-[9px] opacity-70 leading-none">TOTAL</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="w-px h-8 bg-white/20 mx-2 hidden md:block"></div>
-                                    <button
-                                        onClick={handleOpenLogModal}
-                                        className="flex flex-col items-end text-white/90 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all cursor-pointer"
-                                        title="Clique para ver detalhes"
-                                    >
-                                        <span className="text-[10px] uppercase tracking-wider font-semibold opacity-70">Acessos Hoje</span>
-                                        <div className="flex items-baseline gap-1">
-                                            <span className="text-2xl font-bold">{dailyLoginsCount}</span>
-                                            <span className="text-xs">logins</span>
-                                        </div>
-                                    </button>
-                                </>
-                            )}
+                    <SidebarCategory icon={<Brain size={20} />} title="Acadêmico" defaultOpen>
 
-                            {/* CONTROLE DE SIMULAÇÃO (Apenas para o verdadeiro Admin Geral) */}
+                        <SidebarItem
+                            icon={<Calendar size={18} />}
+                            label="Frequência"
+                            isActive={activeTab === 'attendance'}
+                            onClick={() => { setActiveTab('attendance'); setIsSidebarOpen(false); }}
+                        />
+                        {isGeneralAdmin && (
+                            <SidebarItem
+                                icon={<HelpCircle size={18} />}
+                                label="Dúvidas AI"
+                                isActive={activeTab === 'tickets'}
+                                onClick={() => { setActiveTab('tickets'); setIsSidebarOpen(false); }}
+                                badge={ticketsList.filter(t => t.status === TicketStatus.PENDING).length}
+                            />
+                        )}
+                    </SidebarCategory>
+
+                    <SidebarCategory icon={<MessageSquare size={20} />} title="Comunicação">
+                        <SidebarItem
+                            icon={<MessageSquare size={18} />}
+                            label="Mensagens"
+                            isActive={activeTab === 'messages'}
+                            onClick={() => { setActiveTab('messages'); setIsSidebarOpen(false); }}
+                            badge={newMessagesCount}
+                        />
+                        <SidebarItem
+                            icon={<Phone size={18} />}
+                            label="Contatos"
+                            isActive={activeTab === 'contacts'}
+                            onClick={() => { setActiveTab('contacts'); setIsSidebarOpen(false); }}
+                        />
+                    </SidebarCategory>
+
+                    <SidebarCategory icon={<DollarSign size={20} />} title="Financeiro">
+                        <SidebarItem
+                            icon={<DollarSign size={18} />}
+                            label="Financeiro"
+                            isActive={activeTab === 'financial'}
+                            onClick={() => { setActiveTab('financial'); setIsSidebarOpen(false); }}
+                        />
+                        <SidebarItem
+                            icon={<Settings size={18} />}
+                            label="Rematrícula 2026"
+                            isActive={activeTab === 'rematricula'}
+                            onClick={() => { setActiveTab('rematricula'); setIsSidebarOpen(false); }}
+                        />
+                    </SidebarCategory>
+
+                    {isGeneralAdmin && (
+                        <SidebarCategory icon={<Settings size={20} />} title="Sistema">
+                            <SidebarItem
+                                icon={<RefreshCw size={18} />}
+                                label="Manutenção"
+                                onClick={() => { setIsMaintenanceModalOpen(true); setIsSidebarOpen(false); }}
+                            />
+                            <SidebarItem
+                                icon={<Clock size={18} />}
+                                label="Logs de Acesso"
+                                onClick={() => { handleOpenLogModal(); setIsSidebarOpen(false); }}
+                            />
+                        </SidebarCategory>
+                    )}
+                </Sidebar>
+
+                <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+                    {/* HEADER */}
+                    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 shrink-0 z-30">
+                        <div className="flex items-center gap-4">
+                            <SidebarToggle onClick={() => setIsSidebarOpen(true)} />
+                            <div className="flex flex-col">
+                                <h1 className="text-lg font-bold text-slate-800 leading-none">Meu Expansivo</h1>
+                                <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-1">
+                                    {adminUnit || 'Administração Geral'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 lg:gap-6">
+                            {/* CONTROLE DE SIMULAÇÃO */}
                             {!admin.unit && (
-                                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors border ${simulatedUnit ? 'bg-amber-100 border-amber-300' : 'bg-white/10 border-transparent hover:bg-white/20'}`}>
-                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${simulatedUnit ? 'text-amber-800' : 'text-blue-200'}`}>
-                                        {simulatedUnit ? 'Simulando:' : 'Simular Unidade:'}
+                                <div className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors border ${simulatedUnit ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'}`}>
+                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${simulatedUnit ? 'text-amber-700' : 'text-slate-400'}`}>
+                                        Simular:
                                     </span>
                                     <select
                                         value={simulatedUnit || ''}
@@ -1054,982 +1172,906 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             setSimulatedUnit(val ? val as SchoolUnit : null);
                                             setActiveTab('students');
                                         }}
-                                        className={`text-xs p-1 rounded border-none outline-none font-bold cursor-pointer ${simulatedUnit ? 'bg-amber-200 text-amber-900' : 'bg-blue-950 text-white'}`}
+                                        className="text-xs bg-transparent border-none outline-none font-bold cursor-pointer text-slate-700"
                                     >
-                                        <option value="">(Visão Geral)</option>
+                                        <option value="">Geral</option>
                                         {SCHOOL_UNITS_LIST.map(u => (
                                             <option key={u} value={u}>{u}</option>
                                         ))}
                                     </select>
-                                    {simulatedUnit && (
-                                        <button
-                                            onClick={() => setSimulatedUnit(null)}
-                                            title="Sair do Modo de Simulação"
-                                            className="text-amber-700 hover:text-amber-900 ml-1"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                        </button>
-                                    )}
                                 </div>
                             )}
 
-                            <div className="flex items-center gap-3">
-                                {isGeneralAdmin && (
-                                    <button
-                                        onClick={() => setIsMaintenanceModalOpen(true)}
-                                        className="p-2 text-blue-200 hover:text-white hover:bg-white/10 rounded-full transition-colors order-first md:order-none"
-                                        title="Manutenção do Sistema"
-                                    >
-                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                    </button>
-                                )}
-                                <Button variant="secondary" onClick={onLogout} className="!bg-transparent border-none !text-white font-medium hover:!text-gray-200 shadow-none !px-0">
-                                    Sair
+                            {/* STATS RAPIDOS */}
+                            {isGeneralAdmin && dailyLoginsCount !== null && (
+                                <div
+                                    onClick={handleOpenLogModal}
+                                    className="hidden lg:flex items-center gap-4 px-4 py-1.5 bg-slate-50 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors cursor-pointer group"
+                                    title="Clique para ver detalhes de acesso"
+                                >
+                                    <div className="flex flex-col items-end border-r border-slate-200 pr-4">
+                                        <span className="text-[9px] font-bold text-slate-400 uppercase leading-none mb-1 group-hover:text-slate-500">Visitas Hoje</span>
+                                        <span className="text-sm font-bold text-slate-700 leading-none text-center w-full">{loginPageViewsToday ?? 0}</span>
+                                    </div>
+                                    <div className="flex flex-col items-end border-r border-slate-200 pr-4">
+                                        <span className="text-[9px] font-bold text-slate-400 uppercase leading-none mb-1 group-hover:text-slate-500">Acessos Hoje</span>
+                                        <span className="text-sm font-bold text-blue-600 leading-none text-center w-full">{dailyLoginsCount}</span>
+                                    </div>
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-[9px] font-bold text-orange-400 uppercase leading-none mb-1 group-hover:text-orange-500">Total Visitas</span>
+                                        <span className="text-sm font-bold text-slate-700 leading-none text-center w-full">{loginPageViews ?? 0}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {isGeneralAdmin && (
+                                <button
+                                    onClick={() => setIsMaintenanceModalOpen(true)}
+                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                    title="Configurações / Manutenção"
+                                >
+                                    <Settings size={20} />
+                                </button>
+                            )}
+
+                            <button
+                                onClick={onLogout}
+                                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                title="Sair do sistema"
+                            >
+                                <LogOut size={20} />
+                            </button>
+                        </div>
+                    </header>
+
+                    <main className="flex-1 overflow-y-auto p-4 lg:p-8 custom-scrollbar">
+
+                        {activeTab === 'students' && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-1"><div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"><h2 className="text-lg font-bold text-gray-800 mb-4">{editingStudentId ? 'Editar Aluno' : 'Cadastrar Novo Aluno'}</h2><form onSubmit={fullHandleStudentSubmit} className="space-y-4"><div><label className="text-sm font-medium">Nome</label><input type="text" value={sName} onChange={e => setSName(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Código</label><input type="text" value={sCode} onChange={e => setSCode(e.target.value)} required className="w-full p-2 border rounded" /></div>
+                            <div><label className="text-sm font-medium">Série</label><select value={sGrade} onChange={e => setSGrade(e.target.value)} className="w-full p-2 border rounded">{SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}</select></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">Turma</label><select value={sClass} onChange={e => setSClass(e.target.value as SchoolClass)} className="w-full p-2 border rounded">{SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}</select></div><div><label className="text-sm font-medium">Turno</label><select value={sShift} onChange={e => setSShift(e.target.value as SchoolShift)} className="w-full p-2 border rounded">{SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{s}</option>)}</select></div></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">Unidade</label>{isGeneralAdmin ? (<select value={sUnit} onChange={e => setSUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}</div><div><label className="text-sm font-medium font-bold text-gray-700">Método Pagamento</label><select value={sMetodoPagamento} onChange={e => setSMetodoPagamento(e.target.value as 'Isaac' | 'Interno')} className="w-full p-2 border-2 border-slate-200 rounded font-semibold text-slate-700 focus:border-slate-500"><option value="Interno">Sistema Interno</option><option value="Isaac">Parceiro Isaac</option></select></div></div>
+
+                            <div><label className="text-sm font-medium">Responsável Financeiro</label><input type="text" value={sResponsavel} onChange={e => setSResponsavel(e.target.value)} className="w-full p-2 border rounded" placeholder="Nome do responsável financeiro" /></div>
+
+                            <div>
+                                <label className="text-sm font-medium">CPF do Responsável</label>
+                                <input
+                                    type="text"
+                                    value={sCpfResponsavel}
+                                    onChange={e => setSCpfResponsavel(maskCPF(e.target.value))}
+                                    className="w-full p-2 border rounded"
+                                    placeholder="000.000.000-00"
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-3 bg-yellow-50 p-3 rounded border border-yellow-200">
+                                <input
+                                    type="checkbox"
+                                    id="scholarship-switch"
+                                    checked={sScholarship}
+                                    onChange={e => setSScholarship(e.target.checked)}
+                                    className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
+                                />
+                                <div className="flex flex-col">
+                                    <label htmlFor="scholarship-switch" className="text-sm font-bold text-gray-800 cursor-pointer">
+                                        Aluno Bolsista 🎓
+                                    </label>
+                                    <span className="text-xs text-gray-500">Se marcado, o aluno será isento da geração automática de mensalidades.</span>
+                                </div>
+                            </div>
+
+                            <div><label className="text-sm font-medium font-bold text-green-700">Valor da Mensalidade (R$)</label><input type="number" step="0.01" value={sValorMensalidade} onChange={e => setSValorMensalidade(e.target.value)} className="w-full p-2 border rounded font-bold text-green-800" placeholder="0.00" disabled={sScholarship} /></div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div><label className="text-sm font-medium">E-mail</label><input type="email" value={sEmail} onChange={e => setSEmail(e.target.value)} className="w-full p-2 border rounded" placeholder="email@exemplo.com" /></div>
+                                <div>
+                                    <label className="text-sm font-medium">Telefone</label>
+                                    <input type="text" value={sPhone} onChange={e => setSPhone(e.target.value.replace(/\D/g, ''))} className="w-full p-2 border rounded" placeholder="Ex: 5584999999999" />
+                                    <p className="text-xs text-gray-500 mt-1">Apenas números (Ex: 5584...)</p>
+                                </div>
+                            </div>
+
+
+
+                            <div><label className="text-sm font-medium">Senha</label>
+                                <div className="flex gap-2 relative"><input type={showStudentPassword ? "text" : "password"} value={sPass} onChange={e => setSPass(e.target.value)} className="w-full p-2 border rounded" required={!editingStudentId} /><button type="button" onClick={() => setShowStudentPassword(!showStudentPassword)} className="absolute right-16 top-2 text-gray-500">{showStudentPassword ? <EyeOffIcon /> : <EyeIcon />}</button><button type="button" onClick={handleGenerateStudentPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button></div><p className="text-xs text-gray-500 mt-1">Senha automática (8 caracteres).</p></div>
+
+                            <div className="flex gap-2">
+                                <Button type="submit" className="flex-1">{editingStudentId ? 'Salvar Alterações' : 'Cadastrar Aluno'}</Button>
+                                <Button type="button" variant="secondary" onClick={cancelEditingStudent} className="flex-none bg-gray-200 text-gray-700 hover:bg-gray-300">
+                                    {editingStudentId ? 'Cancelar / Novo' : 'Limpar'}
                                 </Button>
                             </div>
-                        </div>
-                    </div>
-                    {/* Decorative Elements */}
-                    <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob pointer-events-none"></div>
-                    <div className="absolute top-0 right-20 -mt-10 w-64 h-64 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000 pointer-events-none"></div>
-                </div>
+                            <div className="flex gap-2 mt-2">
+                                {onGenerateIndividualFees && (
+                                    <button
 
-                <div className="p-4 md:p-6 flex-1 flex flex-col">
-                    <div className="flex space-x-4 mb-6 overflow-x-auto pb-2 w-full scrollbar-thin scrollbar-thumb-gray-200">
-                        <button onClick={() => setActiveTab('students')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeTab === 'students' ? 'bg-blue-950 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Gerenciar Alunos</button>
-                        <button onClick={() => setActiveTab('teachers')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeTab === 'teachers' ? 'bg-blue-950 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Gerenciar Professores</button>
-                        <button onClick={() => setActiveTab('messages')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap flex items-center gap-2 ${activeTab === 'messages' ? 'bg-blue-950 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Mensagens{newMessagesCount > 0 && <span className="bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">{newMessagesCount}</span>}</button>
-                        <button onClick={() => setActiveTab('attendance')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeTab === 'attendance' ? 'bg-blue-950 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Controle de Frequência</button>
-                        <button onClick={() => setActiveTab('contacts')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeTab === 'contacts' ? 'bg-blue-950 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Gestão de Contatos</button>
+                                        type="button"
+                                        disabled={!editingStudentId}
+                                        onClick={() => {
+                                            if (!editingStudentId) return;
+                                            // Construct student from form data to ensure we have the latest value (even if not synced yet)
+                                            const formStudent: Student = {
+                                                id: editingStudentId,
+                                                name: sName,
+                                                valor_mensalidade: sValorMensalidade ? parseFloat(sValorMensalidade.replace(',', '.')) : 0,
+                                                // Fill other required fields with defaults or current form values to satisfy type
+                                                code: sCode,
+                                                gradeLevel: sGrade,
+                                                schoolClass: sClass,
+                                                shift: sShift,
+                                                unit: isGeneralAdmin ? sUnit : (adminUnit || SchoolUnit.UNIT_1), // Ensure unit is present
+                                                // Legacy/Optional fields can be partial/dummy if not used by fee generator,
+                                                // but best to try finding original to keep data clean if possible.
+                                                ...(students.find(s => s.id === editingStudentId) || {} as any)
+                                            };
 
-                        <button onClick={() => setActiveTab('rematricula')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap flex items-center gap-2 ${activeTab === 'rematricula' ? 'bg-green-700 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>
-                            <span>🎓</span> Rematrícula 2026
-                        </button>
-                        <button onClick={() => setActiveTab('financial')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap flex items-center gap-2 ${activeTab === 'financial' ? 'bg-yellow-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>
-                            <span>💰</span> Financeiro
-                        </button>
-                        {isGeneralAdmin && <button onClick={() => setActiveTab('admins')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${activeTab === 'admins' ? 'bg-purple-800 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>Gerenciar Admins</button>}
-                        {isGeneralAdmin && <button onClick={() => setActiveTab('tickets')} className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap flex items-center gap-2 ${activeTab === 'tickets' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>
-                            <span>❓</span> Dúvidas
-                        </button>}
-                    </div>
+                                            // Override with form values specifically for the critical fields
+                                            formStudent.valor_mensalidade = sValorMensalidade ? parseFloat(sValorMensalidade.replace(',', '.')) : 0;
+                                            formStudent.name = sName;
 
-                    {activeTab === 'students' && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-1"><div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"><h2 className="text-lg font-bold text-gray-800 mb-4">{editingStudentId ? 'Editar Aluno' : 'Cadastrar Novo Aluno'}</h2><form onSubmit={fullHandleStudentSubmit} className="space-y-4"><div><label className="text-sm font-medium">Nome</label><input type="text" value={sName} onChange={e => setSName(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Código</label><input type="text" value={sCode} onChange={e => setSCode(e.target.value)} required className="w-full p-2 border rounded" /></div>
-                        <div><label className="text-sm font-medium">Série</label><select value={sGrade} onChange={e => setSGrade(e.target.value)} className="w-full p-2 border rounded">{SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}</select></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">Turma</label><select value={sClass} onChange={e => setSClass(e.target.value as SchoolClass)} className="w-full p-2 border rounded">{SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}</select></div><div><label className="text-sm font-medium">Turno</label><select value={sShift} onChange={e => setSShift(e.target.value as SchoolShift)} className="w-full p-2 border rounded">{SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{s}</option>)}</select></div></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">Unidade</label>{isGeneralAdmin ? (<select value={sUnit} onChange={e => setSUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}</div><div><label className="text-sm font-medium text-blue-700 font-bold">Método Pagamento</label><select value={sMetodoPagamento} onChange={e => setSMetodoPagamento(e.target.value as 'Isaac' | 'Interno')} className="w-full p-2 border-2 border-blue-200 rounded font-semibold text-blue-900 focus:border-blue-500"><option value="Interno">Sistema Interno</option><option value="Isaac">Parceiro Isaac</option></select></div></div>
-
-                        <div><label className="text-sm font-medium">Responsável Financeiro</label><input type="text" value={sResponsavel} onChange={e => setSResponsavel(e.target.value)} className="w-full p-2 border rounded" placeholder="Nome do responsável financeiro" /></div>
-
-                        <div>
-                            <label className="text-sm font-medium">CPF do Responsável</label>
-                            <input
-                                type="text"
-                                value={sCpfResponsavel}
-                                onChange={e => setSCpfResponsavel(maskCPF(e.target.value))}
-                                className="w-full p-2 border rounded"
-                                placeholder="000.000.000-00"
-                            />
-                        </div>
-
-                        <div className="flex items-center gap-3 bg-yellow-50 p-3 rounded border border-yellow-200">
-                            <input
-                                type="checkbox"
-                                id="scholarship-switch"
-                                checked={sScholarship}
-                                onChange={e => setSScholarship(e.target.checked)}
-                                className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
-                            />
-                            <div className="flex flex-col">
-                                <label htmlFor="scholarship-switch" className="text-sm font-bold text-gray-800 cursor-pointer">
-                                    Aluno Bolsista 🎓
-                                </label>
-                                <span className="text-xs text-gray-500">Se marcado, o aluno será isento da geração automática de mensalidades.</span>
-                            </div>
-                        </div>
-
-                        <div><label className="text-sm font-medium font-bold text-green-700">Valor da Mensalidade (R$)</label><input type="number" step="0.01" value={sValorMensalidade} onChange={e => setSValorMensalidade(e.target.value)} className="w-full p-2 border rounded font-bold text-green-800" placeholder="0.00" disabled={sScholarship} /></div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <div><label className="text-sm font-medium">E-mail</label><input type="email" value={sEmail} onChange={e => setSEmail(e.target.value)} className="w-full p-2 border rounded" placeholder="email@exemplo.com" /></div>
-                            <div>
-                                <label className="text-sm font-medium">Telefone</label>
-                                <input type="text" value={sPhone} onChange={e => setSPhone(e.target.value.replace(/\D/g, ''))} className="w-full p-2 border rounded" placeholder="Ex: 5584999999999" />
-                                <p className="text-xs text-gray-500 mt-1">Apenas números (Ex: 5584...)</p>
-                            </div>
-                        </div>
-
-
-
-                        <div><label className="text-sm font-medium">Senha</label>
-                            <div className="flex gap-2 relative"><input type={showStudentPassword ? "text" : "password"} value={sPass} onChange={e => setSPass(e.target.value)} className="w-full p-2 border rounded" required={!editingStudentId} /><button type="button" onClick={() => setShowStudentPassword(!showStudentPassword)} className="absolute right-16 top-2 text-gray-500">{showStudentPassword ? <EyeOffIcon /> : <EyeIcon />}</button><button type="button" onClick={handleGenerateStudentPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button></div><p className="text-xs text-gray-500 mt-1">Senha automática (8 caracteres).</p></div>
-
-                        <div className="flex gap-2">
-                            <Button type="submit" className="flex-1">{editingStudentId ? 'Salvar Alterações' : 'Cadastrar Aluno'}</Button>
-                            <Button type="button" variant="secondary" onClick={cancelEditingStudent} className="flex-none bg-gray-200 text-gray-700 hover:bg-gray-300">
-                                {editingStudentId ? 'Cancelar / Novo' : 'Limpar'}
-                            </Button>
-                        </div>
-                        <div className="flex gap-2 mt-2">
-                            {onGenerateIndividualFees && (
-                                <button
-
-                                    type="button"
-                                    disabled={!editingStudentId}
-                                    onClick={() => {
-                                        if (!editingStudentId) return;
-                                        // Construct student from form data to ensure we have the latest value (even if not synced yet)
-                                        const formStudent: Student = {
-                                            id: editingStudentId,
-                                            name: sName,
-                                            valor_mensalidade: sValorMensalidade ? parseFloat(sValorMensalidade.replace(',', '.')) : 0,
-                                            // Fill other required fields with defaults or current form values to satisfy type
-                                            code: sCode,
-                                            gradeLevel: sGrade,
-                                            schoolClass: sClass,
-                                            shift: sShift,
-                                            unit: isGeneralAdmin ? sUnit : (adminUnit || SchoolUnit.UNIT_1), // Ensure unit is present
-                                            // Legacy/Optional fields can be partial/dummy if not used by fee generator,
-                                            // but best to try finding original to keep data clean if possible.
-                                            ...(students.find(s => s.id === editingStudentId) || {} as any)
-                                        };
-
-                                        // Override with form values specifically for the critical fields
-                                        formStudent.valor_mensalidade = sValorMensalidade ? parseFloat(sValorMensalidade.replace(',', '.')) : 0;
-                                        formStudent.name = sName;
-
-                                        if (onGenerateIndividualFees) onGenerateIndividualFees(formStudent);
-                                    }}
-                                    className={`flex-1 font-bold py-2 px-4 rounded transition-colors flex items-center justify-center gap-2 ${editingStudentId ? 'bg-yellow-500 hover:bg-yellow-600 text-white cursor-pointer' : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-70'}`}
-                                    title={editingStudentId ? "Gera o carnê de 2026 com o valor atual do formulário" : "Cadastre o aluno primeiro para gerar o carnê"}
-                                >
-                                    <span>💰</span> Gerar Carnê 2026
-                                </button>
-                            )}
-                            {onResetFees && (
-                                <button
-                                    type="button"
-                                    disabled={!editingStudentId}
-                                    onClick={() => editingStudentId && onResetFees!(editingStudentId)}
-                                    className={`px-4 py-2 rounded font-bold transition flex items-center gap-2 border ${editingStudentId ? 'bg-red-100 text-red-600 hover:bg-red-200 border-red-200 cursor-pointer' : 'bg-gray-200 text-gray-400 border-gray-300 cursor-not-allowed'}`}
-                                    title={editingStudentId ? "ATENÇÃO: Apaga TODAS as mensalidades de 2026 (inclusive pagas) para recomeçar." : "Função indisponível (requer aluno cadastrado)"}
-                                >
-                                    <span>🗑️</span> Reset
-                                </button>
-                            )}
-                        </div>
-                    </form></div></div>
-
-                        <div className="lg:col-span-2">
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                                <div className="p-4 bg-gray-50 border-b flex flex-col gap-4">
-                                    <h3 className="font-bold text-gray-700 whitespace-nowrap">Alunos ({filteredStudents.length})</h3>
-                                    <div className="flex flex-wrap gap-2 w-full">
-                                        {isGeneralAdmin && (
-                                            <select
-                                                value={studentFilterUnit}
-                                                onChange={(e) => setStudentFilterUnit(e.target.value)}
-                                                className="p-2 border rounded text-sm bg-white text-gray-700 focus:ring-blue-950 focus:border-blue-950 flex-grow md:flex-grow-0 md:w-auto w-full"
-                                            >
-                                                <option value="">Todas as Unidades</option>
-                                                {SCHOOL_UNITS_LIST.map(u => (
-                                                    <option key={u} value={u}>{u}</option>
-                                                ))}
-                                            </select>
-                                        )}
-                                        <select
-                                            value={studentFilterGrade}
-                                            onChange={(e) => setStudentFilterGrade(e.target.value)}
-                                            className="p-2 border rounded text-sm bg-white text-gray-700 focus:ring-blue-950 focus:border-blue-950 flex-grow md:flex-grow-0 md:w-auto w-full"
-                                        >
-                                            <option value="">Todas as Séries</option>
-                                            {SCHOOL_GRADES_LIST.map(g => (
-                                                <option key={g} value={g}>{g}</option>
-                                            ))}
-                                        </select>
-                                        <select
-                                            value={studentFilterClass}
-                                            onChange={(e) => setStudentFilterClass(e.target.value)}
-                                            className="p-2 border rounded text-sm bg-white text-gray-700 focus:ring-blue-950 focus:border-blue-950 flex-grow md:flex-grow-0 md:w-auto w-full"
-                                        >
-                                            <option value="">Todas as Turmas</option>
-                                            {SCHOOL_CLASSES_LIST.map(c => (
-                                                <option key={c} value={c}>{c}</option>
-                                            ))}
-                                        </select>
-                                        <select
-                                            value={studentFilterShift}
-                                            onChange={(e) => setStudentFilterShift(e.target.value)}
-                                            className="p-2 border rounded text-sm bg-white text-gray-700 focus:ring-blue-950 focus:border-blue-950 flex-grow md:flex-grow-0 md:w-auto w-full"
-                                        >
-                                            <option value="">Todos os Turnos</option>
-                                            {SCHOOL_SHIFTS_LIST.map(s => (
-                                                <option key={s} value={s}>{s}</option>
-                                            ))}
-                                        </select>
-                                        <input
-                                            type="text"
-                                            placeholder="Buscar por nome ou código..."
-                                            value={studentSearchTerm}
-                                            onChange={e => setStudentSearchTerm(e.target.value)}
-                                            className="p-2 border rounded text-sm w-full md:w-64 focus:ring-blue-950 focus:border-blue-950"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full min-w-[600px] text-sm text-left">
-                                        <thead className="bg-gray-50 text-gray-500 uppercase text-xs"><tr><th className="p-3">Nome</th><th className="p-3">Código</th><th className="p-3">Unidade</th><th className="p-3">Ações</th></tr></thead>
-                                        <tbody>{filteredStudents.map(s => (<tr key={s.id} className="border-b hover:bg-gray-50"><td className="p-3 font-medium text-gray-800">{s.name}{s.isBlocked && <span className="ml-2 bg-red-100 text-red-700 text-[9px] font-bold px-2 py-0.5 rounded-full">BLOQUEADO</span>}</td><td className="p-3 font-mono text-gray-600">{s.code}</td><td className="p-3">{s.unit}</td><td className="p-3 flex gap-3 text-xs font-medium">
-                                            <button
-                                                onClick={() => { setSelectedStudentForFinancial(s); setIsFinancialModalOpen(true); }}
-                                                className="text-green-700 bg-green-50 px-2 py-1 rounded hover:bg-green-100 border border-green-200"
-                                            >
-                                                💲 Fin.
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    const phone = s.phoneNumber ? sanitizePhone(s.phoneNumber) : '';
-                                                    if (phone) window.open(`https://wa.me/${phone}`, '_blank');
-                                                }}
-                                                className="text-green-600 hover:text-green-800"
-                                                title="WhatsApp"
-                                            >
-                                                📱
-                                            </button>
-                                            <button onClick={() => startEditingStudent(s)} className="text-blue-950 hover:underline">Editar</button>
-                                            <button onClick={() => onToggleBlockStudent(s.id)} className={`hover:underline ${s.isBlocked ? 'text-green-600' : 'text-yellow-600'}`}>{s.isBlocked ? 'Desbloquear' : 'Bloquear'}</button>
-                                            <button onClick={() => initiateDeleteStudent(s.id)} className="text-red-600 hover:underline">Excluir</button>
-                                        </td></tr>))}</tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>)}
-                    {activeTab === 'teachers' && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-1"><div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"><div className="flex justify-between items-center mb-4"><h2 className="text-lg font-bold text-gray-800">{editingTeacherId ? 'Editar Professor' : 'Cadastrar Novo Professor'}</h2>{editingTeacherId && (<button onClick={cancelEditingTeacher} className="text-sm text-red-600 hover:underline">Cancelar</button>)}</div><form onSubmit={fullHandleTeacherSubmit} className="space-y-4"><div><label className="text-sm font-medium">Nome Completo</label><input type="text" value={tName} onChange={e => setTName(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Matérias</label><div className="flex gap-2"><select value={tempSubject} onChange={e => setTempSubject(e.target.value as Subject)} className="flex-1 p-2 border rounded">{sortedSubjects.map(s => <option key={s} value={s}>{s}</option>)}</select><button type="button" onClick={handleAddSubject} className="bg-blue-100 text-blue-950 px-3 rounded">Add</button></div><div className="flex flex-wrap gap-2 mt-2">{tSubjects.map(s => (<span key={s} className="bg-gray-100 px-2 rounded text-xs flex items-center gap-1">{s} <button type="button" onClick={() => handleRemoveSubject(s)}>&times;</button></span>))}</div></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">CPF</label><input type="text" value={tCpf} onChange={e => setTCpf(maskCPF(e.target.value))} className="w-full p-2 border rounded" placeholder="000.000.000-00" /></div>
-                        <div>
-                            <label className="text-sm font-medium">Telefone</label>
-                            <input type="text" value={tPhone} onChange={e => setTPhone(e.target.value.replace(/\D/g, ''))} className="w-full p-2 border rounded" placeholder="Ex: 5584999999999" />
-                            <p className="text-xs text-gray-500 mt-1">Apenas números (Ex: 5584...)</p>
-                        </div>
-                    </div><div><label className="text-sm font-medium">Unidade</label>{isGeneralAdmin ? (<select value={tUnit} onChange={e => setTUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}</div><div><label className="text-sm font-medium">Senha</label><div className="flex gap-2 relative"><input type={showTeacherPassword ? "text" : "password"} value={tPass} onChange={e => setTPass(e.target.value)} className="w-full p-2 border rounded" required={!editingTeacherId} /><button type="button" onClick={() => setShowTeacherPassword(!showTeacherPassword)} className="absolute right-16 top-2 text-gray-500">{showTeacherPassword ? <EyeOffIcon /> : <EyeIcon />}</button><button type="button" onClick={handleGenerateTeacherPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button></div><p className="text-xs text-gray-500 mt-1">Senha automática (8 caracteres).</p></div><Button type="submit" className="w-full">{editingTeacherId ? 'Salvar' : 'Cadastrar'}</Button></form></div></div><div className="lg:col-span-2"><div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"><div className="p-4 bg-gray-50 border-b flex flex-col gap-4">
-                        <h3 className="font-bold">Professores ({filteredTeachers.length})</h3>
-                        <div className="flex flex-wrap gap-2 w-full">
-                            {isGeneralAdmin && (
-                                <select
-                                    value={teacherFilterUnit}
-                                    onChange={(e) => setTeacherFilterUnit(e.target.value)}
-                                    className="p-2 border rounded text-sm bg-white text-gray-700 focus:ring-blue-950 focus:border-blue-950 flex-grow md:flex-grow-0 md:w-auto w-full"
-                                >
-                                    <option value="">Todas as Unidades</option>
-                                    {SCHOOL_UNITS_LIST.map(u => (
-                                        <option key={u} value={u}>{u}</option>
-                                    ))}
-                                </select>
-                            )}
-                            <select
-                                value={teacherFilterSubject}
-                                onChange={(e) => setTeacherFilterSubject(e.target.value)}
-                                className="p-2 border rounded text-sm bg-white text-gray-700 focus:ring-blue-950 focus:border-blue-950 flex-grow md:flex-grow-0 md:w-auto w-full"
-                            >
-                                <option value="">Todas as Matérias</option>
-                                {sortedSubjects.map(s => (
-                                    <option key={s} value={s}>{s}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="bg-gray-50 text-gray-500 uppercase text-xs"><tr><th className="p-3">Nome</th><th className="p-3">Matérias</th><th className="p-3">Unidade</th><th className="p-3">Ações</th></tr></thead>
-                                <tbody>{filteredTeachers.map(t => (<tr key={t.id} className="border-b hover:bg-gray-50">
-                                    <td className="p-3 font-medium text-gray-800">{t.name}</td>
-                                    <td className="p-3"><div className="flex flex-wrap gap-1">{t.subjects.map(s => <span key={s} className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[10px]">{s}</span>)}</div></td>
-                                    <td className="p-3">{t.unit}</td>
-                                    <td className="p-3 flex gap-2">
-                                        <button className="text-blue-950 hover:underline" onClick={() => { setEditingTeacherId(t.id); setTName(t.name); setTCpf(t.cpf); setTPhone(t.phoneNumber || '55'); setTSubjects(t.subjects); setTUnit(t.unit); setTPass(t.password); }}>Editar</button>
-                                        <button onClick={() => setTeacherToDelete(t.id)} className="text-red-600 hover:underline">Excluir</button>
-                                    </td>
-                                </tr>))}</tbody>
-                            </table>
-                        </div>
-                    </div>
-                        </div>
-                    </div>)}
-
-                    {activeTab === 'messages' && (<div className="animate-fade-in-up"><div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-4 border-b"><h2 className="text-2xl font-bold text-gray-800 mb-3 sm:mb-0">Central de Mensagens</h2><div className="flex items-center gap-2 p-1 bg-gray-200 rounded-lg"><button onClick={() => setMessageFilter('new')} className={`px-3 py-1 text-sm rounded-md font-medium ${messageFilter === 'new' ? 'bg-white shadow text-blue-950' : 'text-gray-600'}`}>Não Lidas</button><button onClick={() => setMessageFilter('all')} className={`px-3 py-1 text-sm rounded-md font-medium ${messageFilter === 'all' ? 'bg-white shadow text-blue-950' : 'text-gray-600'}`}>Todas</button></div></div>{filteredMessages.length > 0 ? (<div className="space-y-4">{filteredMessages.map(message => {
-                        const sender = students.find(s => s.id === message.studentId);
-                        const typeStyles = { [MessageType.COMPLIMENT]: { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-800' }, [MessageType.SUGGESTION]: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-800' }, [MessageType.COMPLAINT]: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-800' }, }; const style = typeStyles[message.messageType]; return (<div key={message.id} className={`p-5 rounded-lg shadow-sm border ${message.status === 'new' ? 'bg-white border-l-4 border-l-blue-950' : 'bg-gray-50 border-gray-200'}`}><div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 pb-3 border-b"><div><p className="font-bold text-gray-800">{message.studentName}</p><p className="text-xs text-gray-500">Unidade: <span className="font-semibold">{message.unit}</span></p> {sender && (<p className="text-xs text-gray-600 font-medium mt-0.5">{sender.gradeLevel} - {sender.schoolClass} ({sender.shift})</p>)}</div><p className="text-xs text-gray-400 mt-2 sm:mt-0">{formatDate(message.timestamp)}</p></div><div className="flex gap-4 mb-4"><span className={`px-2 py-1 text-xs font-bold rounded ${style.bg} ${style.border} ${style.text}`}>{message.messageType}</span><span className="text-xs text-gray-500 font-medium self-center">Para: <span className="font-bold text-gray-700">{message.recipient}</span></span></div><p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p><div className="mt-4 pt-3 border-t flex justify-end"><button onClick={() => onUpdateMessageStatus(message.id, message.status === 'new' ? 'read' : 'new')} className={`text-xs font-bold py-1 px-3 rounded-full transition-colors ${message.status === 'new' ? 'bg-blue-100 text-blue-950 hover:bg-blue-200' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>{message.status === 'new' ? 'Marcar como Lida' : 'Marcar como Não Lida'}</button></div></div>);
-                    })}</div>) : (<div className="text-center py-16"><p className="text-gray-500">Nenhuma mensagem {messageFilter === 'new' ? 'não lida' : ''} encontrada.</p></div>)}</div>)}
-
-                    {activeTab === 'attendance' && (
-                        <div className="animate-fade-in-up">
-                            <h2 className="text-2xl font-bold text-gray-800 mb-4">Controle de Frequência</h2>
-                            <div className="p-4 bg-white rounded-lg shadow-md border mb-6">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {isGeneralAdmin && (
-                                        <div>
-                                            <label className="text-sm font-medium text-gray-700">Unidade</label>
-                                            <select value={attendanceFilterUnit} onChange={e => setAttendanceFilterUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded mt-1">
-                                                <option value="">Todas</option>
-                                                {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}
-                                            </select>
-                                        </div>
-                                    )}
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-700">Série/Ano</label>
-                                        <select value={attendanceFilterGrade} onChange={e => setAttendanceFilterGrade(e.target.value)} className="w-full p-2 border rounded mt-1">
-                                            <option value="">Todas</option>
-                                            {SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-700">Turma</label>
-                                        <select value={attendanceFilterClass} onChange={e => setAttendanceFilterClass(e.target.value)} className="w-full p-2 border rounded mt-1">
-                                            <option value="">Todas</option>
-                                            {SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-700">Turno</label>
-                                        <select value={attendanceFilterShift} onChange={e => setAttendanceFilterShift(e.target.value)} className="w-full p-2 border rounded mt-1">
-                                            <option value="">Todos</option>
-                                            {SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-700">Data</label>
-                                        <input type="date" value={attendanceFilterDate} onChange={e => setAttendanceFilterDate(e.target.value)} className="w-full p-2 border rounded mt-1" />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                {filteredAttendanceRecords.length > 0 ? (
-                                    filteredAttendanceRecords.map(record => {
-                                        const total = Object.keys(record.studentStatus).length;
-                                        const presents = Object.values(record.studentStatus).filter(s => s === AttendanceStatus.PRESENT).length;
-                                        const absents = total - presents;
-                                        return (
-                                            <div key={record.id} className="bg-white rounded-lg shadow-sm border">
-                                                <div className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center cursor-pointer hover:bg-gray-50" onClick={() => setExpandedRecordId(expandedRecordId === record.id ? null : record.id)}>
-                                                    <div>
-                                                        <p className="font-bold text-blue-950">{record.gradeLevel} - Turma {record.schoolClass}</p>
-                                                        <p className="text-sm text-gray-800 font-semibold my-0.5">Prof. {record.teacherName}</p>
-                                                        <p className="text-xs text-gray-500">{record.unit} | Data: {formatDate(record.date, false)}</p>
-                                                    </div>
-                                                    <div className="flex items-center gap-4 mt-2 md:mt-0 text-sm">
-                                                        <span className="font-bold text-green-600">{presents} Presentes</span>
-                                                        <span className="font-bold text-red-600">{absents} Ausentes</span>
-                                                    </div>
-                                                </div>
-                                                {expandedRecordId === record.id && (
-                                                    <div className="border-t p-4 bg-gray-50/50">
-                                                        <h4 className="font-bold mb-2">Detalhes da Chamada:</h4>
-                                                        <ul className="divide-y max-h-60 overflow-y-auto">
-                                                            {Object.entries(record.studentStatus).map(([studentId, status]) => {
-                                                                const student = students.find(s => s.id === studentId);
-                                                                return (
-                                                                    <li key={studentId} className="flex justify-between items-center py-2 px-1">
-                                                                        <div>
-                                                                            <span className="text-sm text-gray-800 font-medium">{student ? student.name : 'Aluno Removido'}</span>
-                                                                            {student && <span className="text-xs text-gray-400 ml-2">({student.shift})</span>}
-                                                                        </div>
-                                                                        <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${status === AttendanceStatus.PRESENT ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{status}</span>
-                                                                    </li>
-                                                                );
-                                                            })}
-                                                        </ul>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })
-                                ) : (
-                                    <div className="text-center py-12 text-gray-500">
-                                        <p>Nenhum registro de frequência encontrado para os filtros selecionados.</p>
-                                    </div>
+                                            if (onGenerateIndividualFees) onGenerateIndividualFees(formStudent);
+                                        }}
+                                        className={`flex-1 font-bold py-2 px-4 rounded transition-colors flex items-center justify-center gap-2 ${editingStudentId ? 'bg-yellow-500 hover:bg-yellow-600 text-white cursor-pointer' : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-70'}`}
+                                        title={editingStudentId ? "Gera o carnê de 2026 com o valor atual do formulário" : "Cadastre o aluno primeiro para gerar o carnê"}
+                                    >
+                                        <span>💰</span> Gerar Carnê 2026
+                                    </button>
+                                )}
+                                {onResetFees && (
+                                    <button
+                                        type="button"
+                                        disabled={!editingStudentId}
+                                        onClick={() => editingStudentId && onResetFees!(editingStudentId)}
+                                        className={`px-4 py-2 rounded font-bold transition flex items-center gap-2 border ${editingStudentId ? 'bg-red-100 text-red-600 hover:bg-red-200 border-red-200 cursor-pointer' : 'bg-gray-200 text-gray-400 border-gray-300 cursor-not-allowed'}`}
+                                        title={editingStudentId ? "ATENÇÃO: Apaga TODAS as mensalidades de 2026 (inclusive pagas) para recomeçar." : "Função indisponível (requer aluno cadastrado)"}
+                                    >
+                                        <span>🗑️</span> Reset
+                                    </button>
                                 )}
                             </div>
-                        </div>
-                    )}
+                        </form></div></div>
 
-                    {/* MODAL FINANCEIRO INDIVIDUAL */}
-                    <StudentFinancialModal
-                        isOpen={isFinancialModalOpen}
-                        onClose={() => setIsFinancialModalOpen(false)}
-                        student={selectedStudentForFinancial}
-                        mensalidades={mensalidades}
-                        isGeneralAdmin={isGeneralAdmin}
-                        onSetSelectedManualFee={setSelectedManualFee}
-                        onSetManualPaymentMethod={setManualPaymentMethod}
-                        onSetIsManualPaymentModalOpen={setIsManualPaymentModalOpen}
-                    />
-
-
-
-
-                    {/* MODAL DE ENVIO EM MASSA (SEQUENCIAL) - Moved to FinancialTab */}
-
-                    {/* --- CONTEÚDO GESTÃO DE CONTATOS (NOVA ABA) --- */}
-                    {
-                        activeTab === 'contacts' && (
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                {/* FORMULÁRIO DE CADASTRO */}
-                                <div className="lg:col-span-1">
-                                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <h2 className="text-lg font-bold text-blue-950">{editingContactId ? 'Editar Contato' : 'Adicionar Contato'}</h2>
-                                            {editingContactId && (
-                                                <button onClick={cancelEditingContact} className="text-sm text-red-600 hover:underline">Cancelar</button>
-                                            )}
-                                        </div>
-                                        <div className="space-y-4">
-                                            <div>
-                                                <label className="text-sm font-medium">Nome Completo</label>
-                                                <input type="text" value={contactName} onChange={e => setContactName(e.target.value)} className="w-full p-2 border rounded" placeholder="Ex: Maria Silva" />
-                                            </div>
-                                            <div>
-                                                <label className="text-sm font-medium">Telefone (WhatsApp)</label>
-                                                <input type="text" value={contactPhone} onChange={e => setContactPhone(e.target.value.replace(/\D/g, ''))} className="w-full p-2 border rounded" placeholder="Ex: 5584999999999" />
-                                                <p className="text-xs text-gray-500 mt-1">Apenas números, com DDD (Ex: 5584...)</p>
-                                            </div>
-
-                                            {isGeneralAdmin && (
-                                                <div className="animate-fade-in-up">
-                                                    <label className="text-sm font-medium text-gray-800">Senha de Acesso (Login)</label>
-                                                    <input
-                                                        type="text"
-                                                        value={contactPassword}
-                                                        onChange={e => setContactPassword(e.target.value)}
-                                                        className="w-full p-2 border rounded border-blue-200 bg-blue-50"
-                                                        placeholder="Crie uma senha para este coordenador"
-                                                    />
-                                                    <p className="text-xs text-blue-600 mt-1">* Visível e editável apenas por Admin Geral</p>
-                                                </div>
-                                            )}
-
-                                            <div>
-                                                <label className="text-sm font-medium">Unidade</label>
-                                                {isGeneralAdmin ? (
-                                                    <select value={contactUnit} onChange={e => setContactUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>
-                                                ) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}
-                                            </div>
-
-                                            {/* NOVO: Seletor de Segmento (Apenas relevante para Coordenação) */}
-                                            <div>
-                                                <label className="text-sm font-medium">Segmento (Para Coordenação)</label>
-                                                <select
-                                                    value={contactSegment}
-                                                    onChange={e => setContactSegment(e.target.value as any)}
-                                                    className="w-full p-2 border rounded"
-                                                >
-                                                    <option value="geral">Geral / Ambos</option>
-                                                    <option value="infantil_fund1">Educação Infantil / Fundamental I</option>
-                                                    <option value="fund2_medio">Fundamental II / Ensino Médio</option>
-                                                </select>
-                                            </div>
-                                            <div className="pt-2 grid grid-cols-2 gap-3">
-                                                <Button onClick={() => handleSaveContact(ContactRole.DIRECTOR)} className="w-full bg-blue-950 hover:bg-blue-900">
-                                                    Salvar Diretor
-                                                </Button>
-                                                <Button onClick={() => handleSaveContact(ContactRole.COORDINATOR)} className="w-full bg-orange-600 hover:bg-orange-700">
-                                                    Salvar Coord.
-                                                </Button>
-
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* LISTAGEM DE CONTATOS */}
-                                <div className="lg:col-span-2 space-y-6">
-                                    {/* DIRETORES */}
-                                    <div className="bg-white rounded-xl shadow-sm border border-blue-200 overflow-x-auto">
-                                        <div className="p-4 bg-blue-50 border-b border-blue-100 flex justify-between items-center min-w-[500px]">
-                                            <h3 className="font-bold text-blue-900 flex items-center gap-2">
-                                                <span className="text-xl">👔</span> Diretoria
-                                            </h3>
-                                            <span className="text-xs font-semibold bg-blue-200 text-blue-800 px-2 py-1 rounded-full">{directors.length} cadastrados</span>
-                                        </div>
-                                        {directors.length > 0 ? (
-                                            <table className="min-w-full text-sm text-left">
-                                                <thead className="bg-gray-50 text-gray-500"><tr><th className="p-3">Nome</th><th className="p-3">Telefone</th><th className="p-3">Unidade</th><th className="p-3 text-right">Ação</th></tr></thead>
-                                                <tbody>
-                                                    {directors.map(c => (
-                                                        <tr key={c.id} className="border-b last:border-0 hover:bg-gray-50">
-                                                            <td className="p-3 font-medium">{c.name}</td>
-                                                            <td className="p-3 font-mono text-gray-600">{c.phoneNumber}</td>
-                                                            <td className="p-3"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{c.unit}</span></td>
-                                                            <td className="p-3 text-right flex justify-end gap-2">
-                                                                <button onClick={() => startEditingContact(c)} className="text-blue-950 hover:underline text-xs font-bold px-2 py-1">Editar</button>
-                                                                <button onClick={() => onDeleteUnitContact && onDeleteUnitContact(c.id)} className="text-red-600 hover:text-red-800 text-xs font-bold bg-red-50 px-2 py-1 rounded border border-red-100">Remover</button>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        ) : (
-                                            <div className="p-8 text-center text-gray-400 italic">Nenhum diretor cadastrado para esta seleção.</div>
-                                        )}
-                                    </div>
-
-                                    {/* COORDENADORES */}
-                                    <div className="bg-white rounded-xl shadow-sm border border-orange-200 overflow-x-auto">
-                                        <div className="p-4 bg-orange-50 border-b border-orange-100 flex justify-between items-center min-w-[500px]">
-                                            <h3 className="font-bold text-orange-900 flex items-center gap-2">
-                                                <span className="text-xl">📋</span> Coordenação
-                                            </h3>
-                                            <span className="text-xs font-semibold bg-orange-200 text-orange-800 px-2 py-1 rounded-full">{coordinators.length} cadastrados</span>
-                                        </div>
-                                        {coordinators.length > 0 ? (
-                                            <table className="min-w-full text-sm text-left">
-                                                <thead className="bg-gray-50 text-gray-500"><tr><th className="p-3">Nome</th><th className="p-3">Telefone</th><th className="p-3">Unidade</th><th className="p-3 text-right">Ação</th></tr></thead>
-                                                <tbody>
-                                                    {coordinators.map(c => (
-                                                        <tr key={c.id} className="border-b last:border-0 hover:bg-gray-50">
-                                                            <td className="p-3 font-medium">
-                                                                {c.name}
-                                                                {c.segment && c.segment !== 'all' && (
-                                                                    <span className="block text-[10px] text-gray-500 uppercase bg-gray-100 px-1 rounded w-fit mt-1">
-                                                                        {c.segment === 'infantil_fund1' ? 'Infantil / Fund I' : c.segment === 'fund2_medio' ? 'Fund II / Médio' : 'Geral'}
-                                                                    </span>
-                                                                )}
-                                                            </td>
-                                                            <td className="p-3 font-mono text-gray-600">{c.phoneNumber}</td>
-                                                            <td className="p-3"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{c.unit}</span></td>
-                                                            <td className="p-3 text-right flex justify-end gap-2">
-                                                                <button onClick={() => startEditingContact(c)} className="text-blue-950 hover:underline text-xs font-bold px-2 py-1">Editar</button>
-                                                                <button onClick={() => onDeleteUnitContact && onDeleteUnitContact(c.id)} className="text-red-600 hover:text-red-800 text-xs font-bold bg-red-50 px-2 py-1 rounded border border-red-100">Remover</button>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        ) : (
-                                            <div className="p-8 text-center text-gray-400 italic">Nenhum coordenador cadastrado para esta seleção.</div>
-                                        )}
-                                    </div>
-
-                                    {/* FINANCEIRO REMOVED */}
-                                </div>
-                            </div>
-                        )
-                    }
-                    {activeTab === 'teachers' && (
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            <div className="lg:col-span-1">
-                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <h2 className="text-lg font-bold text-gray-800">{editingTeacherId ? 'Editar Professor' : 'Cadastrar Novo Professor'}</h2>
-                                        {editingTeacherId && (
-                                            <button onClick={cancelEditingTeacher} className="text-sm text-red-600 hover:underline">Cancelar</button>
-                                        )}
-                                    </div>
-                                    <form onSubmit={fullHandleTeacherSubmit} className="space-y-4">
-                                        <div>
-                                            <label className="text-sm font-medium">Nome Completo</label>
-                                            <input type="text" value={tName} onChange={e => setTName(e.target.value)} required className="w-full p-2 border rounded" />
-                                        </div>
-                                        <div>
-                                            <label className="text-sm font-medium">Matérias</label>
-                                            <div className="flex gap-2">
-                                                <select value={tempSubject} onChange={e => setTempSubject(e.target.value as Subject)} className="flex-1 p-2 border rounded">
-                                                    {sortedSubjects.map(s => <option key={s} value={s}>{s}</option>)}
-                                                </select>
-                                                <button type="button" onClick={handleAddSubject} className="bg-blue-100 text-blue-950 px-3 rounded">Add</button>
-                                            </div>
-                                            <div className="flex flex-wrap gap-2 mt-2">
-                                                {tSubjects.map(s => (
-                                                    <span key={s} className="bg-gray-100 px-2 rounded text-xs flex items-center gap-1">{s} <button type="button" onClick={() => handleRemoveSubject(s)}>&times;</button></span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div>
-                                                <label className="text-sm font-medium">CPF</label>
-                                                <input type="text" value={tCpf} onChange={e => setTCpf(maskCPF(e.target.value))} className="w-full p-2 border rounded" placeholder="000.000.000-00" />
-                                            </div>
-                                            <div>
-                                                <label className="text-sm font-medium">Telefone</label>
-                                                <input type="text" value={tPhone} onChange={e => setTPhone(e.target.value.replace(/\D/g, ''))} className="w-full p-2 border rounded" placeholder="Ex: 5584999999999" />
-                                                <p className="text-xs text-gray-500 mt-1">Apenas números (Ex: 5584...)</p>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="text-sm font-medium">Unidade</label>
-                                            {isGeneralAdmin ? (
-                                                <select value={tUnit} onChange={e => setTUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">
-                                                    {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}
-                                                </select>
-                                            ) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}
-                                        </div>
-                                        <div>
-                                            <label className="text-sm font-medium">Senha</label>
-                                            <div className="flex gap-2 relative">
-                                                <input type={showTeacherPassword ? "text" : "password"} value={tPass} onChange={e => setTPass(e.target.value)} className="w-full p-2 border rounded" required={!editingTeacherId} />
-                                                <button type="button" onClick={() => setShowTeacherPassword(!showTeacherPassword)} className="absolute right-16 top-2 text-gray-500">{showTeacherPassword ? <EyeOffIcon /> : <EyeIcon />}</button>
-                                                <button type="button" onClick={handleGenerateTeacherPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button>
-                                            </div>
-                                            <p className="text-xs text-gray-500 mt-1">Senha automática (8 caracteres).</p>
-                                        </div>
-                                        <Button type="submit" className="w-full">{editingTeacherId ? 'Salvar' : 'Cadastrar'}</Button>
-                                    </form>
-                                </div>
-                            </div>
                             <div className="lg:col-span-2">
                                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                                     <div className="p-4 bg-gray-50 border-b flex flex-col gap-4">
-                                        <h3 className="font-bold">Professores ({filteredTeachers.length})</h3>
+                                        <h3 className="font-bold text-gray-700 whitespace-nowrap">Alunos ({filteredStudents.length})</h3>
                                         <div className="flex flex-wrap gap-2 w-full">
                                             {isGeneralAdmin && (
                                                 <select
-                                                    value={teacherFilterUnit}
-                                                    onChange={(e) => setTeacherFilterUnit(e.target.value)}
-                                                    className="p-2 border border-gray-300 rounded-lg text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                                    value={studentFilterUnit}
+                                                    onChange={(e) => setStudentFilterUnit(e.target.value)}
+                                                    className="p-2 border rounded text-sm bg-white text-gray-700 focus:ring-blue-950 focus:border-blue-950 flex-grow md:flex-grow-0 md:w-auto w-full"
                                                 >
-                                                    <option value="all">Todas as Unidades</option>
-                                                    {SCHOOL_UNITS_LIST.map(unit => (
-                                                        <option key={unit} value={unit}>{unit}</option>
+                                                    <option value="">Todas as Unidades</option>
+                                                    {SCHOOL_UNITS_LIST.map(u => (
+                                                        <option key={u} value={u}>{u}</option>
                                                     ))}
                                                 </select>
                                             )}
                                             <select
-                                                value={teacherFilterSubject}
-                                                onChange={(e) => setTeacherFilterSubject(e.target.value)}
-                                                className="p-2 border border-gray-300 rounded-lg text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                                value={studentFilterGrade}
+                                                onChange={(e) => setStudentFilterGrade(e.target.value)}
+                                                className="p-2 border rounded text-sm bg-white text-gray-700 focus:ring-blue-950 focus:border-blue-950 flex-grow md:flex-grow-0 md:w-auto w-full"
                                             >
-                                                <option value="all">Todas as Matérias</option>
-                                                {sortedSubjects.map(subject => (
-                                                    <option key={subject} value={subject}>{subject}</option>
+                                                <option value="">Todas as Séries</option>
+                                                {SCHOOL_GRADES_LIST.map(g => (
+                                                    <option key={g} value={g}>{g}</option>
                                                 ))}
                                             </select>
+                                            <select
+                                                value={studentFilterClass}
+                                                onChange={(e) => setStudentFilterClass(e.target.value)}
+                                                className="p-2 border rounded text-sm bg-white text-gray-700 focus:ring-blue-950 focus:border-blue-950 flex-grow md:flex-grow-0 md:w-auto w-full"
+                                            >
+                                                <option value="">Todas as Turmas</option>
+                                                {SCHOOL_CLASSES_LIST.map(c => (
+                                                    <option key={c} value={c}>{c}</option>
+                                                ))}
+                                            </select>
+                                            <select
+                                                value={studentFilterShift}
+                                                onChange={(e) => setStudentFilterShift(e.target.value)}
+                                                className="p-2 border rounded text-sm bg-white text-gray-700 focus:ring-blue-950 focus:border-blue-950 flex-grow md:flex-grow-0 md:w-auto w-full"
+                                            >
+                                                <option value="">Todos os Turnos</option>
+                                                {SCHOOL_SHIFTS_LIST.map(s => (
+                                                    <option key={s} value={s}>{s}</option>
+                                                ))}
+                                            </select>
+                                            <input
+                                                type="text"
+                                                placeholder="Buscar por nome ou código..."
+                                                value={studentSearchTerm}
+                                                onChange={e => setStudentSearchTerm(e.target.value)}
+                                                className="p-2 border rounded text-sm w-full md:w-64 focus:ring-blue-950 focus:border-blue-950"
+                                            />
                                         </div>
                                     </div>
                                     <div className="overflow-x-auto">
                                         <table className="w-full min-w-[600px] text-sm text-left">
-                                            <thead className="bg-gray-50">
-                                                <tr>
-                                                    <th className="p-3">Nome</th>
-                                                    <th className="p-3">Matérias</th>
-                                                    <th className="p-3">Unidade</th>
-                                                    <th className="p-3">Ações</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {filteredTeachers.map(t => (
-                                                    <tr key={t.id} className="border-b">
-                                                        <td className="p-3 font-medium">{t.name}</td>
-                                                        <td className="p-3">
-                                                            <div className="flex flex-wrap gap-1">
-                                                                {t.subjects.map(s => (
-                                                                    <span key={s} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{s}</span>
-                                                                ))}
-                                                            </div>
-                                                        </td>
-                                                        <td className="p-3"><span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">{t.unit}</span></td>
-                                                        <td className="p-3 flex gap-2">
-                                                            <button onClick={() => startEditingTeacher(t)} className="text-blue-950 hover:underline">Editar</button>
-                                                            <button onClick={() => initiateDeleteTeacher(t.id)} className="text-red-600 hover:underline">Excluir</button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
+                                            <thead className="bg-gray-50 text-gray-500 uppercase text-xs"><tr><th className="p-3">Nome</th><th className="p-3">Código</th><th className="p-3">Unidade</th><th className="p-3">Ações</th></tr></thead>
+                                            <tbody>{filteredStudents.map(s => (<tr key={s.id} className="border-b hover:bg-gray-50"><td className="p-3 font-medium text-gray-800">{s.name}{s.isBlocked && <span className="ml-2 bg-red-100 text-red-700 text-[9px] font-bold px-2 py-0.5 rounded-full">BLOQUEADO</span>}</td><td className="p-3 font-mono text-gray-600">{s.code}</td>
+                                                <td className="p-3 font-semibold text-slate-600">{s.unit}</td>
+                                                <td className="p-3 flex gap-2">
+                                                    {/* FINANCEIRO */}
+                                                    <div className="relative group">
+                                                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-[10px] font-bold text-white bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                                                            Financeiro
+                                                            <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-800"></span>
+                                                        </span>
+                                                        <button onClick={() => {
+                                                            setSelectedStudentForFinancial(s);
+                                                            setIsFinancialModalOpen(true);
+                                                        }} className="p-2 text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 border border-emerald-100 transition-all hover:scale-110 shadow-sm">
+                                                            <DollarSign className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+
+                                                    {/* EDITAR */}
+                                                    <div className="relative group">
+                                                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-[10px] font-bold text-white bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                                                            Editar
+                                                            <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-800"></span>
+                                                        </span>
+                                                        <button onClick={() => startEditingStudent(s)} className="p-2 text-blue-900 bg-blue-50 rounded-lg hover:bg-blue-100 border border-blue-100 transition-all hover:scale-110 shadow-sm">
+                                                            <Pencil className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+
+                                                    {/* BLOQUEAR */}
+                                                    <div className="relative group">
+                                                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-[10px] font-bold text-white bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                                                            {s.isBlocked ? 'Desbloquear' : 'Bloquear'}
+                                                            <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-800"></span>
+                                                        </span>
+                                                        <button onClick={() => onToggleBlockStudent(s.id)} className={`p-2 rounded-lg border transition-all hover:scale-110 shadow-sm ${s.isBlocked ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-100'}`}>
+                                                            {s.isBlocked ? <UserCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
+                                                        </button>
+                                                    </div>
+
+                                                    {/* EXCLUIR */}
+                                                    <div className="relative group">
+                                                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-[10px] font-bold text-white bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                                                            Excluir
+                                                            <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-800"></span>
+                                                        </span>
+                                                        <button onClick={() => initiateDeleteStudent(s.id)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 border border-red-100 transition-all hover:scale-110 shadow-sm">
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </td></tr>))}</tbody>
                                         </table>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        </div>)}
 
-                    {activeTab === 'admins' && isGeneralAdmin && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-1"><div className="bg-white p-6 rounded-xl shadow-sm border border-purple-200"><h2 className="text-lg font-bold text-purple-800 mb-4">{editingAdminId ? 'Editar Admin' : 'Novo Admin de Unidade'}</h2><form onSubmit={handleAdminSubmit} className="space-y-4"><div><label className="text-sm font-medium">Nome (Descrição)</label><input type="text" value={aName} onChange={e => setAName(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Usuário de Login</label><input type="text" value={aUser} onChange={e => setAUser(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Unidade Responsável</label><select value={aUnit} onChange={e => setAUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select></div><div><label className="text-sm font-medium">Senha</label><div className="flex gap-2 relative"><input type={showAdminPassword ? "text" : "password"} value={aPass} onChange={e => setAPass(e.target.value)} required={!editingAdminId} className="w-full p-2 border rounded" /><button type="button" onClick={() => setShowAdminPassword(!showAdminPassword)} className="absolute right-16 top-2 text-gray-500">{showAdminPassword ? <EyeOffIcon /> : <EyeIcon />}</button><button type="button" onClick={handleGenerateAdminPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button></div></div><Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700">Salvar Admin</Button></form></div></div><div className="lg:col-span-2"><div className="bg-white rounded-xl shadow-sm border border-gray-200"><div className="p-4 bg-purple-50 border-b border-purple-100"><h3 className="font-bold text-purple-900">Administradores Cadastrados</h3></div><div className="overflow-x-auto"><table className="w-full min-w-[600px] text-sm text-left"><thead className="bg-gray-50"><tr><th className="p-3">Nome</th><th className="p-3">Usuário</th><th className="p-3">Unidade</th><th className="p-3">Ações</th></tr></thead><tbody>{filteredAdmins.map(a => (<tr key={a.id} className="border-b"><td className="p-3 font-medium">{a.name}</td><td className="p-3 font-mono text-gray-600">{a.username}</td><td className="p-3"><span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{a.unit}</span></td><td className="p-3 flex gap-2"><button onClick={() => startEditingAdmin(a)} className="text-blue-950 hover:underline">Editar</button><button onClick={() => initiateDeleteAdmin(a.id)} className="text-red-600 hover:underline">Excluir</button></td></tr>))}</tbody></table></div></div></div></div>)}
-                    {
-                        activeTab === 'rematricula' && (
-                            <Rematricula
-                                students={students}
-                                grades={grades}
-                                currentAdminUnit={isGeneralAdmin ? undefined : adminUnit}
-                                onRefresh={async () => {
-                                    // Re-triggering parent data via mock add if needed,
-                                    // but Firestore is real-time.
-                                }}
-                            />
-                        )
-                    }
+                        {activeTab === 'messages' && (<div className="animate-fade-in-up"><div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-4 border-b border-gray-200"><h2 className="text-2xl font-bold text-gray-900 mb-3 sm:mb-0">Central de Mensagens</h2><div className="flex items-center gap-2 p-1 bg-gray-100 rounded-lg border border-gray-200"><button onClick={() => setMessageFilter('new')} className={`px-3 py-1 text-sm rounded-md font-bold transition-all ${messageFilter === 'new' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Não Lidas</button><button onClick={() => setMessageFilter('all')} className={`px-3 py-1 text-sm rounded-md font-bold transition-all ${messageFilter === 'all' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Todas</button></div></div>{filteredMessages.length > 0 ? (<div className="space-y-4">{filteredMessages.map(message => {
+                            const sender = students.find(s => s.id === message.studentId);
+                            const typeStyles = { [MessageType.COMPLIMENT]: { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-800' }, [MessageType.SUGGESTION]: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-800' }, [MessageType.COMPLAINT]: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-800' }, }; const style = typeStyles[message.messageType]; return (<div key={message.id} className={`p-5 rounded-lg shadow-sm border ${message.status === 'new' ? 'bg-white border-l-4 border-l-blue-950' : 'bg-gray-50 border-gray-200'}`}><div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 pb-3 border-b"><div><p className="font-bold text-gray-800">{message.studentName}</p><p className="text-xs text-gray-500">Unidade: <span className="font-semibold">{message.unit}</span></p> {sender && (<p className="text-xs text-gray-600 font-medium mt-0.5">{sender.gradeLevel} - {sender.schoolClass} ({sender.shift})</p>)}</div><p className="text-xs text-gray-400 mt-2 sm:mt-0">{formatDate(message.timestamp)}</p></div><div className="flex gap-4 mb-4"><span className={`px-2 py-1 text-xs font-bold rounded ${style.bg} ${style.border} ${style.text}`}>{message.messageType}</span><span className="text-xs text-gray-500 font-medium self-center">Para: <span className="font-bold text-gray-700">{message.recipient}</span></span></div><p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p><div className="mt-4 pt-3 border-t flex justify-end"><button onClick={() => onUpdateMessageStatus(message.id, message.status === 'new' ? 'read' : 'new')} className={`text-xs font-bold py-1 px-3 rounded-full transition-colors ${message.status === 'new' ? 'bg-blue-100 text-blue-950 hover:bg-blue-200' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>{message.status === 'new' ? 'Marcar como Lida' : 'Marcar como Não Lida'}</button></div></div>);
+                        })}</div>) : (<div className="text-center py-16"><p className="text-gray-500">Nenhuma mensagem {messageFilter === 'new' ? 'não lida' : ''} encontrada.</p></div>)}</div>)}
 
-                    {
-                        activeTab === 'financial' && (
-                            <FinancialTab
-                                isGeneralAdmin={isGeneralAdmin}
-                                adminUnit={adminUnit}
-                                unitContacts={unitContacts}
-                                students={students}
-                                onAddUnitContact={onAddUnitContact}
-                                onEditUnitContact={onEditUnitContact}
-                                onGenerateFees={onGenerateFees}
-                                onFixDuplicates={onFixDuplicates}
-                                setSelectedStudentForFinancial={setSelectedStudentForFinancial}
-                                setIsFinancialModalOpen={setIsFinancialModalOpen}
-                                setSelectedReceiptForModal={setSelectedReceiptForModal}
-                            />
-                        )
-                    }
-
-                    {
-                        activeTab === 'tickets' && isGeneralAdmin && (
+                        {activeTab === 'attendance' && (
                             <div className="animate-fade-in-up">
-                                <div className="flex justify-between items-center mb-6">
-                                    <div>
-                                        <h2 className="text-xl font-bold text-gray-800">Minhas Dúvidas (Tickets)</h2>
-                                        <p className="text-sm text-gray-500">Gerenciamento interativo de dúvidas dos alunos.</p>
-                                    </div>
-                                    <div>
-                                        <select
-                                            value={ticketFilterUnit}
-                                            onChange={(e) => setTicketFilterUnit(e.target.value)}
-                                            className="p-2 border border-gray-300 rounded-lg text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                        >
-                                            <option value="all">Todas as Unidades</option>
-                                            {SCHOOL_UNITS_LIST.map(unit => (
-                                                <option key={unit} value={unit}>{unit}</option>
-                                            ))}
-                                        </select>
+                                <h2 className="text-2xl font-bold text-gray-800 mb-4">Controle de Frequência</h2>
+                                <div className="p-4 bg-white rounded-lg shadow-md border mb-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        {isGeneralAdmin && (
+                                            <div>
+                                                <label className="text-sm font-medium text-gray-700">Unidade</label>
+                                                <select value={attendanceFilterUnit} onChange={e => setAttendanceFilterUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded mt-1">
+                                                    <option value="">Todas</option>
+                                                    {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}
+                                                </select>
+                                            </div>
+                                        )}
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-700">Série/Ano</label>
+                                            <select value={attendanceFilterGrade} onChange={e => setAttendanceFilterGrade(e.target.value)} className="w-full p-2 border rounded mt-1">
+                                                <option value="">Todas</option>
+                                                {SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-700">Turma</label>
+                                            <select value={attendanceFilterClass} onChange={e => setAttendanceFilterClass(e.target.value)} className="w-full p-2 border rounded mt-1">
+                                                <option value="">Todas</option>
+                                                {SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-700">Turno</label>
+                                            <select value={attendanceFilterShift} onChange={e => setAttendanceFilterShift(e.target.value)} className="w-full p-2 border rounded mt-1">
+                                                <option value="">Todos</option>
+                                                {SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-700">Data</label>
+                                            <input type="date" value={attendanceFilterDate} onChange={e => setAttendanceFilterDate(e.target.value)} className="w-full p-2 border rounded mt-1" />
+                                        </div>
                                     </div>
                                 </div>
 
-                                {isLoadingTickets ? (
-                                    <div className="text-center py-12">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-2"></div>
-                                        <p className="text-gray-500">Carregando tickets...</p>
+                                <div className="space-y-4">
+                                    {filteredAttendanceRecords.length > 0 ? (
+                                        filteredAttendanceRecords.map(record => {
+                                            const total = Object.keys(record.studentStatus).length;
+                                            const presents = Object.values(record.studentStatus).filter(s => s === AttendanceStatus.PRESENT).length;
+                                            const absents = total - presents;
+                                            return (
+                                                <div key={record.id} className="bg-white rounded-lg shadow-sm border">
+                                                    <div className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center cursor-pointer hover:bg-gray-50" onClick={() => setExpandedRecordId(expandedRecordId === record.id ? null : record.id)}>
+                                                        <div>
+                                                            <p className="font-bold text-blue-950">{record.gradeLevel} - Turma {record.schoolClass}</p>
+                                                            <p className="text-sm text-gray-800 font-semibold my-0.5">Prof. {record.teacherName}</p>
+                                                            <p className="text-xs text-gray-500">{record.unit} | Data: {formatDate(record.date, false)}</p>
+                                                        </div>
+                                                        <div className="flex items-center gap-4 mt-2 md:mt-0 text-sm">
+                                                            <span className="font-bold text-green-600">{presents} Presentes</span>
+                                                            <span className="font-bold text-red-600">{absents} Ausentes</span>
+                                                        </div>
+                                                    </div>
+                                                    {expandedRecordId === record.id && (
+                                                        <div className="border-t p-4 bg-gray-50/50">
+                                                            <h4 className="font-bold mb-2">Detalhes da Chamada:</h4>
+                                                            <ul className="divide-y max-h-60 overflow-y-auto">
+                                                                {Object.entries(record.studentStatus).map(([studentId, status]) => {
+                                                                    const student = students.find(s => s.id === studentId);
+                                                                    return (
+                                                                        <li key={studentId} className="flex justify-between items-center py-2 px-1">
+                                                                            <div>
+                                                                                <span className="text-sm text-gray-800 font-medium">{student ? student.name : 'Aluno Removido'}</span>
+                                                                                {student && <span className="text-xs text-gray-400 ml-2">({student.shift})</span>}
+                                                                            </div>
+                                                                            <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${status === AttendanceStatus.PRESENT ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{status}</span>
+                                                                        </li>
+                                                                    );
+                                                                })}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="text-center py-12 text-gray-500">
+                                            <p>Nenhum registro de frequência encontrado para os filtros selecionados.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* MODAL FINANCEIRO INDIVIDUAL */}
+                        <StudentFinancialModal
+                            isOpen={isFinancialModalOpen}
+                            onClose={() => setIsFinancialModalOpen(false)}
+                            student={selectedStudentForFinancial}
+                            mensalidades={mensalidades}
+                            isGeneralAdmin={isGeneralAdmin}
+                            onSetSelectedManualFee={setSelectedManualFee}
+                            onSetManualPaymentMethod={setManualPaymentMethod}
+                            onSetIsManualPaymentModalOpen={setIsManualPaymentModalOpen}
+                        />
+
+
+
+
+                        {/* MODAL DE ENVIO EM MASSA (SEQUENCIAL) - Moved to FinancialTab */}
+
+                        {/* --- CONTEÚDO GESTÃO DE CONTATOS (NOVA ABA) --- */}
+                        {
+                            activeTab === 'contacts' && (
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                    {/* FORMULÁRIO DE CADASTRO */}
+                                    <div className="lg:col-span-1">
+                                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <h2 className="text-lg font-bold text-blue-950">{editingContactId ? 'Editar Contato' : 'Adicionar Contato'}</h2>
+                                                {editingContactId && (
+                                                    <button onClick={cancelEditingContact} className="text-sm text-red-600 hover:underline">Cancelar</button>
+                                                )}
+                                            </div>
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="text-sm font-medium">Nome Completo</label>
+                                                    <input type="text" value={contactName} onChange={e => setContactName(e.target.value)} className="w-full p-2 border rounded" placeholder="Ex: Maria Silva" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-sm font-medium">Telefone (WhatsApp)</label>
+                                                    <input type="text" value={contactPhone} onChange={e => setContactPhone(e.target.value.replace(/\D/g, ''))} className="w-full p-2 border rounded" placeholder="Ex: 5584999999999" />
+                                                    <p className="text-xs text-gray-500 mt-1">Apenas números, com DDD (Ex: 5584...)</p>
+                                                </div>
+
+                                                {isGeneralAdmin && (
+                                                    <div className="animate-fade-in-up">
+                                                        <label className="text-sm font-medium text-gray-800">Senha de Acesso (Login)</label>
+                                                        <input
+                                                            type="text"
+                                                            value={contactPassword}
+                                                            onChange={e => setContactPassword(e.target.value)}
+                                                            className="w-full p-2 border rounded border-blue-200 bg-blue-50"
+                                                            placeholder="Crie uma senha para este coordenador"
+                                                        />
+                                                        <p className="text-xs text-blue-600 mt-1">* Visível e editável apenas por Admin Geral</p>
+                                                    </div>
+                                                )}
+
+                                                <div>
+                                                    <label className="text-sm font-medium">Unidade</label>
+                                                    {isGeneralAdmin ? (
+                                                        <select value={contactUnit} onChange={e => setContactUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>
+                                                    ) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}
+                                                </div>
+
+                                                {/* NOVO: Seletor de Segmento (Apenas relevante para Coordenação) */}
+                                                <div>
+                                                    <label className="text-sm font-medium">Segmento (Para Coordenação)</label>
+                                                    <select
+                                                        value={contactSegment}
+                                                        onChange={e => setContactSegment(e.target.value as any)}
+                                                        className="w-full p-2 border rounded"
+                                                    >
+                                                        <option value="geral">Geral / Ambos</option>
+                                                        <option value="infantil_fund1">Educação Infantil / Fundamental I</option>
+                                                        <option value="fund2_medio">Fundamental II / Ensino Médio</option>
+                                                    </select>
+                                                </div>
+                                                <div className="pt-2 grid grid-cols-2 gap-3">
+                                                    <Button onClick={() => handleSaveContact(ContactRole.DIRECTOR)} className="w-full bg-blue-950 hover:bg-blue-900">
+                                                        Salvar Diretor
+                                                    </Button>
+                                                    <Button onClick={() => handleSaveContact(ContactRole.COORDINATOR)} className="w-full bg-orange-600 hover:bg-orange-700">
+                                                        Salvar Coord.
+                                                    </Button>
+
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                ) : ticketsList.length === 0 ? (
-                                    <div className="bg-white p-12 text-center rounded-2xl border border-gray-100 shadow-sm">
-                                        <svg className="w-16 h-16 text-gray-200 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                        <h3 className="text-lg font-bold text-gray-900">Nenhuma dúvida registrada</h3>
-                                        <p className="text-gray-500">O histórico de perguntas está vazio.</p>
-                                    </div>
-                                ) : (
-                                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-sm text-left">
-                                                <thead className="bg-gray-50 text-gray-600 font-medium border-b border-gray-200 uppercase tracking-wider text-xs">
-                                                    <tr>
-                                                        <th className="px-6 py-4">Data</th>
-                                                        <th className="px-6 py-4">Aluno</th>
-                                                        <th className="px-6 py-4">Disciplina</th>
-                                                        <th className="px-6 py-4 w-1/3">Dúvida / Resposta</th>
-                                                        <th className="px-6 py-4 text-center">Status</th>
-                                                        <th className="px-6 py-4 text-center">Ações</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-gray-100">
-                                                    {ticketsList
-                                                        .filter(ticket => ticketFilterUnit === 'all' || ticket.unit === ticketFilterUnit)
-                                                        .map(ticket => (
-                                                            <tr key={ticket.id} className="hover:bg-gray-50 transition-colors">
-                                                                <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                                                                    {new Date(ticket.timestamp).toLocaleDateString()}
-                                                                    <span className="block text-xs">{new Date(ticket.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                                                </td>
-                                                                <td className="px-6 py-4">
-                                                                    <div className="font-bold text-gray-800">{ticket.studentName}</div>
-                                                                    <div className="text-xs text-gray-500">{ticket.gradeLevel} - {ticket.schoolClass} ({ticket.unit})</div>
-                                                                </td>
-                                                                <td className="px-6 py-4">
-                                                                    <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">{ticket.subject}</span>
-                                                                </td>
-                                                                <td className="px-6 py-4">
-                                                                    <div className="mb-2">
-                                                                        <span className="font-bold text-gray-700 text-xs uppercase block mb-1">Dúvida:</span>
-                                                                        <p className="text-gray-600 italic">"{ticket.message}"</p>
-                                                                    </div>
-                                                                    {ticket.response && (
-                                                                        <div className="bg-green-50 p-2 rounded border border-green-100">
-                                                                            <span className="font-bold text-green-800 text-xs uppercase block mb-1">
-                                                                                Resposta {ticket.responderName ? `(${ticket.responderName})` : ''}:
-                                                                            </span>
-                                                                            <p className="text-green-700 text-xs">{ticket.response}</p>
-                                                                        </div>
-                                                                    )}
-                                                                </td>
-                                                                <td className="px-6 py-4 text-center">
-                                                                    {ticket.status === TicketStatus.ANSWERED ? (
-                                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-                                                                            Respondido
-                                                                        </span>
-                                                                    ) : (
-                                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
-                                                                            Pendente
-                                                                        </span>
-                                                                    )}
-                                                                </td>
-                                                                <td className="px-6 py-4 text-center">
-                                                                    <button
-                                                                        onClick={() => handleDeleteTicket(ticket.id)}
-                                                                        className="text-red-400 hover:text-red-600 transition-colors p-2 hover:bg-red-50 rounded-full"
-                                                                        title="Excluir Dúvida permanentemente"
-                                                                    >
-                                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                                                    </button>
+
+                                    {/* LISTAGEM DE CONTATOS */}
+                                    <div className="lg:col-span-2 space-y-6">
+                                        {/* DIRETORES */}
+                                        <div className="bg-white rounded-xl shadow-sm border border-blue-200 overflow-x-auto">
+                                            <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center min-w-[500px]">
+                                                <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                                                    <span className="p-1.5 bg-white rounded-md shadow-sm border border-gray-100 text-gray-600"><Users className="w-4 h-4" /></span> Diretoria
+                                                </h3>
+                                                <span className="text-xs font-bold bg-white border border-gray-200 text-gray-600 px-3 py-1 rounded-full">{directors.length} cadastrados</span>
+                                            </div>
+                                            {directors.length > 0 ? (
+                                                <table className="min-w-full text-sm text-left">
+                                                    <thead className="bg-gray-50 text-gray-500"><tr><th className="p-3">Nome</th><th className="p-3">Telefone</th><th className="p-3">Unidade</th><th className="p-3 text-right">Ação</th></tr></thead>
+                                                    <tbody>
+                                                        {directors.map(c => (
+                                                            <tr key={c.id} className="border-b last:border-0 hover:bg-gray-50">
+                                                                <td className="p-3 font-medium">{c.name}</td>
+                                                                <td className="p-3 font-mono text-gray-600">{c.phoneNumber}</td>
+                                                                <td className="p-3"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{c.unit}</span></td>
+                                                                <td className="p-3 text-right flex justify-end gap-2">
+                                                                    <button onClick={() => startEditingContact(c)} className="text-slate-800 hover:text-black hover:underline text-xs font-bold px-2 py-1">Editar</button>
+                                                                    <button onClick={() => onDeleteUnitContact && onDeleteUnitContact(c.id)} className="text-red-600 hover:text-red-800 text-xs font-bold bg-red-50 px-2 py-1 rounded border border-red-100">Remover</button>
                                                                 </td>
                                                             </tr>
                                                         ))}
+                                                    </tbody>
+                                                </table>
+                                            ) : (
+                                                <div className="p-8 text-center text-gray-400 italic">Nenhum diretor cadastrado para esta seleção.</div>
+                                            )}
+                                        </div>
+
+                                        {/* COORDENADORES */}
+                                        <div className="bg-white rounded-xl shadow-sm border border-orange-200 overflow-x-auto">
+                                            <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center min-w-[500px]">
+                                                <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                                                    <span className="p-1.5 bg-white rounded-md shadow-sm border border-gray-100 text-gray-600"><UserCheck className="w-4 h-4" /></span> Coordenação
+                                                </h3>
+                                                <span className="text-xs font-bold bg-white border border-gray-200 text-gray-600 px-3 py-1 rounded-full">{coordinators.length} cadastrados</span>
+                                            </div>
+                                            {coordinators.length > 0 ? (
+                                                <table className="min-w-full text-sm text-left">
+                                                    <thead className="bg-gray-50 text-gray-500"><tr><th className="p-3">Nome</th><th className="p-3">Telefone</th><th className="p-3">Unidade</th><th className="p-3 text-right">Ação</th></tr></thead>
+                                                    <tbody>
+                                                        {coordinators.map(c => (
+                                                            <tr key={c.id} className="border-b last:border-0 hover:bg-gray-50">
+                                                                <td className="p-3 font-medium">
+                                                                    {c.name}
+                                                                    {c.segment && c.segment !== 'all' && (
+                                                                        <span className="block text-[10px] text-gray-500 uppercase bg-gray-100 px-1 rounded w-fit mt-1">
+                                                                            {c.segment === 'infantil_fund1' ? 'Infantil / Fund I' : c.segment === 'fund2_medio' ? 'Fund II / Médio' : 'Geral'}
+                                                                        </span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="p-3 font-mono text-gray-600">{c.phoneNumber}</td>
+                                                                <td className="p-3"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{c.unit}</span></td>
+                                                                <td className="p-3 text-right flex justify-end gap-2">
+                                                                    <button onClick={() => startEditingContact(c)} className="text-slate-800 hover:text-black hover:underline text-xs font-bold px-2 py-1">Editar</button>
+                                                                    <button onClick={() => onDeleteUnitContact && onDeleteUnitContact(c.id)} className="text-red-600 hover:text-red-800 text-xs font-bold bg-red-50 px-2 py-1 rounded border border-red-100">Remover</button>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            ) : (
+                                                <div className="p-8 text-center text-gray-400 italic">Nenhum coordenador cadastrado para esta seleção.</div>
+                                            )}
+                                        </div>
+
+                                        {/* FINANCEIRO REMOVED */}
+                                    </div>
+                                </div>
+                            )
+                        }
+                        {activeTab === 'teachers' && (
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                <div className="lg:col-span-1">
+                                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <h2 className="text-lg font-bold text-gray-800">{editingTeacherId ? 'Editar Professor' : 'Cadastrar Novo Professor'}</h2>
+                                            {editingTeacherId && (
+                                                <button onClick={cancelEditingTeacher} className="text-sm text-red-600 hover:underline">Cancelar</button>
+                                            )}
+                                        </div>
+                                        <form onSubmit={fullHandleTeacherSubmit} className="space-y-4">
+                                            <div>
+                                                <label className="text-sm font-medium">Nome Completo</label>
+                                                <input type="text" value={tName} onChange={e => setTName(e.target.value)} required className="w-full p-2 border rounded" />
+                                            </div>
+                                            <div>
+                                                <label className="text-sm font-medium">Matérias</label>
+                                                <div className="flex gap-2">
+                                                    <select value={tempSubject} onChange={e => setTempSubject(e.target.value as Subject)} className="flex-1 p-2 border rounded">
+                                                        {sortedSubjects.map(s => <option key={s} value={s}>{s}</option>)}
+                                                    </select>
+                                                    <button type="button" onClick={handleAddSubject} className="bg-slate-100 text-slate-900 border border-slate-200 px-3 rounded hover:bg-slate-200 transaction-colors">Add</button>
+                                                </div>
+                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                    {tSubjects.map(s => (
+                                                        <span key={s} className="bg-gray-100 px-2 rounded text-xs flex items-center gap-1">{s} <button type="button" onClick={() => handleRemoveSubject(s)}>&times;</button></span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div>
+                                                    <label className="text-sm font-medium">CPF</label>
+                                                    <input type="text" value={tCpf} onChange={e => setTCpf(maskCPF(e.target.value))} className="w-full p-2 border rounded" placeholder="000.000.000-00" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-sm font-medium">Telefone</label>
+                                                    <input type="text" value={tPhone} onChange={e => setTPhone(e.target.value.replace(/\D/g, ''))} className="w-full p-2 border rounded" placeholder="Ex: 5584999999999" />
+                                                    <p className="text-xs text-gray-500 mt-1">Apenas números (Ex: 5584...)</p>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-sm font-medium">Unidade</label>
+                                                {isGeneralAdmin ? (
+                                                    <select value={tUnit} onChange={e => setTUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">
+                                                        {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}
+                                                    </select>
+                                                ) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}
+                                            </div>
+                                            <div>
+                                                <label className="text-sm font-medium">Senha</label>
+                                                <div className="flex gap-2 relative">
+                                                    <input type={showTeacherPassword ? "text" : "password"} value={tPass} onChange={e => setTPass(e.target.value)} className="w-full p-2 border rounded" required={!editingTeacherId} />
+                                                    <button type="button" onClick={() => setShowTeacherPassword(!showTeacherPassword)} className="absolute right-16 top-2 text-gray-500">{showTeacherPassword ? <EyeOffIcon /> : <EyeIcon />}</button>
+                                                    <button type="button" onClick={handleGenerateTeacherPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button>
+                                                </div>
+                                                <p className="text-xs text-gray-500 mt-1">Senha automática (8 caracteres).</p>
+                                            </div>
+                                            <Button type="submit" className="w-full">{editingTeacherId ? 'Salvar' : 'Cadastrar'}</Button>
+                                        </form>
+                                    </div>
+                                </div>
+                                <div className="lg:col-span-2">
+                                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                        <div className="p-4 bg-gray-50 border-b flex flex-col gap-4">
+                                            <h3 className="font-bold">Professores ({filteredTeachers.length})</h3>
+                                            <div className="flex flex-wrap gap-2 w-full">
+                                                {isGeneralAdmin && (
+                                                    <select
+                                                        value={teacherFilterUnit}
+                                                        onChange={(e) => setTeacherFilterUnit(e.target.value)}
+                                                        className="p-2 border border-slate-300 rounded-lg text-sm bg-white shadow-sm focus:ring-2 focus:ring-slate-500 focus:border-slate-500 outline-none transition-all"
+                                                    >
+                                                        <option value="all">Todas as Unidades</option>
+                                                        {SCHOOL_UNITS_LIST.map(unit => (
+                                                            <option key={unit} value={unit}>{unit}</option>
+                                                        ))}
+                                                    </select>
+                                                )}
+                                                <select
+                                                    value={teacherFilterSubject}
+                                                    onChange={(e) => setTeacherFilterSubject(e.target.value)}
+                                                    className="p-2 border border-slate-300 rounded-lg text-sm bg-white shadow-sm focus:ring-2 focus:ring-slate-500 focus:border-slate-500 outline-none transition-all"
+                                                >
+                                                    <option value="all">Todas as Matérias</option>
+                                                    {sortedSubjects.map(subject => (
+                                                        <option key={subject} value={subject}>{subject}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full min-w-[600px] text-sm text-left">
+                                                <thead className="bg-gray-50">
+                                                    <tr>
+                                                        <th className="p-3">Nome</th>
+                                                        <th className="p-3">Matérias</th>
+                                                        <th className="p-3">Unidade</th>
+                                                        <th className="p-3">Ações</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {filteredTeachers.map(t => (
+                                                        <tr key={t.id} className="border-b">
+                                                            <td className="p-3 font-medium">{t.name}</td>
+                                                            <td className="p-3">
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {t.subjects.map(s => (
+                                                                        <span key={s} className="bg-slate-100 text-slate-700 text-xs px-2 py-1 rounded border border-slate-200">{s}</span>
+                                                                    ))}
+                                                                </div>
+                                                            </td>
+                                                            <td className="p-3"><span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">{t.unit}</span></td>
+                                                            <td className="p-3 flex gap-2">
+                                                                {/* EDITAR */}
+                                                                <div className="relative group">
+                                                                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-[10px] font-bold text-white bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                                                                        Editar
+                                                                        <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-800"></span>
+                                                                    </span>
+                                                                    <button onClick={() => startEditingTeacher(t)} className="p-2 text-slate-900 bg-slate-50 rounded-lg hover:bg-slate-100 border border-slate-200 transition-all hover:scale-105 shadow-sm">
+                                                                        <Pencil className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
+
+                                                                {/* EXCLUIR */}
+                                                                <div className="relative group">
+                                                                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-[10px] font-bold text-white bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                                                                        Excluir
+                                                                        <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-800"></span>
+                                                                    </span>
+                                                                    <button onClick={() => initiateDeleteTeacher(t.id)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 border border-red-100 transition-all hover:scale-110 shadow-sm">
+                                                                        <Trash2 className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
                                                 </tbody>
                                             </table>
                                         </div>
                                     </div>
-                                )}
-                            </div>
-                        )
-                    }
-                    {/* TAB COORDENAÇÃO (APROVAÇÃO) */}
-                    {
-                        activeTab === 'coordination' && (
-                            showCoordinatorLogin && !isGeneralAdmin ? (
-                                <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-90 backdrop-blur-sm p-4">
-                                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-8 animate-fade-in-up border border-gray-200">
-                                        <div className="text-center mb-6">
-                                            <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                                                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                                            </div>
-                                            <h2 className="text-2xl font-bold text-gray-800">Acesso Restrito</h2>
-                                            <p className="text-gray-500 mt-2">Área exclusiva para Coordenação Pedagógica</p>
-                                        </div>
-
-                                        <form onSubmit={handleCoordinatorLogin} className="space-y-4">
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Selecione seu Nome</label>
-                                                <select
-                                                    value={coordLoginId}
-                                                    onChange={e => setCoordLoginId(e.target.value)}
-                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                                                    required
-                                                >
-                                                    <option value="">-- Selecione --</option>
-                                                    {unitContacts
-                                                        .filter(c => c.unit === adminUnit && (c.role === ContactRole.COORDINATOR || c.role === 'Coordenador'))
-                                                        .map(c => (
-                                                            <option key={c.id} value={c.id}>{c.name}</option>
-                                                        ))
-                                                    }
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Senha de Acesso</label>
-                                                <input
-                                                    type="password"
-                                                    value={coordLoginPass}
-                                                    onChange={e => setCoordLoginPass(e.target.value)}
-                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    placeholder="Sua senha"
-                                                    required
-                                                />
-                                            </div>
-                                            <Button type="submit" className="w-full py-3 text-lg font-bold shadow-lg">
-                                                Acessar Painel
-                                            </Button>
-                                            <div className="text-center pt-2">
-                                                <button type="button" onClick={() => setActiveTab('students')} className="text-sm text-gray-400 hover:text-gray-600 hover:underline">
-                                                    Voltar para Alunos
-                                                </button>
-                                            </div>
-                                        </form>
-                                    </div>
                                 </div>
-                            ) : (
-                                <>
-                                    {!isGeneralAdmin && coordinatorSession && (
-                                        <div className="bg-blue-50 border border-blue-200 p-4 mb-4 rounded-lg flex justify-between items-center shadow-sm">
-                                            <div className="flex items-center gap-3">
-                                                <div className="bg-blue-100 p-2 rounded-full">
-                                                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm text-blue-800 font-bold">Logado como: <span className="text-blue-950 text-base">{coordinatorSession.name}</span></p>
-                                                    <p className="text-xs text-blue-600 font-medium">Segmento: {coordinatorSession.segment === 'infantil_fund1' ? 'Educação Infantil / Fund. I' : coordinatorSession.segment === 'fund2_medio' ? 'Fundamental II / Médio' : 'Geral / Ambos'}</p>
-                                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'admins' && isGeneralAdmin && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-1"><div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"><h2 className="text-lg font-bold text-gray-900 mb-4">{editingAdminId ? 'Editar Admin' : 'Novo Admin de Unidade'}</h2><form onSubmit={handleAdminSubmit} className="space-y-4"><div><label className="text-sm font-medium">Nome (Descrição)</label><input type="text" value={aName} onChange={e => setAName(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Usuário de Login</label><input type="text" value={aUser} onChange={e => setAUser(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Unidade Responsável</label><select value={aUnit} onChange={e => setAUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select></div><div><label className="text-sm font-medium">Senha</label><div className="flex gap-2 relative"><input type={showAdminPassword ? "text" : "password"} value={aPass} onChange={e => setAPass(e.target.value)} required={!editingAdminId} className="w-full p-2 border rounded" /><button type="button" onClick={() => setShowAdminPassword(!showAdminPassword)} className="absolute right-16 top-2 text-gray-500">{showAdminPassword ? <EyeOffIcon /> : <EyeIcon />}</button><button type="button" onClick={handleGenerateAdminPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button></div></div><Button type="submit" className="w-full bg-gray-900 hover:bg-black">Salvar Admin</Button></form></div></div><div className="lg:col-span-2"><div className="bg-white rounded-xl shadow-sm border border-gray-200"><div className="p-4 bg-gray-50 border-b border-gray-100"><h3 className="font-bold text-gray-900">Administradores Cadastrados</h3></div><div className="overflow-x-auto"><table className="w-full min-w-[600px] text-sm text-left"><thead className="bg-gray-50"><tr><th className="p-3">Nome</th><th className="p-3">Usuário</th><th className="p-3">Unidade</th><th className="p-3">Ações</th></tr></thead><tbody>{filteredAdmins.map(a => (<tr key={a.id} className="border-b"><td className="p-3 font-medium">{a.name}</td><td className="p-3 font-mono text-gray-600">{a.username}</td><td className="p-3"><span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded border border-gray-200">{a.unit}</span></td><td className="p-3 flex gap-2"><button onClick={() => startEditingAdmin(a)} className="text-slate-800 hover:text-black hover:underline">Editar</button><button onClick={() => initiateDeleteAdmin(a.id)} className="text-red-600 hover:underline">Excluir</button></td></tr>))}</tbody></table></div></div></div></div>)}
+                        {
+                            activeTab === 'rematricula' && (
+                                <Rematricula
+                                    students={students}
+                                    grades={grades}
+                                    currentAdminUnit={isGeneralAdmin ? undefined : adminUnit}
+                                    onRefresh={async () => {
+                                        // Re-triggering parent data via mock add if needed,
+                                        // but Firestore is real-time.
+                                    }}
+                                />
+                            )
+                        }
+
+                        {
+                            activeTab === 'financial' && (
+                                <FinancialTab
+                                    isGeneralAdmin={isGeneralAdmin}
+                                    adminUnit={adminUnit}
+                                    unitContacts={unitContacts}
+                                    students={students}
+                                    onAddUnitContact={onAddUnitContact}
+                                    onEditUnitContact={onEditUnitContact}
+                                    onGenerateFees={onGenerateFees}
+                                    onFixDuplicates={onFixDuplicates}
+                                    setSelectedStudentForFinancial={setSelectedStudentForFinancial}
+                                    setIsFinancialModalOpen={setIsFinancialModalOpen}
+                                    setSelectedReceiptForModal={setSelectedReceiptForModal}
+                                />
+                            )
+                        }
+
+                        {
+                            activeTab === 'tickets' && isGeneralAdmin && (
+                                <div className="animate-fade-in-up">
+                                    <div className="flex justify-between items-center mb-6">
+                                        <div>
+                                            <h2 className="text-xl font-bold text-gray-800">Minhas Dúvidas (Tickets)</h2>
+                                            <p className="text-sm text-gray-500">Gerenciamento interativo de dúvidas dos alunos.</p>
+                                        </div>
+                                        <div>
+                                            <select
+                                                value={ticketFilterUnit}
+                                                onChange={(e) => setTicketFilterUnit(e.target.value)}
+                                                className="p-2 border border-gray-300 rounded-lg text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                            >
+                                                <option value="all">Todas as Unidades</option>
+                                                {SCHOOL_UNITS_LIST.map(unit => (
+                                                    <option key={unit} value={unit}>{unit}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {isLoadingTickets ? (
+                                        <div className="text-center py-12">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-2"></div>
+                                            <p className="text-gray-500">Carregando tickets...</p>
+                                        </div>
+                                    ) : ticketsList.length === 0 ? (
+                                        <div className="bg-white p-12 text-center rounded-2xl border border-gray-100 shadow-sm">
+                                            <svg className="w-16 h-16 text-gray-200 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                            <h3 className="text-lg font-bold text-gray-900">Nenhuma dúvida registrada</h3>
+                                            <p className="text-gray-500">O histórico de perguntas está vazio.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-sm text-left">
+                                                    <thead className="bg-gray-50 text-gray-600 font-medium border-b border-gray-200 uppercase tracking-wider text-xs">
+                                                        <tr>
+                                                            <th className="px-6 py-4">Data</th>
+                                                            <th className="px-6 py-4">Aluno</th>
+                                                            <th className="px-6 py-4">Disciplina</th>
+                                                            <th className="px-6 py-4 w-1/3">Dúvida / Resposta</th>
+                                                            <th className="px-6 py-4 text-center">Status</th>
+                                                            <th className="px-6 py-4 text-center">Ações</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-100">
+                                                        {ticketsList
+                                                            .filter(ticket => ticketFilterUnit === 'all' || ticket.unit === ticketFilterUnit)
+                                                            .map(ticket => (
+                                                                <tr key={ticket.id} className="hover:bg-gray-50 transition-colors">
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                                                                        {new Date(ticket.timestamp).toLocaleDateString()}
+                                                                        <span className="block text-xs">{new Date(ticket.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                                    </td>
+                                                                    <td className="px-6 py-4">
+                                                                        <div className="font-bold text-gray-800">{ticket.studentName}</div>
+                                                                        <div className="text-xs text-gray-500">{ticket.gradeLevel} - {ticket.schoolClass} ({ticket.unit})</div>
+                                                                    </td>
+                                                                    <td className="px-6 py-4">
+                                                                        <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">{ticket.subject}</span>
+                                                                    </td>
+                                                                    <td className="px-6 py-4">
+                                                                        <div className="mb-2">
+                                                                            <span className="font-bold text-gray-700 text-xs uppercase block mb-1">Dúvida:</span>
+                                                                            <p className="text-gray-600 italic">"{ticket.message}"</p>
+                                                                        </div>
+                                                                        {ticket.response && (
+                                                                            <div className="bg-green-50 p-2 rounded border border-green-100">
+                                                                                <span className="font-bold text-green-800 text-xs uppercase block mb-1">
+                                                                                    Resposta {ticket.responderName ? `(${ticket.responderName})` : ''}:
+                                                                                </span>
+                                                                                <p className="text-green-700 text-xs">{ticket.response}</p>
+                                                                            </div>
+                                                                        )}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 text-center">
+                                                                        {ticket.status === TicketStatus.ANSWERED ? (
+                                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                                                                                Respondido
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+                                                                                Pendente
+                                                                            </span>
+                                                                        )}
+                                                                    </td>
+                                                                    <td className="px-6 py-4 text-center">
+                                                                        <div className="relative group inline-block">
+                                                                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-[10px] font-bold text-white bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                                                                                Excluir Dúvida
+                                                                                <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-800"></span>
+                                                                            </span>
+                                                                            <button
+                                                                                onClick={() => handleDeleteTicket(ticket.id)}
+                                                                                className="text-red-400 hover:text-red-600 transition-colors p-2 hover:bg-red-50 rounded-full"
+                                                                            >
+                                                                                <Trash2 className="w-5 h-5" />
+                                                                            </button>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                    </tbody>
+                                                </table>
                                             </div>
-                                            <button onClick={() => setCoordinatorSession(null)} className="text-sm text-red-600 font-bold hover:text-red-800 hover:bg-red-50 px-3 py-1.5 rounded transition-colors">
-                                                Sair / Trocar
-                                            </button>
                                         </div>
                                     )}
-                                    <CoordinationTab
-                                        isGeneralAdmin={isGeneralAdmin}
-                                        coordinationFilterUnit={coordinationFilterUnit}
-                                        setCoordinationFilterUnit={setCoordinationFilterUnit}
-                                        coordinationFilterGrade={coordinationFilterGrade}
-                                        setCoordinationFilterGrade={setCoordinationFilterGrade}
-                                        coordinationFilterClass={coordinationFilterClass}
-                                        setCoordinationFilterClass={setCoordinationFilterClass}
-                                        coordinationFilterSubject={coordinationFilterSubject}
-                                        setCoordinationFilterSubject={setCoordinationFilterSubject}
-                                        fetchPendingGrades={fetchPendingGrades}
-                                        isLoadingCoordination={isLoadingCoordination}
-                                        pendingGradesStudents={pendingGradesStudents}
-                                        pendingGradesMap={pendingGradesMap}
-                                        handleApproveGrade={handleApproveGrade}
-                                        coordinatorSession={coordinatorSession} // Pass session down
-                                    />
-                                </>
+                                </div>
                             )
-                        )
-                    }
+                        }
+                        {/* TAB COORDENAÇÃO (APROVAÇÃO) */}
 
 
-                </div >
-            </div >
+                        {/* END OF TAB CONTENT */}
+                    </main>
+                </div>
+            </div>
 
 
 
             {/* MODAL DE MANUTENÇÃO */}
             {
                 isMaintenanceModalOpen && isGeneralAdmin && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900 bg-opacity-70 backdrop-blur-sm animate-fade-in">
-                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-auto max-h-[90vh] flex flex-col overflow-hidden">
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/70 backdrop-blur-sm animate-fade-in">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-auto max-h-[90vh] flex flex-col overflow-hidden border border-slate-200">
                             {/* HEADER MODAL */}
-                            <div className="flex justify-between items-center p-6 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-                                <div>
-                                    <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                                        ⚙️ Manutenção do Sistema
-                                    </h2>
-                                    <p className="text-sm text-gray-500">Ferramentas avançadas de administração e virada de ano.</p>
+                            {/* HEADER MODAL */}
+                            <div className="flex justify-between items-center p-4 bg-white border-b border-zinc-200">
+                                <div className="flex items-center gap-4">
+                                    <div className="bg-zinc-100 p-2 rounded-xl border border-zinc-200">
+                                        <Settings className="w-6 h-6 text-zinc-700" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-zinc-900 leading-tight">
+                                            Manutenção do Sistema
+                                        </h2>
+                                        <p className="text-sm text-zinc-500">Ferramentas avançadas de administração e virada de ano.</p>
+                                    </div>
                                 </div>
-                                <button onClick={() => setIsMaintenanceModalOpen(false)} className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-gray-200">
-                                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                <button onClick={() => setIsMaintenanceModalOpen(false)} className="text-zinc-400 hover:text-zinc-700 transition-all p-2 rounded-full hover:bg-zinc-100">
+                                    <X className="w-8 h-8" />
                                 </button>
                             </div>
 
                             {/* BODY MODAL */}
-                            <div className="p-8 overflow-y-auto">
-                                <div className="p-4 bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 mb-8 rounded shadow-sm">
-                                    <p className="font-bold">⚠️ Área de Risco</p>
-                                    <p>Estas ferramentas manipulam dados críticos. Certifique-se de que sabe o que está fazendo.</p>
+                            <div className="p-8 overflow-y-auto bg-slate-50/50">
+                                <div className="p-5 bg-amber-50 border border-amber-200 text-amber-900 mb-8 rounded-xl shadow-sm flex items-start gap-4 animate-pulse-subtle">
+                                    <ShieldAlert className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-bold text-amber-900 uppercase text-xs tracking-wider mb-1">Área de Risco Monitorada</p>
+                                        <p className="text-sm leading-relaxed opacity-90">Estas ferramentas manipulam dados críticos e estruturais. Certifique-se de que possui backups atualizados antes de prosseguir com qualquer operação de restauração ou reset.</p>
+                                    </div>
                                 </div>
 
                                 {/* Unit Selector */}
-                                <div className="mb-8">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Selecionar Unidade Alvo</label>
-                                    <select
-                                        value={maintenanceUnit}
-                                        onChange={(e) => setMaintenanceUnit(e.target.value)}
-                                        className="w-full md:w-1/3 p-2.5 border border-gray-300 rounded-lg bg-white font-medium text-gray-800"
-                                    >
-                                        <option value="all">Todas as Unidades (Global)</option>
-                                        {SCHOOL_UNITS_LIST.map(u => (
-                                            <option key={u} value={u}>{u}</option>
-                                        ))}
-                                    </select>
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        {maintenanceUnit === 'all'
-                                            ? "As ações abaixo afetarão TODOS os dados do sistema."
-                                            : `As ações abaixo afetarão APENAS dados da unidade ${maintenanceUnit}.`
-                                        }
-                                    </p>
+                                <div className="mb-8 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Selecionar Unidade Alvo</label>
+                                    <div className="flex flex-col md:flex-row md:items-center gap-4">
+                                        <select
+                                            value={maintenanceUnit}
+                                            onChange={(e) => setMaintenanceUnit(e.target.value)}
+                                            className="min-w-[300px] p-3 border border-slate-200 rounded-xl bg-slate-50 font-semibold text-slate-800 focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition-all outline-none"
+                                        >
+                                            <option value="all">Todas as Unidades (Global)</option>
+                                            {SCHOOL_UNITS_LIST.map(u => (
+                                                <option key={u} value={u}>{u}</option>
+                                            ))}
+                                        </select>
+                                        <div className="bg-slate-100 px-4 py-3 rounded-lg border border-slate-200 flex items-center gap-3">
+                                            <div className="w-2 h-2 rounded-full bg-slate-900 animate-pulse" />
+                                            <p className="text-xs font-medium text-slate-700">
+                                                {maintenanceUnit === 'all'
+                                                    ? "Impacto: Todos os dados do sistema serão afetados."
+                                                    : `Impacto: Apenas dados da unidade ${maintenanceUnit} serão afetados.`
+                                                }
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
 
                                     {/* 1. BACKUP */}
-                                    <div className="bg-white p-6 rounded-lg shadow border border-gray-200 hover:shadow-lg transition-shadow">
-                                        <h3 className="text-lg font-bold text-blue-900 mb-2">1. Exportar Dados</h3>
-                                        <p className="text-sm text-gray-600 mb-4">Gera um arquivo Excel (.xlsx) com todas as notas, faltas e mensagens atuais.</p>
+                                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-all group flex flex-col h-full">
+                                        <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center mb-5 group-hover:bg-slate-900 group-hover:text-white transition-all text-slate-600 shadow-inner">
+                                            <FileBarChart className="w-6 h-6" />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-slate-800 mb-2">1. Exportar Dados</h3>
+                                        <p className="text-xs text-slate-500 mb-6 leading-relaxed flex-1">Gera um arquivo Excel (.xlsx) completo com todas as notas, faltas e registros atuais.</p>
                                         <Button onClick={async () => {
                                             try {
                                                 const wb = XLSX.utils.book_new();
@@ -2090,12 +2132,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(attData), "Frequencia");
 
                                                 // 3. MESSAGES & OTHERS
-                                                // Only filtering messages if we can identify unit (often difficult without direct field).
-                                                // For now, if unit selected, we might skip messages or include relevant ones?
-                                                // Strategy: Include all if 'all', else include only if we can link to unit?
-                                                // Let's include all for backup safety, user can filter in Excel.
-                                                // Actually, if exporting for a unit, broad messages might be confusing.
-                                                // Let's keep all for now to be safe.
                                                 const msgData = msgRel.docs.map(doc => ({ ...doc.data(), ID: doc.id }));
                                                 XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(msgData), "Mensagens");
 
@@ -2120,15 +2156,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 console.error(e);
                                                 alert("Erro ao gerar backup: " + e);
                                             }
-                                        }} className="w-full">
+                                        }} className="w-full bg-zinc-900 hover:bg-black text-white shadow-lg shadow-zinc-200 py-2">
                                             💾 Baixar Backup
                                         </Button>
                                     </div>
 
                                     {/* 2. RESTORE */}
-                                    <div className="bg-white p-6 rounded-lg shadow border border-gray-200 hover:shadow-lg transition-shadow">
-                                        <h3 className="text-lg font-bold text-green-900 mb-2">2. Restaurar Dados</h3>
-                                        <p className="text-sm text-gray-600 mb-4">Reimporta dados de um backup anterior. Útil para desfazer erros.</p>
+                                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-zinc-200 hover:shadow-md transition-all group flex flex-col h-full">
+                                        <div className="w-12 h-12 bg-zinc-50 rounded-xl flex items-center justify-center mb-5 group-hover:bg-zinc-900 group-hover:text-white transition-all text-zinc-600 shadow-inner">
+                                            <RefreshCw className="w-6 h-6" />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-slate-800 mb-2">2. Restaurar Dados</h3>
+                                        <p className="text-xs text-slate-500 mb-6 leading-relaxed flex-1">Reimporta dados de um backup anterior. Útil para desfazer erros sistêmicos.</p>
                                         <input type="file" id="restoreFile" accept=".xlsx" className="hidden" onChange={async (e) => {
                                             const file = e.target.files?.[0];
                                             if (!file) return;
@@ -2210,15 +2249,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 alert("Erro na restauração: " + err);
                                             }
                                         }} />
-                                        <Button variant="secondary" onClick={() => document.getElementById('restoreFile')?.click()} className="w-full">
+                                        <Button variant="secondary" onClick={() => document.getElementById('restoreFile')?.click()} className="w-full border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900">
                                             ♻️ Carregar Backup
                                         </Button>
                                     </div>
 
                                     {/* 3. RESET */}
-                                    <div className="bg-white p-6 rounded-lg shadow border border-red-200 hover:shadow-lg transition-shadow">
-                                        <h3 className="text-lg font-bold text-red-900 mb-2">3. Novo Ano Letivo</h3>
-                                        <p className="text-sm text-gray-600 mb-4">Apaga NOTAS, FALTAS e RELATÓRIOS. Mantém alunos e professores.</p>
+                                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-all group flex flex-col h-full">
+                                        <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center mb-5 group-hover:bg-red-600 group-hover:text-white transition-all text-red-600 shadow-inner">
+                                            <ShieldAlert className="w-6 h-6" />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-slate-800 mb-2">3. Novo Ano Letivo</h3>
+                                        <p className="text-xs text-slate-500 mb-6 leading-relaxed flex-1">Apaga NOTAS, FALTAS e RELATÓRIOS. Mantém alunos e professores ativos no sistema.</p>
                                         <Button variant="danger" onClick={async () => {
                                             const confirmMsg = maintenanceUnit === 'all'
                                                 ? "VOCÊ É O ADMINISTRADOR GERAL.\n\nEsta ação apagará TODAS as notas, faltas e relatórios de TODAS as unidades para iniciar um novo ano.\n\nTem certeza absoluta?"
@@ -2293,15 +2335,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                         await batch.commit();
                                                     }
                                                 }
-
-                                                alert(`Ano Letivo Reiniciado! ${deletedCount} registros foram apagados.`);
+                                                alert("Limpeza concluída! O sistema está pronto para o novo ano.");
                                                 window.location.reload();
 
                                             } catch (e) {
-                                                alert("Erro ao resetar: " + e);
+                                                console.error(e);
+                                                alert("Erro no reset: " + e);
                                             }
-                                        }} className="w-full">
-                                            🔥 Iniciar Novo Ano
+                                        }} className="w-full shadow-lg shadow-red-100 font-bold">
+                                            🚀 Iniciar Ano Letivo
                                         </Button>
                                     </div>
 
@@ -2315,130 +2357,147 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             {/* MODAL DE LOGS */}
             {
                 isLogModalOpen && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900 bg-opacity-70 backdrop-blur-sm animate-fade-in">
-                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] md:h-auto md:max-h-[90vh] flex flex-col overflow-hidden">
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-fade-in">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] md:h-auto md:max-h-[90vh] flex flex-col overflow-hidden border border-slate-200 animate-scale-in">
                             {/* HEADER MODAL */}
-                            <div className="flex justify-between items-center p-3 md:p-6 bg-gradient-to-br from-blue-950 to-slate-900 border-b border-gray-200">
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-white/10 p-2 rounded-lg backdrop-blur-sm">
-                                        <LayoutDashboard className="w-6 h-6 text-white" />
+                            {/* HEADER MODAL */}
+                            <div className="flex justify-between items-center p-4 bg-white border-b border-zinc-200">
+
+                                <div className="flex items-center gap-4 relative z-10">
+                                    <div className="bg-zinc-100 p-2 rounded-xl border border-zinc-200 shadow-sm">
+                                        <Clock className="w-6 h-6 text-zinc-700" />
                                     </div>
                                     <div>
-                                        <h2 className="text-lg md:text-2xl font-bold text-white flex items-center gap-2">
-                                            Registro de Acessos
+                                        <h2 className="text-xl md:text-2xl font-bold text-zinc-900 tracking-tight">
+                                            Registro de Auditoria
                                         </h2>
-                                        <p className="hidden md:block text-sm text-blue-100/70">Auditoria em tempo real de logins no sistema</p>
+                                        <p className="hidden md:block text-sm text-zinc-500">Monitoramento de acessos e segurança em tempo real</p>
                                     </div>
                                 </div>
-                                <button onClick={() => setIsLogModalOpen(false)} className="text-white/70 hover:text-white transition-colors p-2 rounded-full hover:bg-white/10">
-                                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                <button onClick={() => setIsLogModalOpen(false)} className="text-zinc-400 hover:text-zinc-700 transition-all p-2 rounded-full hover:bg-zinc-100 group relative z-10">
+                                    <X className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" />
                                 </button>
                             </div>
 
                             {/* FILTROS E AÇÕES */}
-                            <div className="p-2 md:p-4 bg-white border-b border-gray-100 flex flex-col md:flex-row gap-2 md:gap-4 justify-between items-center">
-                                <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
+                            <div className="p-4 bg-white border-b border-gray-100 flex flex-col md:flex-row gap-4 justify-between items-center">
+                                <div className="flex bg-slate-100 p-1 rounded-xl w-full md:w-auto">
                                     <button
                                         onClick={() => handleFilterChange('today')}
-                                        className={`whitespace-nowrap px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs font-bold transition-all ${logFilter === 'today' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                        className={`flex-1 md:flex-none px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${logFilter === 'today' ? 'bg-zinc-900 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50'}`}
                                     >
                                         Hoje
                                     </button>
                                     <button
                                         onClick={() => handleFilterChange('week')}
-                                        className={`whitespace-nowrap px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs font-bold transition-all ${logFilter === 'week' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                        className={`flex-1 md:flex-none px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${logFilter === 'week' ? 'bg-zinc-900 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50'}`}
                                     >
                                         7 Dias
                                     </button>
                                     <button
                                         onClick={() => handleFilterChange('month')}
-                                        className={`whitespace-nowrap px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs font-bold transition-all ${logFilter === 'month' ? 'bg-blue-950 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                        className={`flex-1 md:flex-none px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${logFilter === 'month' ? 'bg-zinc-900 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50'}`}
                                     >
                                         Mês
                                     </button>
                                 </div>
 
-                                <div className="flex flex-col md:flex-row gap-2 items-center w-full md:w-auto">
-                                    <select
-                                        value={logUnitFilter}
-                                        onChange={(e) => setLogUnitFilter(e.target.value)}
-                                        className="p-2 border rounded-lg text-sm bg-gray-50 w-full md:w-auto"
-                                    >
-                                        <option value="all">Todas as Unidades</option>
-                                        {SCHOOL_UNITS_LIST.map(u => (
-                                            <option key={u} value={u}>{u}</option>
-                                        ))}
-                                    </select>
+                                <div className="flex flex-col md:flex-row gap-3 items-center w-full md:w-auto">
+                                    <div className="flex gap-2 w-full md:w-auto">
+                                        <select
+                                            value={logUnitFilter}
+                                            onChange={(e) => setLogUnitFilter(e.target.value)}
+                                            className="flex-1 p-2.5 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-700 outline-none focus:ring-2 focus:ring-slate-200 transition-all cursor-pointer"
+                                        >
+                                            <option value="all">Todas as Unidades</option>
+                                            {SCHOOL_UNITS_LIST.map(u => (
+                                                <option key={u} value={u}>{u}</option>
+                                            ))}
+                                        </select>
 
-                                    <select
-                                        value={logProfileFilter}
-                                        onChange={(e) => setLogProfileFilter(e.target.value as any)}
-                                        className="p-2 border rounded-lg text-sm bg-gray-50 w-full md:w-auto"
-                                    >
-                                        <option value="all">Todos os Perfis</option>
-                                        <option value="student">Alunos</option>
-                                        <option value="teacher">Professores</option>
-                                        <option value="admin">Administração</option>
-                                    </select>
+                                        <select
+                                            value={logProfileFilter}
+                                            onChange={(e) => setLogProfileFilter(e.target.value as any)}
+                                            className="flex-1 p-2.5 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-700 outline-none focus:ring-2 focus:ring-slate-200 transition-all cursor-pointer"
+                                        >
+                                            <option value="all">Filtro de Perfil</option>
+                                            <option value="student">Alunos</option>
+                                            <option value="teacher">Professores</option>
+                                            <option value="admin">Administração</option>
+                                        </select>
+                                    </div>
 
                                     <button
                                         onClick={handleDownloadPDF}
-                                        className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 shadow-sm transition-all whitespace-nowrap w-full md:w-auto justify-center"
+                                        className="flex items-center gap-2 px-4 py-1.5 bg-zinc-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-black shadow-lg shadow-zinc-200 active:scale-95 transition-all w-full md:w-auto justify-center"
                                     >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                        PDF
+                                        <FileText className="w-4 h-4" />
+                                        Relatório PDF
                                     </button>
                                 </div>
                             </div>
 
                             {/* SUMMARY STATS */}
-                            <div className="bg-blue-50 px-3 py-2 md:px-6 md:py-3 border-b border-blue-100 flex flex-wrap gap-2 md:gap-4 text-xs md:text-sm justify-between items-center shadow-inner">
-                                <span className="font-bold text-blue-900">Total: {filteredAccessLogs.length}</span>
-                                <div className="flex gap-2 md:gap-4">
-                                    <span className="text-gray-600 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span> Alunos: <strong>{filteredAccessLogs.filter(l => getLogUserInfo(l.user_id).type === 'student').length}</strong></span>
-                                    <span className="text-gray-600 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500"></span> Prof.: <strong>{filteredAccessLogs.filter(l => getLogUserInfo(l.user_id).type === 'teacher').length}</strong></span>
-                                    <span className="text-gray-600 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500"></span> Admin: <strong>{filteredAccessLogs.filter(l => getLogUserInfo(l.user_id).type === 'admin').length}</strong></span>
+                            <div className="bg-white px-6 py-4 border-b border-slate-100 flex flex-wrap gap-6 text-[10px] font-black uppercase tracking-widest items-center">
+                                <span className="text-slate-900 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">Total de Acessos: {filteredAccessLogs.length}</span>
+                                <div className="flex items-center gap-6">
+                                    <div className="flex items-center gap-2 text-slate-500">
+                                        <span className="w-2 h-2 rounded-full bg-slate-400" />
+                                        <span>Alunos: <span className="text-slate-900 ml-1">{filteredAccessLogs.filter(l => getLogUserInfo(l.user_id).type === 'student').length}</span></span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-slate-500">
+                                        <span className="w-2 h-2 rounded-full bg-slate-600" />
+                                        <span>Prof.: <span className="text-slate-900 ml-1">{filteredAccessLogs.filter(l => getLogUserInfo(l.user_id).type === 'teacher').length}</span></span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-slate-500">
+                                        <span className="w-2 h-2 rounded-full bg-slate-900" />
+                                        <span>Admin: <span className="text-slate-900 ml-1">{filteredAccessLogs.filter(l => getLogUserInfo(l.user_id).type === 'admin').length}</span></span>
+                                    </div>
                                 </div>
                             </div>
 
                             {/* CONTEÚDO / TABELA */}
-                            <div className="flex-1 overflow-y-auto overflow-x-auto p-0 bg-gray-50">
+                            <div className="flex-1 overflow-y-auto p-0 bg-white">
                                 {isLoadingLogs ? (
                                     <TableSkeleton rows={10} />
                                 ) : filteredAccessLogs.length > 0 ? (
-                                    <table className="w-full min-w-[600px] text-sm text-left">
-                                        <thead className="bg-white text-gray-500 font-bold uppercase text-[10px] tracking-wider sticky top-0 shadow-sm z-10">
+                                    <table className="w-full min-w-[650px] text-sm text-left border-collapse">
+                                        <thead className="bg-slate-50/80 backdrop-blur-sm text-slate-400 font-black uppercase text-[9px] tracking-[0.15em] sticky top-0 shadow-sm z-10 border-b border-slate-100">
                                             <tr>
-                                                <th className="p-4 border-b border-gray-100 flex items-center gap-2"><Clock className="w-4 h-4" /> Data/Hora</th>
-                                                <th className="p-4 border-b border-gray-100"><span className="flex items-center gap-2"><User className="w-4 h-4" /> Usuário</span></th>
-                                                <th className="p-4 border-b border-gray-100"><span className="flex items-center gap-2"><Globe className="w-4 h-4" /> IP</span></th>
+                                                <th className="px-6 py-4">Data e Hora</th>
+                                                <th className="px-6 py-4">Usuário Identificado</th>
+                                                <th className="px-6 py-4">Endereço IP</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-100 bg-white">
+                                        <tbody className="divide-y divide-slate-50 bg-white">
                                             {filteredAccessLogs.map((log) => {
                                                 const info = getLogUserInfo(log.user_id);
                                                 const Icon = info.type === 'admin' ? Shield : info.type === 'teacher' ? GraduationCap : User;
-                                                const colorClass = info.type === 'admin' ? 'bg-purple-100 text-purple-700' : info.type === 'teacher' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700';
+                                                // Neutral styling for icons
+                                                const iconBgClass = info.type === 'admin' ? 'bg-slate-100 text-slate-700 border-slate-200' : info.type === 'teacher' ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-slate-50 text-slate-500 border-slate-100';
 
                                                 return (
-                                                    <tr key={log.id} className="hover:bg-blue-50/50 transition-colors group">
-                                                        <td className="p-4 font-mono text-gray-600 text-[11px] whitespace-nowrap">
-                                                            {new Date(log.date).toLocaleString('pt-BR')}
+                                                    <tr key={log.id} className="transition-all group hover:bg-slate-50">
+                                                        <td className="px-6 py-5 font-mono text-slate-400 text-[10px] tabular-nums">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-slate-200 group-hover:bg-slate-400 transition-colors" />
+                                                                {new Date(log.date).toLocaleString('pt-BR')}
+                                                            </div>
                                                         </td>
-                                                        <td className="p-4">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className={`p-2 rounded-lg ${colorClass} transition-transform group-hover:scale-110`}>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex items-center gap-4">
+                                                                <div className={`p-2.5 rounded-xl border-2 ${iconBgClass} transition-all duration-300 group-hover:scale-105 shadow-sm`}>
                                                                     <Icon className="w-4 h-4" />
                                                                 </div>
                                                                 <div>
-                                                                    <div className="font-bold text-gray-800 text-sm">{info.name}</div>
-                                                                    <div className="text-[10px] text-gray-400 font-medium uppercase tracking-tight">{info.role} • ID: {log.user_id}</div>
+                                                                    <div className="font-bold text-slate-800 text-sm group-hover:text-slate-950 transition-colors">{info.name}</div>
+                                                                    <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">{info.role} <span className="mx-1 opacity-30">•</span> ID: {log.user_id}</div>
                                                                 </div>
                                                             </div>
                                                         </td>
-                                                        <td className="p-4 text-gray-500 font-mono text-xs">
-                                                            <span className="bg-gray-100 px-2 py-1 rounded border border-gray-200">
-                                                                {log.ip || 'N/A'}
+                                                        <td className="px-6 py-4">
+                                                            <span className="font-mono text-[10px] py-1.5 px-3 bg-slate-50 text-slate-500 rounded-lg border border-slate-100 group-hover:bg-white group-hover:border-slate-200 transition-all tabular-nums">
+                                                                {log.ip || '0.0.0.0'}
                                                             </span>
                                                         </td>
                                                     </tr>
@@ -2447,16 +2506,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         </tbody>
                                     </table>
                                 ) : (
-                                    <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-                                        <svg className="w-12 h-12 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
-                                        <p>Nenhum registro encontrado para este período.</p>
+                                    <div className="flex flex-col items-center justify-center py-32 text-gray-400 animate-fade-in">
+                                        <div className="bg-gray-50 w-20 h-20 rounded-full flex items-center justify-center mb-6">
+                                            <Search className="w-10 h-10 text-gray-200" />
+                                        </div>
+                                        <p className="font-bold text-gray-800">Nenhum registro encontrado</p>
+                                        <p className="text-xs mt-1">Tente ajustar os filtros de período ou unidade.</p>
                                     </div>
                                 )}
                             </div>
 
                             {/* FOOTER */}
-                            <div className="p-4 bg-gray-50 border-t border-gray-200 text-right">
-                                <p className="text-xs text-gray-400 text-center mb-2">Exibindo os {accessLogs.length} registros mais recentes.</p>
+                            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Registros: {accessLogs.length} • Auditoria Ativa</p>
+                                <button onClick={() => setIsLogModalOpen(false)} className="text-zinc-600 hover:text-black font-black text-xs uppercase tracking-widest transition-colors">
+                                    Fechar Janela
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -2485,6 +2550,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 setManualPaymentMethod={setManualPaymentMethod}
             />
 
-        </div >
+        </>
     );
 }

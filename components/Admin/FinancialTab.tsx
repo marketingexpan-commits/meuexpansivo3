@@ -1,6 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import {
+    CreditCard,
+    DollarSign,
+    Filter,
+    HelpCircle,
+    Info,
+    LayoutDashboard,
+    PieChart,
+    Search,
+    TrendingUp,
+    Users
+} from 'lucide-react';
+import {
     SchoolUnit,
     Student,
     Mensalidade,
@@ -240,7 +252,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                     <div>
                         <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                            <span>💲</span> Resumo Financeiro
+                            <DollarSign className="w-5 h-5 text-emerald-600" /> Resumo Financeiro
                         </h2>
                         <p className="text-sm text-gray-500">Acompanhamento de receitas via Mensalidades, por Unidade</p>
                     </div>

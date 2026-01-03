@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import { RefreshCw } from 'lucide-react';
 import {
     SchoolUnit,
     GradeEntry,
@@ -7,6 +6,11 @@ import {
     SchoolClass,
     UnitContact
 } from '../../types';
+import {
+    Check,
+    GraduationCap,
+    RefreshCw
+} from 'lucide-react';
 import {
     SCHOOL_UNITS_LIST,
     SCHOOL_GRADES_LIST,
@@ -85,7 +89,9 @@ export const CoordinationTab: React.FC<CoordinationTabProps> = ({
             <div className="mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                     <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                        <span className="bg-purple-100 text-purple-700 p-2 rounded-lg text-sm">🦉</span>
+                        <div className="bg-purple-100 text-purple-700 p-2 rounded-lg">
+                            <GraduationCap className="w-5 h-5" />
+                        </div>
                         Coordenação Pedagógica
                     </h2>
                     <button
@@ -163,22 +169,6 @@ export const CoordinationTab: React.FC<CoordinationTabProps> = ({
                                 </div>
                                 <div className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full">
                                     {pendingGradesMap[student.id]?.length} Pendência(s)
-                                </div>
-                                <div>
-                                    <button
-                                        onClick={() => {
-                                            const phone = student.phone ? sanitizePhone(student.phone) : '';
-                                            if (phone) {
-                                                window.open(`https://wa.me/${phone}?text=Olá, responsável pelo aluno(a) ${student.name}. Gostaria de tratar sobre as notas pendentes.`, '_blank');
-                                            } else {
-                                                alert('Telefone não cadastrado');
-                                            }
-                                        }}
-                                        className="ml-2 text-green-600 hover:text-green-800"
-                                        title="Contatar via WhatsApp"
-                                    >
-                                        📱
-                                    </button>
                                 </div>
                             </div>
                             <div className="p-0">
@@ -273,10 +263,11 @@ export const CoordinationTab: React.FC<CoordinationTabProps> = ({
                                                         <td className="px-2 py-2 text-center bg-gray-50">
                                                             <button
                                                                 onClick={() => handleApproveGrade(grade)}
-                                                                className="bg-green-600 hover:bg-green-700 text-white p-1.5 rounded shadow-sm hover:scale-105 transition-all w-full flex items-center justify-center gap-1"
+                                                                className="bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-lg shadow-sm hover:scale-105 transition-all w-full flex items-center justify-center gap-2"
                                                                 title="Aprovar alterações desta disciplina"
                                                             >
-                                                                <span className="text-xs">✅</span> <span className="text-[10px] font-bold uppercase hidden md:inline">Aprovar</span>
+                                                                <Check className="w-4 h-4" />
+                                                                <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline">Aprovar</span>
                                                             </button>
                                                         </td>
                                                     </tr>

@@ -1,17 +1,20 @@
 import React from 'react';
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
 import { Loader2 } from 'lucide-react';
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
     size?: 'sm' | 'md' | 'lg' | 'icon';
     isLoading?: boolean;
+    children?: React.ReactNode;
+    className?: string;
+    disabled?: boolean;
+    type?: 'button' | 'submit' | 'reset';
+    onClick?: React.MouseEventHandler<HTMLButtonElement>;
 }
 
 export function Button({
     children,
-    className,
+    className = '',
     variant = 'primary',
     size = 'md',
     isLoading,
@@ -35,14 +38,7 @@ export function Button({
 
     return (
         <button
-            className={twMerge(
-                clsx(
-                    "inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer",
-                    variants[variant],
-                    sizes[size],
-                    className
-                )
-            )}
+            className={`inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${variants[variant]} ${sizes[size]} ${className}`}
             disabled={disabled || isLoading}
             {...props}
         >

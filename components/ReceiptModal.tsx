@@ -458,7 +458,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
     };
 
     return (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-fade-in">
             <div id="receipt-modal-content" className="bg-white rounded-2xl p-6 sm:p-8 w-[95%] sm:w-full max-w-xl shadow-2xl animate-scale-in relative border border-gray-100 max-h-[90vh] overflow-y-auto overflow-x-hidden">
 
                 {/* Watermark Logo */}

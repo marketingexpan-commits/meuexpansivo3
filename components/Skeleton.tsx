@@ -119,38 +119,149 @@ export const TeacherDashboardSkeleton: React.FC = () => {
 
 export const AdminDashboardSkeleton: React.FC = () => {
     return (
-        <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans">
-            <div className="w-full max-w-7xl bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col">
-                <div className="bg-gradient-to-br from-blue-950 to-slate-900 p-6 relative shrink-0">
-                    <div className="flex flex-row justify-between items-center">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-white/10 animate-pulse" />
-                            <div className="space-y-2">
-                                <Skeleton width={200} height={24} className="bg-white/20" />
-                                <Skeleton width={140} height={14} className="bg-white/10" />
-                            </div>
-                        </div>
-                        <div className="flex gap-4">
-                            <Skeleton width={80} height={32} className="bg-white/10 rounded-full" />
-                            <Skeleton width={40} height={40} className="bg-white/10 rounded-full" />
-                        </div>
-                    </div>
+        <div className="min-h-screen bg-gray-50 flex font-sans">
+            {/* Sidebar Skeleton - Hidden on mobile, fixed on desktop */}
+            <div className="hidden lg:flex flex-col w-64 border-r border-gray-200 bg-white h-screen sticky top-0 shrink-0">
+                <div className="h-16 flex items-center px-6 border-b border-gray-100">
+                    <Skeleton height={24} width={140} />
                 </div>
-                <div className="p-6 flex-1 flex flex-col">
-                    <div className="flex gap-4 mb-6 overflow-x-auto pb-2">
-                        {Array.from({ length: 8 }).map((_, i) => (
-                            <Skeleton key={i} width={130} height={38} className="rounded-lg shrink-0" />
+                <div className="p-4 space-y-2 flex-1 overflow-y-auto">
+                    {/* Menu Groups */}
+                    <div className="space-y-1">
+                        <Skeleton height={12} width={80} className="mb-2 ml-2 bg-gray-100" />
+                        {Array.from({ length: 3 }).map((_, i) => (
+                            <Skeleton key={i} height={40} className="rounded-lg" />
                         ))}
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1">
-                        <div className="md:col-span-1">
-                            <Skeleton height={600} className="rounded-xl" />
-                        </div>
-                        <div className="md:col-span-2">
-                            <Skeleton height={600} className="rounded-xl" />
+                    <div className="space-y-1 pt-4">
+                        <Skeleton height={12} width={80} className="mb-2 ml-2 bg-gray-100" />
+                        {Array.from({ length: 2 }).map((_, i) => (
+                            <Skeleton key={i} height={40} className="rounded-lg" />
+                        ))}
+                    </div>
+                </div>
+                <div className="p-4 border-t border-gray-100">
+                    <div className="flex items-center gap-3">
+                        <Skeleton circle width={36} height={36} />
+                        <div className="flex-1 space-y-1.5">
+                            <Skeleton width="60%" height={12} />
+                            <Skeleton width="30%" height={10} />
                         </div>
                     </div>
                 </div>
+            </div>
+
+            {/* Main Content Skeleton */}
+            <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
+                {/* Header */}
+                <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-8 shrink-0 sticky top-0 z-10">
+                    <div className="flex items-center gap-4">
+                        <div className="lg:hidden">
+                            <Skeleton width={32} height={32} className="rounded-lg" />
+                        </div>
+                        <div className="space-y-1">
+                            <Skeleton width={120} height={18} />
+                            <Skeleton width={160} height={12} className="bg-gray-100" />
+                        </div>
+                    </div>
+
+                    {/* Stats & Actions Area */}
+                    <div className="hidden md:flex items-center gap-6">
+                        {/* Simulate Dropdown */}
+                        <Skeleton width={140} height={36} className="rounded-lg" />
+
+                        {/* Simulate Stats Pill */}
+                        <div className="flex bg-gray-50 rounded-lg p-2 gap-4 border border-gray-100">
+                            <div className="space-y-1 px-2 text-center border-r border-gray-200">
+                                <Skeleton width={60} height={10} className="mx-auto" />
+                                <Skeleton width={30} height={16} className="mx-auto" />
+                            </div>
+                            <div className="space-y-1 px-2 text-center border-r border-gray-200">
+                                <Skeleton width={60} height={10} className="mx-auto" />
+                                <Skeleton width={30} height={16} className="mx-auto" />
+                            </div>
+                            <div className="space-y-1 px-2 text-center">
+                                <Skeleton width={60} height={10} className="mx-auto" />
+                                <Skeleton width={40} height={16} className="mx-auto" />
+                            </div>
+                        </div>
+
+                        {/* Icons */}
+                        <div className="flex gap-2">
+                            <Skeleton circle width={36} height={36} />
+                            <Skeleton circle width={36} height={36} />
+                        </div>
+                    </div>
+                </header>
+
+                <main className="p-4 lg:p-8 space-y-6 flex-1 bg-gray-50">
+                    {/* No Top Grid - Direct 2-Column Layout */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+
+                        {/* Left Col - Form Skeleton */}
+                        <div className="lg:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
+                            <Skeleton width={180} height={24} />
+
+                            {/* Form Fields */}
+                            <div className="space-y-4">
+                                {Array.from({ length: 4 }).map((_, i) => (
+                                    <div key={i} className="space-y-2">
+                                        <Skeleton width={80} height={12} />
+                                        <Skeleton width="100%" height={40} className="rounded-lg" />
+                                    </div>
+                                ))}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Skeleton width={60} height={12} />
+                                        <Skeleton width="100%" height={40} className="rounded-lg" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Skeleton width={60} height={12} />
+                                        <Skeleton width="100%" height={40} className="rounded-lg" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <Skeleton width="100%" height={48} className="rounded-xl mt-4" />
+                        </div>
+
+                        {/* Right Col - List Skeleton */}
+                        <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 min-h-[500px] flex flex-col">
+                            <Skeleton width={120} height={24} className="mb-6" />
+
+                            {/* Filters */}
+                            <div className="flex flex-col md:flex-row gap-3 mb-6">
+                                <Skeleton width={140} height={36} className="rounded-lg" />
+                                <Skeleton width={140} height={36} className="rounded-lg" />
+                                <Skeleton width={140} height={36} className="rounded-lg" />
+                                <Skeleton width="100%" height={36} className="rounded-lg flex-1" />
+                            </div>
+
+                            {/* Table */}
+                            <div className="flex-1 space-y-4">
+                                <div className="flex gap-4 border-b border-gray-100 pb-2">
+                                    <Skeleton width="20%" height={16} />
+                                    <Skeleton width="15%" height={16} />
+                                    <Skeleton width="15%" height={16} />
+                                    <Skeleton width="10%" height={16} className="ml-auto" />
+                                </div>
+                                {Array.from({ length: 6 }).map((_, i) => (
+                                    <div key={i} className="flex gap-4 items-center py-2 border-b border-gray-50">
+                                        <Skeleton width="20%" height={16} />
+                                        <Skeleton width="15%" height={14} />
+                                        <Skeleton width="15%" height={14} />
+                                        <div className="ml-auto flex gap-2">
+                                            <Skeleton width={32} height={32} className="rounded" />
+                                            <Skeleton width={32} height={32} className="rounded" />
+                                            <Skeleton width={32} height={32} className="rounded" />
+                                            <Skeleton width={32} height={32} className="rounded" />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </main>
             </div>
         </div>
     );

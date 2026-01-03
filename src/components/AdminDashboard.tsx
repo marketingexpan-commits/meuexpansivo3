@@ -207,7 +207,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             id: editingContactId || Date.now().toString(),
             name: cName,
             role: cRole,
-            phone: cPhone,
+            phoneNumber: cPhone,
             unit: unitToSave,
             segment: cSegment // Save the segment
         };
@@ -227,7 +227,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setEditingContactId(c.id);
         setCName(c.name);
         setCRole(c.role);
-        setCPhone(c.phone);
+        setCPhone(c.phoneNumber);
         setCUnit(c.unit);
         setCSegment(c.segment);
     };
@@ -309,11 +309,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col">
+        <div className="min-h-screen bg-slate-50 flex overflow-hidden">
 
             {/* Modais de Exclusão */}
             {(studentToDelete || teacherToDelete || adminToDelete) && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900 bg-opacity-50 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900 bg-opacity-50 backdrop-blur-sm">
                     <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6 animate-fade-in-up">
                         <h3 className="text-lg font-bold text-center text-gray-900 mb-2">Confirmar Exclusão</h3>
                         <p className="text-sm text-center text-gray-500 mb-6">Tem certeza? Essa ação não pode ser desfeita.</p>
@@ -330,63 +330,72 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
             )}
 
-            {/* Header - Gestão Style */}
-            <header className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-30">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                        <SidebarToggle onClick={() => setSidebarOpen(!sidebarOpen)} />
-                        <div>
-                            <h1 className="text-xl font-bold text-slate-800">Meu Expansivo (V2)</h1>
-                            <p className="text-sm text-slate-500">Administração ({adminUnit || 'GERAL'}) - {admin.name}</p>
+            {/* New Sidebar Layout */}
+            <Sidebar
+                isOpen={sidebarOpen}
+                onClose={() => setSidebarOpen(false)}
+                userName={admin.name}
+                onLogout={onLogout}
+            >
+                <SidebarCategory
+                    icon={<GraduationCap className="w-5 h-5" />}
+                    title="Acadêmico"
+                    defaultOpen={true}
+                >
+                    <SidebarItem
+                        label="Gerenciar Alunos"
+                        isActive={activeTab === 'students'}
+                        onClick={() => { setActiveTab('students'); setSidebarOpen(false); }}
+                    />
+                    <SidebarItem
+                        label="Gerenciar Professores"
+                        isActive={activeTab === 'teachers'}
+                        onClick={() => { setActiveTab('teachers'); setSidebarOpen(false); }}
+                    />
+                </SidebarCategory>
+
+                <SidebarCategory
+                    icon={<Users className="w-5 h-5" />}
+                    title="Gestão"
+                    defaultOpen={false}
+                >
+                    {isGeneralAdmin && (
+                        <SidebarItem
+                            label="Gerenciar Admins"
+                            isActive={activeTab === 'admins'}
+                            onClick={() => { setActiveTab('admins'); setSidebarOpen(false); }}
+                        />
+                    )}
+                    <SidebarItem
+                        label="Contatos / Coordenação"
+                        isActive={activeTab === 'contacts'}
+                        onClick={() => { setActiveTab('contacts'); setSidebarOpen(false); }}
+                    />
+                </SidebarCategory>
+            </Sidebar>
+
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                {/* Header - Simplified as identity is in sidebar */}
+                <header className="bg-white shadow-sm border-b border-slate-200 h-16 flex items-center shrink-0">
+                    <div className="px-4 sm:px-6 lg:px-8 flex justify-between items-center w-full">
+                        <div className="flex items-center gap-3">
+                            <SidebarToggle onClick={() => setSidebarOpen(!sidebarOpen)} />
+                            <div className="overflow-hidden">
+                                <h1 className="text-lg font-bold text-slate-800 truncate">
+                                    {adminUnit || 'Administração Geral'}
+                                </h1>
+                                <p className="text-[10px] text-slate-500 uppercase font-semibold tracking-wider">
+                                    Meu Expansivo V3 • {activeTab.toUpperCase()}
+                                </p>
+                            </div>
                         </div>
+                        {/* Area for quick actions if needed */}
                     </div>
-                    <Button variant="primary" onClick={onLogout}>Sair</Button>
-                </div>
-            </header>
+                </header>
 
-            {/* Main Layout with Sidebar */}
-            <div className="flex flex-1 overflow-hidden">
-                {/* Sidebar */}
-                <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)}>
-                    <SidebarCategory
-                        icon={<GraduationCap className="w-5 h-5" />}
-                        title="Acadêmico"
-                        defaultOpen={true}
-                    >
-                        <SidebarItem
-                            label="Gerenciar Alunos"
-                            isActive={activeTab === 'students'}
-                            onClick={() => { setActiveTab('students'); setSidebarOpen(false); }}
-                        />
-                        <SidebarItem
-                            label="Gerenciar Professores"
-                            isActive={activeTab === 'teachers'}
-                            onClick={() => { setActiveTab('teachers'); setSidebarOpen(false); }}
-                        />
-                    </SidebarCategory>
-
-                    <SidebarCategory
-                        icon={<Users className="w-5 h-5" />}
-                        title="Gestão"
-                        defaultOpen={false}
-                    >
-                        {isGeneralAdmin && (
-                            <SidebarItem
-                                label="Gerenciar Admins"
-                                isActive={activeTab === 'admins'}
-                                onClick={() => { setActiveTab('admins'); setSidebarOpen(false); }}
-                            />
-                        )}
-                        <SidebarItem
-                            label="Contatos / Coordenação"
-                            isActive={activeTab === 'contacts'}
-                            onClick={() => { setActiveTab('contacts'); setSidebarOpen(false); }}
-                        />
-                    </SidebarCategory>
-                </Sidebar>
-
-                {/* Main Content */}
-                <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+                {/* Content Container */}
+                <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 custom-scrollbar">
 
                     {/* --- CONTEÚDO ALUNOS --- */}
                     {activeTab === 'students' && (
@@ -659,196 +668,195 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
                     )}
 
-                </main>
-
-                {/* SEÇÃO DE MANUTENÇÃO (APENAS ADMIN GERAL) */}
-                {
-                    isGeneralAdmin && (
-                        <section className="bg-gray-100 border-t border-gray-300 mt-12 py-12">
-                            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                                <h2 className="text-2xl font-bold text-gray-800 mb-2 flex items-center gap-2">
-                                    ⚙️ Manutenção do Sistema / Virada de Ano
-                                </h2>
-                                <div className="p-4 bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 mb-8 rounded shadow-sm">
-                                    <p className="font-bold">⚠️ Área de Risco</p>
-                                    <p>Estas ferramentas manipulam dados críticos. Certifique-se de que sabe o que está fazendo.</p>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-
-                                    {/* 1. BACKUP */}
-                                    <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-                                        <h3 className="text-lg font-bold text-blue-900 mb-2">1. Exportar Dados</h3>
-                                        <p className="text-sm text-gray-600 mb-4">Gera um arquivo Excel (.xlsx) com todas as notas, faltas e mensagens atuais.</p>
-                                        <Button onClick={async () => {
-                                            try {
-                                                const wb = XLSX.utils.book_new();
-
-                                                // Fetch Data
-                                                const [usersRel, gradesRel, attRel, msgRel, reportsRel] = await Promise.all([
-                                                    db.collection('students').get(),
-                                                    db.collection('grades').get(),
-                                                    db.collection('attendance').get(),
-                                                    db.collection('schoolMessages').get(),
-                                                    db.collection('earlyChildhoodReports').get()
-                                                ]);
-
-                                                // Map Students for easy lookup
-                                                const studentsMap: any = {};
-                                                usersRel.docs.forEach(d => { studentsMap[d.id] = d.data(); });
-
-                                                // 1. GRADES
-                                                const gradesData = gradesRel.docs.map(doc => {
-                                                    const g = doc.data();
-                                                    const s = studentsMap[g.studentId] || {};
-                                                    return {
-                                                        ID: g.id,
-                                                        ALUNO_ID: g.studentId,
-                                                        ALUNO_NOME: s.name || 'Desconhecido',
-                                                        UNIDADE: s.unit || '',
-                                                        TURMA: s.schoolClass || '',
-                                                        DISCIPLINA: g.subject,
-                                                        MEDIA_ANUAL: g.mediaAnual,
-                                                        RESULTADO: g.situacaoFinal,
-                                                        RAW_DATA: JSON.stringify(g)
-                                                    };
-                                                });
-                                                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gradesData), "Notas");
-
-                                                // 2. ATTENDANCE
-                                                const attData = attRel.docs.map(doc => {
-                                                    const a = doc.data();
-                                                    return {
-                                                        ID: a.id,
-                                                        DATA: a.date,
-                                                        TURMA: a.schoolClass,
-                                                        PROFESSOR: a.teacherName,
-                                                        RAW_DATA: JSON.stringify(a)
-                                                    };
-                                                });
-                                                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(attData), "Frequencia");
-
-                                                // 3. MESSAGES & OTHERS
-                                                const msgData = msgRel.docs.map(doc => ({ ...doc.data(), ID: doc.id }));
-                                                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(msgData), "Mensagens");
-
-                                                const repData = reportsRel.docs.map(doc => ({ ...doc.data(), ID: doc.id }));
-                                                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(repData), "RelatoriosInfantil");
-
-                                                XLSX.writeFile(wb, `Backup_MeuExpansivo_${new Date().toISOString().split('T')[0]}.xlsx`);
-                                                alert("Backup gerado com sucesso!");
-                                            } catch (e) {
-                                                console.error(e);
-                                                alert("Erro ao gerar backup: " + e);
-                                            }
-                                        }} className="w-full">
-                                            💾 Baixar Backup Completo
-                                        </Button>
+                    {/* SEÇÃO DE MANUTENÇÃO (APENAS ADMIN GERAL) */}
+                    {
+                        isGeneralAdmin && (
+                            <section className="bg-gray-100 border-t border-gray-300 mt-12 py-12">
+                                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                                    <h2 className="text-2xl font-bold text-gray-800 mb-2 flex items-center gap-2">
+                                        ⚙️ Manutenção do Sistema / Virada de Ano
+                                    </h2>
+                                    <div className="p-4 bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 mb-8 rounded shadow-sm">
+                                        <p className="font-bold">⚠️ Área de Risco</p>
+                                        <p>Estas ferramentas manipulam dados críticos. Certifique-se de que sabe o que está fazendo.</p>
                                     </div>
 
-                                    {/* 2. RESTORE */}
-                                    <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-                                        <h3 className="text-lg font-bold text-green-900 mb-2">2. Restaurar Dados</h3>
-                                        <p className="text-sm text-gray-600 mb-4">Reimporta dados de um backup anterior. Útil para desfazer erros.</p>
-                                        <input type="file" id="restoreFile" accept=".xlsx" className="hidden" onChange={async (e) => {
-                                            const file = e.target.files?.[0];
-                                            if (!file) return;
-                                            if (!window.confirm("Isso irá mesclar/sobrescrever os dados atuais com os do arquivo. Confirmar?")) return;
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
 
-                                            try {
-                                                const data = await file.arrayBuffer();
-                                                const wb = XLSX.read(data);
-                                                const batch = db.batch();
+                                        {/* 1. BACKUP */}
+                                        <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+                                            <h3 className="text-lg font-bold text-blue-900 mb-2">1. Exportar Dados</h3>
+                                            <p className="text-sm text-gray-600 mb-4">Gera um arquivo Excel (.xlsx) com todas as notas, faltas e mensagens atuais.</p>
+                                            <Button onClick={async () => {
+                                                try {
+                                                    const wb = XLSX.utils.book_new();
 
-                                                // Restore Grades
-                                                const wsGrades = wb.Sheets["Notas"];
-                                                if (wsGrades) {
-                                                    const gradesJson = XLSX.utils.sheet_to_json(wsGrades);
-                                                    gradesJson.forEach((row: any) => {
-                                                        if (row.RAW_DATA) {
-                                                            const gBase = JSON.parse(row.RAW_DATA);
-                                                            batch.set(db.collection('grades').doc(gBase.id), gBase);
-                                                        }
+                                                    // Fetch Data
+                                                    const [usersRel, gradesRel, attRel, msgRel, reportsRel] = await Promise.all([
+                                                        db.collection('students').get(),
+                                                        db.collection('grades').get(),
+                                                        db.collection('attendance').get(),
+                                                        db.collection('schoolMessages').get(),
+                                                        db.collection('earlyChildhoodReports').get()
+                                                    ]);
+
+                                                    // Map Students for easy lookup
+                                                    const studentsMap: any = {};
+                                                    usersRel.docs.forEach(d => { studentsMap[d.id] = d.data(); });
+
+                                                    // 1. GRADES
+                                                    const gradesData = gradesRel.docs.map(doc => {
+                                                        const g = doc.data();
+                                                        const s = studentsMap[g.studentId] || {};
+                                                        return {
+                                                            ID: g.id,
+                                                            ALUNO_ID: g.studentId,
+                                                            ALUNO_NOME: s.name || 'Desconhecido',
+                                                            UNIDADE: s.unit || '',
+                                                            TURMA: s.schoolClass || '',
+                                                            DISCIPLINA: g.subject,
+                                                            MEDIA_ANUAL: g.mediaAnual,
+                                                            RESULTADO: g.situacaoFinal,
+                                                            RAW_DATA: JSON.stringify(g)
+                                                        };
                                                     });
-                                                }
+                                                    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gradesData), "Notas");
 
-                                                // Restore Attendance
-                                                const wsAtt = wb.Sheets["Frequencia"];
-                                                if (wsAtt) {
-                                                    const attJson = XLSX.utils.sheet_to_json(wsAtt);
-                                                    attJson.forEach((row: any) => {
-                                                        if (row.RAW_DATA) {
-                                                            const aBase = JSON.parse(row.RAW_DATA);
-                                                            batch.set(db.collection('attendance').doc(aBase.id), aBase);
-                                                        }
+                                                    // 2. ATTENDANCE
+                                                    const attData = attRel.docs.map(doc => {
+                                                        const a = doc.data();
+                                                        return {
+                                                            ID: a.id,
+                                                            DATA: a.date,
+                                                            TURMA: a.schoolClass,
+                                                            PROFESSOR: a.teacherName,
+                                                            RAW_DATA: JSON.stringify(a)
+                                                        };
                                                     });
+                                                    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(attData), "Frequencia");
+
+                                                    // 3. MESSAGES & OTHERS
+                                                    const msgData = msgRel.docs.map(doc => ({ ...doc.data(), ID: doc.id }));
+                                                    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(msgData), "Mensagens");
+
+                                                    const repData = reportsRel.docs.map(doc => ({ ...doc.data(), ID: doc.id }));
+                                                    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(repData), "RelatoriosInfantil");
+
+                                                    XLSX.writeFile(wb, `Backup_MeuExpansivo_${new Date().toISOString().split('T')[0]}.xlsx`);
+                                                    alert("Backup gerado com sucesso!");
+                                                } catch (e) {
+                                                    console.error(e);
+                                                    alert("Erro ao gerar backup: " + e);
                                                 }
+                                            }} className="w-full">
+                                                💾 Baixar Backup Completo
+                                            </Button>
+                                        </div>
 
-                                                // Restore Messages
-                                                const wsMsg = wb.Sheets["Mensagens"];
-                                                if (wsMsg) {
-                                                    const msgJson = XLSX.utils.sheet_to_json(wsMsg);
-                                                    msgJson.forEach((row: any) => {
-                                                        if (row.ID) {
-                                                            const { ID, ...rest } = row;
-                                                            batch.set(db.collection('schoolMessages').doc(ID), rest);
-                                                        }
-                                                    });
-                                                }
+                                        {/* 2. RESTORE */}
+                                        <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+                                            <h3 className="text-lg font-bold text-green-900 mb-2">2. Restaurar Dados</h3>
+                                            <p className="text-sm text-gray-600 mb-4">Reimporta dados de um backup anterior. Útil para desfazer erros.</p>
+                                            <input type="file" id="restoreFile" accept=".xlsx" className="hidden" onChange={async (e) => {
+                                                const file = e.target.files?.[0];
+                                                if (!file) return;
+                                                if (!window.confirm("Isso irá mesclar/sobrescrever os dados atuais com os do arquivo. Confirmar?")) return;
 
-                                                await batch.commit();
-                                                alert("Restauração concluída! Recarregue a página.");
-                                                window.location.reload();
-                                            } catch (err) {
-                                                console.error(err);
-                                                alert("Erro na restauração: " + err);
-                                            }
-                                        }} />
-                                        <Button variant="secondary" onClick={() => document.getElementById('restoreFile')?.click()} className="w-full">
-                                            ♻️ Carregar Backup
-                                        </Button>
-                                    </div>
-
-                                    {/* 3. RESET */}
-                                    <div className="bg-white p-6 rounded-lg shadow border border-red-200">
-                                        <h3 className="text-lg font-bold text-red-900 mb-2">3. Novo Ano Letivo</h3>
-                                        <p className="text-sm text-gray-600 mb-4">Apaga NOTAS, FALTAS e MENSAGENS. Mantém alunos e professores.</p>
-                                        <Button variant="danger" onClick={async () => {
-                                            if (!window.confirm("VOCÊ É O ADMINISTRADOR GERAL.\n\nEsta ação apagará TODAS as notas, faltas e mensagens de TODAS as unidades para iniciar um novo ano.\n\nAs contas de Alunos e Professores SERÃO MANTIDAS.\n\nTem certeza absoluta?")) return;
-                                            if (!window.confirm("CONFIRMAÇÃO FINAL: Você já baixou o backup dos dados atuais? Se não, cancele agora.")) return;
-
-                                            try {
-                                                const collections = ['grades', 'attendance', 'schoolMessages', 'earlyChildhoodReports', 'notifications', 'access_logs', 'daily_stats'];
-                                                let deletedCount = 0;
-
-                                                // Batch delete function
-                                                const deleteCollection = async (col: string) => {
-                                                    const snapshot = await db.collection(col).get();
+                                                try {
+                                                    const data = await file.arrayBuffer();
+                                                    const wb = XLSX.read(data);
                                                     const batch = db.batch();
-                                                    snapshot.docs.forEach(doc => batch.delete(doc.ref));
+
+                                                    // Restore Grades
+                                                    const wsGrades = wb.Sheets["Notas"];
+                                                    if (wsGrades) {
+                                                        const gradesJson = XLSX.utils.sheet_to_json(wsGrades);
+                                                        gradesJson.forEach((row: any) => {
+                                                            if (row.RAW_DATA) {
+                                                                const gBase = JSON.parse(row.RAW_DATA);
+                                                                batch.set(db.collection('grades').doc(gBase.id), gBase);
+                                                            }
+                                                        });
+                                                    }
+
+                                                    // Restore Attendance
+                                                    const wsAtt = wb.Sheets["Frequencia"];
+                                                    if (wsAtt) {
+                                                        const attJson = XLSX.utils.sheet_to_json(wsAtt);
+                                                        attJson.forEach((row: any) => {
+                                                            if (row.RAW_DATA) {
+                                                                const aBase = JSON.parse(row.RAW_DATA);
+                                                                batch.set(db.collection('attendance').doc(aBase.id), aBase);
+                                                            }
+                                                        });
+                                                    }
+
+                                                    // Restore Messages
+                                                    const wsMsg = wb.Sheets["Mensagens"];
+                                                    if (wsMsg) {
+                                                        const msgJson = XLSX.utils.sheet_to_json(wsMsg);
+                                                        msgJson.forEach((row: any) => {
+                                                            if (row.ID) {
+                                                                const { ID, ...rest } = row;
+                                                                batch.set(db.collection('schoolMessages').doc(ID), rest);
+                                                            }
+                                                        });
+                                                    }
+
                                                     await batch.commit();
-                                                    deletedCount += snapshot.size;
-                                                };
+                                                    alert("Restauração concluída! Recarregue a página.");
+                                                    window.location.reload();
+                                                } catch (err) {
+                                                    console.error(err);
+                                                    alert("Erro na restauração: " + err);
+                                                }
+                                            }} />
+                                            <Button variant="secondary" onClick={() => document.getElementById('restoreFile')?.click()} className="w-full">
+                                                ♻️ Carregar Backup
+                                            </Button>
+                                        </div>
 
-                                                await Promise.all(collections.map(c => deleteCollection(c)));
-                                                alert(`Ano Letivo Reiniciado! ${deletedCount} registros transacionais foram apagados.`);
-                                                window.location.reload();
+                                        {/* 3. RESET */}
+                                        <div className="bg-white p-6 rounded-lg shadow border border-red-200">
+                                            <h3 className="text-lg font-bold text-red-900 mb-2">3. Novo Ano Letivo</h3>
+                                            <p className="text-sm text-gray-600 mb-4">Apaga NOTAS, FALTAS e MENSAGENS. Mantém alunos e professores.</p>
+                                            <Button variant="danger" onClick={async () => {
+                                                if (!window.confirm("VOCÊ É O ADMINISTRADOR GERAL.\n\nEsta ação apagará TODAS as notas, faltas e mensagens de TODAS as unidades para iniciar um novo ano.\n\nAs contas de Alunos e Professores SERÃO MANTIDAS.\n\nTem certeza absoluta?")) return;
+                                                if (!window.confirm("CONFIRMAÇÃO FINAL: Você já baixou o backup dos dados atuais? Se não, cancele agora.")) return;
 
-                                            } catch (e) {
-                                                alert("Erro ao resetar: " + e);
-                                            }
-                                        }} className="w-full">
-                                            🔥 Iniciar Novo Ano
-                                        </Button>
+                                                try {
+                                                    const collections = ['grades', 'attendance', 'schoolMessages', 'earlyChildhoodReports', 'notifications', 'access_logs', 'daily_stats'];
+                                                    let deletedCount = 0;
+
+                                                    // Batch delete function
+                                                    const deleteCollection = async (col: string) => {
+                                                        const snapshot = await db.collection(col).get();
+                                                        const batch = db.batch();
+                                                        snapshot.docs.forEach(doc => batch.delete(doc.ref));
+                                                        await batch.commit();
+                                                        deletedCount += snapshot.size;
+                                                    };
+
+                                                    await Promise.all(collections.map(c => deleteCollection(c)));
+                                                    alert(`Ano Letivo Reiniciado! ${deletedCount} registros transacionais foram apagados.`);
+                                                    window.location.reload();
+
+                                                } catch (e) {
+                                                    alert("Erro ao resetar: " + e);
+                                                }
+                                            }} className="w-full">
+                                                🔥 Iniciar Novo Ano
+                                            </Button>
+                                        </div>
+
                                     </div>
-
                                 </div>
-                            </div>
-                        </section>
-                    )
-                }
+                            </section>
+                        )
+                    }
 
-            </main>
+                </main>
+            </div>
         </div>
     );
-}
+};
