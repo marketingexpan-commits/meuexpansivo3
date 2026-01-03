@@ -292,6 +292,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                 <div className="flex flex-col justify-center">
                                     <span className="text-[9px] text-blue-950 font-bold uppercase tracking-widest leading-none mb-0.5">Aplicativo</span>
                                     <h1 className="text-lg font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
+                                    <span className="text-[7px] text-blue-950/60 font-semibold uppercase tracking-wider leading-none mt-0.5">Gestão Pedagógica</span>
                                 </div>
                             </div>
                             <p className="text-gray-600 max-w-2xl">

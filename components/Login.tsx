@@ -259,9 +259,10 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
           >
             <SchoolLogo className="!h-full w-auto drop-shadow-sm" />
           </div>
-          <div className="flex flex-col">
+          <div className="flex flex-col justify-center">
+            <span className="text-[9px] text-blue-950 font-bold uppercase tracking-widest leading-none mb-1">Aplicativo</span>
             <h1 className="text-xl md:text-2xl font-extrabold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
-            <p className="text-blue-900/70 text-[9px] md:text-[10px] font-bold uppercase tracking-widest mt-0.5 md:mt-1">Portal da Família</p>
+            <span className="text-[9px] text-blue-950/60 font-semibold uppercase tracking-widest leading-none mt-1">Portal da Família</span>
           </div>
         </div>
 
