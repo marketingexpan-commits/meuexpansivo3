@@ -3,13 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/Card';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
 import { Select } from '../components/Select';
-import { LockKeyhole } from 'lucide-react';
+import { LockKeyhole, Eye, EyeOff } from 'lucide-react';
 
 const SCHOOL_LOGO_URL = 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png';
 
 export function Login() {
     const [loading, setLoading] = useState(false);
     const [selectedUnit, setSelectedUnit] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
     // Unidades Mockadas (Pode vir de constants depois)
     const units = [
@@ -58,6 +59,7 @@ export function Login() {
                         src={SCHOOL_LOGO_URL}
                         alt="Logo Colégio Expansivo"
                         className="h-14 object-contain"
+                        style={{ filter: 'brightness(0) saturate(100%) invert(9%) sepia(62%) saturate(4383%) hue-rotate(227deg) brightness(60%) contrast(100%)' }}
                     />
                     <div className="flex flex-col">
                         <h1 className="text-2xl font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
@@ -85,15 +87,28 @@ export function Login() {
                                 />
                                 <Input
                                     label="Senha"
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     placeholder="••••••••"
+                                    endIcon={
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="focus:outline-none hover:text-blue-600 transition-colors"
+                                        >
+                                            {showPassword ? (
+                                                <EyeOff className="w-5 h-5" />
+                                            ) : (
+                                                <Eye className="w-5 h-5" />
+                                            )}
+                                        </button>
+                                    }
                                 />
                             </div>
 
                             <div className="pt-2">
                                 <Button
                                     type="submit"
-                                    className="w-full"
+                                    className="w-full bg-blue-950 hover:bg-slate-900"
                                     size="lg"
                                     isLoading={loading}
                                     variant="primary"
@@ -117,9 +132,20 @@ export function Login() {
                     </CardContent>
                 </Card>
 
-                <div className="mt-8 text-center text-xs text-slate-400">
-                    &copy; 2026 Expansivo Rede de Ensino. Todos os direitos reservados.
-                    <br />Sistema Meu Expansivo - Gestão Escolar v1.0
+                <div className="mt-4 text-center border-t border-slate-200/50 pt-4">
+                    <p className="text-xs text-slate-500 font-medium mb-1">Sistema Meu Expansivo - Gestão Escolar v1.0</p>
+                    <p className="text-[10px] text-slate-400">© 2026 Expansivo Rede de Ensino. Todos os direitos reservados.</p>
+                    <p className="text-[10px] text-slate-400 mt-1">
+                        <span>Desenvolvido por: </span>
+                        <a
+                            href="https://wa.me/5584988739180"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-blue-600 hover:underline transition-colors font-semibold"
+                        >
+                            HC Apps | 84988739180
+                        </a>
+                    </p>
                 </div>
             </div>
         </div>

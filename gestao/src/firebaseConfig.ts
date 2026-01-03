@@ -2,13 +2,14 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
+// Hardcoded keys from root project to ensure connection works immediately
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+  apiKey: "AIzaSyAe5Rb4dqi80cYUxj69EFr4AGElCI9Rb9o",
+  authDomain: "meu-expansivo-app.firebaseapp.com",
+  projectId: "meu-expansivo-app",
+  storageBucket: "meu-expansivo-app.firebasestorage.app",
+  messagingSenderId: "688981571362",
+  appId: "1:688981571362:web:179c1dcae4b01f9f9f177b"
 };
 
 const app = initializeApp(firebaseConfig);

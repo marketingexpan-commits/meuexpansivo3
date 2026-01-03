@@ -93,6 +93,7 @@ export function Sidebar() {
                                 src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"
                                 alt="Meu Expansivo"
                                 className="h-8 object-contain"
+                                style={{ filter: 'brightness(0) saturate(100%) invert(9%) sepia(62%) saturate(4383%) hue-rotate(227deg) brightness(60%) contrast(100%)' }}
                             />
                             <div className="flex flex-col">
                                 <span className="font-bold text-blue-950 text-sm leading-none tracking-tight">Meu Expansivo</span>

@@ -6,6 +6,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
     label?: string;
     error?: string;
     helperText?: string;
+    endIcon?: React.ReactNode;
 }
 
 export function Input({ label, error, helperText, className, id, ...props }: InputProps) {
@@ -18,17 +19,25 @@ export function Input({ label, error, helperText, className, id, ...props }: Inp
                     {label}
                 </label>
             )}
-            <input
-                id={inputId}
-                className={twMerge(
-                    clsx(
-                        "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200",
-                        error && "border-red-500 focus:ring-red-500",
-                        className
-                    )
+            <div className="relative">
+                <input
+                    id={inputId}
+                    className={twMerge(
+                        clsx(
+                            "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200",
+                            error && "border-red-500 focus:ring-red-500",
+                            props.endIcon ? "pr-10" : "",
+                            className
+                        )
+                    )}
+                    {...props}
+                />
+                {props.endIcon && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
+                        {props.endIcon}
+                    </div>
                 )}
-                {...props}
-            />
+            </div>
             {error && <span className="text-xs text-red-500">{error}</span>}
             {helperText && !error && <span className="text-[10px] text-gray-400">{helperText}</span>}
         </div>

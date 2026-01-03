@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import firebase from 'firebase/compat/app';
 import { db } from '../firebaseConfig';
 import { Button } from './Button';
@@ -130,7 +130,36 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
       alert("🔐 Modo Administrativo/Coordenação Desbloqueado!");
     }
   };
-  // --------------------
+
+  // --- REF PARA MEDIR POSIÇÃO DO LOGO ---
+  const logoRef = useRef<HTMLDivElement>(null);
+  const [logoPosition, setLogoPosition] = useState({ top: '50%', left: '50%' });
+
+  // Calcular posição exata do logo no header
+  useLayoutEffect(() => {
+    const calculatePosition = () => {
+      const rect = logoRef.current?.getBoundingClientRect();
+      if (rect) {
+        // Calcular o centro do elemento alvo
+        const centerY = rect.top + rect.height / 2;
+        const centerX = rect.left + rect.width / 2;
+        // Atualizar estado com posição exata
+        setLogoPosition({ top: `${centerY}px`, left: `${centerX}px` });
+      }
+    };
+
+    // Calcular inicialmente e em resize
+    // Pequeno delay para garantir que o layout estabilizou e elementos estão visíveis
+    const timer = setTimeout(() => {
+      calculatePosition();
+    }, 100);
+
+    window.addEventListener('resize', calculatePosition);
+    return () => {
+      window.removeEventListener('resize', calculatePosition);
+      clearTimeout(timer);
+    };
+  }, []);
 
   const MURAL_ITEMS = [
     { id: 3, type: 'flyer', title: 'Comunicado de Férias', url: 'https://i.postimg.cc/xTZgfGfv/Férias_layout_App_Meu_Ex_Prancheta_1.png' },
@@ -189,7 +218,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
     const val = e.target.value;
 
     if (activeTab === 'student') {
-      if (/^\d{0,5}$/.test(val)) {
+      if (/^\d{0, 5}$/.test(val)) {
         setIdentifier(val);
       }
     } else if (activeTab === 'teacher') {
@@ -219,323 +248,328 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
   return (
     <>
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 p-0 md:p-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-0 md:p-4">
 
-        <div className="max-w-md w-full bg-white md:rounded-2xl shadow-xl overflow-hidden relative min-h-screen md:min-h-[500px]">
+        {/* --- HEADER EXTERNO (ESTILO GESTÃO) --- */}
+        <div className="flex items-center justify-center mb-0 md:mb-6 gap-3 md:gap-4 animate-fade-in-down py-6 md:py-0 scale-90 md:scale-100">
+          <div
+            ref={logoRef}
+            onClick={handleSecretClick}
+            className={`cursor-pointer active:scale-95 transition-transform h-12 md:h-16 w-auto mt-2 ${showStaticLogo ? 'opacity-100' : 'opacity-0'} transition-opacity duration-0`}
+          >
+            <SchoolLogo className="!h-full w-auto drop-shadow-sm" />
+          </div>
+          <div className="flex flex-col">
+            <h1 className="text-xl md:text-2xl font-extrabold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
+            <p className="text-blue-900/70 text-[9px] md:text-[10px] font-bold uppercase tracking-widest mt-0.5 md:mt-1">Portal da Família</p>
+          </div>
+        </div>
 
-          {/* --- SPLASH SCREEN (ABSOLUTE INSIDE CARD) --- */}
+        {/* --- CARD CONTAINER (Wrapper) --- */}
+        <div className="max-w-md w-full relative min-h-screen md:min-h-0">
+
+          {/* --- SPLASH SCREEN (OVERLAY ON CARD) --- */}
           {showSplash && (
-            <div className="fixed md:absolute inset-0 z-[60] pointer-events-none md:rounded-2xl overflow-hidden">
+            <>
+              <div className="absolute left-0 right-0 bottom-0 top-[-6rem] z-[60] pointer-events-none">
 
-              {/* CAMADA DE FUNDO BRANCA - Desaparece revelando o login atrás */}
-              <div
-                className={`absolute inset-0 bg-white transition-opacity duration-1000 ${splashFading ? 'opacity-0' : 'opacity-100'}`}
-              >
-                {/* CAMADA DE FUNDO (GRADIENTE AZUL) - Desaparece quando anima a logo */}
-                <div
-                  className={`absolute inset-0 bg-gradient-to-br from-blue-950 to-slate-900 transition-opacity duration-[1500ms] ${animateLogo ? 'opacity-0' : 'opacity-100'}`}
-                />
-              </div>
-
-              {/* LOGO QUE VIAJA - Sai do centro e vai para a posição do header */}
-              <div
-                className={`absolute z-[70] transition-all duration-1000 ease-in-out perspective-[1000px]
-                  ${splashFading
-                    ? 'top-5 left-5 sm:top-8 sm:left-8 h-12 sm:h-16 w-32 sm:w-48 -translate-x-0 -translate-y-0 origin-top-left'
-                    : 'top-1/2 left-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2'
-                  }`}
-              >
-                {/* 3D Flip Container */}
-                <div
-                  className={`relative w-full h-full transition-transform duration-[1500ms] [transform-style:preserve-3d] ${animateLogo ? '[transform:rotateY(180deg)]' : ''}`}
-                >
-                  {/* Logo Branca (FRENTE) */}
-                  <div className="absolute inset-0 [backface-visibility:hidden]">
-                    <img
-                      src={SCHOOL_LOGO_WHITE_URL}
-                      alt="Logo Branca"
-                      className="w-full h-full object-contain object-left"
-                    />
-                  </div>
-
-                  {/* Logo Laranja (VERSO) */}
-                  <div className="absolute inset-0 [transform:rotateY(180deg)] [backface-visibility:hidden]">
-                    <img
-                      src={SCHOOL_LOGO_URL}
-                      alt="Logo Oficial"
-                      className="w-full h-full object-contain object-left"
+                {/* CAMADAS DE FUNDO (Recortadas no formato do Card) */}
+                <div className="absolute inset-0 md:rounded-2xl overflow-hidden shadow-xl">
+                  {/* CAMADA DE FUNDO BRANCA */}
+                  <div
+                    className={`absolute inset-0 bg-white transition-opacity duration-1000 ${splashFading ? 'opacity-0' : 'opacity-100'}`}
+                  >
+                    {/* CAMADA DE FUNDO (GRADIENTE AZUL) */}
+                    <div
+                      className={`absolute inset-0 bg-gradient-to-br from-blue-950 to-slate-900 transition-opacity duration-[1500ms] ${animateLogo ? 'opacity-0' : 'opacity-100'}`}
                     />
                   </div>
                 </div>
               </div>
-            </div>
+
+              {/* LOGO QUE VIAJA (Posição Fixa Global) */}
+              <div className="fixed inset-0 z-[70] pointer-events-none">
+
+                {/* LOGO QUE VIAJA (Livre para sair do Card) */}
+                {/* LOGO QUE VIAJA (Posição Dinâmica) */}
+                <div
+                  className={`absolute z-[70] transition-all duration-1000 ease-in-out perspective-[1000px] -translate-x-1/2 -translate-y-1/2
+                   ${splashFading ? 'h-12 md:h-16 w-24 md:w-32 scale-90 md:scale-100' : 'h-32 w-32 scale-100'}
+                `}
+                  style={{
+                    top: splashFading ? logoPosition.top : '50%',
+                    left: splashFading ? logoPosition.left : '50%',
+                  }}
+                >
+                  {/* 3D Flip Container */}
+                  <div
+                    className={`relative w-full h-full transition-transform duration-[1500ms] [transform-style:preserve-3d] ${animateLogo ? '[transform:rotateY(180deg)]' : ''}`}
+                  >
+                    {/* Logo Branca (FRENTE) */}
+                    <div className="absolute inset-0 [backface-visibility:hidden]">
+                      <img
+                        src={SCHOOL_LOGO_WHITE_URL}
+                        alt="Logo Branca"
+                        className="w-full h-full object-contain object-center"
+                      />
+                    </div>
+
+                    {/* Logo Laranja (VERSO) */}
+                    <div className="absolute inset-0 [transform:rotateY(180deg)] [backface-visibility:hidden]">
+                      <img
+                        src={SCHOOL_LOGO_URL}
+                        alt="Logo Oficial"
+                        className="w-full h-full object-contain object-center"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
 
-          {/* CABEÇALHO (COM GRADIENTE AZUL MARINHO - Igual ao Mural de Avisos) */}
-          <div
-            className="bg-gradient-to-br from-blue-950 to-slate-900 px-5 pt-3 pb-6 sm:p-8 cursor-pointer select-none shadow-md overflow-hidden relative"
-            onClick={handleSecretClick}
-          >
-            {/* LOGO ESTÁTICO - Posicionado ABSOLUTAMENTE para coincidir exatamente com a animação */}
-            <div className={`absolute top-5 left-5 sm:top-8 sm:left-8 h-12 sm:h-16 w-32 sm:w-48 transition-opacity duration-0 ${showStaticLogo ? 'opacity-100' : 'opacity-0'}`}>
-              <SchoolLogo />
-            </div>
+          {/* --- CONTEÚDO DO CARD (Clipped) --- */}
+          <div className="bg-white md:rounded-2xl shadow-xl overflow-hidden relative">
 
-            <div className="flex w-full justify-end items-center">
-              <div className="text-right">
-                <p className="text-white/80 text-xs sm:text-sm font-medium mb-1">Olá, bem-vindo(a) ao</p>
-                <h2 className="text-xl sm:text-3xl font-extrabold text-white tracking-tight">Meu Expansivo</h2>
-                <p className="text-white/60 mt-1 text-[10px] sm:text-xs uppercase tracking-widest font-semibold">PORTAL DA FAMÍLIA</p>
-              </div>
-            </div>
-          </div>
-
-          {/* --- MENU DE ABAS --- */}
-          {/* justify-between ou w-full com flex-1 em cada item para garantir distribuição igualitária */}
-          <div className="flex w-full border-b border-gray-200 bg-gray-50 rounded-t-2xl -mt-6 relative z-10 overflow-hidden box-border">
-            <button
-              className={`flex-1 min-w-0 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 flex items-center justify-center ${activeTab === 'student' ? 'text-blue-900 border-blue-900 bg-white' : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-100'
-                }`}
-              style={{ WebkitTapHighlightColor: 'transparent' }}
-              onClick={() => switchTab('student')}
-            >
-              <span className="truncate px-1">Família / Aluno</span>
-            </button>
-            <button
-              className={`flex-1 min-w-0 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 flex items-center justify-center ${activeTab === 'teacher' ? 'text-blue-900 border-blue-900 bg-white' : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-100'
-                }`}
-              style={{ WebkitTapHighlightColor: 'transparent' }}
-              onClick={() => switchTab('teacher')}
-            >
-              <span className="truncate px-1">Professores</span>
-            </button>
-
-            {/* ABAS OCULTAS (ADMIN / COORDENADOR) */}
-            {showHiddenTabs && (
-              <>
-                <button
-                  className={`flex-1 min-w-0 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 flex items-center justify-center ${activeTab === 'coordinator' ? 'text-purple-800 border-purple-800 bg-purple-50' : 'text-gray-500 border-transparent hover:text-purple-600 hover:bg-purple-50'
-                    }`}
-                  style={{ WebkitTapHighlightColor: 'transparent' }}
-                  onClick={() => switchTab('coordinator')}
-                >
-                  <span className="truncate px-1">Coord.</span>
-                </button>
-                <button
-                  className={`flex-1 min-w-0 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 flex items-center justify-center ${activeTab === 'admin' ? 'text-blue-900 border-blue-900 bg-white' : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-100'
-                    }`}
-                  style={{ WebkitTapHighlightColor: 'transparent' }}
-                  onClick={() => switchTab('admin')}
-                >
-                  <span className="truncate px-1">Admin</span>
-                </button>
-              </>
-            )}
-          </div>
-
-          {/* --- CONTEÚDO --- */}
-          <div className="p-8 pb-6">
-
-            <form onSubmit={handleSubmit} className="space-y-5 animate-fade-in-up">
-
-              {activeTab === 'admin' && (
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Selecione a Unidade</label>
-                  <select
-                    value={selectedAdminUnit}
-                    onChange={handleAdminUnitChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-700 focus:outline-none focus:border-blue-950 bg-white transition-colors"
-                    required
-                  >
-                    <option value="">Selecione...</option>
-                    <option value="GERAL" className="font-bold">⭐ GERENCIADOR ADM</option>
-                    {SCHOOL_UNITS_LIST.map(unit => (
-                      <option key={unit} value={unit}>{unit}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {activeTab === 'teacher' && (
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Selecione a Unidade</label>
-                  <select
-                    value={selectedTeacherUnit}
-                    onChange={(e) => setSelectedTeacherUnit(e.target.value as SchoolUnit)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-700 focus:outline-none focus:border-blue-950 bg-white transition-colors"
-                    required
-                  >
-                    {SCHOOL_UNITS_LIST.map(unit => (
-                      <option key={unit} value={unit}>{unit}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              {activeTab === 'coordinator' && (
-                <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-1">Selecione a Unidade</label>
-                  <select
-                    value={selectedCoordinatorUnit}
-                    onChange={(e) => setSelectedCoordinatorUnit(e.target.value as SchoolUnit)}
-                    className="w-full px-4 py-3 border border-purple-300 rounded-lg text-gray-700 focus:outline-none focus:border-purple-900 bg-purple-50 transition-colors"
-                    required
-                  >
-                    {SCHOOL_UNITS_LIST.map(unit => (
-                      <option key={unit} value={unit}>{unit}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">
-                  {activeTab === 'student' ? 'Código de Matrícula' :
-                    activeTab === 'teacher' ? 'CPF do Professor' :
-                      activeTab === 'coordinator' ? 'Nome do Coordenador' : 'Usuário'}
-                </label>
-                <input
-                  type="text"
-                  inputMode={activeTab === 'student' || activeTab === 'teacher' ? 'numeric' : 'text'}
-                  maxLength={activeTab === 'student' ? 5 : activeTab === 'teacher' ? 14 : undefined}
-                  value={identifier}
-                  onChange={handleIdentifierChange}
-                  placeholder={
-                    activeTab === 'student' ? 'Ex.: 12345 (Consulte a Secretaria)' :
-                      activeTab === 'teacher' ? '000.000.000-00' :
-                        activeTab === 'coordinator' ? 'Ex: Maria Silva' :
-                          'Usuário'
-                  }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-700 placeholder-gray-400 focus:outline-none focus:border-blue-950 transition-colors"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Senha</label>
-                <div className="relative">
-                  <input
-                    type={isPasswordVisible ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className={`w-full px-4 py-3 border rounded-lg text-gray-700 placeholder-gray-400 focus:outline-none transition-colors pr-10 ${activeTab === 'coordinator' ? 'border-purple-300 focus:border-purple-900' : 'border-gray-300 focus:border-blue-950'
-                      }`}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setIsPasswordVisible(!isPasswordVisible)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
-                  >
-                    {isPasswordVisible ? (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
-                    ) : (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Checkbox "Lembrar meu código" (Exclusivo Aluno) */}
-              {activeTab === 'student' && (
-                <div className="flex items-center">
-                  <input
-                    id="remember-me"
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded cursor-pointer"
-                  />
-                  <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700 cursor-pointer select-none">
-                    Lembrar meu código
-                  </label>
-                </div>
-              )}
-
-              {error && (
-                <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg border border-red-100 flex items-center">
-                  <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                  {error}
-                </div>
-              )}
-
-              {/* Botão Acessar Portal */}
+            {/* --- MENU DE ABAS --- */}
+            {/* justify-between ou w-full com flex-1 em cada item para garantir distribuição igualitária */}
+            <div className="flex w-full border-b border-gray-200 bg-gray-50 -mt-0 relative z-10 overflow-hidden box-border">
               <button
-                type="submit"
-                className={`w-full py-3.5 text-lg font-bold text-white rounded-lg transition-all transform active:scale-95 shadow-lg ${activeTab === 'coordinator' ? 'bg-purple-700 hover:bg-purple-800' : 'bg-orange-600 hover:bg-orange-700'
+                className={`flex-1 min-w-0 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 flex items-center justify-center ${activeTab === 'student' ? 'text-blue-900 border-blue-900 bg-white' : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-100'
                   }`}
+                style={{ WebkitTapHighlightColor: 'transparent' }}
+                onClick={() => switchTab('student')}
               >
-                Acessar
+                <span className="truncate px-1">Família / Aluno</span>
               </button>
-
-            </form>
-
-            {/* SEPARADOR SUTIL */}
-            <div className="border-t border-gray-100 my-6"></div>
-
-            {/* --- BOTÕES DO RODAPÉ (RESTAURADOS) --- */}
-            <div className="grid grid-cols-2 gap-4">
-              {/* BOTÃO FALE CONOSCO (ESTILO CINZA CLARO) */}
               <button
-                type="button"
-                onClick={() => setIsContactOpen(true)}
-                className="py-3 px-4 bg-gray-100 hover:bg-gray-200 text-blue-950 rounded-xl font-bold transition-all flex items-center justify-center gap-2 text-sm group active:scale-95 shadow hover:shadow-lg"
+                className={`flex-1 min-w-0 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 flex items-center justify-center ${activeTab === 'teacher' ? 'text-blue-900 border-blue-900 bg-white' : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-100'
+                  }`}
+                style={{ WebkitTapHighlightColor: 'transparent' }}
+                onClick={() => switchTab('teacher')}
               >
-                <span className="bg-gray-200 p-1.5 rounded-lg transition-colors group-active:bg-gray-400">
-                  <svg className="w-5 h-5 text-gray-600 transition-transform duration-300 group-active:rotate-12 group-hover:rotate-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
-                </span>
-                <span>Fale Conosco</span>
+                <span className="truncate px-1">Professores</span>
               </button>
 
-              {/* BOTÃO INSTAGRAM (AGORA ESTILO HARMÔNICO AO FALE CONOSCO) */}
-              <a
-                href="https://www.instagram.com/redeexpansivo"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="py-3 px-4 bg-gray-100 hover:bg-gray-200 text-blue-950 rounded-xl font-bold transition-all flex items-center justify-center gap-2 text-sm group active:scale-95 shadow hover:shadow-lg"
-              >
-                <span className="bg-gray-200 p-1.5 rounded-lg transition-colors group-active:bg-gray-400">
-                  <svg className="w-5 h-5 text-gray-600 transition-transform duration-300 group-active:rotate-12 group-hover:rotate-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"></path></svg>
-                </span>
-                <span>Instagram</span>
-              </a>
-
-              {/* BOTÃO MURAL DIGITAL (AGORA ABAIXO E FULL WIDTH) */}
-              <button
-                type="button"
-                onClick={() => setIsMuralOpen(true)}
-                className="col-span-2 py-3 px-4 text-white rounded-xl font-bold transition-all transform active:scale-95 flex items-center justify-center gap-2 text-sm bg-gradient-to-r from-blue-950 to-slate-900 hover:from-blue-900 hover:to-slate-800 shadow-md hover:shadow-xl group"
-              >
-                <span className="bg-white/20 p-1.5 rounded-lg transition-colors group-active:bg-white/30">
-                  <svg className="w-5 h-5 opacity-90 transition-transform duration-300 group-active:rotate-12 group-hover:rotate-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                </span>
-                <span>Mural Digital</span>
-              </button>
+              {/* ABAS OCULTAS (ADMIN / COORDENADOR) */}
+              {showHiddenTabs && (
+                <>
+                  <button
+                    className={`flex-1 min-w-0 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 flex items-center justify-center ${activeTab === 'coordinator' ? 'text-purple-800 border-purple-800 bg-purple-50' : 'text-gray-500 border-transparent hover:text-purple-600 hover:bg-purple-50'
+                      }`}
+                    style={{ WebkitTapHighlightColor: 'transparent' }}
+                    onClick={() => switchTab('coordinator')}
+                  >
+                    <span className="truncate px-1">Coord.</span>
+                  </button>
+                  <button
+                    className={`flex-1 min-w-0 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 flex items-center justify-center ${activeTab === 'admin' ? 'text-blue-900 border-blue-900 bg-white' : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-100'
+                      }`}
+                    style={{ WebkitTapHighlightColor: 'transparent' }}
+                    onClick={() => switchTab('admin')}
+                  >
+                    <span className="truncate px-1">Admin</span>
+                  </button>
+                </>
+              )}
             </div>
 
-            {/* CRÉDITOS DO DESENVOLVEDOR (RESTAURADOS) */}
-            <div className="mt-8 text-center border-t border-gray-100 pt-4">
-              <p className="text-[10px] text-gray-500">© 2025 Expansivo Rede de Ensino. Todos os direitos reservados.</p>
-              <p className="text-[10px] text-gray-500 mt-1">
-                <span>Desenvolvido por: </span>
+            {/* --- CONTEÚDO --- */}
+            <div className="p-8 pb-6">
+
+              <form onSubmit={handleSubmit} className="space-y-5 animate-fade-in-up">
+
+                {activeTab === 'admin' && (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Selecione a Unidade</label>
+                    <select
+                      value={selectedAdminUnit}
+                      onChange={handleAdminUnitChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-700 focus:outline-none focus:border-blue-950 bg-white transition-colors"
+                      required
+                    >
+                      <option value="">Selecione...</option>
+                      <option value="GERAL" className="font-bold">⭐ GERENCIADOR ADM</option>
+                      {SCHOOL_UNITS_LIST.map(unit => (
+                        <option key={unit} value={unit}>{unit}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {activeTab === 'teacher' && (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Selecione a Unidade</label>
+                    <select
+                      value={selectedTeacherUnit}
+                      onChange={(e) => setSelectedTeacherUnit(e.target.value as SchoolUnit)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-700 focus:outline-none focus:border-blue-950 bg-white transition-colors"
+                      required
+                    >
+                      {SCHOOL_UNITS_LIST.map(unit => (
+                        <option key={unit} value={unit}>{unit}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {activeTab === 'coordinator' && (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-1">Selecione a Unidade</label>
+                    <select
+                      value={selectedCoordinatorUnit}
+                      onChange={(e) => setSelectedCoordinatorUnit(e.target.value as SchoolUnit)}
+                      className="w-full px-4 py-3 border border-purple-300 rounded-lg text-gray-700 focus:outline-none focus:border-purple-900 bg-purple-50 transition-colors"
+                      required
+                    >
+                      {SCHOOL_UNITS_LIST.map(unit => (
+                        <option key={unit} value={unit}>{unit}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    {activeTab === 'student' ? 'Código de Matrícula' :
+                      activeTab === 'teacher' ? 'CPF do Professor' :
+                        activeTab === 'coordinator' ? 'Nome do Coordenador' : 'Usuário'}
+                  </label>
+                  <input
+                    type="text"
+                    inputMode={activeTab === 'student' || activeTab === 'teacher' ? 'numeric' : 'text'}
+                    maxLength={activeTab === 'student' ? 5 : activeTab === 'teacher' ? 14 : undefined}
+                    value={identifier}
+                    onChange={handleIdentifierChange}
+                    placeholder={
+                      activeTab === 'student' ? 'Ex.: 12345 (Consulte a Secretaria)' :
+                        activeTab === 'teacher' ? '000.000.000-00' :
+                          activeTab === 'coordinator' ? 'Ex: Maria Silva' :
+                            'Usuário'
+                    }
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-700 placeholder-gray-400 focus:outline-none focus:border-blue-950 transition-colors"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Senha</label>
+                  <div className="relative">
+                    <input
+                      type={isPasswordVisible ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className={`w-full px-4 py-3 border rounded-lg text-gray-700 placeholder-gray-400 focus:outline-none transition-colors pr-10 ${activeTab === 'coordinator' ? 'border-purple-300 focus:border-purple-900' : 'border-gray-300 focus:border-blue-950'
+                        }`}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setIsPasswordVisible(!isPasswordVisible)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                    >
+                      {isPasswordVisible ? (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Checkbox "Lembrar meu código" (Exclusivo Aluno) */}
+                {activeTab === 'student' && (
+                  <div className="flex items-center">
+                    <input
+                      id="remember-me"
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded cursor-pointer"
+                    />
+                    <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700 cursor-pointer select-none">
+                      Lembrar meu código
+                    </label>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg border border-red-100 flex items-center">
+                    <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    {error}
+                  </div>
+                )}
+
+                {/* Botão Acessar Portal */}
+                <button
+                  type="submit"
+                  className={`w-full py-3.5 text-lg font-bold text-white rounded-lg transition-all transform active:scale-95 shadow-lg ${activeTab === 'coordinator' ? 'bg-purple-700 hover:bg-purple-800' : 'bg-orange-600 hover:bg-orange-700'
+                    }`}
+                >
+                  Acessar
+                </button>
+
+              </form>
+
+              {/* SEPARADOR SUTIL */}
+              <div className="border-t border-gray-100 my-6"></div>
+
+              {/* --- BOTÕES DO RODAPÉ (RESTAURADOS) --- */}
+              <div className="grid grid-cols-2 gap-4 pb-4">
+                {/* BOTÃO FALE CONOSCO (ESTILO CINZA CLARO) */}
+                <button
+                  type="button"
+                  onClick={() => setIsContactOpen(true)}
+                  className="py-3 px-4 bg-gray-100 hover:bg-gray-200 text-blue-950 rounded-xl font-bold transition-all flex items-center justify-center gap-2 text-sm group active:scale-95 shadow hover:shadow-lg"
+                >
+                  <span className="bg-gray-200 p-1.5 rounded-lg transition-colors group-active:bg-gray-400">
+                    <svg className="w-5 h-5 text-gray-600 transition-transform duration-300 group-active:rotate-12 group-hover:rotate-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
+                  </span>
+                  <span>Fale Conosco</span>
+                </button>
+
+                {/* BOTÃO INSTAGRAM (AGORA ESTILO HARMÔNICO AO FALE CONOSCO) */}
                 <a
-                  href="https://wa.me/5584988739180"
+                  href="https://www.instagram.com/redeexpansivo"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-gray-600 hover:underline transition-colors font-medium"
+                  className="py-3 px-4 bg-gray-100 hover:bg-gray-200 text-blue-950 rounded-xl font-bold transition-all flex items-center justify-center gap-2 text-sm group active:scale-95 shadow hover:shadow-lg"
                 >
-                  HC Apps | 84988739180
+                  <span className="bg-gray-200 p-1.5 rounded-lg transition-colors group-active:bg-gray-400">
+                    <svg className="w-5 h-5 text-gray-600 transition-transform duration-300 group-active:rotate-12 group-hover:rotate-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"></path></svg>
+                  </span>
+                  <span>Instagram</span>
                 </a>
-              </p>
-            </div>
 
-            {/* --- PAINEL DE CREDENCIAIS (SÓ SE ALLOW_MOCK_LOGIN = TRUE) --- */}
-            {ALLOW_MOCK_LOGIN && (
-              <div className="mt-4 p-4 bg-yellow-50 border border-yellow-100 rounded-lg">
-                <h4 className="font-bold text-yellow-800 text-xs mb-2">MODO DE TESTE ATIVO</h4>
-                <button onClick={onResetSystem} className="text-[10px] text-red-600 underline">Resetar Sistema</button>
+                {/* BOTÃO MURAL DIGITAL (AGORA ABAIXO E FULL WIDTH) */}
+                <button
+                  type="button"
+                  onClick={() => setIsMuralOpen(true)}
+                  className="col-span-2 py-3 px-4 text-white rounded-xl font-bold transition-all transform active:scale-95 flex items-center justify-center gap-2 text-sm bg-gradient-to-r from-blue-950 to-slate-900 hover:from-blue-900 hover:to-slate-800 shadow-md hover:shadow-xl group mt-1"
+                >
+                  <span className="bg-white/20 p-1.5 rounded-lg transition-colors group-active:bg-white/30">
+                    <svg className="w-5 h-5 opacity-90 transition-transform duration-300 group-active:rotate-12 group-hover:rotate-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                  </span>
+                  <span>Mural Digital</span>
+                </button>
               </div>
-            )}
+            </div>
+          </div>
+
+          {/* CRÉDITOS DO DESENVOLVEDOR (FORA DO CARD) */}
+          <div className="mt-4 text-center">
+            <p className="text-[10px] text-gray-500">© 2025 Expansivo Rede de Ensino. Todos os direitos reservados.</p>
+            <p className="text-[10px] text-gray-500 mt-1">
+              <span>Desenvolvido por: </span>
+              <a
+                href="https://wa.me/5584988739180"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-gray-600 hover:underline transition-colors font-medium"
+              >
+                HC Apps | 84988739180
+              </a>
+            </p>
           </div>
         </div>
       </div>
