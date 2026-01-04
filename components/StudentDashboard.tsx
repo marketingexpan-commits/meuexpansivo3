@@ -11,6 +11,7 @@ import { FinanceiroScreen } from './FinanceiroScreen';
 import { useNavigate } from 'react-router-dom';
 import { Skeleton, TableSkeleton, GridSkeleton } from './Skeleton';
 import { ErrorState } from './ErrorState';
+import { useFinancialSettings } from '../hooks/useFinancialSettings';
 import {
     Bot,
     CalendarDays,
@@ -150,7 +151,21 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             });
     }, [grades, student.id]);
 
-    const currentUnitInfo = UNITS_DATA[student.unit] || DEFAULT_UNIT_DATA;
+    const { settings: contactSettings } = useFinancialSettings(student.unit);
+
+    const currentUnitInfo = useMemo(() => {
+        const staticData = UNITS_DATA[student.unit] || DEFAULT_UNIT_DATA;
+        if (contactSettings) {
+            return {
+                ...staticData,
+                phone: contactSettings.whatsapp && contactSettings.whatsapp.replace(/\D/g, '').length >= 10
+                    ? contactSettings.whatsapp
+                    : staticData.phone,
+                email: contactSettings.email || staticData.email,
+            };
+        }
+        return staticData;
+    }, [student.unit, contactSettings]);
 
     // Verifica se o aluno é da educação infantil
     const isEarlyChildhood = useMemo(() => {
@@ -659,7 +674,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         </div>
                     )}
 
-                    {currentView === 'financeiro' && <FinanceiroScreen student={student} mensalidades={mensalidades} eventos={eventos} unitContacts={unitContacts} />}
+                    {currentView === 'financeiro' && <FinanceiroScreen student={student} mensalidades={mensalidades} eventos={eventos} unitContacts={unitContacts} contactSettings={contactSettings} />}
 
                     {currentView === 'attendance' && (
                         <div className="mb-8 print:hidden">

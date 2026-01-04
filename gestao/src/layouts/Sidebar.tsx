@@ -12,7 +12,8 @@ import {
     ChevronRight,
     Database,
     Briefcase,
-    Layers
+    Layers,
+    UserCog
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -63,6 +64,8 @@ export function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
     const [showDeclarationModal, setShowDeclarationModal] = useState(false);
     const [isMatriculasOpen, setIsMatriculasOpen] = useState(true);
+    const [isArquivosOpen, setIsArquivosOpen] = useState(true);
+    const [isFinanceiroOpen, setIsFinanceiroOpen] = useState(true);
 
     const handleLogout = () => {
         // Clear auth data
@@ -121,7 +124,7 @@ export function Sidebar() {
                         <SidebarItem
                             icon={Users}
                             label="Matrículas"
-                            path="/matriculas"
+                            // path="/matriculas" // Removed path to allow toggle behavior
                             collapsed={collapsed}
                         />
                         {!collapsed && (
@@ -139,6 +142,40 @@ export function Sidebar() {
 
                     {isMatriculasOpen && !collapsed && (
                         <div className="ml-4 pl-4 border-l border-slate-100 space-y-0.5 animate-in slide-in-from-top-2 duration-200">
+                            <SidebarItem
+                                icon={FileText}
+                                label="Gestão de Matrículas"
+                                path="/matriculas"
+                                collapsed={collapsed}
+                            />
+                            <SidebarItem
+                                icon={Users}
+                                label="Nova Matrícula"
+                                path="/matriculas?action=new"
+                                collapsed={collapsed}
+                            />
+                        </div>
+                    )}
+                </div>
+
+                <div className="space-y-0.5">
+                    <div className="relative group">
+                        <SidebarItem icon={FileText} label="Arquivos" collapsed={collapsed} />
+                        {!collapsed && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsArquivosOpen(!isArquivosOpen);
+                                }}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded text-slate-400"
+                            >
+                                <ChevronRight className={clsx("w-3.5 h-3.5 transition-transform", isArquivosOpen && "rotate-90")} />
+                            </button>
+                        )}
+                    </div>
+
+                    {isArquivosOpen && !collapsed && (
+                        <div className="ml-4 pl-4 border-l border-slate-100 space-y-0.5 animate-in slide-in-from-top-2 duration-200">
                             <button
                                 onClick={() => setShowDeclarationModal(true)}
                                 className="flex items-center w-full p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all text-xs font-medium cursor-pointer"
@@ -149,8 +186,6 @@ export function Sidebar() {
                         </div>
                     )}
                 </div>
-
-                <SidebarItem icon={FileText} label="Arquivos" collapsed={collapsed} />
                 <SidebarItem icon={BarChart3} label="Relatórios" collapsed={collapsed} />
 
                 <div className="my-6 border-t border-slate-100 mx-2"></div>
@@ -159,7 +194,37 @@ export function Sidebar() {
                     {!collapsed ? "Gestão" : "..."}
                 </div>
 
-                <SidebarItem icon={Wallet} label="Financeiro" path="/financeiro" collapsed={collapsed} />
+                <div className="space-y-0.5">
+                    <div className="relative group">
+                        <SidebarItem
+                            icon={Wallet}
+                            label="Financeiro"
+                            path="/financeiro/receitas"
+                            collapsed={collapsed}
+                        />
+                        {!collapsed && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsFinanceiroOpen(!isFinanceiroOpen);
+                                }}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded text-slate-400 cursor-pointer"
+                            >
+                                <ChevronRight className={clsx("w-3.5 h-3.5 transition-transform", isFinanceiroOpen && "rotate-90")} />
+                            </button>
+                        )}
+                    </div>
+
+                    {isFinanceiroOpen && !collapsed && (
+                        <div className="ml-4 pl-4 border-l border-slate-100 space-y-0.5 animate-in slide-in-from-top-2 duration-200">
+                            <SidebarItem icon={FileText} label="Receitas" path="/financeiro/receitas" collapsed={collapsed} />
+                            <SidebarItem icon={FileCheck} label="Pagamentos" path="/financeiro/pagamentos" collapsed={collapsed} />
+                            <SidebarItem icon={BarChart3} label="Fluxo de Caixa" path="/financeiro/fluxo" collapsed={collapsed} />
+                            <SidebarItem icon={UserCog} label="Responsável Financeiro" path="/financeiro/config" collapsed={collapsed} />
+                        </div>
+                    )}
+                </div>
+
                 <SidebarItem icon={Database} label="Tabelas" collapsed={collapsed} />
                 <SidebarItem icon={Briefcase} label="Utilitários" collapsed={collapsed} />
                 <SidebarItem icon={Layers} label="Extras" collapsed={collapsed} />

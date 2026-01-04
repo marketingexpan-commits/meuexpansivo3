@@ -52,6 +52,7 @@ interface FinanceiroScreenProps {
     mensalidades: Mensalidade[];
     eventos: EventoFinanceiro[];
     unitContacts?: UnitContact[];
+    contactSettings?: any;
     onPaymentSuccess?: () => void;
 }
 
@@ -112,7 +113,7 @@ class BrickErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBounda
     }
 }
 
-export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, mensalidades = [], eventos = [], unitContacts = [], onPaymentSuccess }) => {
+export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, mensalidades = [], eventos = [], unitContacts = [], contactSettings, onPaymentSuccess }) => {
     // Lógica de Filtro
     const studentMensalidades = useMemo(() => {
         return (mensalidades || []).filter(m => m.studentId === student.id);
@@ -1856,7 +1857,8 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                     isOpen={!!receiptData}
                     student={student}
                     receiptData={receiptData}
-                    whatsappNumber={unitContacts.find(c => c.unit === student.unit && c.role === ContactRole.FINANCIAL)?.phoneNumber}
+                    whatsappNumber={unitContacts?.find(c => c.unit === student.unit && c.role === ContactRole.FINANCIAL)?.phoneNumber}
+                    contactSettings={contactSettings}
                     onClose={() => setReceiptData(null)}
                 />
             )}

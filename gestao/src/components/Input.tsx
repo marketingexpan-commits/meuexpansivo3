@@ -6,6 +6,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
     label?: string;
     error?: string;
     helperText?: string;
+    startIcon?: React.ReactNode;
     endIcon?: React.ReactNode;
 }
 
@@ -20,12 +21,18 @@ export function Input({ label, error, helperText, className, id, ...props }: Inp
                 </label>
             )}
             <div className="relative">
+                {props.startIcon && (
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none z-10">
+                        {props.startIcon}
+                    </div>
+                )}
                 <input
                     id={inputId}
                     className={twMerge(
                         clsx(
                             "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200",
                             error && "border-red-500 focus:ring-red-500",
+                            props.startIcon ? "pl-9" : "",
                             props.endIcon ? "pr-10" : "",
                             className
                         )

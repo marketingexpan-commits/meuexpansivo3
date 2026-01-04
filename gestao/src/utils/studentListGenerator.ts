@@ -14,7 +14,7 @@ export const generateStudentList = (students: Student[], groupTitle: string, typ
     const logoUrl = 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png';
     const currentDate = new Date().toLocaleDateString('pt-BR');
 
-    const isLandscape = type === 'complete';
+
 
     const htmlContent = `
         <!DOCTYPE html>
@@ -24,7 +24,6 @@ export const generateStudentList = (students: Student[], groupTitle: string, typ
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
             <style>
                 @page {
-                    size: ${isLandscape ? 'landscape' : 'portrait'};
                     margin-top: 5mm;
                     margin-bottom: 5mm;
                     margin-left: 5mm;

@@ -80,7 +80,8 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
             endereco_bairro: '',
             endereco_cidade: '',
             endereco_uf: '',
-            localizacao_tipo: ''
+            localizacao_tipo: '',
+            isScholarship: false
         };
 
         // Sync phone fields if editing existing student
@@ -111,9 +112,124 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
     const userUnit = localStorage.getItem('userUnit');
     const isUnitLocked = !!(userUnit && userUnit !== 'admin_geral');
 
+    // Base Tuition State for Calculation
+    const [baseTuition, setBaseTuition] = useState<string>(() => {
+        if (student && student.valor_mensalidade) {
+            const final = Number(student.valor_mensalidade);
+            const discount = student.bolsa_percentual ? parseFloat(student.bolsa_percentual) : 0;
+
+            // Revert calculation: Base = Final / (1 - Discount/100)
+            if (discount > 0 && discount < 100) {
+                return (final / (1 - discount / 100)).toFixed(2);
+            }
+            return final.toFixed(2);
+        }
+        return '';
+    });
+
+
+
+    // Helper for currency formatting
+    const formatCurrencyValue = (value: string) => {
+        if (!value) return '';
+        // Remove non-numeric chars except comma and dot
+        const clean = value.replace(/[^\d,.]/g, '');
+        // Parse to float
+        const floatVal = parseFloat(clean.replace(',', '.')) || 0;
+        // Format to standard BRL string (without R$ symbol as we use prefix)
+        return floatVal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    // Handlers for Bidirectional Calculation
+    const handleBaseTuitionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        // Allow digits, comma, dot
+        const newVal = e.target.value.replace(/[^\d,.]/g, '');
+        setBaseTuition(newVal);
+
+        // Calculate immediately using the partial value for responsive UI
+        const base = parseFloat(newVal.replace(/\./g, '').replace(',', '.')) || 0;
+        const discount = parseFloat((formData.bolsa_percentual || '0').toString().replace(',', '.')) || 0;
+
+        const finalValue = base * (1 - discount / 100);
+
+        // We update the state, but we don't force-format immediately to allow typing
+        setFormData((prev: any) => ({
+            ...prev,
+            valor_mensalidade: finalValue
+        }));
+    };
+
+    const handleBaseTuitionBlur = () => {
+        setBaseTuition(prev => formatCurrencyValue(prev));
+    };
+
+    const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newDiscount = e.target.value;
+
+        const base = parseFloat(baseTuition.replace(/\./g, '').replace(',', '.')) || 0;
+        const discount = parseFloat(newDiscount.replace(',', '.')) || 0;
+
+        const finalValue = base * (1 - discount / 100);
+
+        setFormData((prev: any) => ({
+            ...prev,
+            bolsa_percentual: newDiscount,
+            valor_mensalidade: finalValue
+        }));
+    };
+
+    const handleFinalValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        // Allow digits, comma, dot
+        const rawVal = e.target.value.replace(/[^\d,.]/g, '');
+
+        // Update the display value in state primarily
+        setFormData((prev: any) => ({
+            ...prev,
+            valor_mensalidade: rawVal
+        }));
+
+        // Calculate discount based on this interim values
+        const newFinalVal = parseFloat(rawVal.replace(/\./g, '').replace(',', '.')) || 0;
+        const base = parseFloat(baseTuition.replace(/\./g, '').replace(',', '.')) || 0;
+
+        if (base > 0) {
+            const impliedDiscount = (1 - (newFinalVal / base)) * 100;
+            setFormData((prev: any) => ({
+                ...prev,
+                valor_mensalidade: rawVal,
+                bolsa_percentual: impliedDiscount > 0 ? impliedDiscount.toFixed(2) : '0'
+            }));
+        }
+    };
+
+    const handleFinalValueBlur = () => {
+        setFormData((prev: any) => ({
+            ...prev,
+            valor_mensalidade: formatCurrencyValue(prev.valor_mensalidade?.toString())
+        }));
+    };
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        setFormData((prev: any) => ({ ...prev, [name]: value }));
+        const { name, value, type } = e.target;
+
+        let finalValue: any = value;
+        if (type === 'checkbox') {
+            finalValue = (e.target as HTMLInputElement).checked;
+        }
+
+        // Special handling for scholarship toggle
+        if (name === 'isScholarship' && finalValue === true) {
+            setBaseTuition(''); // Clear base tuition
+            setFormData((prev: any) => ({
+                ...prev,
+                [name]: finalValue,
+                bolsa_percentual: '', // Clear discount
+                valor_mensalidade: 0
+            }));
+            return;
+        }
+
+        setFormData((prev: any) => ({ ...prev, [name]: finalValue }));
     };
 
     const handleSelectChange = (name: string, value: string) => {
@@ -204,9 +320,16 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
             if (!formData.name) return alert("Nome é obrigatório");
             if (!formData.unit) return alert("Unidade é obrigatória"); // Ensure unit is present
 
-            // Synchronize phone fields
+            // Synchronize phone fields & Sanitize Financials
+            let cleanTuition = formData.valor_mensalidade;
+            if (typeof cleanTuition === 'string') {
+                // Remove non-numeric except comma/dot, then norm decimal
+                cleanTuition = cleanTuition.replace(/[^\d,.]/g, '').replace(/\./g, '').replace(',', '.');
+            }
+
             const dataToSave = {
                 ...formData,
+                valor_mensalidade: cleanTuition, // Save as dot-decimal string or number
                 phoneNumber: formData.telefone_responsavel // Ensure root project field is updated
             };
 
@@ -348,7 +471,6 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                                 options={STUDENT_STATUS_OPTIONS}
                                 className="bg-blue-50/30 border-blue-100"
                             />
-                            <div className="hidden md:block"></div> {/* Spacer */}
 
                             <Select
                                 label="Unidade Escolar"
@@ -375,36 +497,91 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                                 options={selectedLevel ? GRADES_BY_LEVEL[selectedLevel]?.map(g => ({ label: g, value: g })) || [] : []}
                                 disabled={!selectedLevel}
                             />
-                            <div className="grid grid-cols-2 gap-4">
-                                <Select
-                                    label="Turno"
-                                    value={formData.shift}
-                                    onChange={(e) => handleSelectChange('shift', e.target.value)}
-                                    options={SCHOOL_SHIFTS}
-                                />
-                                <Select
-                                    label="Turma"
-                                    value={formData.schoolClass}
-                                    onChange={(e) => handleSelectChange('schoolClass', e.target.value)}
-                                    options={SCHOOL_CLASSES_OPTIONS}
+                            <Select
+                                label="Turno"
+                                value={formData.shift}
+                                onChange={(e) => handleSelectChange('shift', e.target.value)}
+                                options={SCHOOL_SHIFTS}
+                            />
+                            <Select
+                                label="Turma"
+                                value={formData.schoolClass}
+                                onChange={(e) => handleSelectChange('schoolClass', e.target.value)}
+                                options={SCHOOL_CLASSES_OPTIONS}
+                            />
+                            <Input
+                                name="nis"
+                                value={formData.nis || ''}
+                                onChange={handleChange}
+                                label="NIS (Bolsa Família)"
+                                placeholder="000.00000.00-0"
+                            />
+
+                            <Input
+                                label="Número de Matrícula"
+                                value={formData.code || ''}
+                                disabled={true}
+                                placeholder={student ? "Matrícula do aluno" : "Será gerado ao salvar"}
+                                className="bg-gray-50"
+                            />
+
+                            <div className="col-span-2 pt-2">
+                                <label className={`flex items-start gap-3 p-4 rounded-xl border transition-colors cursor-pointer ${formData.isScholarship ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+                                    <div className="flex items-center h-5 mt-1">
+                                        <input
+                                            type="checkbox"
+                                            name="isScholarship"
+                                            checked={formData.isScholarship || false}
+                                            onChange={handleChange}
+                                            className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                            Aluno Bolsista (100%) 🎓
+                                        </span>
+                                        <span className="text-xs text-slate-600 mt-1 leading-relaxed">
+                                            Se marcado, o aluno terá isenção total (100%) nas mensalidades.
+                                        </span>
+                                    </div>
+                                </label>
+                            </div>
+
+                            {/* Financial Calculation Section */}
+                            <div className={`col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-gray-100 pt-4 mt-2 transition-opacity ${formData.isScholarship ? 'opacity-50 pointer-events-none grayscale' : 'opacity-100'}`}>
+                                <Input
+                                    label="Valor da Mensalidade (Integral)"
+                                    value={baseTuition}
+                                    onChange={handleBaseTuitionChange}
+                                    onBlur={handleBaseTuitionBlur}
+                                    placeholder="0,00"
+                                    startIcon={<span className="text-slate-500 font-semibold">R$</span>}
+                                    disabled={formData.isScholarship}
                                 />
                                 <Input
-                                    name="nis"
-                                    value={formData.nis || ''}
-                                    onChange={handleChange}
-                                    label="NIS (Bolsa Família)"
-                                    placeholder="000.00000.00-0"
+                                    name="bolsa_percentual"
+                                    label="Desconto (%)"
+                                    value={formData.bolsa_percentual || ''}
+                                    onChange={handleDiscountChange}
+                                    placeholder="0%"
+                                    type="number"
+                                    max="100"
+                                    disabled={formData.isScholarship}
                                 />
-                            </div>
-                            <div className="col-span-2 border-t border-gray-100 pt-4 mt-2">
                                 <Input
-                                    label="Número de Matrícula"
-                                    value={formData.code || ''}
-                                    disabled={true}
-                                    placeholder={student ? "Matrícula do aluno" : "Será gerado ao salvar"}
-                                    className="bg-gray-50"
+                                    label="Valor Final (Com Desconto)"
+                                    value={typeof formData.valor_mensalidade === 'number'
+                                        ? formData.valor_mensalidade.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                                        : formData.valor_mensalidade || ''}
+                                    onChange={handleFinalValueChange}
+                                    onBlur={handleFinalValueBlur}
+                                    placeholder="0,00"
+                                    startIcon={<span className="text-slate-500 font-semibold">R$</span>}
+                                    disabled={formData.isScholarship}
                                 />
                             </div>
+
+
                         </div>
                     )}
 

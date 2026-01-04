@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Card, CardContent } from '../components/Card';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
@@ -70,7 +71,20 @@ interface EnrichedMensalidade {
 }
 
 export function Financeiro() {
+    const location = useLocation();
+
     const [activeTab, setActiveTab] = useState<'recebimentos' | 'pagamentos' | 'fluxo'>('recebimentos');
+
+    // Sincronizar URL com a aba ativa
+    useEffect(() => {
+        if (location.pathname.includes('/receitas')) {
+            setActiveTab('recebimentos');
+        } else if (location.pathname.includes('/pagamentos')) {
+            setActiveTab('pagamentos');
+        } else if (location.pathname.includes('/fluxo')) {
+            setActiveTab('fluxo');
+        }
+    }, [location.pathname]);
     const [isLoading, setIsLoading] = useState(true);
     const [mensalidades, setMensalidades] = useState<EnrichedMensalidade[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -109,6 +123,7 @@ export function Financeiro() {
         total: 0,
         paid: 0,
         pending: 0,
+        overdue: 0,
         paidValue: 0,
         totalValue: 0
     });
@@ -229,10 +244,17 @@ export function Financeiro() {
                 });
 
                 setMensalidades(enrichedData);
+                // Calcular vencidos (status != Pago E dueDate < hoje)
+                const today = new Date().toISOString().split('T')[0];
+                const overdueCount = enrichedData.filter((m: EnrichedMensalidade) =>
+                    m.status !== 'Pago' && m.dueDate < today
+                ).length;
+
                 setSummary({
                     total: enrichedData.length,
                     paid: enrichedData.filter((m: EnrichedMensalidade) => m.status === 'Pago').length,
                     pending: enrichedData.filter((m: EnrichedMensalidade) => m.status !== 'Pago').length,
+                    overdue: overdueCount,
                     paidValue: enrichedData.filter((m: EnrichedMensalidade) => m.status === 'Pago').reduce((acc: number, curr: EnrichedMensalidade) => acc + (curr.value || 0), 0),
                     totalValue: enrichedData.reduce((acc: number, curr: EnrichedMensalidade) => acc + (curr.value || 0), 0)
                 });
@@ -671,27 +693,7 @@ export function Financeiro() {
                 </div>
             </div>
 
-            {/* Menu de Abas Estilo "Pills" Moderno */}
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-fit">
-                <button
-                    onClick={() => setActiveTab('recebimentos')}
-                    className={`cursor-pointer px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'recebimentos' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                    Receitas
-                </button>
-                <button
-                    onClick={() => setActiveTab('pagamentos')}
-                    className={`cursor-pointer px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'pagamentos' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                    Pagamentos
-                </button>
-                <button
-                    onClick={() => setActiveTab('fluxo')}
-                    className={`cursor-pointer px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'fluxo' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                    Fluxo de Caixa
-                </button>
-            </div>
+
 
             {
                 activeTab === 'recebimentos' && (
@@ -754,7 +756,9 @@ export function Financeiro() {
                                     <div>
                                         <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Inadimplência</p>
                                         <h3 className="text-xl font-bold text-slate-800">
-                                            {summary.total > 0 ? ((summary.pending / summary.total) * 100).toFixed(1) : '0.0'}%
+                                            {(summary.paid + summary.overdue) > 0
+                                                ? ((summary.overdue / (summary.paid + summary.overdue)) * 100).toFixed(1)
+                                                : '0.0'}%
                                         </h3>
                                     </div>
                                 </CardContent>

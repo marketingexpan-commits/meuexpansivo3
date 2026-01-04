@@ -11,12 +11,13 @@ interface ReceiptModalProps {
     isOpen: boolean;
     student: Student;
     receiptData: Mensalidade | null;
-    whatsappNumber?: string; // New prop for financial contact
-    isAdminView?: boolean; // New prop to hide actions
+    whatsappNumber?: string; // Legacy/Fallback
+    contactSettings?: any; // UnitContactSettings
+    isAdminView?: boolean;
     onClose: () => void;
 }
 
-export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, receiptData, whatsappNumber, isAdminView, onClose }) => {
+export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, receiptData, whatsappNumber, contactSettings, isAdminView, onClose }) => {
 
     // --- Hooks (Must be before early return) ---
     const receiptId = useMemo(() => {
@@ -432,7 +433,12 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
             doc.text("EXPANSIVO - REDE DE ENSINO", cX, y + 4.8);
             doc.setFontSize(5.6); doc.setFont("helvetica", "normal"); doc.setTextColor(107, 114, 128);
             doc.text(unitInfo.address, cX, y + 8);
-            doc.text(`Financeiro: +55 (84) 98873-9180`, cX, y + 11.2);
+
+            const displayPhone = contactSettings?.whatsapp
+                ? contactSettings.whatsapp.replace(/^(\d{2})(\d{2})(\d{5})(\d{4})$/, "+$1 ($2) $3-$4") // Format if raw
+                : "+55 (84) 98873-9180";
+
+            doc.text(`Financeiro: ${displayPhone}`, cX, y + 11.2);
             doc.text(`CNPJ: ${cnpj}`, cX, y + 14.4);
 
             const qrSize = 17.6;
@@ -469,7 +475,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
             `*Status:* ${receiptData?.status === 'Pago' ? 'PAGO [OK]' : receiptData?.status}\n\n` +
             `_Olá, estou enviando o comprovante de pagamento._`;
 
-        const url = `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`;
+        const targetPhone = contactSettings?.whatsapp ? contactSettings.whatsapp.replace(/\D/g, '') : (whatsappNumber ? whatsappNumber.replace(/\D/g, '') : '5584988739180');
+        const url = `https://wa.me/${targetPhone.startsWith('55') ? targetPhone : '55' + targetPhone}?text=${encodeURIComponent(message)}`;
         window.open(url, '_blank');
     };
 
