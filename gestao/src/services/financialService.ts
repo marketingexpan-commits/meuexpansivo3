@@ -62,9 +62,11 @@ export const financialService = {
     },
 
     // Registrar pagamento manual
-    async markAsPaid(mensalidadeId: string, details: { method: string, paidValue: number, interest: number, penalty: number, paymentDate: string }) {
+    async markAsPaid(mensalidadeId: string, details: { method: string, paidValue: number, interest: number, penalty: number, paymentDate: string, documentNumber?: string }) {
         try {
             const docRef = doc(db, MENSALIDADES_COLLECTION, mensalidadeId);
+            const receiptId = `REC-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+
             await updateDoc(docRef, {
                 status: 'Pago',
                 paymentDate: details.paymentDate,
@@ -72,8 +74,11 @@ export const financialService = {
                 paidValue: details.paidValue,
                 interestValue: details.interest,
                 penaltyValue: details.penalty,
+                receiptId: receiptId,
+                documentNumber: details.documentNumber || Math.floor(100000 + Math.random() * 900000).toString(),
                 lastUpdated: new Date().toISOString()
             });
+            return receiptId;
         } catch (error) {
             console.error("Erro ao atualizar pagamento:", error);
             throw error;

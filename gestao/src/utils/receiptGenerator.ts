@@ -30,7 +30,18 @@ export const UNIT_DETAILS: Record<string, { name: string, cnpj: string, address:
 
 export function generateReceipt(m: any) {
     const unitInfo = UNIT_DETAILS[m.studentUnit] || UNIT_DETAILS['Zona Norte'];
-    const receiptId = `REC-${new Date().getFullYear()}-${Math.floor(Math.random() * 90000 + 10000)}`;
+
+    // Fallback determinístico para registros antigos sem receiptId
+    const getDeterministicPortion = (id: string) => {
+        let hash = 0;
+        for (let i = 0; i < id.length; i++) {
+            hash = ((hash << 5) - hash) + id.charCodeAt(i);
+            hash |= 0;
+        }
+        return Math.abs(hash).toString().substring(0, 5).padStart(5, '0');
+    };
+
+    const receiptId = m.receiptId || `REC-${new Date().getFullYear()}-${getDeterministicPortion(m.id || 'fallback')}`;
     const paymentDate = m.paymentDate ? new Date(m.paymentDate).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR');
     const logoUrl = 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png';
 

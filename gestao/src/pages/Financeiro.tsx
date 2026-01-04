@@ -66,6 +66,7 @@ interface EnrichedMensalidade {
     penaltyValue?: number;
     barcode?: string;
     ticketUrl?: string;
+    receiptId?: string;
 }
 
 export function Financeiro() {
@@ -204,7 +205,8 @@ export function Financeiro() {
                     studentUnit: studentsMap.get(m.studentId)?.unit || '-',
                     studentResponsibleName: studentsMap.get(m.studentId)?.nome_responsavel || '-',
                     studentCPF: studentsMap.get(m.studentId)?.cpf_responsavel || studentsMap.get(m.studentId)?.cpf_aluno || '-',
-                    studentPhone: studentsMap.get(m.studentId)?.telefone_responsavel || studentsMap.get(m.studentId)?.phoneNumber || ''
+                    studentPhone: studentsMap.get(m.studentId)?.telefone_responsavel || studentsMap.get(m.studentId)?.phoneNumber || '',
+                    receiptId: m.receiptId
                 }));
 
                 if (selectedStudentId) {
@@ -562,22 +564,24 @@ export function Financeiro() {
             const timeString = now.toTimeString().split(' ')[0]; // HH:MM:SS
             const fullPaymentDateIso = `${dischargeDetails.paymentDate}T${timeString}`;
 
-            await financialService.markAsPaid(foundInstallment.id, {
+            const receiptId = await financialService.markAsPaid(foundInstallment.id, {
                 method: 'Baixa Manual (Código)',
                 paidValue: dischargeDetails.valueTotal,
                 interest: dischargeDetails.valueInterest,
                 penalty: dischargeDetails.valuePenalty,
-                paymentDate: new Date(fullPaymentDateIso).toISOString()
+                paymentDate: new Date(fullPaymentDateIso).toISOString(),
+                documentNumber: foundInstallment.documentNumber // Passar o documento atual se existir
             });
 
             alert(`Baixa efetuada com sucesso!\nValor Recebido: R$ ${dischargeDetails.valueTotal.toFixed(2)}`);
 
-            // Gerar recibo automaticamente
+            // Gerar recibo automaticamente usando o ID fixo retornado do banco
             generateReceipt({
                 ...foundInstallment,
                 status: 'Pago',
                 paymentDate: new Date(fullPaymentDateIso).toISOString(),
-                value: dischargeDetails.valueTotal
+                value: dischargeDetails.valueTotal,
+                receiptId: receiptId
             });
             setIsDischargeModalOpen(false);
             setFoundInstallment(null);

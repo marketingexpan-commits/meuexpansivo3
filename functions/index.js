@@ -86,12 +86,17 @@ exports.mercadopagoWebhook = functions.https.onRequest(async (req, res) => {
                     const feeIds = externalRef.split(',').map(id => id.trim()).filter(id => id.length > 0);
                     for (const feeId of feeIds) {
                         try {
+                            const receiptId = `REC-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+                            const documentNumber = Math.floor(100000 + Math.random() * 900000).toString();
+
                             await db.collection('mensalidades').doc(feeId).update({
                                 status: 'Pago',
                                 paymentDate: new Date().toISOString(),
                                 paymentMethod: paymentInfo.payment_method_id || 'MercadoPago',
                                 lastUpdated: new Date().toISOString(),
-                                receiptUrl: `https://www.mercadopago.com.br/activities/${data.id}`
+                                receiptUrl: `https://www.mercadopago.com.br/activities/${data.id}`,
+                                receiptId: receiptId,
+                                documentNumber: documentNumber
                             });
                         } catch (err) {
                             console.error(`Erro ao atualizar mensalidade ${feeId}:`, err);
@@ -101,11 +106,34 @@ exports.mercadopagoWebhook = functions.https.onRequest(async (req, res) => {
                 else if (metadata && metadata.mensalidade_ids) {
                     const feeIds = metadata.mensalidade_ids.split(',').map(id => id.trim()).filter(id => id.length > 0);
                     for (const feeId of feeIds) {
+                        const receiptId = `REC-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+                        const documentNumber = Math.floor(100000 + Math.random() * 900000).toString();
+
                         await db.collection('mensalidades').doc(feeId).update({
                             status: 'Pago',
                             paymentDate: new Date().toISOString(),
                             paymentMethod: paymentInfo.payment_method_id || 'MercadoPago',
-                            lastUpdated: new Date().toISOString()
+                            lastUpdated: new Date().toISOString(),
+                            receiptId: receiptId,
+                            documentNumber: documentNumber
+                        });
+                    }
+                }
+
+                // NOVO: Baixa em Eventos/Extras
+                if (metadata && metadata.event_ids) {
+                    const eventIds = metadata.event_ids.split(',').map(id => id.trim()).filter(id => id.length > 0);
+                    for (const eventId of eventIds) {
+                        const receiptId = `REC-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+                        const documentNumber = Math.floor(100000 + Math.random() * 900000).toString();
+
+                        await db.collection('eventos_escola').doc(eventId).update({
+                            status: 'Pago',
+                            paymentDate: new Date().toISOString(),
+                            paymentMethod: paymentInfo.payment_method_id || 'MercadoPago',
+                            lastUpdated: new Date().toISOString(),
+                            receiptId: receiptId,
+                            documentNumber: documentNumber
                         });
                     }
                 }
@@ -172,12 +200,17 @@ exports.processMercadoPagoPayment = functions.https.onRequest((req, res) => {
                     const feeIds = externalRef.split(',').map(id => id.trim()).filter(id => id.length > 0);
                     for (const feeId of feeIds) {
                         try {
+                            const receiptId = `REC-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+                            const documentNumber = Math.floor(100000 + Math.random() * 900000).toString();
+
                             await db.collection('mensalidades').doc(feeId).update({
                                 status: 'Pago',
                                 paymentDate: new Date().toISOString(),
                                 paymentMethod: result.payment_method_id || 'MercadoPago_Instant',
                                 lastUpdated: new Date().toISOString(),
-                                receiptUrl: `https://www.mercadopago.com.br/activities/${result.id}`
+                                receiptUrl: `https://www.mercadopago.com.br/activities/${result.id}`,
+                                receiptId: receiptId,
+                                documentNumber: documentNumber
                             });
                             console.log(`✅ [Instant] Mensalidade ${feeId} baixada.`);
                         } catch (err) {
@@ -289,12 +322,17 @@ exports.verifyPaymentStatus = functions.https.onRequest((req, res) => {
                     const feeIds = externalRef.split(',').map(id => id.trim()).filter(id => id.length > 0);
                     for (const feeId of feeIds) {
                         try {
+                            const receiptId = `REC-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+                            const documentNumber = Math.floor(100000 + Math.random() * 900000).toString();
+
                             await db.collection('mensalidades').doc(feeId).update({
                                 status: 'Pago',
                                 paymentDate: new Date().toISOString(),
                                 paymentMethod: paymentInfo.payment_method_id || 'MercadoPago_Manual',
                                 lastUpdated: new Date().toISOString(),
-                                receiptUrl: `https://www.mercadopago.com.br/activities/${paymentId}`
+                                receiptUrl: `https://www.mercadopago.com.br/activities/${paymentId}`,
+                                receiptId: receiptId,
+                                documentNumber: documentNumber
                             });
                             console.log(`✅ [Verify] Mensalidade ${feeId} baixada.`);
                         } catch (err) {

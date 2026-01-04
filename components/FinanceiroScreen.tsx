@@ -169,8 +169,13 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
     useEffect(() => {
         if (receiptData) {
             const updated = mensalidades.find(m => m.id === receiptData.id);
-            // Atualiza se houver mudança relevante (status ou metodo)
-            if (updated && (updated.status !== receiptData.status || updated.paymentMethod !== receiptData.paymentMethod)) {
+            // Atualiza se houver mudança relevante (status, metodo, receiptId ou documentNumber)
+            if (updated && (
+                updated.status !== receiptData.status ||
+                updated.paymentMethod !== receiptData.paymentMethod ||
+                updated.receiptId !== receiptData.receiptId ||
+                updated.documentNumber !== receiptData.documentNumber
+            )) {
                 setReceiptData(updated);
             }
         }
@@ -1028,7 +1033,9 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                                 status: e.status,
                                                                 lastUpdated: e.lastUpdated,
                                                                 paymentDate: e.paymentDate,
-                                                                paymentMethod: e.paymentMethod
+                                                                paymentMethod: e.paymentMethod,
+                                                                documentNumber: e.documentNumber,
+                                                                receiptId: e.receiptId
                                                             } as Mensalidade)}
                                                             className="block mt-1 text-xs text-blue-600 underline hover:text-blue-800"
                                                         >

@@ -129,6 +129,7 @@ export interface Mensalidade {
   ticketUrl?: string; // URL do PDF do Boleto
   qrCode?: string; // Payload do PIX (Copia e Cola)
   qrCodeBase64?: string; // Imagem do QR Code Base64
+  receiptId?: string; // Novo: ID do Recibo sincronizado
 }
 
 export interface EventoFinanceiro {
@@ -142,6 +143,8 @@ export interface EventoFinanceiro {
   type: 'Evento' | 'Extra';
   paymentDate?: string;
   paymentMethod?: string;
+  documentNumber?: string;
+  receiptId?: string;
 }
 
 export interface Expense {

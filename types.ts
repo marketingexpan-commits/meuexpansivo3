@@ -122,6 +122,8 @@ export interface Mensalidade {
   paymentDate?: string;
   receiptUrl?: string;
   paymentMethod?: string; // Novo: 'pix', 'credit_card', 'bolbradesco', etc.
+  documentNumber?: string; // Novo: Código de Baixa (6 dígitos)
+  receiptId?: string; // Novo: ID do Recibo sincronizado
 }
 
 export interface EventoFinanceiro {
@@ -135,6 +137,8 @@ export interface EventoFinanceiro {
   type: 'Evento' | 'Extra';
   paymentDate?: string;
   paymentMethod?: string;
+  documentNumber?: string; // Novo: Código de Baixa
+  receiptId?: string; // Novo: ID do Recibo sincronizado
 }
 
 // --- NOVOS TIPOS PARA RELATÓRIO DA EDUCAÇÃO INFANTIL ---

@@ -21,8 +21,19 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
     // --- Hooks (Must be before early return) ---
     const receiptId = useMemo(() => {
         if (!receiptData) return '';
-        // Generate a random ID consistent for this session/render
-        return `REC-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+        if (receiptData.receiptId) return receiptData.receiptId;
+
+        // Fallback determinístico para recibos antigos que não tem o ID salvo
+        const getDeterministicPortion = (id: string) => {
+            let hash = 0;
+            for (let i = 0; i < id.length; i++) {
+                hash = ((hash << 5) - hash) + id.charCodeAt(i);
+                hash |= 0;
+            }
+            return Math.abs(hash).toString().substring(0, 5).padStart(5, '0');
+        };
+
+        return `REC-${new Date().getFullYear()}-${getDeterministicPortion(receiptData.id)}`;
     }, [receiptData]);
 
     const [qrCodeData, setQrCodeData] = useState<string>('');
@@ -263,7 +274,12 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
             doc.setTextColor(110, 110, 110);
             const dateStr = new Date(receiptData.paymentDate || new Date()).toLocaleString();
             doc.text(`${dateStr}`, cEnd, y + 7.2, { align: "right" });
-            doc.text(`#${receiptId}`, cEnd, y + 10.4, { align: "right" });
+            if (receiptData.documentNumber) {
+                doc.text(`Cód. Baixa: ${receiptData.documentNumber}`, cEnd, y + 10.4, { align: "right" });
+                doc.text(`ID: ${receiptId}`, cEnd, y + 13.6, { align: "right" });
+            } else {
+                doc.text(`#${receiptId}`, cEnd, y + 10.4, { align: "right" });
+            }
 
             // Jump to Student Info Grid
             y = gridStartY;
@@ -475,7 +491,11 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
                             <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Comprovante</h2>
                             <p className="text-xs text-gray-500 font-mono mt-1">
                                 {new Date(receiptData.paymentDate || new Date()).toLocaleString()}
-                                <br />#{receiptId}
+                                <br />
+                                {receiptData.documentNumber && (
+                                    <>Cód. Baixa: {receiptData.documentNumber}<br /></>
+                                )}
+                                ID: {receiptId}
                             </p>
                         </div>
                     </div>
