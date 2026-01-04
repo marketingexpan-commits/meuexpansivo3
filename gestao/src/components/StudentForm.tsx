@@ -83,6 +83,11 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
             localizacao_tipo: ''
         };
 
+        // Sync phone fields if editing existing student
+        if (student) {
+            initialData.telefone_responsavel = student.telefone_responsavel || student.phoneNumber || '';
+        }
+
         // Normalize gradeLevel for UI if existing
         if (student && student.gradeLevel) {
             const { grade } = parseGradeLevel(student.gradeLevel);
@@ -199,11 +204,17 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
             if (!formData.name) return alert("Nome é obrigatório");
             if (!formData.unit) return alert("Unidade é obrigatória"); // Ensure unit is present
 
+            // Synchronize phone fields
+            const dataToSave = {
+                ...formData,
+                phoneNumber: formData.telefone_responsavel // Ensure root project field is updated
+            };
+
             if (student && student.id) {
-                await studentService.updateStudent(student.id, formData);
+                await studentService.updateStudent(student.id, dataToSave);
                 alert("Dados do aluno atualizados com sucesso!");
             } else {
-                await studentService.createStudent(formData);
+                await studentService.createStudent(dataToSave);
                 alert("Aluno matriculado com sucesso!");
             }
             onClose(true);

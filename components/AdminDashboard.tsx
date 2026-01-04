@@ -787,7 +787,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setSCode(s.code);
         setSGrade(s.gradeLevel);
         setSUnit(s.unit);
-        setSPhone(s.phoneNumber || '55');
+        setSPhone(s.phoneNumber || s.telefone_responsavel || '55');
         setSClass(s.schoolClass);
         setSShift(s.shift);
         setSPass(s.password || '');
@@ -832,6 +832,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             cpf_responsavel: sCpfResponsavel,
             email_responsavel: sEmail.trim(),
             phoneNumber: sanitizePhone(sPhone),
+            telefone_responsavel: sanitizePhone(sPhone),
             code: sCode.trim(),
             gradeLevel: sGrade,
             unit: unitToSave,
