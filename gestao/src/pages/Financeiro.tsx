@@ -78,7 +78,7 @@ export function Financeiro() {
 
     // Filtros
     const [filterStatus, setFilterStatus] = useState('Todos');
-    const [filterMonth, setFilterMonth] = useState(new Date().getMonth().toString());
+    const [filterMonth, setFilterMonth] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
 
@@ -209,15 +209,24 @@ export function Financeiro() {
                     receiptId: m.receiptId
                 }));
 
-                if (selectedStudentId) {
-                    enrichedData.sort((a: EnrichedMensalidade, b: EnrichedMensalidade) => {
-                        const monthA = a.month.split('/')[0];
-                        const monthB = b.month.split('/')[0];
-                        return months.indexOf(monthA) - months.indexOf(monthB);
-                    });
-                } else {
-                    enrichedData.sort((a: EnrichedMensalidade, b: EnrichedMensalidade) => a.studentName.localeCompare(b.studentName));
-                }
+                // Mapeador auxiliar para ordenação cronológica
+                const getSortValue = (monthStr: string) => {
+                    const [m, y] = monthStr.split('/');
+                    const monthIdx = months.indexOf(m);
+                    const year = parseInt(y) || 0;
+                    return (year * 12) + monthIdx;
+                };
+
+                enrichedData.sort((a: EnrichedMensalidade, b: EnrichedMensalidade) => {
+                    // Se estivermos vendo um aluno específico, a prioridade é a data
+                    if (selectedStudentId) {
+                        return getSortValue(a.month) - getSortValue(b.month);
+                    }
+                    // Se estivermos na visão geral, prioridade é Nome -> Ano -> Mês
+                    const nameSort = a.studentName.localeCompare(b.studentName);
+                    if (nameSort !== 0) return nameSort;
+                    return getSortValue(a.month) - getSortValue(b.month);
+                });
 
                 setMensalidades(enrichedData);
                 setSummary({
@@ -250,7 +259,7 @@ export function Financeiro() {
 
     const resetFilters = () => {
         setFilterStatus('Todos');
-        setFilterMonth(new Date().getMonth().toString());
+        setFilterMonth('');
         setSearchTerm('');
         setSelectedStudentId(null);
     };
