@@ -131,11 +131,17 @@ const AppContent: React.FC = () => {
         setInitialLoad(prev => ({ ...prev, mensalidades: true }));
       }));
 
-      unsubs.push(db.collection('notifications').where('studentId', '==', userId).orderBy('timestamp', 'desc').onSnapshot(snap => {
-        setNotifications(snap.docs.map(doc => ({ ...doc.data() as AppNotification, id: doc.id })));
+      unsubs.push(db.collection('notifications').where('studentId', '==', userId).onSnapshot(snap => {
+        const data = snap.docs.map(doc => ({ ...doc.data() as AppNotification, id: doc.id }));
+        data.sort((a: any, b: any) => {
+          const dateA = a.timestamp?.toDate ? a.timestamp.toDate() : (a.timestamp ? new Date(a.timestamp) : new Date(0));
+          const dateB = b.timestamp?.toDate ? b.timestamp.toDate() : (b.timestamp ? new Date(b.timestamp) : new Date(0));
+          return dateB.getTime() - dateA.getTime();
+        });
+        setNotifications(data);
         setInitialLoad(prev => ({ ...prev, notifications: true }));
       }, (err) => {
-        console.error("Notifications listen error (check if index is required):", err);
+        console.error("Notifications listen error:", err);
         setInitialLoad(prev => ({ ...prev, notifications: true }));
       }));
 
@@ -157,15 +163,19 @@ const AppContent: React.FC = () => {
 
       // Fetch Attendance for the specific class
       const studentUser = session.user as Student;
+      // Fetch Attendance for the specific unit and filter in memory to avoid complex indices
       unsubs.push(db.collection('attendance')
         .where('unit', '==', userUnit)
-        .where('gradeLevel', '==', studentUser.gradeLevel)
-        .where('schoolClass', '==', studentUser.schoolClass)
         .onSnapshot(snap => {
-          setAttendanceRecords(snap.docs.map(doc => doc.data() as AttendanceRecord));
+          const allAttendance = snap.docs.map(doc => doc.data() as AttendanceRecord);
+          const filtered = allAttendance.filter(record =>
+            record.gradeLevel === studentUser.gradeLevel &&
+            record.schoolClass === studentUser.schoolClass
+          );
+          setAttendanceRecords(filtered);
           setInitialLoad(prev => ({ ...prev, attendance: true }));
         }, (err) => {
-          console.error("Attendance listen error:", err);
+          console.error("Attendance listen error (switched to unit-only filter):", err);
           setInitialLoad(prev => ({ ...prev, attendance: true }));
         }));
 
@@ -209,11 +219,13 @@ const AppContent: React.FC = () => {
       }));
 
       // Load teacher notifications
-      unsubs.push(db.collection('notifications').where('teacherId', '==', userId).orderBy('timestamp', 'desc').onSnapshot(snap => {
-        setNotifications(snap.docs.map(doc => ({ ...doc.data() as AppNotification, id: doc.id })));
+      unsubs.push(db.collection('notifications').where('teacherId', '==', userId).onSnapshot(snap => {
+        const data = snap.docs.map(doc => ({ ...doc.data() as AppNotification, id: doc.id }));
+        data.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        setNotifications(data);
         setInitialLoad(prev => ({ ...prev, notifications: true }));
       }, (err) => {
-        console.error("Teacher Notifications listen error (check if index is required):", err);
+        console.error("Teacher Notifications listen error:", err);
         setInitialLoad(prev => ({ ...prev, notifications: true }));
       }));
 
@@ -252,8 +264,10 @@ const AppContent: React.FC = () => {
       }));
 
       const messagesQuery = isGeneral ? db.collection('schoolMessages') : db.collection('schoolMessages').where('unit', '==', userUnit);
-      unsubs.push(messagesQuery.orderBy('timestamp', 'desc').onSnapshot(snap => {
-        setSchoolMessages(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as SchoolMessage)));
+      unsubs.push(messagesQuery.onSnapshot(snap => {
+        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as SchoolMessage));
+        data.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        setSchoolMessages(data);
         setInitialLoad(prev => ({ ...prev, messages: true }));
       }, (err) => {
         console.error("Messages listen error:", err);

@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-100 font-sans;
+  }
+}
+
+@layer components {
+  /* Adicione aqui componentes customizados se necessário */
+}

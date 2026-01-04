@@ -377,6 +377,13 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                                     onChange={(e) => handleSelectChange('schoolClass', e.target.value)}
                                     options={SCHOOL_CLASSES_OPTIONS}
                                 />
+                                <Input
+                                    name="nis"
+                                    value={formData.nis || ''}
+                                    onChange={handleChange}
+                                    label="NIS (Bolsa Família)"
+                                    placeholder="000.00000.00-0"
+                                />
                             </div>
                             <div className="col-span-2 border-t border-gray-100 pt-4 mt-2">
                                 <Input

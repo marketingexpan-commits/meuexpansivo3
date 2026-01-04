@@ -316,7 +316,9 @@ export interface Student {
   phoneNumber?: string;
   photoUrl?: string; // Base64 or URL for 3x4 student photo
   status?: 'CURSANDO' | 'TRANSFERIDO' | 'EVADIDO' | 'TRANCADO' | 'RESERVADO' | 'REPROVADO' | 'APROVADO' | 'ATIVO' | 'INATIVO';
+  nis?: string; // NIS for Bolsa Família
 }
+
 
 export interface Teacher {
   id: string;

@@ -1,0 +1,12 @@
+{
+    "css.customData": [
+        ".vscode/tailwind.json"
+    ],
+    "css.validate": false,
+    "tailwindCSS.includeLanguages": {
+        "plaintext": "css",
+        "html": "html",
+        "javascript": "javascript",
+        "typescriptreact": "typescriptreact"
+    }
+}

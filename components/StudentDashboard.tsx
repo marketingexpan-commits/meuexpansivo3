@@ -349,15 +349,20 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 shift: student.shift
             });
 
-            // Filter by: Unit, Grade, Class, Shift
+            // Filter ONLY by unit in Firestore to avoid complex composite index requirements
             const snapshot = await db.collection('materials')
                 .where('unit', '==', student.unit)
-                .where('gradeLevel', '==', student.gradeLevel)
-                .where('schoolClass', '==', student.schoolClass)
-                .where('shift', '==', student.shift)
                 .get();
 
-            const mats = snapshot.docs.map(doc => doc.data() as ClassMaterial);
+            const allMats = snapshot.docs.map(doc => doc.data() as ClassMaterial);
+
+            // Filter by Grade, Class, and Shift in memory
+            const mats = allMats.filter(mat =>
+                mat.gradeLevel === student.gradeLevel &&
+                mat.schoolClass === student.schoolClass &&
+                mat.shift === student.shift
+            );
+
             // Sort by Timestamp Desc
             mats.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
             setClassMaterials(mats);
@@ -823,7 +828,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                                     <div className="flex items-center gap-4">
                                         <div className="print:block hidden w-20">
-                                            <SchoolLogo variant="login" />
+                                            <SchoolLogo variant="header" />
                                         </div>
                                         <div>
                                             <h2 className="text-2xl font-extrabold text-blue-950 uppercase tracking-wide">EXPANSIVO REDE DE ENSINO</h2>
