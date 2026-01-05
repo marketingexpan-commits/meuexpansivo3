@@ -12,25 +12,25 @@ export function StudentEnrollmentPrint({ student, isBlank = false }: StudentEnro
     const logoUrl = 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png';
     const watermarkUrl = 'https://i.postimg.cc/hjLxrMdc/brasao-da-republica-do-brasil-seeklogo.png';
 
-    // Helper to render value or a wider blank area for manual filling
+    // Helper to render value on a line, ensuring identical layout for blank and filled forms
     const val = (value: any, length: 'sm' | 'md' | 'lg' | 'full' | 'flex' = 'md', textColor: string = 'text-black') => {
-        if (isBlank) {
-            const widths = {
-                'sm': '60px',
-                'md': '120px',
-                'lg': '200px',
-                'full': '100%',
-                'flex': '100%'
-            };
+        const widths = {
+            'sm': '60px',
+            'md': '120px',
+            'lg': '200px',
+            'full': '100%',
+            'flex': '100%'
+        };
 
-            return (
-                <span
-                    className={`inline-block border-b-[0.5px] border-current pb-0.5 ${length === 'flex' ? 'flex-grow mx-1' : ''}`}
-                    style={{ width: length === 'flex' ? 'auto' : widths[length], minHeight: '1em' }}
-                />
-            );
-        }
-        return <span className={`${textColor} font-bold`}>{value || '__________'}</span>;
+        return (
+            <span
+                className={`inline-block border-b-[0.5px] border-black pb-0.5 ${length === 'flex' ? 'flex-grow mx-1' : ''} ${textColor} font-bold`}
+                style={{ width: length === 'flex' ? 'auto' : widths[length], minHeight: '1em' }}
+            >
+                {/* Only render value if not blank, otherwise keep the line empty */}
+                {!isBlank && value}
+            </span>
+        );
     };
 
     return (
@@ -139,32 +139,32 @@ export function StudentEnrollmentPrint({ student, isBlank = false }: StudentEnro
                             <div className="flex gap-1 items-baseline"><strong>Profissão:</strong> {val(student.pai_profissao, 'flex')}</div>
                         </div>
 
-                        <div className={`col-span-2 p-3 ${isBlank ? 'bg-white border-[0.5px] border-black' : 'bg-black text-white'} rounded-lg`}>
+                        <div className="col-span-2 p-3 bg-white border-[0.5px] border-black rounded-lg">
                             <div className="flex justify-between items-center mb-2">
                                 <div className="flex-grow">
-                                    <span className={`${isBlank ? 'text-gray-500' : 'text-gray-400'} uppercase font-black text-[6px] block`}>Responsável Financeiro (Quem assina o contrato)</span>
-                                    <div className={`text-[11px] font-black uppercase tracking-tight flex items-baseline ${isBlank ? 'text-gray-300' : ''}`}>
-                                        {val(student.nome_responsavel, 'full', isBlank ? 'text-black' : 'text-white')}
+                                    <span className="text-gray-500 uppercase font-black text-[6px] block">Responsável Financeiro (Quem assina o contrato)</span>
+                                    <div className="text-[11px] font-black uppercase tracking-tight flex items-baseline text-black">
+                                        {val(student.nome_responsavel, 'full')}
                                     </div>
                                 </div>
                                 <div className="text-right ml-8">
-                                    <span className={`${isBlank ? 'text-gray-500' : 'text-gray-400'} uppercase font-black text-[6px] block`}>Telefone de Contato</span>
-                                    <div className={`text-[11px] font-bold flex items-baseline justify-end ${isBlank ? 'text-gray-300' : ''}`}>
-                                        {val(student.telefone_responsavel, 'md', isBlank ? 'text-black' : 'text-white')}
+                                    <span className="text-gray-500 uppercase font-black text-[6px] block">Telefone de Contato</span>
+                                    <div className="text-[11px] font-bold flex items-baseline justify-end text-black">
+                                        {val(student.telefone_responsavel, 'md')}
                                     </div>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-8 border-t-[0.5px] border-white/20 pt-2">
+                            <div className="grid grid-cols-2 gap-8 border-t-[0.5px] border-gray-200 pt-2">
                                 <div>
-                                    <span className={`${isBlank ? 'text-gray-500' : 'text-gray-400'} uppercase font-black text-[6px] block`}>CPF do Responsável</span>
-                                    <div className={`text-[9px] font-bold flex items-baseline ${isBlank ? 'text-gray-300' : ''}`}>
-                                        {val(student.cpf_responsavel, 'full', isBlank ? 'text-black' : 'text-white')}
+                                    <span className="text-gray-500 uppercase font-black text-[6px] block">CPF do Responsável</span>
+                                    <div className="text-[9px] font-bold flex items-baseline text-black">
+                                        {val(student.cpf_responsavel, 'full')}
                                     </div>
                                 </div>
                                 <div>
-                                    <span className={`${isBlank ? 'text-gray-500' : 'text-gray-400'} uppercase font-black text-[6px] block`}>RG do Responsável</span>
-                                    <div className={`text-[9px] font-bold flex items-baseline ${isBlank ? 'text-gray-300' : ''}`}>
-                                        {val(student.rg_responsavel, 'full', isBlank ? 'text-black' : 'text-white')}
+                                    <span className="text-gray-500 uppercase font-black text-[6px] block">RG do Responsável</span>
+                                    <div className="text-[9px] font-bold flex items-baseline text-black">
+                                        {val(student.rg_responsavel, 'full')}
                                     </div>
                                 </div>
                             </div>
@@ -192,33 +192,74 @@ export function StudentEnrollmentPrint({ student, isBlank = false }: StudentEnro
                     </div>
                 </section>
 
-                {/* IV. Saúde e Emergência */}
+                {/* IV. Saúde e Emergência - SIMPLIFIED */}
                 <section className="mb-4">
-                    <h3 className="text-[9px] font-black uppercase text-black border-l-[3px] border-black pl-2 mb-1 tracking-widest bg-gray-50 py-1">IV. Informações de Saúde Importantes</h3>
-                    <div className="grid grid-cols-2 gap-4 text-[8px]">
-                        <div className="space-y-2 p-1">
-                            <div className="flex gap-1 items-baseline"><strong>Alergias:</strong> {val(student.ficha_saude?.alergias, 'flex')}</div>
-                            <div className="flex gap-1 items-baseline"><strong>Doenças Crônicas:</strong> {val(student.ficha_saude?.doencas_cronicas?.join(', '), 'flex')}</div>
-                            <div className="flex gap-1 items-baseline"><strong>Deficiências / Restrições:</strong> {val(student.ficha_saude?.deficiencias?.join(', '), 'flex')}</div>
-                        </div>
-                        <div className="p-3 bg-red-50 text-red-950 rounded-lg border-[0.5px] border-red-200 flex flex-col justify-center gap-2">
-                            <span className="uppercase font-black text-[7px] block border-b-[0.5px] border-red-300 pb-0.5 mb-1">🚨 EM CASO DE EMERGÊNCIA</span>
-                            <div className="flex gap-2 items-baseline">
-                                <span className="min-w-[45px] font-bold">Contato:</span>
-                                <div className="flex-grow items-baseline flex font-bold uppercase">{val(student.ficha_saude?.contato_emergencia_nome, 'flex')}</div>
+                    <h3 className="text-[8px] font-black uppercase text-black border-l-[3px] border-black pl-2 mb-0.5 tracking-widest bg-gray-50 py-0.5">IV. Informações de Saúde Importantes</h3>
+                    <div className="text-[9px] p-3 border-[0.5px] border-black rounded-lg space-y-3">
+                        {/* Compact Grid Layout */}
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+                            <div className="flex items-baseline gap-1">
+                                <strong className="text-[9px] whitespace-nowrap">Alergias:</strong>
+                                <div className="flex-grow flex items-baseline">
+                                    {val(student.ficha_saude?.alergias, 'flex')}
+                                </div>
                             </div>
-                            <div className="flex gap-2 items-baseline">
-                                <span className="min-w-[45px] font-bold">Telefone:</span>
-                                <div className="flex-grow items-baseline flex font-black text-sm">{val(student.ficha_saude?.contato_emergencia_fone, 'flex')}</div>
+
+                            <div className="flex items-baseline gap-1">
+                                <strong className="text-[9px] whitespace-nowrap">Doenças Crônicas:</strong>
+                                <div className="flex-grow flex items-baseline">
+                                    {val([...(student.ficha_saude?.doencas_cronicas || []), student.ficha_saude?.doencas_cronicas_outra].filter(Boolean).join(', '), 'flex')}
+                                </div>
+                            </div>
+
+                            <div className="flex items-baseline gap-1">
+                                <strong className="text-[9px] whitespace-nowrap">Deficiências:</strong>
+                                <div className="flex-grow flex items-baseline">
+                                    {val([...(student.ficha_saude?.deficiencias || []), student.ficha_saude?.deficiencias_outra].filter(Boolean).join(', '), 'flex')}
+                                </div>
+                            </div>
+
+                            <div className="flex items-baseline gap-1">
+                                <strong className="text-[9px] whitespace-nowrap">Medicamentos:</strong>
+                                <div className="flex-grow flex items-baseline">
+                                    {val(student.ficha_saude?.medicamentos_continuos, 'flex')}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Emergency Contact - Inline */}
+                        <div className="border-t-[0.5px] border-black/10 pt-2 bg-red-50 px-3 py-2 rounded flex items-baseline gap-4 text-[9px]">
+                            <strong className="text-red-900 whitespace-nowrap">🚨 EMERGÊNCIA:</strong>
+                            <div className="flex items-baseline gap-1">
+                                <span className="font-bold">Contato:</span>
+                                <div className="flex items-baseline min-w-[250px]">
+                                    {val(student.ficha_saude?.contato_emergencia_nome, 'full')}
+                                </div>
+                            </div>
+                            <div className="flex items-baseline gap-1">
+                                <span className="font-bold">Tel:</span>
+                                <div className="flex items-baseline min-w-[120px]">
+                                    {val(student.ficha_saude?.contato_emergencia_fone, 'full')}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Observations */}
+                        <div className="border-t-[0.5px] border-black/10 pt-2">
+                            <div className="flex items-baseline gap-1">
+                                <strong className="text-[9px] whitespace-nowrap">Observações:</strong>
+                                <div className="flex-grow flex items-baseline">
+                                    {val(student.ficha_saude?.observacoes_adicionais || student.observacoes_gerais, 'flex')}
+                                </div>
                             </div>
                         </div>
                     </div>
                 </section>
 
                 {/* V. Checklist de Documentos */}
-                <section className="mb-4">
-                    <h3 className="text-[9px] font-black uppercase text-black border-l-[3px] border-black pl-2 mb-1 tracking-widest bg-gray-50 py-1">V. Documentação (Controle Secretaria)</h3>
-                    <div className="grid grid-cols-4 gap-2 text-[7px] border-[0.5px] border-black p-3 rounded-lg italic text-gray-500">
+                <section className="mb-2">
+                    <h3 className="text-[8px] font-black uppercase text-black border-l-[3px] border-black pl-2 mb-0.5 tracking-widest bg-gray-50 py-0.5">V. Documentação (Controle Secretaria)</h3>
+                    <div className="grid grid-cols-4 gap-1.5 text-[6.5px] border-[0.5px] border-black p-2 rounded-lg italic text-gray-500">
                         {[
                             'Certidão Nasc.', 'RG do Aluno', 'CPF do Aluno', 'RG Responsável',
                             'CPF Responsável', 'Residência', 'Foto 3x4', 'Histórico Esc.',

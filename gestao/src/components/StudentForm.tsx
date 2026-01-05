@@ -157,7 +157,9 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
             health_plano_numero: '',
             health_obs: '',
 
-            documentos_entregues: [] as string[]
+            documentos_entregues: [] as string[],
+            nacionalidade: '',
+            uf_naturalidade: ''
         };
 
         // Initialize health fields if student has ficha_saude
@@ -426,6 +428,19 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
         setFormData((prev: any) => ({ ...prev, gradeLevel: '' }));
     };
 
+    // Helper to remove undefined/null from object before saving to Firestore
+    const cleanObject = (obj: any): any => {
+        const cleaned = { ...obj };
+        Object.keys(cleaned).forEach(key => {
+            if (cleaned[key] === undefined) {
+                delete cleaned[key];
+            } else if (cleaned[key] !== null && typeof cleaned[key] === 'object' && !Array.isArray(cleaned[key])) {
+                cleaned[key] = cleanObject(cleaned[key]);
+            }
+        });
+        return cleaned;
+    };
+
     const handleSubmit = async () => {
         try {
             setIsLoading(true);
@@ -441,31 +456,34 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                 cleanTuition = cleanTuition.replace(/[^\d,.]/g, '').replace(/\./g, '').replace(',', '.');
             }
 
+            // Build the complete ficha_saude object
+            const fichaSaude = {
+                alergias: formData.health_alergias,
+                doencas_cronicas: formData.health_doencas_cronicas,
+                doencas_cronicas_outra: formData.health_doencas_cronicas_outra,
+                deficiencias: formData.health_deficiencias,
+                deficiencias_outra: formData.health_deficiencias_outra,
+                doencas_contraidas: formData.health_doencas_contraidas,
+                doencas_contraidas_outra: formData.health_doencas_contraidas_outra,
+                vacinas: formData.health_vacinas,
+                vacinas_outra: formData.health_vacinas_outra,
+                medicamentos_continuos: formData.health_medicamentos,
+                contato_emergencia_nome: formData.health_emergencia_nome,
+                contato_emergencia_fone: formData.health_emergencia_fone,
+                hospital_preferencia: formData.health_hospital,
+                medico_particular: formData.health_medico_nome,
+                medico_telefone: formData.health_medico_fone,
+                instrucoes_febre: formData.health_febre,
+                plano_saude_nome: formData.health_plano_nome,
+                plano_saude_numero: formData.health_plano_numero,
+                observacoes_adicionais: formData.health_obs
+            };
+
             const dataToSave = {
                 ...formData,
                 valor_mensalidade: cleanTuition, // Save as dot-decimal string or number
                 phoneNumber: formData.telefone_responsavel, // Ensure root project field is updated
-                ficha_saude: {
-                    alergias: formData.health_alergias,
-                    doencas_cronicas: formData.health_doencas_cronicas,
-                    doencas_cronicas_outra: formData.health_doencas_cronicas_outra,
-                    deficiencias: formData.health_deficiencias,
-                    deficiencias_outra: formData.health_deficiencias_outra,
-                    doencas_contraidas: formData.health_doencas_contraidas,
-                    doencas_contraidas_outra: formData.health_doencas_contraidas_outra,
-                    vacinas: formData.health_vacinas,
-                    vacinas_outra: formData.health_vacinas_outra,
-                    medicamentos_continuos: formData.health_medicamentos,
-                    contato_emergencia_nome: formData.health_emergencia_nome,
-                    contato_emergencia_fone: formData.health_emergencia_fone,
-                    hospital_preferencia: formData.health_hospital,
-                    medico_particular: formData.health_medico_nome,
-                    medico_telefone: formData.health_medico_fone,
-                    instrucoes_febre: formData.health_febre,
-                    plano_saude_nome: formData.health_plano_nome,
-                    plano_saude_numero: formData.health_plano_numero,
-                    observacoes_adicionais: formData.health_obs
-                }
+                ficha_saude: fichaSaude
             };
 
             // Remove flat health fields from dataToSave to keep DB clean
@@ -475,13 +493,24 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                 }
             });
 
+            // Final sanitization to remove undefined values
+            const finalData = cleanObject(dataToSave);
+
             if (student && student.id) {
-                await studentService.updateStudent(student.id, dataToSave);
+                await studentService.updateStudent(student.id, finalData);
                 alert("Dados do aluno atualizados com sucesso!");
             } else {
-                await studentService.createStudent(dataToSave);
+                await studentService.createStudent(finalData);
                 alert("Aluno matriculado com sucesso!");
             }
+
+            // CRITICAL: Update formData with the complete ficha_saude structure
+            // This ensures prints will show the saved health data
+            setFormData((prev: any) => ({
+                ...prev,
+                ficha_saude: fichaSaude
+            }));
+
             onClose(true);
         } catch (error) {
             console.error(error);
@@ -614,7 +643,13 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                                         { label: 'Feminino', value: 'F' }
                                     ]}
                                 />
-                                <Input name="naturalidade" value={formData.naturalidade} onChange={handleChange} label="Naturalidade" placeholder="Cidade de nascimento" />
+                                <Input name="nacionalidade" value={formData.nacionalidade} onChange={handleChange} label="Nacionalidade" placeholder="Ex: Brasileira" />
+                                <div className="grid grid-cols-3 gap-2 col-span-2 md:col-span-1">
+                                    <div className="col-span-2">
+                                        <Input name="naturalidade" value={formData.naturalidade} onChange={handleChange} label="Naturalidade (Cidade)" placeholder="Cidade de nascimento" />
+                                    </div>
+                                    <Input name="uf_naturalidade" value={formData.uf_naturalidade} onChange={handleChange} label="UF" placeholder="RN" maxLength={2} />
+                                </div>
                             </div>
                         </div>
                     )}
@@ -1142,7 +1177,14 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
 
             {/* Hidden Print Template */}
             <div className="hidden print:block fixed inset-0 z-[100] bg-white">
-                <StudentEnrollmentPrint student={formData} isBlank={printBlank} />
+                <StudentEnrollmentPrint
+                    student={{
+                        ...formData,
+                        // Ensure we use the saved ficha_saude if it exists in the original student object
+                        ficha_saude: student?.ficha_saude || formData.ficha_saude
+                    }}
+                    isBlank={printBlank}
+                />
             </div>
         </div>
     );
