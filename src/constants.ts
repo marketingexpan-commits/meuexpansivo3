@@ -75,15 +75,13 @@ export const SCHOOL_GRADES_LIST = [
 export const HS_SUBJECTS_2025 = [
   "Português", "Matemática", "Inglês", "História", "Geografia",
   "Literatura", "Biologia", "Física", "Química", "Redação",
-  "Espanhol", "Ens. Artes", "Filosofia", "Sociologia",
-  "Ed. Física", "Projeto de Vida", "Empreendedorismo"
+  "Espanhol", "Filosofia", "Sociologia", "Projeto de Vida", "Empreendedorismo"
 ];
 
 export const HS_SUBJECTS_2026 = [
   "Português", "Matemática", "Inglês", "História", "Geografia",
   "Literatura", "Biologia", "Física", "Química", "Redação",
-  "Espanhol", "Ens. Artes", "Filosofia", "Sociologia",
-  "Ed. Física", "Projeto de Vida", "Empreendedorismo", "Ensino Religioso"
+  "Espanhol", "Filosofia", "Sociologia", "Projeto de Vida", "Empreendedorismo"
 ];
 
 export const EF_SUBJECTS = [
@@ -259,3 +257,51 @@ export const FINAL_GRADES_CALCULATED: GradeEntry[] = INITIAL_GRADES_MOCK.map(gra
     ...finalData,
   };
 });
+
+// --- MATRIZ CURRICULAR (AULAS POR SEMANA) ---
+export const CURRICULUM_MATRIX: Record<string, Record<string, number>> = {
+  'Fundamental I': {
+    [Subject.PORTUGUESE]: 4,
+    [Subject.MATH]: 4,
+    [Subject.SCIENCE]: 2,
+    [Subject.GEOGRAPHY]: 2,
+    [Subject.HISTORY]: 2,
+    [Subject.ENGLISH]: 2,
+    [Subject.ARTS]: 2,
+    [Subject.SPANISH]: 1,
+    [Subject.PHILOSOPHY]: 1,
+    [Subject.LIFE_PROJECT]: 1,
+    [Subject.MUSIC]: 1
+  },
+  'Fundamental II': {
+    [Subject.MATH]: 4,
+    [Subject.PORTUGUESE]: 4,
+    [Subject.HISTORY]: 2,
+    [Subject.GEOGRAPHY]: 2,
+    [Subject.SCIENCE]: 2,
+    [Subject.ENGLISH]: 1,
+    [Subject.SPANISH]: 1,
+    [Subject.FRENCH]: 1,
+    [Subject.ARTS]: 1,
+    [Subject.WRITING]: 1,
+    [Subject.PHYSICAL_ED]: 1,
+    [Subject.LIFE_PROJECT]: 1
+  },
+  'Ens. Médio': {
+    [Subject.PORTUGUESE]: 2,
+    [Subject.MATH]: 4,
+    [Subject.PHYSICS]: 4,
+    [Subject.BIOLOGY]: 2,
+    [Subject.HISTORY]: 2,
+    [Subject.GEOGRAPHY]: 2,
+    [Subject.SOCIOLOGY]: 1,
+    [Subject.PHILOSOPHY]: 2,
+    [Subject.CHEMISTRY]: 2,
+    [Subject.LITERATURE]: 2,
+    [Subject.WRITING]: 2,
+    [Subject.ENGLISH]: 1,
+    [Subject.SPANISH]: 1,
+    [Subject.LIFE_PROJECT]: 0,
+    [Subject.ENTREPRENEURSHIP]: 0
+  }
+};

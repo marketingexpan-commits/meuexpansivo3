@@ -175,6 +175,12 @@ export const SCHOOL_CLASSES_LIST = Object.values(SchoolClass);
 
 
 export const calculateBimesterMedia = (bData: BimesterData): BimesterData => {
+  // Se não houver nota nem recuperação lançada, a média deve ser um marcador (ex: -1) ou null se o tipo permitir.
+  // Como media é number, usaremos -1 para indicar que não há nota lançada ainda.
+  if ((bData.nota === null || bData.nota === undefined) && (bData.recuperacao === null || bData.recuperacao === undefined)) {
+    return { ...bData, media: -1 };
+  }
+
   const nota = bData.nota ?? 0;
   const rec = bData.recuperacao ?? 0;
   let media = nota;
@@ -184,19 +190,24 @@ export const calculateBimesterMedia = (bData: BimesterData): BimesterData => {
   return { ...bData, media: parseFloat(media.toFixed(1)) };
 };
 
-export const calculateFinalData = (bimesters: GradeEntry['bimesters'], recFinal?: number | null) => {
+export const calculateFinalData = (bimesters: GradeEntry['bimesters'], recFinal?: number | null): Pick<GradeEntry, 'mediaAnual' | 'mediaFinal' | 'situacaoFinal'> => {
   const bimesterMedias = [
     bimesters.bimester1.media,
     bimesters.bimester2.media,
     bimesters.bimester3.media,
     bimesters.bimester4.media,
-  ].filter(m => m !== undefined && m !== null) as number[];
+  ].filter(m => m !== undefined && m !== null && m >= 0) as number[];
 
   const totalMedias = bimesterMedias.reduce((sum, current) => sum + current, 0);
   const mediaAnual = parseFloat((totalMedias / 4).toFixed(1));
 
   let mediaFinal = mediaAnual;
   let situacaoFinal: GradeEntry['situacaoFinal'] = 'Aprovado';
+
+  // Se não houver nenhuma nota em nenhum bimestre, a situação é 'Cursando'
+  if (bimesterMedias.length === 0) {
+    return { mediaAnual: 0, mediaFinal: 0, situacaoFinal: 'Cursando' };
+  }
 
   if (mediaAnual >= 7.0) {
     situacaoFinal = 'Aprovado';
@@ -210,6 +221,7 @@ export const calculateFinalData = (bimesters: GradeEntry['bimesters'], recFinal?
         situacaoFinal = 'Reprovado';
       }
     } else {
+      // Se tiver nota mas ainda não alcançou 7.0 e não fez a prova final
       situacaoFinal = 'Recuperação';
     }
   }
@@ -268,5 +280,65 @@ export const FINAL_GRADES_CALCULATED: GradeEntry[] = ALLOW_MOCK_LOGIN ? INITIAL_
     ...grade,
     bimesters: calculatedBimesters,
     ...finalData,
-  };
+  } as GradeEntry;
 }) : [];
+
+// --- HELPER PARA OBTER MATÉRIAS DA MATRIZ ---
+export const getCurriculumSubjects = (gradeLevel: string): string[] => {
+  if (!gradeLevel) return [];
+  // Ordena as chaves por comprimento descrescente para evitar que "Fundamental II" bata no "Fundamental I"
+  const sortedMatrixKeys = Object.keys(CURRICULUM_MATRIX).sort((a, b) => b.length - a.length);
+  const levelKey = sortedMatrixKeys.find(key =>
+    gradeLevel.includes(key) ||
+    (key === 'Ens. Médio' && (gradeLevel.includes('Médio') || gradeLevel.includes('Série')))
+  );
+  return levelKey ? Object.keys(CURRICULUM_MATRIX[levelKey]) : [];
+};
+
+// --- MATRIZ CURRICULAR (AULAS POR SEMANA) ---
+export const CURRICULUM_MATRIX: Record<string, Record<string, number>> = {
+  'Fundamental I': {
+    [Subject.PORTUGUESE]: 4,
+    [Subject.MATH]: 4,
+    [Subject.SCIENCE]: 2,
+    [Subject.GEOGRAPHY]: 2,
+    [Subject.HISTORY]: 2,
+    [Subject.ENGLISH]: 2,
+    [Subject.ARTS]: 2, // Ens. Artes
+    [Subject.SPANISH]: 1,
+    [Subject.PHILOSOPHY]: 1,
+    [Subject.LIFE_PROJECT]: 1,
+    [Subject.MUSIC]: 1
+  },
+  'Fundamental II': {
+    [Subject.MATH]: 4,
+    [Subject.PORTUGUESE]: 4,
+    [Subject.HISTORY]: 2,
+    [Subject.GEOGRAPHY]: 2,
+    [Subject.SCIENCE]: 2,
+    [Subject.ENGLISH]: 1,
+    [Subject.SPANISH]: 1,
+    [Subject.FRENCH]: 1,
+    [Subject.ARTS]: 1, // Ens. Artes
+    [Subject.WRITING]: 1,
+    [Subject.PHYSICAL_ED]: 1,
+    [Subject.LIFE_PROJECT]: 1
+  },
+  'Ens. Médio': {
+    [Subject.PORTUGUESE]: 2,
+    [Subject.MATH]: 4,
+    [Subject.PHYSICS]: 4,
+    [Subject.BIOLOGY]: 2,
+    [Subject.HISTORY]: 2,
+    [Subject.GEOGRAPHY]: 2,
+    [Subject.SOCIOLOGY]: 1,
+    [Subject.PHILOSOPHY]: 2,
+    [Subject.CHEMISTRY]: 2,
+    [Subject.LITERATURE]: 2,
+    [Subject.WRITING]: 2,
+    [Subject.ENGLISH]: 1,
+    [Subject.SPANISH]: 1,
+    [Subject.LIFE_PROJECT]: 0,
+    [Subject.ENTREPRENEURSHIP]: 0
+  }
+};

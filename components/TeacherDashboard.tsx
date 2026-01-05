@@ -5,14 +5,8 @@ import { db, storage } from '../firebaseConfig';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 import { getAttendanceBreakdown, AttendanceBreakdown } from '../src/utils/attendanceUtils';
-import {
-    calculateBimesterMedia,
-    calculateFinalData,
-    SCHOOL_GRADES_LIST,
-    SCHOOL_SHIFTS_LIST,
-    SCHOOL_CLASSES_LIST,
-    EARLY_CHILDHOOD_REPORT_TEMPLATE
-} from '../constants';
+import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects, SCHOOL_GRADES_LIST, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST, EARLY_CHILDHOOD_REPORT_TEMPLATE } from '../constants';
+import { calculateAttendancePercentage, calculateAnnualAttendancePercentage } from '../utils/frequency';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 import { TableSkeleton } from './Skeleton';
@@ -32,7 +26,7 @@ interface TeacherDashboardProps {
 }
 
 const formatGrade = (value: number | undefined | null) => {
-    return value !== undefined && value !== null ? value.toFixed(1) : '-';
+    return value !== undefined && value !== null && value !== -1 ? value.toFixed(1) : '-';
 };
 
 export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, students, grades, attendanceRecords, earlyChildhoodReports, onSaveGrade, onSaveAttendance, onSaveEarlyChildhoodReport, onLogout, notifications = [], onMarkNotificationAsRead }) => {
@@ -1281,11 +1275,12 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                             <thead className="bg-blue-50">
                                                                 <tr>
                                                                     <th rowSpan={2} className="px-2 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-24 md:w-40 sticky left-0 bg-blue-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[10px] md:text-sm">Disciplina</th>
-                                                                    {[1, 2, 3, 4].map(num => (<th key={num} colSpan={4} className="px-1 py-2 text-center font-bold text-gray-700 uppercase tracking-wider border-l border-r border-gray-300">{num}º BIM</th>))}
-                                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-16 text-[10px] leading-tight">Média<br />Anual</th>
-                                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-red-700 uppercase tracking-wider border-r border-gray-300 bg-red-50 w-16 text-[10px] leading-tight">Prova<br />Final</th>
-                                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-blue-950 uppercase tracking-wider border-r border-gray-300 bg-blue-100 w-16 text-[10px] leading-tight">Média<br />Final</th>
-                                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase w-20 text-[10px]">Situação</th>
+                                                                    {[1, 2, 3, 4].map(num => (<th key={num} colSpan={5} className="px-1 py-2 text-center font-bold text-gray-700 uppercase tracking-wider border-l border-r border-gray-300">{num}º BIM</th>))}
+                                                                    <th rowSpan={2} className="px-1 py-2 text-center font-bold text-gray-700 uppercase tracking-wider border-l border-r border-gray-300">Média<br />Anual</th>
+                                                                    <th rowSpan={2} className="px-1 py-2 text-center font-bold text-amber-700 uppercase tracking-wider border-r border-gray-300 bg-amber-50">Prova<br />Final</th>
+                                                                    <th rowSpan={2} className="px-1 py-2 text-center font-bold text-blue-900 uppercase tracking-wider border-r border-gray-300 bg-blue-50">Média<br />Final</th>
+                                                                    <th rowSpan={2} className="px-1 py-2 text-center font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">%<br />Tot</th>
+                                                                    <th rowSpan={2} className="px-1 py-2 text-center font-bold text-gray-700 uppercase tracking-wider">Situação</th>
                                                                 </tr>
                                                                 <tr className="bg-blue-50 text-[10px]">
                                                                     {[1, 2, 3, 4].map(num => (
@@ -1294,65 +1289,158 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                             <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300" title={`Recuperação ${num}º Bimestre`}>R{num}</th>
                                                                             <th className="px-1 py-1 text-center font-bold text-blue-950 bg-blue-50 border-r border-gray-300" title={`Média ${num}º Bimestre`}>M{num}</th>
                                                                             <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300" title={`Faltas ${num}º Bimestre`}>F{num}</th>
+                                                                            <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300" title={`Frequência ${num}º Bimestre`}>%</th>
                                                                         </React.Fragment>
                                                                     ))}
                                                                 </tr>
                                                             </thead>
                                                             <tbody className="bg-white divide-y divide-gray-200">
-                                                                {(grades.filter(g => g.studentId === selectedStudent.id) || []).map((grade) => (
-                                                                    <tr key={grade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-200">
-                                                                        <td className="px-2 py-2 font-bold text-gray-900 border-r border-gray-300 text-[10px] md:text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] align-top">
-                                                                            <span className="uppercase block leading-tight mb-1">{grade.subject}</span>
-                                                                        </td>
-                                                                        {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
-                                                                            const bData = grade.bimesters[key as keyof typeof grade.bimesters];
-                                                                            const bimesterNum = Number(key.replace('bimester', '')) as 1 | 2 | 3 | 4;
-                                                                            // Calculate absences dynamically for this student and bimester
-                                                                            // Reusing logic from calculatedAbsences but specifically for this student inside the map
-                                                                            const currentStudentAbsences = attendanceRecords.reduce((acc, record) => {
-                                                                                // STRICT SUBJECT FILTER FOR BULLETIN ROW
-                                                                                if (record.discipline !== grade.subject) return acc;
+                                                                {(() => {
+                                                                    const subjectsInCurriculum = getCurriculumSubjects(selectedStudent.gradeLevel || "");
+                                                                    const studentId = selectedStudent.id;
 
-                                                                                if (record.studentStatus[grade.studentId] === AttendanceStatus.ABSENT) {
-                                                                                    const [y, mStr] = record.date.split('-');
-                                                                                    const yNum = Number(y);
-                                                                                    const mNum = Number(mStr); // 1-12
+                                                                    // 1. Matérias que já possuem registros
+                                                                    const existingGrades = (grades.filter(g => g.studentId === studentId) || [])
+                                                                        .filter(g => subjectsInCurriculum.length === 0 || subjectsInCurriculum.includes(g.subject))
+                                                                        .map(grade => {
+                                                                            const calculatedBimesters = {
+                                                                                bimester1: calculateBimesterMedia(grade.bimesters.bimester1),
+                                                                                bimester2: calculateBimesterMedia(grade.bimesters.bimester2),
+                                                                                bimester3: calculateBimesterMedia(grade.bimesters.bimester3),
+                                                                                bimester4: calculateBimesterMedia(grade.bimesters.bimester4),
+                                                                            };
+                                                                            const finalData = calculateFinalData(calculatedBimesters, grade.recuperacaoFinal);
+                                                                            return { ...grade, bimesters: calculatedBimesters, ...finalData };
+                                                                        });
 
-                                                                                    if (yNum === new Date().getFullYear()) {
-                                                                                        // Explicit check against bimesterNum (1,2,3,4)
-                                                                                        if (bimesterNum === 1 && mNum >= 1 && mNum <= 3) return acc + 1;
-                                                                                        if (bimesterNum === 2 && mNum >= 4 && mNum <= 6) return acc + 1;
-                                                                                        if (bimesterNum === 3 && mNum >= 7 && mNum <= 9) return acc + 1;
-                                                                                        if (bimesterNum === 4 && mNum >= 10 && mNum <= 12) return acc + 1;
+                                                                    // 2. Garantir que todas as matérias da matriz apareçam
+                                                                    let finalGrades: GradeEntry[] = [...existingGrades];
+                                                                    if (subjectsInCurriculum.length > 0) {
+                                                                        subjectsInCurriculum.forEach(subjectName => {
+                                                                            const exists = existingGrades.some(g => g.subject === subjectName);
+                                                                            if (!exists) {
+                                                                                const emptyGrade: GradeEntry = {
+                                                                                    id: `empty_${subjectName}_${studentId}`,
+                                                                                    studentId: studentId,
+                                                                                    subject: subjectName,
+                                                                                    bimesters: {
+                                                                                        bimester1: { nota: null, recuperacao: null, media: -1, faltas: 0 },
+                                                                                        bimester2: { nota: null, recuperacao: null, media: -1, faltas: 0 },
+                                                                                        bimester3: { nota: null, recuperacao: null, media: -1, faltas: 0 },
+                                                                                        bimester4: { nota: null, recuperacao: null, media: -1, faltas: 0 },
+                                                                                    },
+                                                                                    mediaAnual: 0,
+                                                                                    mediaFinal: 0,
+                                                                                    situacaoFinal: 'Cursando',
+                                                                                    lastUpdated: new Date().toISOString()
+                                                                                };
+                                                                                finalGrades.push(emptyGrade);
+                                                                            }
+                                                                        });
+                                                                        finalGrades.sort((a, b) => subjectsInCurriculum.indexOf(a.subject) - subjectsInCurriculum.indexOf(b.subject));
+                                                                    }
+
+                                                                    return finalGrades.map((grade) => (
+                                                                        <tr key={grade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-200">
+                                                                            <td className="px-2 py-2 font-bold text-gray-900 border-r border-gray-300 text-[10px] md:text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] align-top">
+                                                                                <span className="uppercase block leading-tight mb-1">{grade.subject}</span>
+                                                                            </td>
+                                                                            {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
+                                                                                const bData = grade.bimesters[key as keyof typeof grade.bimesters];
+                                                                                const bimesterNum = Number(key.replace('bimester', '')) as 1 | 2 | 3 | 4;
+                                                                                // Calculate absences dynamically for this student and bimester
+                                                                                // Reusing logic from calculatedAbsences but specifically for this student inside the map
+                                                                                const currentStudentAbsences = attendanceRecords.reduce((acc, record) => {
+                                                                                    // STRICT SUBJECT FILTER FOR BULLETIN ROW
+                                                                                    if (record.discipline !== grade.subject) return acc;
+
+                                                                                    if (record.studentStatus[grade.studentId] === AttendanceStatus.ABSENT) {
+                                                                                        const [y, mStr] = record.date.split('-');
+                                                                                        const yNum = Number(y);
+                                                                                        const mNum = Number(mStr); // 1-12
+
+                                                                                        if (yNum === new Date().getFullYear()) {
+                                                                                            // Explicit check against bimesterNum (1,2,3,4)
+                                                                                            if (bimesterNum === 1 && mNum >= 1 && mNum <= 3) return acc + 1;
+                                                                                            if (bimesterNum === 2 && mNum >= 4 && mNum <= 6) return acc + 1;
+                                                                                            if (bimesterNum === 3 && mNum >= 7 && mNum <= 9) return acc + 1;
+                                                                                            if (bimesterNum === 4 && mNum >= 10 && mNum <= 12) return acc + 1;
+                                                                                        }
                                                                                     }
-                                                                                }
-                                                                                return acc;
-                                                                            }, 0);
+                                                                                    return acc;
+                                                                                }, 0);
 
-                                                                            return (
-                                                                                <React.Fragment key={key}>
-                                                                                    <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-300">{formatGrade(bData.nota)}</td>
-                                                                                    <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-300">{formatGrade(bData.recuperacao)}</td>
-                                                                                    <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs">{formatGrade(bData.media)}</td>
-                                                                                    <td className="px-1 py-2 text-center text-gray-500 text-xs border-r border-gray-300">
-                                                                                        {bData.faltas !== undefined && bData.faltas !== null ? bData.faltas : (currentStudentAbsences || '')}
+                                                                                return (
+                                                                                    <React.Fragment key={key}>
+                                                                                        <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-300">{formatGrade(bData.nota)}</td>
+                                                                                        <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-300">{formatGrade(bData.recuperacao)}</td>
+                                                                                        <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs">{formatGrade(bData.media)}</td>
+                                                                                        <td className="px-1 py-2 text-center text-gray-500 text-xs border-r border-gray-300">
+                                                                                            {bData.faltas !== undefined && bData.faltas !== null ? bData.faltas : (currentStudentAbsences || '')}
+                                                                                        </td>
+                                                                                        {(() => {
+                                                                                            const absences = bData.faltas !== undefined && bData.faltas !== null ? bData.faltas : currentStudentAbsences;
+                                                                                            const freqPercent = calculateAttendancePercentage(grade.subject, absences, selectedStudent?.gradeLevel || "");
+
+                                                                                            // Só exibe a porcentagem se houver pelo menos uma falta
+                                                                                            const hasAbsence = absences > 0;
+                                                                                            const isLowFreq = hasAbsence && freqPercent !== null && freqPercent < 75;
+
+                                                                                            return (
+                                                                                                <td className={`px-1 py-2 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs ${isLowFreq ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência">
+                                                                                                    {hasAbsence && freqPercent !== null ? `${freqPercent}%` : '-'}
+                                                                                                </td>
+                                                                                            );
+                                                                                        })()}
+                                                                                    </React.Fragment>
+                                                                                );
+                                                                            })}
+                                                                            <td className="px-1 py-2 text-center font-bold text-gray-700 border-r border-gray-300 bg-gray-50 text-sm">{formatGrade(grade.mediaAnual)}</td>
+                                                                            <td className="px-1 py-2 text-center font-bold text-amber-600 bg-amber-50/30 text-sm border-r border-gray-300">{formatGrade(grade.recuperacaoFinal)}</td>
+                                                                            <td className="px-1 py-2 text-center font-extrabold text-blue-950 bg-blue-50 text-sm border-r border-gray-300">{formatGrade(grade.mediaFinal)}</td>
+                                                                            {(() => {
+                                                                                const totalAbsences = [grade.bimesters.bimester1, grade.bimesters.bimester2, grade.bimesters.bimester3, grade.bimesters.bimester4].reduce((sum, b, idx) => {
+                                                                                    const bNum = (idx + 1) as 1 | 2 | 3 | 4;
+                                                                                    if (b.faltas !== undefined && b.faltas !== null) return sum + b.faltas;
+
+                                                                                    const studentAbsSnapshot = attendanceRecords.filter(att =>
+                                                                                        att.discipline === grade.subject &&
+                                                                                        att.studentStatus[selectedStudent.id] === AttendanceStatus.ABSENT
+                                                                                    ).filter(att => {
+                                                                                        const d = new Date(att.date + 'T00:00:00');
+                                                                                        const m = d.getMonth() + 1;
+                                                                                        if (bNum === 1 && m >= 1 && m <= 3) return true;
+                                                                                        if (bNum === 2 && m >= 4 && m <= 6) return true;
+                                                                                        if (bNum === 3 && m >= 7 && m <= 9) return true;
+                                                                                        if (bNum === 4 && m >= 10 && m <= 12) return true;
+                                                                                        return false;
+                                                                                    }).length;
+
+                                                                                    return sum + studentAbsSnapshot;
+                                                                                }, 0);
+
+                                                                                const annualFreq = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, selectedStudent.gradeLevel || "");
+                                                                                const isCritical = annualFreq !== null && annualFreq < 75;
+                                                                                const hasAbsenceTotal = totalAbsences > 0;
+
+                                                                                return (
+                                                                                    <td className={`px-1 py-2 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs ${isCritical ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência Anual">
+                                                                                        {hasAbsenceTotal && annualFreq !== null ? `${annualFreq}%` : '-'}
                                                                                     </td>
-                                                                                </React.Fragment>
-                                                                            );
-                                                                        })}
-                                                                        <td className="px-1 py-2 text-center font-bold text-gray-700 border-r border-gray-300 bg-gray-50 text-sm">{formatGrade(grade.mediaAnual)}</td>
-                                                                        <td className="px-1 py-2 text-center font-bold text-red-600 bg-red-50 text-sm border-r border-gray-300">{formatGrade(grade.recuperacaoFinal)}</td>
-                                                                        <td className="px-1 py-2 text-center font-extrabold text-blue-950 bg-blue-50 text-sm border-r border-gray-300">{formatGrade(grade.mediaFinal)}</td>
-                                                                        <td className="px-1 py-2 text-center align-middle">
-                                                                            <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
-                                                                                grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                                                                    'bg-red-50 text-red-700 border-red-200'
-                                                                                }`}>
-                                                                                {grade.situacaoFinal}
-                                                                            </span>
-                                                                        </td>
-                                                                    </tr>
-                                                                ))}
+                                                                                );
+                                                                            })()}
+                                                                            <td className="px-1 py-2 text-center align-middle">
+                                                                                <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                                                    grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                                                                        (grade.situacaoFinal === 'Cursando' || grade.situacaoFinal === 'Pendente') ? 'bg-gray-50 text-gray-500 border-gray-200' :
+                                                                                            'bg-red-50 text-red-700 border-red-200'
+                                                                                    }`}>
+                                                                                    {grade.situacaoFinal}
+                                                                                </span>
+                                                                            </td>
+                                                                        </tr>
+                                                                    ))
+                                                                })()}
                                                             </tbody>
                                                         </table>
                                                     </div>

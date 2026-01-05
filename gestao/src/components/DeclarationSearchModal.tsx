@@ -46,7 +46,7 @@ export function DeclarationSearchModal({ onClose }: DeclarationSearchModalProps)
 
             // 2. Fetch Pedagogical Data (Frequency)
             const grades = await pedagogicalService.getGrades(student.id);
-            const freq = pedagogicalService.calculateFrequencyFromGrades(grades);
+            const freq = pedagogicalService.calculateFrequencyFromGrades(grades, student.gradeLevel);
             setStudentFrequency(freq);
 
             // 3. Fetch Financial Data (Debts)

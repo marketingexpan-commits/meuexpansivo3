@@ -49,7 +49,8 @@ export enum Subject {
   WRITING = 'Redação',
   PHILOSOPHY = 'Filosofia',
   SOCIOLOGY = 'Sociologia',
-  MUSIC = 'Musicalização'
+  MUSIC = 'Musicalização',
+  FRENCH = 'Francês'
 }
 
 // NOVO: Tipos para o sistema de mensagens
@@ -104,7 +105,7 @@ export interface GradeEntry {
   recuperacaoFinalApproved?: boolean; // Novo: Indica se a recuperação final foi aprovada
   mediaAnual: number;
   mediaFinal: number;
-  situacaoFinal: 'Aprovado' | 'Recuperação' | 'Reprovado';
+  situacaoFinal: 'Aprovado' | 'Recuperação' | 'Reprovado' | 'Cursando' | 'Pendente';
   situacao?: string;
   year?: number;
   subjectId?: string;

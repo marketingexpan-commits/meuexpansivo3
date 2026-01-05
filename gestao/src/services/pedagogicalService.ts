@@ -2,6 +2,7 @@
 import { db } from '../firebaseConfig';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import type { GradeEntry, AttendanceRecord } from '../types';
+import { CURRICULUM_MATRIX } from '../constants';
 
 const GRADES_COLLECTION = 'grades';
 const ATTENDANCE_COLLECTION = 'attendance';
@@ -39,32 +40,35 @@ export const pedagogicalService = {
     },
 
     // Calcular frequência percentual baseada nas faltas das notas
-    calculateFrequencyFromGrades(grades: GradeEntry[]) {
+    calculateFrequencyFromGrades(grades: GradeEntry[], gradeLevel: string = "Fundamental I") {
         if (grades.length === 0) return 100;
 
-        let totalFaltas = 0;
-        grades.forEach(grade => {
-            Object.values(grade.bimesters).forEach(b => {
-                if (b && typeof b.faltas === 'number') {
-                    totalFaltas += b.faltas;
+        let totalExpectedClasses = 0;
+        let totalAbsences = 0;
+
+        // 1. Determine Level Key for Matrix access
+        let levelKey = '';
+        if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
+        else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
+        else if (gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ens. Médio';
+
+        // 2. Iterate through all subjects and bimesters
+        grades.forEach(gradeEntry => {
+            const subject = gradeEntry.subject;
+            const weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[subject] || 0;
+
+            // For each bimester, add 10 weeks of classes
+            Object.values(gradeEntry.bimesters).forEach(b => {
+                if (weeklyClasses > 0) {
+                    totalExpectedClasses += (weeklyClasses * 10);
+                    totalAbsences += (b.faltas || 0);
                 }
             });
         });
 
-        // Estimativa: um aluno tem aprox 200 dias letivos no ano. 
-        // Cada disciplina tem um número de aulas. 
-        // Se quisermos 75% de frequência global, precisamos de um critério.
-        // O usuário mencionou: "Utilize o campo 'F' da tabela pedagógica para calcular se o aluno cumpre o mínimo de 75%".
-        // Normalmente, a frequência é (Total aulas - Faltas) / Total aulas.
-        // Sem o total de aulas por disciplina, usaremos uma base padrão ou apenas informaremos o status.
-        // Vamos assumir uma base de 800 horas/aula ano ou similar. 
-        // Mas para simplificar e seguir o que foi pedido, se faltas for baixo, está ok.
+        if (totalExpectedClasses === 0) return 100;
 
-        // Se o usuário quer uma porcentagem, precisamos de uma estimativa de total de aulas.
-        // Vamos considerar 200 aulas por disciplina (50 por bimestre).
-        const totalAulasEstimado = grades.length * 200;
-        const frequencia = ((totalAulasEstimado - totalFaltas) / totalAulasEstimado) * 100;
-
-        return Math.max(0, Math.min(100, frequencia));
+        const frequencia = ((totalExpectedClasses - totalAbsences) / totalExpectedClasses) * 100;
+        return Math.max(0, Math.min(100, parseFloat(frequencia.toFixed(1))));
     }
 };

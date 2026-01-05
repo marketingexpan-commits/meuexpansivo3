@@ -48,7 +48,8 @@ export enum Subject {
   WRITING = 'Redação',
   PHILOSOPHY = 'Filosofia',
   SOCIOLOGY = 'Sociologia',
-  MUSIC = 'Musicalização'
+  MUSIC = 'Musicalização',
+  FRENCH = 'Francês'
 }
 
 // NOVO: Tipos para o sistema de mensagens

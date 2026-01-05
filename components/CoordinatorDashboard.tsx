@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebaseConfig';
 import { UnitContact, SchoolUnit, CoordinationSegment, Subject, SchoolClass, SchoolShift } from '../types';
-import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, SUBJECT_LIST } from '../constants';
+import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, SUBJECT_LIST, CURRICULUM_MATRIX, getCurriculumSubjects, calculateBimesterMedia, calculateFinalData } from '../constants';
+import { calculateAttendancePercentage, calculateAnnualAttendancePercentage } from '../utils/frequency';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 
@@ -89,7 +90,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
     const [loading, setLoading] = useState(false);
 
     // --- HELPER ---
-    const formatGrade = (val: number | null | undefined) => (val !== null && val !== undefined) ? val.toFixed(1) : '-';
+    const formatGrade = (val: number | null | undefined) => (val !== null && val !== undefined && val !== -1) ? val.toFixed(1) : '-';
 
     // --- FETCH DATA ---
     const handleFetchPendingGrades = async () => {
@@ -456,14 +457,15 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                     <tr>
                                                         <th rowSpan={2} className="px-2 py-2 font-bold uppercase border-r border-gray-300 w-32 sticky left-0 bg-gray-50 z-10 shadow-sm">Disciplina</th>
                                                         {[1, 2, 3, 4].map(num => (
-                                                            <th key={num} colSpan={4} className="px-1 py-1 text-center font-bold uppercase border-r border-gray-300">
+                                                            <th key={num} colSpan={5} className="px-1 py-1 text-center font-bold uppercase border-r border-gray-300">
                                                                 {num}º Bim
                                                             </th>
                                                         ))}
-                                                        <th rowSpan={2} className="px-1 py-2 text-center font-bold uppercase border-r border-gray-300 w-12 leading-tight">Média<br />Anual</th>
-                                                        <th rowSpan={2} className="px-1 py-2 text-center font-bold text-red-700 uppercase border-r border-gray-300 bg-red-50 w-12 leading-tight">Rec.<br />Final</th>
-                                                        <th rowSpan={2} className="px-1 py-2 text-center font-bold text-blue-950 uppercase border-r border-gray-300 bg-blue-50 w-12 leading-tight">Média<br />Final</th>
-                                                        <th rowSpan={2} className="px-2 py-2 text-center font-bold uppercase w-20">Situação</th>
+                                                        <th rowSpan={2} className="px-1 py-1 text-center font-bold uppercase border-r border-gray-300">Média<br />Anual</th>
+                                                        <th rowSpan={2} className="px-1 py-1 text-center font-bold text-amber-700 uppercase border-r border-gray-300 bg-amber-50">Prova<br />Final</th>
+                                                        <th rowSpan={2} className="px-1 py-1 text-center font-bold text-blue-900 uppercase border-r border-gray-300 bg-blue-50">Média<br />Final</th>
+                                                        <th rowSpan={2} className="px-1 py-1 text-center font-bold uppercase border-r border-gray-300">%<br />Tot</th>
+                                                        <th rowSpan={2} className="px-1 py-1 text-center font-bold uppercase">Situação</th>
                                                         <th rowSpan={2} className="px-2 py-2 text-center font-bold uppercase w-20 bg-gray-100">Ação</th>
                                                     </tr>
                                                     <tr className="bg-gray-100 text-[10px]">
@@ -473,87 +475,145 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                                 <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold" title="Recuperação">R</th>
                                                                 <th className="px-1 py-1 text-center border-r border-gray-300 font-bold bg-gray-200" title="Média">M</th>
                                                                 <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold" title="Faltas">F</th>
+                                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold" title="Frequência">%</th>
                                                             </React.Fragment>
                                                         ))}
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {grades.map(grade => {
-                                                        const isRecFinalPending = grade.recuperacaoFinalApproved === false;
+                                                    {(() => {
+                                                        const subjectsInCurriculum = getCurriculumSubjects(student.gradeLevel || "");
 
-                                                        // Resolve teacher Name
-                                                        const tName = teachersMap[grade.teacherId || ''] || grade.teacherName || 'N/A';
+                                                        // 1. Matérias existentes
+                                                        const existingGrades = (grades || [])
+                                                            .filter(g => subjectsInCurriculum.length === 0 || subjectsInCurriculum.includes(g.subject))
+                                                            .map(grade => {
+                                                                const calculatedBimesters = {
+                                                                    bimester1: calculateBimesterMedia(grade.bimesters.bimester1),
+                                                                    bimester2: calculateBimesterMedia(grade.bimesters.bimester2),
+                                                                    bimester3: calculateBimesterMedia(grade.bimesters.bimester3),
+                                                                    bimester4: calculateBimesterMedia(grade.bimesters.bimester4),
+                                                                };
+                                                                const finalData = calculateFinalData(calculatedBimesters, grade.recuperacaoFinal);
+                                                                return { ...grade, bimesters: calculatedBimesters, ...finalData };
+                                                            });
 
-                                                        return (
-                                                            <tr key={grade.id} className="hover:bg-purple-50 transition-colors border-b last:border-0 border-gray-200">
-                                                                <td className="px-2 py-2 border-r border-gray-300 sticky left-0 bg-white z-10 shadow-sm">
-                                                                    <div className="font-bold text-gray-700">{grade.subject}</div>
-                                                                    <div className="text-[9px] text-gray-400 mt-0.5">{tName}</div>
-                                                                </td>
+                                                        // 2. Preencher faltantes
+                                                        let finalGrades: any[] = [...existingGrades];
+                                                        if (subjectsInCurriculum.length > 0) {
+                                                            subjectsInCurriculum.forEach(subjectName => {
+                                                                const exists = existingGrades.some(g => g.subject === subjectName);
+                                                                if (!exists) {
+                                                                    finalGrades.push({
+                                                                        id: `empty_${subjectName}_${student.id}`,
+                                                                        studentId: student.id,
+                                                                        subject: subjectName,
+                                                                        bimesters: {
+                                                                            bimester1: { nota: null, recuperacao: null, media: -1, faltas: 0 },
+                                                                            bimester2: { nota: null, recuperacao: null, media: -1, faltas: 0 },
+                                                                            bimester3: { nota: null, recuperacao: null, media: -1, faltas: 0 },
+                                                                            bimester4: { nota: null, recuperacao: null, media: -1, faltas: 0 },
+                                                                        },
+                                                                        mediaAnual: 0,
+                                                                        mediaFinal: 0,
+                                                                        situacaoFinal: 'Cursando'
+                                                                    });
+                                                                }
+                                                            });
+                                                            finalGrades.sort((a, b) => subjectsInCurriculum.indexOf(a.subject) - subjectsInCurriculum.indexOf(b.subject));
+                                                        }
 
-                                                                {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
-                                                                    const bData = grade.bimesters[key as keyof typeof grade.bimesters];
-                                                                    const isNotaPending = bData.isNotaApproved === false || (bData.isApproved === false && bData.nota !== null && bData.recuperacao === null);
-                                                                    const isRecPending = bData.isRecuperacaoApproved === false || (bData.isApproved === false && bData.recuperacao !== null);
+                                                        return finalGrades.map(grade => {
+                                                            const isRecFinalPending = grade.recuperacaoFinalApproved === false;
 
-                                                                    const cellClass = (pending: boolean) =>
-                                                                        `px-1 py-2 text-center border-r border-gray-300 relative ${pending ? 'bg-yellow-100 font-bold text-yellow-900 ring-1 ring-inset ring-yellow-300' : ''}`;
+                                                            // Resolve teacher Name
+                                                            const tName = teachersMap[grade.teacherId || ''] || grade.teacherName || 'N/A';
 
-                                                                    return (
-                                                                        <React.Fragment key={key}>
-                                                                            <td className={cellClass(isNotaPending)}>
-                                                                                {formatGrade(bData.nota)}
-                                                                                {isNotaPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" title="Nota Alterada"></span>}
-                                                                            </td>
-                                                                            <td className={cellClass(isRecPending)}>
-                                                                                {formatGrade(bData.recuperacao)}
-                                                                                {isRecPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" title="Recuperação Alterada"></span>}
-                                                                            </td>
-                                                                            <td className="px-1 py-2 text-center font-bold bg-gray-50 border-r border-gray-300">
-                                                                                {formatGrade(bData.media)}
-                                                                            </td>
-                                                                            <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300">
-                                                                                {bData.faltas ?? '-'}
-                                                                            </td>
-                                                                        </React.Fragment>
-                                                                    );
-                                                                })}
+                                                            return (
+                                                                <tr key={grade.id} className="hover:bg-purple-50 transition-colors border-b last:border-0 border-gray-200">
+                                                                    <td className="px-2 py-2 border-r border-gray-300 sticky left-0 bg-white z-10 shadow-sm">
+                                                                        <div className="font-bold text-gray-700">{grade.subject}</div>
+                                                                        <div className="text-[9px] text-gray-400 mt-0.5">{tName}</div>
+                                                                    </td>
 
-                                                                {/* Final Columns */}
-                                                                <td className="px-1 py-2 text-center font-bold text-gray-700 bg-gray-50 border-r border-gray-300">
-                                                                    {formatGrade(grade.mediaAnual)}
-                                                                </td>
+                                                                    {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
+                                                                        const bData = grade.bimesters[key as keyof typeof grade.bimesters];
+                                                                        const isNotaPending = bData.isNotaApproved === false || (bData.isApproved === false && bData.nota !== null && bData.recuperacao === null);
+                                                                        const isRecPending = bData.isRecuperacaoApproved === false || (bData.isApproved === false && bData.recuperacao !== null);
 
-                                                                <td className={`px-1 py-2 text-center font-bold text-red-600 border-r border-gray-300 ${isRecFinalPending ? 'bg-yellow-100 ring-inset ring-2 ring-yellow-300' : ''}`}>
-                                                                    {formatGrade(grade.recuperacaoFinal)}
-                                                                    {isRecFinalPending && <span className="block text-[8px] bg-yellow-200 text-yellow-900 rounded px-1 mt-0.5 font-bold uppercase">Alterado</span>}
-                                                                </td>
+                                                                        const cellClass = (pending: boolean) =>
+                                                                            `px-1 py-2 text-center border-r border-gray-300 relative ${pending ? 'bg-yellow-100 font-bold text-yellow-900 ring-1 ring-inset ring-yellow-300' : ''}`;
 
-                                                                <td className="px-1 py-2 text-center font-extrabold text-blue-900 bg-blue-50 border-r border-gray-300">
-                                                                    {formatGrade(grade.mediaFinal)}
-                                                                </td>
+                                                                        return (
+                                                                            <React.Fragment key={key}>
+                                                                                <td className={cellClass(isNotaPending)}>
+                                                                                    {formatGrade(bData.nota)}
+                                                                                    {isNotaPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" title="Nota Alterada"></span>}
+                                                                                </td>
+                                                                                <td className={cellClass(isRecPending)}>
+                                                                                    {formatGrade(bData.recuperacao)}
+                                                                                    {isRecPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" title="Recuperação Alterada"></span>}
+                                                                                </td>
+                                                                                <td className="px-1 py-2 text-center font-bold bg-gray-50 border-r border-gray-300">
+                                                                                    {formatGrade(bData.media)}
+                                                                                </td>
+                                                                                <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300">
+                                                                                    {bData.faltas ?? '-'}
+                                                                                </td>
+                                                                                {(() => {
+                                                                                    const freqPercent = calculateAttendancePercentage(grade.subject, bData.faltas || 0, student.gradeLevel || "");
 
-                                                                <td className="px-2 py-2 text-center align-middle border-r border-gray-300">
-                                                                    <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
-                                                                        grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                                                            'bg-red-50 text-red-700 border-red-200'
-                                                                        }`}>
-                                                                        {grade.situacaoFinal}
-                                                                    </span>
-                                                                </td>
+                                                                                    // Só exibe a porcentagem se houver pelo menos uma falta
+                                                                                    const hasAbsence = (bData.faltas || 0) > 0;
+                                                                                    const isLowFreq = hasAbsence && freqPercent !== null && freqPercent < 75;
 
-                                                                <td className="px-2 py-2 text-center bg-gray-50">
-                                                                    <button
-                                                                        onClick={() => handleApproveGrade(grade)}
-                                                                        className="bg-green-600 hover:bg-green-700 text-white p-1.5 rounded shadow-sm hover:scale-105 transition-all w-full flex items-center justify-center gap-1"
-                                                                        title="Aprovar alterações desta disciplina"
-                                                                    >
-                                                                        <span className="text-xs">✅</span> <span className="text-[10px] font-bold uppercase hidden md:inline">Aprovar</span>
-                                                                    </button>
-                                                                </td>
-                                                            </tr>
-                                                        );
-                                                    })}
+                                                                                    return (
+                                                                                        <td className={`px-1 py-2 text-center font-bold border-r border-gray-300 text-[10px] ${isLowFreq ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência">
+                                                                                            {hasAbsence && freqPercent !== null ? `${freqPercent}%` : '-'}
+                                                                                        </td>
+                                                                                    );
+                                                                                })()}
+                                                                            </React.Fragment>
+                                                                        );
+                                                                    })}
+
+                                                                    {/* Final Columns */}
+                                                                    <td className="px-1 py-2 text-center font-bold text-gray-700 bg-gray-50 border-r border-gray-300">
+                                                                        {formatGrade(grade.mediaAnual)}
+                                                                    </td>
+
+                                                                    <td className={`px-1 py-2 text-center font-bold text-red-600 border-r border-gray-300 ${isRecFinalPending ? 'bg-yellow-100 ring-inset ring-2 ring-yellow-300' : ''}`}>
+                                                                        {formatGrade(grade.recuperacaoFinal)}
+                                                                        {isRecFinalPending && <span className="block text-[8px] bg-yellow-200 text-yellow-900 rounded px-1 mt-0.5 font-bold uppercase">Alterado</span>}
+                                                                    </td>
+
+                                                                    <td className="px-1 py-2 text-center font-extrabold text-blue-900 bg-blue-50 border-r border-gray-300">
+                                                                        {formatGrade(grade.mediaFinal)}
+                                                                    </td>
+
+                                                                    <td className="px-2 py-2 text-center align-middle border-r border-gray-300">
+                                                                        <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                                            grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                                                                (grade.situacaoFinal === 'Cursando' || grade.situacaoFinal === 'Pendente') ? 'bg-gray-50 text-gray-500 border-gray-200' :
+                                                                                    'bg-red-50 text-red-700 border-red-200'
+                                                                            }`}>
+                                                                            {grade.situacaoFinal}
+                                                                        </span>
+                                                                    </td>
+
+                                                                    <td className="px-2 py-2 text-center bg-gray-50">
+                                                                        <button
+                                                                            onClick={() => handleApproveGrade(grade)}
+                                                                            className="bg-green-600 hover:bg-green-700 text-white p-1.5 rounded shadow-sm hover:scale-105 transition-all w-full flex items-center justify-center gap-1"
+                                                                            title="Aprovar alterações desta disciplina"
+                                                                        >
+                                                                            <span className="text-xs">✅</span> <span className="text-[10px] font-bold uppercase hidden md:inline">Aprovar</span>
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })
+                                                    })()}
                                                 </tbody>
                                             </table>
                                         </div>

@@ -13,8 +13,7 @@ export const HistoricalReport2025: React.FC<HistoricalReport2025Props> = ({ stud
     const hsSubjects2025 = useMemo(() => [
         "Português", "Matemática", "Inglês", "História", "Geografia",
         "Literatura", "Biologia", "Física", "Química", "Redação",
-        "Espanhol", "Ens. Artes", "Filosofia", "Sociologia",
-        "Ed. Física", "Projeto de Vida", "Empreendedorismo"
+        "Espanhol", "Filosofia", "Sociologia", "Projeto de Vida", "Empreendedorismo"
     ], []);
 
     const historicalGrades = useMemo(() => {
