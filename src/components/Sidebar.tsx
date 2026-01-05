@@ -64,8 +64,8 @@ export function Sidebar({ isOpen, onClose, children, userName = "Admin", onLogou
                                     className="h-8 object-contain"
                                 />
                                 <div className="flex flex-col">
-                                    <span className="font-bold text-blue-950 text-sm leading-none tracking-tight">Meu Expansivo</span>
-                                    <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">Portal do Aluno</span>
+                                    <span className="font-bold text-blue-950 text-base leading-none tracking-tight">Meu Expansivo</span>
+                                    <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mt-0.5">Portal do Aluno</span>
                                 </div>
                             </>
                         )}

@@ -225,19 +225,22 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
           {/* --- SPLASH SCREEN (ABSOLUTE INSIDE CARD) --- */}
           {showSplash && (
-            <div className="fixed md:absolute inset-0 z-[60] pointer-events-none md:rounded-2xl overflow-hidden">
+            <>
+              {/* CAMADA DE FUNDO - FIXED no Mobile (cobre tela toda), ABSOLUTE no Desktop (respeita card) */}
+              <div className="fixed md:absolute inset-0 z-[60] pointer-events-none md:rounded-2xl overflow-hidden">
 
-              {/* CAMADA DE FUNDO BRANCA - Desaparece revelando o login atrás */}
-              <div
-                className={`absolute inset-0 bg-white transition-opacity duration-1000 ${splashFading ? 'opacity-0' : 'opacity-100'}`}
-              >
-                {/* CAMADA DE FUNDO (GRADIENTE AZUL) - Desaparece quando anima a logo */}
+                {/* CAMADA DE FUNDO BRANCA - Desaparece revelando o login atrás */}
                 <div
-                  className={`absolute inset-0 bg-gradient-to-br from-blue-950 to-slate-900 transition-opacity duration-[1500ms] ${animateLogo ? 'opacity-0' : 'opacity-100'}`}
-                />
+                  className={`absolute inset-0 bg-white transition-opacity duration-1000 ${splashFading ? 'opacity-0' : 'opacity-100'}`}
+                >
+                  {/* CAMADA DE FUNDO (GRADIENTE AZUL) - Desaparece quando anima a logo */}
+                  <div
+                    className={`absolute inset-0 bg-gradient-to-br from-blue-950 to-slate-900 transition-opacity duration-[1500ms] ${animateLogo ? 'opacity-0' : 'opacity-100'}`}
+                  />
+                </div>
               </div>
 
-              {/* LOGO QUE VIAJA - Sai do centro e vai para a posição do header */}
+              {/* LOGO QUE VIAJA - ABSOLUTE (Relativo ao Card para manter coordenadas corretas) */}
               <div
                 className={`absolute z-[70] transition-all duration-1000 ease-in-out perspective-[1000px]
                   ${splashFading
@@ -268,7 +271,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                   </div>
                 </div>
               </div>
-            </div>
+            </>
           )}
 
           {/* CABEÇALHO (COM GRADIENTE AZUL MARINHO - Igual ao Mural de Avisos) */}
@@ -283,9 +286,11 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
             <div className="flex w-full justify-end items-center">
               <div className="text-right">
-                <p className="text-white/80 text-xs sm:text-sm font-medium mb-1">Olá, bem-vindo(a) ao</p>
+                <p className="text-white/80 text-sm sm:text-base font-medium mb-1">APLICATIVO</p>
                 <h2 className="text-xl sm:text-3xl font-extrabold text-white tracking-tight">Meu Expansivo</h2>
-                <p className="text-white/60 mt-1 text-[10px] sm:text-xs uppercase tracking-widest font-semibold">PORTAL DA FAMÍLIA</p>
+                <p className="text-white/60 mt-1 text-xs sm:text-sm uppercase tracking-widest font-semibold">
+                  {activeTab === 'student' ? 'PORTAL DA FAMÍLIA' : activeTab === 'teacher' ? 'PORTAL DO PROFESSOR' : 'ÁREA DA COORDENAÇÃO'}
+                </p>
               </div>
             </div>
           </div>
@@ -537,161 +542,167 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
             )}
           </div>
         </div>
-      </div>
+      </div >
 
       {/* --- MURAL DIGITAL MODAL --- */}
-      {isMuralOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900 bg-opacity-80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
-            <div className="flex justify-between items-center p-5 bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-200">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-blue-900 text-white rounded-xl shadow-sm">
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-800">Mural Digital</h2>
-                  <p className="text-sm text-blue-600 font-medium">Informações, Eventos e Downloads Úteis</p>
-                </div>
-              </div>
-              <button onClick={() => setIsMuralOpen(false)} className="text-gray-400 hover:text-red-500 transition-colors p-2 hover:bg-white rounded-full shadow-sm">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-full">
-                <div className="flex flex-col h-full">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2 pb-2 border-b border-gray-200">
-                    <span className="text-orange-500 bg-orange-100 p-1 rounded">📢</span> Destaques & Eventos
-                  </h3>
-                  <p className="text-xs text-gray-500 mb-4 italic">Clique na imagem para ampliar.</p>
-                  <div className="space-y-6 overflow-y-auto pr-2">
-                    {MURAL_ITEMS.map(item => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => setPreviewImage(item.url)}
-                        className="w-full text-left bg-white p-3 rounded-2xl shadow-sm border border-gray-100 group hover:shadow-md transition-shadow cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <div className="aspect-video w-full overflow-hidden rounded-xl bg-gray-200 relative">
-                          <img src={item.url} alt={item.title} className="object-cover w-full h-full transform transition duration-700 group-hover:scale-105" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-90"></div>
-                          <div className="absolute bottom-0 left-0 w-full p-4">
-                            <span className="inline-block px-2 py-1 bg-orange-500 text-white text-[10px] font-bold uppercase tracking-wider rounded mb-2">Novo</span>
-                            <h4 className="text-white font-bold text-xl leading-tight">{item.title}</h4>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
+      {
+        isMuralOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900 bg-opacity-80 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
+              <div className="flex justify-between items-center p-5 bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-200">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-blue-900 text-white rounded-xl shadow-sm">
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-800">Mural Digital</h2>
+                    <p className="text-sm text-blue-600 font-medium">Informações, Eventos e Downloads Úteis</p>
                   </div>
                 </div>
+                <button onClick={() => setIsMuralOpen(false)} className="text-gray-400 hover:text-red-500 transition-colors p-2 hover:bg-white rounded-full shadow-sm">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+              </div>
 
-                <div className="flex flex-col h-full">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2 pb-2 border-b border-gray-200">
-                    <span className="text-blue-500 bg-blue-100 p-1 rounded">📥</span> Arquivos para Download
-                  </h3>
-                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex-1">
-                    <ul className="divide-y divide-gray-100">
-                      {DOWNLOAD_LINKS.map(link => (
-                        <li key={link.id} className="hover:bg-blue-50 transition-colors group cursor-pointer relative">
-                          <a
-                            href={link.url}
-                            download={link.url !== '#' ? true : undefined}
-                            target={link.url !== '#' ? '_blank' : undefined}
-                            rel="noopener noreferrer"
-                            onClick={(e) => link.url === '#' && e.preventDefault()}
-                            className="block p-5"
-                          >
-                            <div className="flex items-center gap-4">
-                              <div className="flex-shrink-0">
-                                <div className="w-12 h-12 bg-red-50 text-red-500 rounded-lg flex items-center justify-center group-hover:bg-red-100 transition-colors shadow-sm">
-                                  <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" /></svg>
-                                </div>
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="text-sm font-bold text-gray-800 group-hover:text-blue-700 transition-colors truncate mb-1">{link.title}</h4>
-                                <div className="flex items-center gap-3 text-xs text-gray-500">
-                                  <span className="flex items-center gap-1">
-                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                    {link.date}
-                                  </span>
-                                  <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                  <span className="font-mono bg-gray-100 px-1.5 rounded">{link.size}</span>
-                                </div>
-                              </div>
+              <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-full">
+                  <div className="flex flex-col h-full">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2 pb-2 border-b border-gray-200">
+                      <span className="text-orange-500 bg-orange-100 p-1 rounded">📢</span> Destaques & Eventos
+                    </h3>
+                    <p className="text-xs text-gray-500 mb-4 italic">Clique na imagem para ampliar.</p>
+                    <div className="space-y-6 overflow-y-auto pr-2">
+                      {MURAL_ITEMS.map(item => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setPreviewImage(item.url)}
+                          className="w-full text-left bg-white p-3 rounded-2xl shadow-sm border border-gray-100 group hover:shadow-md transition-shadow cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <div className="aspect-video w-full overflow-hidden rounded-xl bg-gray-200 relative">
+                            <img src={item.url} alt={item.title} className="object-cover w-full h-full transform transition duration-700 group-hover:scale-105" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-90"></div>
+                            <div className="absolute bottom-0 left-0 w-full p-4">
+                              <span className="inline-block px-2 py-1 bg-orange-500 text-white text-[10px] font-bold uppercase tracking-wider rounded mb-2">Novo</span>
+                              <h4 className="text-white font-bold text-xl leading-tight">{item.title}</h4>
                             </div>
-                          </a>
-                        </li>
+                          </div>
+                        </button>
                       ))}
-                    </ul>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col h-full">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2 pb-2 border-b border-gray-200">
+                      <span className="text-blue-500 bg-blue-100 p-1 rounded">📥</span> Arquivos para Download
+                    </h3>
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex-1">
+                      <ul className="divide-y divide-gray-100">
+                        {DOWNLOAD_LINKS.map(link => (
+                          <li key={link.id} className="hover:bg-blue-50 transition-colors group cursor-pointer relative">
+                            <a
+                              href={link.url}
+                              download={link.url !== '#' ? true : undefined}
+                              target={link.url !== '#' ? '_blank' : undefined}
+                              rel="noopener noreferrer"
+                              onClick={(e) => link.url === '#' && e.preventDefault()}
+                              className="block p-5"
+                            >
+                              <div className="flex items-center gap-4">
+                                <div className="flex-shrink-0">
+                                  <div className="w-12 h-12 bg-red-50 text-red-500 rounded-lg flex items-center justify-center group-hover:bg-red-100 transition-colors shadow-sm">
+                                    <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" /></svg>
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-sm font-bold text-gray-800 group-hover:text-blue-700 transition-colors truncate mb-1">{link.title}</h4>
+                                  <div className="flex items-center gap-3 text-xs text-gray-500">
+                                    <span className="flex items-center gap-1">
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                      {link.date}
+                                    </span>
+                                    <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                                    <span className="font-mono bg-gray-100 px-1.5 rounded">{link.size}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="p-4 bg-white border-t border-gray-100 flex justify-end gap-3">
-              <Button onClick={() => setIsMuralOpen(false)} variant="secondary" className="px-6 py-2.5">Fechar Mural</Button>
+              <div className="p-4 bg-white border-t border-gray-100 flex justify-end gap-3">
+                <Button onClick={() => setIsMuralOpen(false)} variant="secondary" className="px-6 py-2.5">Fechar Mural</Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* --- FALE CONOSCO MODAL --- */}
-      {isContactOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900 bg-opacity-80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative">
-            <button onClick={() => setIsContactOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-              <span className="text-blue-600 bg-blue-50 p-2 rounded-lg">📞</span> Fale Conosco
-            </h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Precisa de ajuda? Entre em contato com a secretaria da sua unidade via WhatsApp:
-            </p>
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
-              {UNITS_CONTACT_INFO.map(unit => (
-                <div key={unit.name} className="p-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-blue-50 hover:border-blue-200 transition-colors group">
-                  <h3 className="font-bold text-blue-950 mb-1">{unit.name}</h3>
-                  <p className="text-xs text-gray-500 mb-3">{unit.address}</p>
-                  <a href={`https://wa.me/${unit.whatsapp}?text=Olá! Venho através do aplicativo Meu Expansivo e gostaria de solicitar um atendimento. Obrigado!`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-green-600 font-bold text-sm bg-white p-2 rounded-lg border border-green-100 shadow-sm group-hover:shadow-md transition-all justify-center">
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.017-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" /></svg>
-                    Abrir no WhatsApp
-                  </a>
-                </div>
-              ))}
+      {
+        isContactOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900 bg-opacity-80 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative">
+              <button onClick={() => setIsContactOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              </button>
+              <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <span className="text-blue-600 bg-blue-50 p-2 rounded-lg">📞</span> Fale Conosco
+              </h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Precisa de ajuda? Entre em contato com a secretaria da sua unidade via WhatsApp:
+              </p>
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+                {UNITS_CONTACT_INFO.map(unit => (
+                  <div key={unit.name} className="p-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-blue-50 hover:border-blue-200 transition-colors group">
+                    <h3 className="font-bold text-blue-950 mb-1">{unit.name}</h3>
+                    <p className="text-xs text-gray-500 mb-3">{unit.address}</p>
+                    <a href={`https://wa.me/${unit.whatsapp}?text=Olá! Venho através do aplicativo Meu Expansivo e gostaria de solicitar um atendimento. Obrigado!`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-green-600 font-bold text-sm bg-white p-2 rounded-lg border border-green-100 shadow-sm group-hover:shadow-md transition-all justify-center">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.017-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" /></svg>
+                      Abrir no WhatsApp
+                    </a>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* --- LIGHTBOX / PREVIEW DE IMAGEM --- */}
-      {previewImage && (
-        <div
-          className="fixed inset-0 flex items-center justify-center p-4 bg-black/95 backdrop-blur-md"
-          style={{ zIndex: 2147483647 }} // Valor máximo permitido
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setPreviewImage(null);
-          }}
-        >
-          <button
-            className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors bg-white/10 hover:bg-white/20 rounded-full p-2"
-            onClick={() => setPreviewImage(null)}
-            style={{ zIndex: 2147483647 }}
+      {
+        previewImage && (
+          <div
+            className="fixed inset-0 flex items-center justify-center p-4 bg-black/95 backdrop-blur-md"
+            style={{ zIndex: 2147483647 }} // Valor máximo permitido
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setPreviewImage(null);
+            }}
           >
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-          </button>
-          <img
-            src={previewImage}
-            alt="Visualização Ampliada"
-            className="w-full h-full max-w-none max-h-none object-contain pointer-events-auto select-none"
-            style={{ maxWidth: '95vw', maxHeight: '95vh' }}
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
+            <button
+              className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors bg-white/10 hover:bg-white/20 rounded-full p-2"
+              onClick={() => setPreviewImage(null)}
+              style={{ zIndex: 2147483647 }}
+            >
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <img
+              src={previewImage}
+              alt="Visualização Ampliada"
+              className="w-full h-full max-w-none max-h-none object-contain pointer-events-auto select-none"
+              style={{ maxWidth: '95vw', maxHeight: '95vh' }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        )
+      }
     </>
   );
 };

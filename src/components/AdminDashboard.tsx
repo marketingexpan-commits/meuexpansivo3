@@ -385,7 +385,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 <h1 className="text-lg font-bold text-slate-800 truncate">
                                     {adminUnit || 'Administração Geral'}
                                 </h1>
-                                <p className="text-[10px] text-slate-500 uppercase font-semibold tracking-wider">
+                                <p className="text-xs text-slate-500 uppercase font-semibold tracking-wider">
                                     Meu Expansivo V3 • {activeTab.toUpperCase()}
                                 </p>
                             </div>
