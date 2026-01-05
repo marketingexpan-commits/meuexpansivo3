@@ -243,6 +243,37 @@ export interface AppNotification {
 }
 // --- FIM ---
 
+export interface HealthInfo {
+  // Condições Médicas (Arrays para Checkboxes)
+  doencas_cronicas?: string[]; // Ex: Asma, Diabetes
+  doencas_cronicas_outra?: string;
+
+  deficiencias?: string[];
+  deficiencias_outra?: string;
+
+  doencas_contraidas?: string[]; // Catapora, etc.
+  doencas_contraidas_outra?: string;
+
+  vacinas?: string[];
+  vacinas_outra?: string;
+
+  alergias?: string;
+  medicamentos_continuos?: string; // Tratamento atual
+
+  // Emergência
+  contato_emergencia_nome?: string;
+  contato_emergencia_fone?: string;
+  hospital_preferencia?: string;
+  medico_particular?: string;
+  medico_telefone?: string;
+
+  // Orientações
+  instrucoes_febre?: string;
+  plano_saude_nome?: string;
+  plano_saude_numero?: string;
+  observacoes_adicionais?: string;
+}
+
 export interface Student {
   id: string;
   code: string;
@@ -262,7 +293,9 @@ export interface Student {
   data_inicio?: string;
   cpf_aluno?: string;
   situacao?: string;
-  alias?: string;
+
+  alias?: string; // Nome Social ou Apelido
+  socialName?: string; // Explicitar Nome Social separate do alias se desejar, ou usar alias. Vou adicionar para clareza e mapear UI.
   nacionalidade?: string;
   naturalidade?: string;
   uf_naturalidade?: string;
@@ -281,7 +314,17 @@ export interface Student {
   religiao?: string;
   bolsa_percentual?: string;
   autorizacao_saida?: string;
+  autorizacao_bolsa?: string; // Novo: Quem autorizou a bolsa
   observacoes_saude?: string;
+  observacoes_gerais?: string; // Novo: Obs gerais
+
+  // Documentação Civil Detalhada
+  certidao_tipo?: 'Nascimento' | 'Casamento';
+  certidao_numero?: string;
+  certidao_livro?: string;
+  certidao_folha?: string;
+  certidao_cartorio?: string;
+  certidao_data_emissao?: string;
 
   // Endereço
   cep?: string;
@@ -295,9 +338,28 @@ export interface Student {
   localizacao_tipo?: 'Urbana' | 'Rural';
 
   // Família e Responsáveis
+
+  // Filiação - Detalhada
   nome_pai?: string;
+  pai_profissao?: string;
+  pai_nacionalidade?: string;
+  pai_naturalidade?: string;
+  pai_local_trabalho?: string;
+  pai_telefone?: string;
+  pai_renda_mensal?: string;
+
   nome_mae?: string;
+  mae_profissao?: string;
+  mae_nacionalidade?: string;
+  mae_naturalidade?: string;
+  mae_naturalidade_uf?: string; // Add UF for mother
+  mae_local_trabalho?: string;
+  mae_telefone?: string;
+  mae_renda_mensal?: string;
+
+  // Responsável Financeiro
   nome_responsavel?: string;
+  rg_responsavel?: string; // Add RG for responsible
   cpf_responsavel?: string;
   email_responsavel?: string;
   telefone_responsavel?: string;
@@ -311,7 +373,7 @@ export interface Student {
   valor_mensalidade?: number; // Novo
 
   // Estruturais / Flags
-  ficha_saude?: any;
+  ficha_saude?: HealthInfo;
   documentos_entregues?: string[];
   historico_escolar_2025?: string;
   gradeLevelSigla?: string; // New field to preserve original PDF sigla

@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Input } from './Input';
 import { Select } from './Select';
+import { Checkbox } from './Checkbox';
 import { Button } from './Button';
-import { User, MapPin, Users, GraduationCap, X, Loader2, Camera, Upload } from 'lucide-react';
+import { User, MapPin, Users, GraduationCap, X, Loader2, Camera, Upload, MessagesSquare, Heart, FileText, Printer } from 'lucide-react';
+import { StudentEnrollmentPrint } from './StudentEnrollmentPrint';
 import { clsx } from 'clsx';
 import { studentService } from '../services/studentService';
 import type { Student } from '../types';
@@ -20,6 +22,26 @@ const STUDENT_STATUS_OPTIONS = [
     { label: 'INATIVO', value: 'INATIVO' },
 ];
 
+const HEALTH_CHRONIC_OPTIONS = ['Asma', 'Bronquite', 'Diabetes', 'Epilepsia', 'Hipertensão', 'Reumatismo'];
+const HEALTH_DEFICIENCY_OPTIONS = ['Física', 'Fala', 'Visual', 'Auditiva'];
+const HEALTH_PAST_ILLNESS_OPTIONS = ['Catapora', 'Caxumba', 'Coqueluche', 'Escarlatina', 'Rubeola', 'Sarampo'];
+const HEALTH_VACCINE_OPTIONS = ['BCG-Oral', 'Anti-Tifoide', 'Sabim', 'Anti-Sarampo', 'BCG-Intra', 'Tríplice', 'Anti-Variolicas'];
+
+const STUDENT_DOCUMENTS_CHECKLIST = [
+    'Certidão de Nascimento',
+    'RG do Aluno',
+    'CPF do Aluno',
+    'RG do Responsável',
+    'CPF do Responsável',
+    'Comprovante de Residência',
+    'Foto 3x4',
+    'Histórico Escolar',
+    'Declaração de Transferência',
+    'Cartão de Vacinas',
+    'Carteira do Plano de Saúde',
+    'Contrato de Prestação de Serviços'
+];
+
 interface StudentFormProps {
     onClose: (shouldRefresh?: boolean) => void;
     student?: Student | null;
@@ -28,8 +50,9 @@ interface StudentFormProps {
 import { parseGradeLevel, normalizeClass } from '../utils/academicUtils';
 
 export function StudentForm({ onClose, student }: StudentFormProps) {
-    const [activeTab, setActiveTab] = useState<'personal' | 'academic' | 'family' | 'address'>('personal');
+    const [activeTab, setActiveTab] = useState<'personal' | 'academic' | 'family' | 'filiation' | 'address' | 'health' | 'documents' | 'observations'>('personal');
     const [isLoading, setIsLoading] = useState(false);
+    const [printBlank, setPrintBlank] = useState(false);
 
     // Initial state setup
     const [formData, setFormData] = useState<Partial<Student> & any>(() => {
@@ -64,7 +87,21 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
             shift: '', // Turno
 
             nome_mae: '',
+            mae_profissao: '',
+            mae_nacionalidade: '',
+            mae_naturalidade: '',
+            mae_local_trabalho: '',
+            mae_telefone: '',
+            mae_renda_mensal: '',
+
             nome_pai: '',
+            pai_profissao: '',
+            pai_nacionalidade: '',
+            pai_naturalidade: '',
+            pai_local_trabalho: '',
+            pai_telefone: '',
+            pai_renda_mensal: '',
+
             nome_responsavel: '',
             cpf_responsavel: '',
             rg_responsavel: '',
@@ -81,8 +118,70 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
             endereco_cidade: '',
             endereco_uf: '',
             localizacao_tipo: '',
-            isScholarship: false
+            isScholarship: false,
+
+            // New Fields
+            alias: '',
+            socialName: '',
+            data_inicio: new Date().toISOString().split('T')[0], // Default to today
+            procedencia_escolar: '',
+            autorizacao_bolsa: '',
+            observacoes_gerais: '',
+
+            // Civil Docs
+            certidao_tipo: 'Nascimento',
+            certidao_numero: '',
+            certidao_livro: '',
+            certidao_folha: '',
+            certidao_cartorio: '',
+            certidao_data_emissao: '',
+
+            // Health Fields (Mapped to ficha_saude on save)
+            health_alergias: '',
+            health_doencas_cronicas: [] as string[],
+            health_doencas_cronicas_outra: '',
+            health_deficiencias: [] as string[],
+            health_deficiencias_outra: '',
+            health_doencas_contraidas: [] as string[],
+            health_doencas_contraidas_outra: '',
+            health_vacinas: [] as string[],
+            health_vacinas_outra: '',
+            health_medicamentos: '',
+            health_emergencia_nome: '',
+            health_emergencia_fone: '',
+            health_hospital: '',
+            health_medico_nome: '',
+            health_medico_fone: '',
+            health_febre: '',
+            health_plano_nome: '',
+            health_plano_numero: '',
+            health_obs: '',
+
+            documentos_entregues: [] as string[]
         };
+
+        // Initialize health fields if student has ficha_saude
+        if (student && student.ficha_saude) {
+            initialData.health_alergias = student.ficha_saude.alergias || '';
+            initialData.health_doencas_cronicas = student.ficha_saude.doencas_cronicas || [];
+            initialData.health_doencas_cronicas_outra = student.ficha_saude.doencas_cronicas_outra || '';
+            initialData.health_deficiencias = student.ficha_saude.deficiencias || [];
+            initialData.health_deficiencias_outra = student.ficha_saude.deficiencias_outra || '';
+            initialData.health_doencas_contraidas = student.ficha_saude.doencas_contraidas || [];
+            initialData.health_doencas_contraidas_outra = student.ficha_saude.doencas_contraidas_outra || '';
+            initialData.health_vacinas = student.ficha_saude.vacinas || [];
+            initialData.health_vacinas_outra = student.ficha_saude.vacinas_outra || '';
+            initialData.health_medicamentos = student.ficha_saude.medicamentos_continuos || '';
+            initialData.health_emergencia_nome = student.ficha_saude.contato_emergencia_nome || '';
+            initialData.health_emergencia_fone = student.ficha_saude.contato_emergencia_fone || '';
+            initialData.health_hospital = student.ficha_saude.hospital_preferencia || '';
+            initialData.health_medico_nome = student.ficha_saude.medico_particular || '';
+            initialData.health_medico_fone = student.ficha_saude.medico_telefone || '';
+            initialData.health_febre = student.ficha_saude.instrucoes_febre || '';
+            initialData.health_plano_nome = student.ficha_saude.plano_saude_nome || '';
+            initialData.health_plano_numero = student.ficha_saude.plano_saude_numero || '';
+            initialData.health_obs = student.ficha_saude.observacoes_adicionais || '';
+        }
 
         // Sync phone fields if editing existing student
         if (student) {
@@ -229,7 +328,22 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
             return;
         }
 
+        // Phone validation (Max 13 digits, numbers only)
+        if (name.toLowerCase().includes('telefone')) {
+            finalValue = value.replace(/\D/g, '').slice(0, 13);
+        }
+
         setFormData((prev: any) => ({ ...prev, [name]: finalValue }));
+    };
+
+    const handleToggleHealthItem = (fieldName: string, item: string) => {
+        setFormData((prev: any) => {
+            const currentItems = prev[fieldName] || [];
+            const newItems = currentItems.includes(item)
+                ? currentItems.filter((i: string) => i !== item)
+                : [...currentItems, item];
+            return { ...prev, [fieldName]: newItems };
+        });
     };
 
     const handleSelectChange = (name: string, value: string) => {
@@ -330,8 +444,36 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
             const dataToSave = {
                 ...formData,
                 valor_mensalidade: cleanTuition, // Save as dot-decimal string or number
-                phoneNumber: formData.telefone_responsavel // Ensure root project field is updated
+                phoneNumber: formData.telefone_responsavel, // Ensure root project field is updated
+                ficha_saude: {
+                    alergias: formData.health_alergias,
+                    doencas_cronicas: formData.health_doencas_cronicas,
+                    doencas_cronicas_outra: formData.health_doencas_cronicas_outra,
+                    deficiencias: formData.health_deficiencias,
+                    deficiencias_outra: formData.health_deficiencias_outra,
+                    doencas_contraidas: formData.health_doencas_contraidas,
+                    doencas_contraidas_outra: formData.health_doencas_contraidas_outra,
+                    vacinas: formData.health_vacinas,
+                    vacinas_outra: formData.health_vacinas_outra,
+                    medicamentos_continuos: formData.health_medicamentos,
+                    contato_emergencia_nome: formData.health_emergencia_nome,
+                    contato_emergencia_fone: formData.health_emergencia_fone,
+                    hospital_preferencia: formData.health_hospital,
+                    medico_particular: formData.health_medico_nome,
+                    medico_telefone: formData.health_medico_fone,
+                    instrucoes_febre: formData.health_febre,
+                    plano_saude_nome: formData.health_plano_nome,
+                    plano_saude_numero: formData.health_plano_numero,
+                    observacoes_adicionais: formData.health_obs
+                }
             };
+
+            // Remove flat health fields from dataToSave to keep DB clean
+            Object.keys(dataToSave).forEach(key => {
+                if (key.startsWith('health_')) {
+                    delete (dataToSave as any)[key];
+                }
+            });
 
             if (student && student.id) {
                 await studentService.updateStudent(student.id, dataToSave);
@@ -349,29 +491,43 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
         }
     };
 
+    const handlePrint = () => {
+        setPrintBlank(false);
+        setTimeout(() => window.print(), 100);
+    };
+
+    const handlePrintBlank = () => {
+        setPrintBlank(true);
+        setTimeout(() => window.print(), 100);
+    };
+
     const tabs = [
         { id: 'personal', label: 'Dados Pessoais', icon: User },
         { id: 'academic', label: 'Acadêmico', icon: GraduationCap },
         { id: 'family', label: 'Responsáveis', icon: Users },
+        { id: 'filiation', label: 'Filiação', icon: Users },
         { id: 'address', label: 'Endereço', icon: MapPin },
+        { id: 'health', label: 'Saúde', icon: Heart },
+        { id: 'documents', label: 'Docs', icon: FileText },
+        { id: 'observations', label: 'Obs.', icon: MessagesSquare },
     ] as const;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
-            <div className="bg-white w-full max-w-4xl rounded-xl shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="bg-white w-full max-w-5xl rounded-xl shadow-2xl flex flex-col max-h-[90vh]">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                <div className="flex items-center justify-between p-4 border-b border-gray-100">
                     <div>
                         <h2 className="text-xl font-bold text-gray-900">{student ? 'Editar Matrícula' : 'Nova Matrícula'}</h2>
                         <p className="text-sm text-gray-500">{student ? 'Edite os dados do aluno.' : 'Preencha os dados do aluno para realizar a matrícula.'}</p>
                     </div>
-                    <button onClick={() => onClose()} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                    <button onClick={() => onClose()} className="p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer">
                         <X className="w-5 h-5 text-gray-500" />
                     </button>
                 </div>
 
                 {/* Tabs */}
-                <div className="flex overflow-x-auto border-b border-gray-100 px-6">
+                <div className="flex overflow-x-auto border-b border-gray-100 px-6 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent pb-4 overflow-y-hidden">
                     {tabs.map((tab) => {
                         const Icon = tab.icon;
                         return (
@@ -379,7 +535,7 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={clsx(
-                                    "flex items-center gap-2 px-4 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
+                                    "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap cursor-pointer",
                                     activeTab === tab.id
                                         ? "border-blue-600 text-blue-600"
                                         : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -443,6 +599,8 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
 
                             <div className="md:col-span-2 lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <Input name="name" value={formData.name} onChange={handleChange} label="Nome Completo do Aluno" placeholder="Nome completo" className="col-span-2" />
+
+                                <Input name="socialName" value={formData.socialName} onChange={handleChange} label="Nome Social (Opcional)" placeholder="Como o aluno prefere ser chamado" className="col-span-2" />
                                 <Input name="cpf_aluno" value={formData.cpf_aluno} onChange={handleChange} label="CPF" placeholder="000.000.000-00" />
                                 <Input name="data_nascimento" value={formData.data_nascimento} onChange={handleChange} label="Data de Nascimento" type="date" />
                                 <Input name="identidade_rg" value={formData.identidade_rg} onChange={handleChange} label="RG" placeholder="Número do RG" />
@@ -457,6 +615,31 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                                     ]}
                                 />
                                 <Input name="naturalidade" value={formData.naturalidade} onChange={handleChange} label="Naturalidade" placeholder="Cidade de nascimento" />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Civil Documentation Section - Inside Personal Tab */}
+                    {activeTab === 'personal' && (
+                        <div className="md:col-span-3 border-t border-gray-100 pt-4 mt-6">
+                            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                📜 Documentação Civil
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <Select
+                                    label="Tipo de Certidão"
+                                    value={formData.certidao_tipo || 'Nascimento'}
+                                    onChange={(e) => handleSelectChange('certidao_tipo', e.target.value)}
+                                    options={[
+                                        { label: 'Nascimento', value: 'Nascimento' },
+                                        { label: 'Casamento', value: 'Casamento' }
+                                    ]}
+                                />
+                                <Input name="certidao_numero" value={formData.certidao_numero} onChange={handleChange} label="Número do Termo" placeholder="Ou Matrícula" />
+                                <Input name="certidao_livro" value={formData.certidao_livro} onChange={handleChange} label="Livro" />
+                                <Input name="certidao_folha" value={formData.certidao_folha} onChange={handleChange} label="Folha" />
+                                <Input name="certidao_cartorio" value={formData.certidao_cartorio} onChange={handleChange} label="Cartório" className="md:col-span-2" />
+                                <Input name="certidao_data_emissao" value={formData.certidao_data_emissao} onChange={handleChange} label="Data de Emissão" type="date" />
                             </div>
                         </div>
                     )}
@@ -518,6 +701,23 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                             />
 
                             <Input
+                                name="procedencia_escolar"
+                                value={formData.procedencia_escolar || ''}
+                                onChange={handleChange}
+                                label="Escola de Origem / Procedência"
+                                placeholder="Escola anterior"
+                                className="col-span-2"
+                            />
+
+                            <Input
+                                name="data_inicio"
+                                type="date"
+                                value={formData.data_inicio || ''}
+                                onChange={handleChange}
+                                label="Data de Início/Admissão"
+                            />
+
+                            <Input
                                 label="Número de Matrícula"
                                 value={formData.code || ''}
                                 disabled={true}
@@ -546,6 +746,19 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                                     </div>
                                 </label>
                             </div>
+
+                            <div className="col-span-2">
+                                <Input
+                                    name="autorizacao_bolsa"
+                                    value={formData.autorizacao_bolsa || ''}
+                                    onChange={handleChange}
+                                    label="Autorização de Desconto/Bolsa (Obrigatório se houver desconto)"
+                                    placeholder="Nome de quem autorizou (Ex: João Silva)"
+                                    className="border-slate-200 focus:ring-blue-500 bg-white"
+                                />
+                            </div>
+
+
 
                             {/* Financial Calculation Section */}
                             <div className={`col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-gray-100 pt-4 mt-2 transition-opacity ${formData.isScholarship ? 'opacity-50 pointer-events-none grayscale' : 'opacity-100'}`}>
@@ -587,9 +800,12 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
 
                     {activeTab === 'family' && (
                         <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <Input name="nome_mae" value={formData.nome_mae} onChange={handleChange} label="Nome da Mãe" placeholder="Nome completo da mãe" className="col-span-2" />
-                                <Input name="nome_pai" value={formData.nome_pai} onChange={handleChange} label="Nome do Pai" placeholder="Nome completo do pai" className="col-span-2" />
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-start gap-3">
+                                <Users className="w-4 h-4 text-yellow-700 mt-1 flex-shrink-0" />
+                                <p className="text-sm text-yellow-800 leading-relaxed">
+                                    <strong>Atenção:</strong> Esta aba é exclusiva para o <strong>Responsável Financeiro e Pedagógico</strong> (quem assina o contrato).
+                                    Para dados do Pai e Mãe, use a aba <strong>Filiação</strong>.
+                                </p>
                             </div>
 
                             <div className="border-t border-gray-100 pt-4">
@@ -610,6 +826,49 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                                         helperText="Apenas números (Ex: 5584...)"
                                     />
                                     <Input name="email_responsavel" value={formData.email_responsavel} onChange={handleChange} label="E-mail" type="email" placeholder="email@exemplo.com" />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'filiation' && (
+                        <div className="space-y-6">
+                            {/* Pai */}
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                                <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    👨 Pai
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    {/* Nome em linha separada - full width */}
+                                    <Input name="nome_pai" value={formData.nome_pai} onChange={handleChange} label="Nome do Pai" className="col-span-full" />
+
+                                    <Input name="pai_profissao" value={formData.pai_profissao} onChange={handleChange} label="Profissão" className="col-span-full md:col-span-2" />
+                                    <Input name="pai_nacionalidade" value={formData.pai_nacionalidade} onChange={handleChange} label="Nacionalidade" placeholder="Ex: Brasileira" />
+                                    <Input name="pai_naturalidade" value={formData.pai_naturalidade} onChange={handleChange} label="Naturalidade" placeholder="Ex: Natal/RN" />
+
+                                    <Input name="pai_telefone" value={formData.pai_telefone} onChange={handleChange} label="Telefone (Formato: 5584...)" placeholder="5584999999999" helperText="Máx 13 dígitos" className="col-span-full md:col-span-2" />
+                                    <Input name="pai_renda_mensal" value={formData.pai_renda_mensal} onChange={handleChange} label="Renda Mensal" placeholder="R$ 0,00" className="col-span-full md:col-span-2" />
+
+                                    <Input name="pai_local_trabalho" value={formData.pai_local_trabalho} onChange={handleChange} label="Endereço de Trabalho" className="col-span-full" placeholder="Empresa e endereço" />
+                                </div>
+                            </div>
+
+                            {/* Mãe */}
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                                <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    👩 Mãe
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <Input name="nome_mae" value={formData.nome_mae} onChange={handleChange} label="Nome da Mãe" className="col-span-full" />
+
+                                    <Input name="mae_profissao" value={formData.mae_profissao} onChange={handleChange} label="Profissão" className="col-span-full md:col-span-2" />
+                                    <Input name="mae_nacionalidade" value={formData.mae_nacionalidade} onChange={handleChange} label="Nacionalidade" placeholder="Ex: Brasileira" />
+                                    <Input name="mae_naturalidade" value={formData.mae_naturalidade} onChange={handleChange} label="Naturalidade" placeholder="Ex: Natal/RN" />
+
+                                    <Input name="mae_telefone" value={formData.mae_telefone} onChange={handleChange} label="Telefone (Formato: 5584...)" placeholder="5584999999999" helperText="Máx 13 dígitos" className="col-span-full md:col-span-2" />
+                                    <Input name="mae_renda_mensal" value={formData.mae_renda_mensal} onChange={handleChange} label="Renda Mensal" placeholder="R$ 0,00" className="col-span-full md:col-span-2" />
+
+                                    <Input name="mae_local_trabalho" value={formData.mae_local_trabalho} onChange={handleChange} label="Endereço de Trabalho" className="col-span-full" placeholder="Empresa e endereço" />
                                 </div>
                             </div>
                         </div>
@@ -641,14 +900,249 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                             />
                         </div>
                     )}
-                </div>
 
-                <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-xl flex justify-end gap-3">
-                    <Button variant="ghost" onClick={() => onClose()} disabled={isLoading}>Cancelar</Button>
-                    <Button onClick={handleSubmit} disabled={isLoading}>
-                        {isLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Salvando...</> : 'Salvar Matrícula'}
+                    {activeTab === 'health' && (
+                        <div className="space-y-6">
+                            {/* Linha 1: Doenças Crônicas e Deficiências */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                                    <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                        🩺 Doenças Crônicas
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-3 mb-4">
+                                        {HEALTH_CHRONIC_OPTIONS.map(option => (
+                                            <Checkbox
+                                                key={option}
+                                                label={option}
+                                                checked={formData.health_doencas_cronicas?.includes(option)}
+                                                onChange={() => handleToggleHealthItem('health_doencas_cronicas', option)}
+                                            />
+                                        ))}
+                                    </div>
+                                    <Input
+                                        name="health_doencas_cronicas_outra"
+                                        value={formData.health_doencas_cronicas_outra}
+                                        onChange={handleChange}
+                                        label="Outra"
+                                        placeholder="Especifique se houver"
+                                    />
+                                </div>
+
+                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                                    <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                        ♿ Deficiências
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-3 mb-4">
+                                        {HEALTH_DEFICIENCY_OPTIONS.map(option => (
+                                            <Checkbox
+                                                key={option}
+                                                label={option}
+                                                checked={formData.health_deficiencias?.includes(option)}
+                                                onChange={() => handleToggleHealthItem('health_deficiencias', option)}
+                                            />
+                                        ))}
+                                    </div>
+                                    <Input
+                                        name="health_deficiencias_outra"
+                                        value={formData.health_deficiencias_outra}
+                                        onChange={handleChange}
+                                        label="Outra"
+                                        placeholder="Especifique se houver"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Linha 2: Doenças Contraídas e Vacinas */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                                    <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                        🦠 Doenças já Contraídas
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-3 mb-4">
+                                        {HEALTH_PAST_ILLNESS_OPTIONS.map(option => (
+                                            <Checkbox
+                                                key={option}
+                                                label={option}
+                                                checked={formData.health_doencas_contraidas?.includes(option)}
+                                                onChange={() => handleToggleHealthItem('health_doencas_contraidas', option)}
+                                            />
+                                        ))}
+                                    </div>
+                                    <Input
+                                        name="health_doencas_contraidas_outra"
+                                        value={formData.health_doencas_contraidas_outra}
+                                        onChange={handleChange}
+                                        label="Outra"
+                                        placeholder="Especifique se houver"
+                                    />
+                                </div>
+
+                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                                    <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                        💉 Vacinas já Tomadas
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-3 mb-4">
+                                        {HEALTH_VACCINE_OPTIONS.map(option => (
+                                            <Checkbox
+                                                key={option}
+                                                label={option}
+                                                checked={formData.health_vacinas?.includes(option)}
+                                                onChange={() => handleToggleHealthItem('health_vacinas', option)}
+                                            />
+                                        ))}
+                                    </div>
+                                    <Input
+                                        name="health_vacinas_outra"
+                                        value={formData.health_vacinas_outra}
+                                        onChange={handleChange}
+                                        label="Outra"
+                                        placeholder="Especifique se houver"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Alergias e Tratamento */}
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                                <h3 className="text-sm font-bold text-slate-800 mb-4">⚕️ Alergias e Tratamentos</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <Input name="health_alergias" value={formData.health_alergias} onChange={handleChange} label="Alergias (Alimentares/Medicamentos)" placeholder="Ex: Amendoim, Dipirona..." />
+                                    <Input name="health_medicamentos" value={formData.health_medicamentos} onChange={handleChange} label="Medicamentos de Uso Contínuo" placeholder="Nome do remédio e horários" />
+                                </div>
+                            </div>
+
+                            {/* Emergência e Plano */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                                    <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                        🚨 Em Caso de Emergência
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <Input name="health_emergencia_nome" value={formData.health_emergencia_nome} onChange={handleChange} label="Contato de Emergência" placeholder="Nome do contato" />
+                                        <Input name="health_emergencia_fone" value={formData.health_emergencia_fone} onChange={handleChange} label="Telefone Emergência" placeholder="5584..." />
+                                        <Input name="health_hospital" value={formData.health_hospital} onChange={handleChange} label="Hospital de Preferência" placeholder="Nome do Hospital" />
+                                    </div>
+                                </div>
+
+                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                                    <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                        💳 Plano de Saúde
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <Input name="health_plano_nome" value={formData.health_plano_nome} onChange={handleChange} label="Nome do Plano" placeholder="Ex: Unimed, Hapvida" />
+                                        <Input name="health_plano_numero" value={formData.health_plano_numero} onChange={handleChange} label="Número da Carteirinha" placeholder="000.000..." />
+                                        <Input name="health_medico_nome" value={formData.health_medico_nome} onChange={handleChange} label="Médico Particular" placeholder="Nome do médico" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Instruções */}
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                                <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    💡 Orientações Importantes
+                                </h3>
+                                <div className="space-y-4">
+                                    <Input name="health_febre" value={formData.health_febre} onChange={handleChange} label="O que fazer em caso de febre?" placeholder="Ex: Dar tal medicamento ou apenas avisar." />
+                                    <Input name="health_obs" value={formData.health_obs} onChange={handleChange} label="Observações Adicionais de Saúde" placeholder="Outras informações relevantes" />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+
+                    {activeTab === 'documents' && (
+                        <div className="space-y-6">
+                            <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-2">
+                                <h3 className="text-sm font-semibold text-blue-800 mb-1">Checklist de Documentos ✅</h3>
+                                <p className="text-xs text-blue-600">
+                                    Marque os documentos que já foram entregues fisicamente na secretaria.
+                                </p>
+                            </div>
+
+                            <div className="bg-white border border-slate-200 rounded-xl p-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-6">
+                                    {STUDENT_DOCUMENTS_CHECKLIST.map(doc => (
+                                        <Checkbox
+                                            key={doc}
+                                            label={doc}
+                                            checked={formData.documentos_entregues?.includes(doc)}
+                                            onChange={() => {
+                                                setFormData((prev: any) => {
+                                                    const current = prev.documentos_entregues || [];
+                                                    const next = current.includes(doc)
+                                                        ? current.filter((i: string) => i !== doc)
+                                                        : [...current, doc];
+                                                    return { ...prev, documentos_entregues: next };
+                                                });
+                                            }}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                                <p className="text-xs text-slate-500 italic">
+                                    ⚠️ Para documentos digitalizados, utilize a aba "Acadêmico" ou procure o campo específico se disponível. Esta aba foca no controle de entrega física.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'observations' && (
+                        <div className="space-y-4">
+                            <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-4">
+                                <h3 className="text-sm font-semibold text-blue-800 mb-1">Anotações Gerais</h3>
+                                <p className="text-xs text-blue-600">
+                                    Utilize este espaço para registrar informações importantes que não se enquadram nos outros campos.
+                                    Ex: Restrições alimentares, autorizações de saída, histórico de comportamento, etc.
+                                </p>
+                            </div>
+                            <textarea
+                                name="observacoes_gerais"
+                                value={formData.observacoes_gerais || ''}
+                                onChange={(e) => setFormData((prev: any) => ({ ...prev, observacoes_gerais: e.target.value }))}
+                                className="w-full h-64 p-4 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm leading-relaxed"
+                                placeholder="Digite aqui as observações sobre o aluno..."
+                            />
+                        </div>
+                    )}
+                </div>
+                {/* Footer */}
+                <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
+                    <Button variant="outline" onClick={() => onClose()} className="cursor-pointer">
+                        Cancelar
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={handlePrint}
+                        className="cursor-pointer flex items-center gap-2 border-blue-200 text-blue-700 hover:bg-blue-50"
+                        title="Imprimir Ficha com Dados"
+                    >
+                        <Printer className="w-4 h-4" />
+                        Imprimir Ficha
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={handlePrintBlank}
+                        className="cursor-pointer flex items-center gap-2 border-slate-200 text-slate-700 hover:bg-slate-50"
+                        title="Imprimir Ficha para Preenchimento Manual"
+                    >
+                        <Printer className="w-4 h-4" />
+                        Ficha em Branco
+                    </Button>
+                    <Button
+                        onClick={handleSubmit}
+                        disabled={isLoading}
+                        className="cursor-pointer bg-orange-600 hover:bg-orange-700 flex items-center gap-2"
+                    >
+                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                        {student ? 'Salvar Matrícula' : 'Confirmar Matrícula'}
                     </Button>
                 </div>
+            </div>
+
+            {/* Hidden Print Template */}
+            <div className="hidden print:block fixed inset-0 z-[100] bg-white">
+                <StudentEnrollmentPrint student={formData} isBlank={printBlank} />
             </div>
         </div>
     );
