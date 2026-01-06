@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Menu, ChevronRight, LogOut, School } from 'lucide-react';
 import { SchoolLogo } from './SchoolLogo';
+import { SCHOOL_LOGO_URL } from '../constants';
 
 interface SidebarProps {
     isOpen: boolean;
@@ -54,9 +55,11 @@ export function Sidebar({ isOpen, onClose, children, userName = "Admin", onLogou
                 <div className="h-16 flex items-center px-4 border-b border-slate-100 bg-white">
                     <div className={`flex items-center gap-3 overflow-hidden transition-all duration-300 ${collapsed ? "justify-center w-full" : ""}`}>
                         {collapsed ? (
-                            <div className="p-1.5 bg-blue-600 rounded-md shrink-0">
-                                <School className="w-5 h-5 text-white" />
-                            </div>
+                            <img
+                                src={SCHOOL_LOGO_URL}
+                                alt="Logo"
+                                className="h-8 w-auto object-contain"
+                            />
                         ) : (
                             <div className="flex items-center gap-2 w-full px-2">
                                 <div className="h-9 w-auto shrink-0">
