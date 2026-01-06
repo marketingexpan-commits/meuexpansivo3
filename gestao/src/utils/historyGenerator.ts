@@ -59,6 +59,7 @@ const calculateSubjectFrequency = (
     }).length;
 
     const frequency = ((expectedClasses - absences) / expectedClasses) * 100;
+    if (absences === 0) return '-';
     return Math.max(0, Math.min(100, frequency)).toFixed(0) + '%';
 };
 
@@ -78,7 +79,11 @@ export const generateSchoolHistory = (
     const currentDate = new Date().toLocaleDateString('pt-BR');
 
     // Helper to format grade
-    const fG = (n: number | null | undefined) => (n !== null && n !== undefined && n !== 0) ? n.toFixed(1) : '-';
+    const fG = (n: number | null | undefined) => {
+        if (n === null || n === undefined) return '-';
+        if (n < 0) return '-'; // Handle -1 or placeholders
+        return n.toFixed(1);
+    };
 
     // Helper to render history content
     const renderHistoryContent = () => {
@@ -227,7 +232,7 @@ export const generateSchoolHistory = (
             const expectedClassesSoFar = weeklyClasses * 10 * activeBimesters;
             const allAbsences = absencesB1 + absencesB2 + absencesB3 + absencesB4;
 
-            const totalFrequency = expectedClassesSoFar > 0
+            const totalFrequency = (expectedClassesSoFar > 0 && allAbsences > 0)
                 ? (((expectedClassesSoFar - allAbsences) / expectedClassesSoFar) * 100).toFixed(0) + '%'
                 : '-';
 
@@ -242,27 +247,27 @@ export const generateSchoolHistory = (
                 
                 <!-- 1B -->
                 <td style="background: #fdfdfd;">${fG(g.bimesters.bimester1.media)}</td>
-                <td style="color: #666;">${hasAnyRecords(1) ? absencesB1 : '-'}</td>
+                <td style="color: #666;">${hasAnyRecords(1) && absencesB1 > 0 ? absencesB1 : '-'}</td>
                 <td style="font-size: 9px; font-weight: bold;">${calculateSubjectFrequency(student, g, g.subject, 1, attendanceRecords)}</td>
                 
                 <!-- 2B -->
                 <td style="background: #fdfdfd;">${fG(g.bimesters.bimester2.media)}</td>
-                <td style="color: #666;">${hasAnyRecords(2) ? absencesB2 : '-'}</td>
+                <td style="color: #666;">${hasAnyRecords(2) && absencesB2 > 0 ? absencesB2 : '-'}</td>
                 <td style="font-size: 9px; font-weight: bold;">${calculateSubjectFrequency(student, g, g.subject, 2, attendanceRecords)}</td>
 
                 <!-- 3B -->
                 <td style="background: #fdfdfd;">${fG(g.bimesters.bimester3.media)}</td>
-                <td style="color: #666;">${hasAnyRecords(3) ? absencesB3 : '-'}</td>
+                <td style="color: #666;">${hasAnyRecords(3) && absencesB3 > 0 ? absencesB3 : '-'}</td>
                 <td style="font-size: 9px; font-weight: bold;">${calculateSubjectFrequency(student, g, g.subject, 3, attendanceRecords)}</td>
 
                 <!-- 4B -->
                 <td style="background: #fdfdfd;">${fG(g.bimesters.bimester4.media)}</td>
-                <td style="color: #666;">${hasAnyRecords(4) ? absencesB4 : '-'}</td>
+                <td style="color: #666;">${hasAnyRecords(4) && absencesB4 > 0 ? absencesB4 : '-'}</td>
                 <td style="font-size: 9px; font-weight: bold;">${calculateSubjectFrequency(student, g, g.subject, 4, attendanceRecords)}</td>
 
                 <td style="background: #f0f4f8; font-weight: bold;">${totalFrequency}</td>
                 <td style="font-weight: bold; background: #f5f5f5;">${fG(g.mediaFinal)}</td>
-                <td style="font-weight: bold; font-size: 9px;">${g.situacaoFinal || 'Cursando'}</td>
+                <td style="font-weight: bold; font-size: 9px;">${(g.mediaFinal === 0 || g.mediaFinal === null) && g.situacaoFinal === 'Recuperação' ? 'Cursando' : (g.situacaoFinal || 'Cursando')}</td>
             </tr>
             `;
         }).join('');
@@ -306,7 +311,7 @@ export const generateSchoolHistory = (
             }
         });
 
-        if (totalExpected === 0) return '100%';
+        if (totalExpected === 0 || totalAbsences === 0) return '-';
         const freq = ((totalExpected - totalAbsences) / totalExpected) * 100;
         return freq.toFixed(1) + '%';
     };
