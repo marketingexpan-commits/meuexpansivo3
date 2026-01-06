@@ -246,21 +246,29 @@ export const generateSchoolHistory = (
                 <td>${totalCH}${totalCH !== '-' ? 'h' : ''}</td>
                 
                 <!-- 1B -->
+                <td style="color: #666; font-size: 9px;">${fG(g.bimesters.bimester1.nota)}</td>
+                <td style="color: #666; font-size: 9px;">${fG(g.bimesters.bimester1.recuperacao)}</td>
                 <td style="background: #fdfdfd;">${fG(g.bimesters.bimester1.media)}</td>
                 <td style="color: #666;">${hasAnyRecords(1) && absencesB1 > 0 ? absencesB1 : '-'}</td>
                 <td style="font-size: 9px; font-weight: bold;">${calculateSubjectFrequency(student, g, g.subject, 1, attendanceRecords)}</td>
                 
                 <!-- 2B -->
+                <td style="color: #666; font-size: 9px;">${fG(g.bimesters.bimester2.nota)}</td>
+                <td style="color: #666; font-size: 9px;">${fG(g.bimesters.bimester2.recuperacao)}</td>
                 <td style="background: #fdfdfd;">${fG(g.bimesters.bimester2.media)}</td>
                 <td style="color: #666;">${hasAnyRecords(2) && absencesB2 > 0 ? absencesB2 : '-'}</td>
                 <td style="font-size: 9px; font-weight: bold;">${calculateSubjectFrequency(student, g, g.subject, 2, attendanceRecords)}</td>
 
                 <!-- 3B -->
+                <td style="color: #666; font-size: 9px;">${fG(g.bimesters.bimester3.nota)}</td>
+                <td style="color: #666; font-size: 9px;">${fG(g.bimesters.bimester3.recuperacao)}</td>
                 <td style="background: #fdfdfd;">${fG(g.bimesters.bimester3.media)}</td>
                 <td style="color: #666;">${hasAnyRecords(3) && absencesB3 > 0 ? absencesB3 : '-'}</td>
                 <td style="font-size: 9px; font-weight: bold;">${calculateSubjectFrequency(student, g, g.subject, 3, attendanceRecords)}</td>
 
                 <!-- 4B -->
+                <td style="color: #666; font-size: 9px;">${fG(g.bimesters.bimester4.nota)}</td>
+                <td style="color: #666; font-size: 9px;">${fG(g.bimesters.bimester4.recuperacao)}</td>
                 <td style="background: #fdfdfd;">${fG(g.bimesters.bimester4.media)}</td>
                 <td style="color: #666;">${hasAnyRecords(4) && absencesB4 > 0 ? absencesB4 : '-'}</td>
                 <td style="font-size: 9px; font-weight: bold;">${calculateSubjectFrequency(student, g, g.subject, 4, attendanceRecords)}</td>
@@ -386,32 +394,32 @@ export const generateSchoolHistory = (
                     <thead>
                         <tr>
                             <th rowspan="2" class="subject-col">Disciplina</th>
-                            <th rowspan="2" style="width: 35px;">CH</th>
-                            <th colspan="3">1º Bimestre</th>
-                            <th colspan="3">2º Bimestre</th>
-                            <th colspan="3">3º Bimestre</th>
-                            <th colspan="3">4º Bimestre</th>
-                            <th rowspan="2" style="width: 40px; background: #eef2f6;">Freq. Final</th>
-                            <th rowspan="2" style="width: 45px;">Média Final</th>
-                            <th rowspan="2" style="width: 70px;">Resultado</th>
+                            <th rowspan="2" style="width: 25px;">CH</th>
+                            <th colspan="5">1º Bimestre</th>
+                            <th colspan="5">2º Bimestre</th>
+                            <th colspan="5">3º Bimestre</th>
+                            <th colspan="5">4º Bimestre</th>
+                            <th rowspan="2" style="width: 35px; background: #eef2f6;">Freq. Final</th>
+                            <th rowspan="2" style="width: 35px;">Média Final</th>
+                            <th rowspan="2" style="width: 60px;">Resultado</th>
                         </tr>
                         <tr>
-                            <th title="Média">M</th><th title="Faltas">F</th><th title="Frequência">%</th>
-                            <th title="Média">M</th><th title="Faltas">F</th><th title="Frequência">%</th>
-                            <th title="Média">M</th><th title="Faltas">F</th><th title="Frequência">%</th>
-                            <th title="Média">M</th><th title="Faltas">F</th><th title="Frequência">%</th>
+                            <th title="Nota" style="width: 20px;">N</th><th title="Recuperação" style="width: 20px;">R</th><th title="Média">M</th><th title="Faltas">F</th><th title="Frequência">%</th>
+                            <th title="Nota" style="width: 20px;">N</th><th title="Recuperação" style="width: 20px;">R</th><th title="Média">M</th><th title="Faltas">F</th><th title="Frequência">%</th>
+                            <th title="Nota" style="width: 20px;">N</th><th title="Recuperação" style="width: 20px;">R</th><th title="Média">M</th><th title="Faltas">F</th><th title="Frequência">%</th>
+                            <th title="Nota" style="width: 20px;">N</th><th title="Recuperação" style="width: 20px;">R</th><th title="Média">M</th><th title="Faltas">F</th><th title="Frequência">%</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${renderCurrentGradesRows()}
                         <tr style="background: #f8f9fa; font-weight: bold;">
-                            <td colspan="14" style="text-align: right; padding-right: 15px;">FREQUÊNCIA GERAL NO ANO LETIVO:</td>
+                            <td colspan="22" style="text-align: right; padding-right: 15px;">FREQUÊNCIA GERAL NO ANO LETIVO:</td>
                             <td colspan="3" style="text-align: center; font-size: 11px; color: #1a426f;">${calculateGeneralFrequency()}</td>
                         </tr>
                     </tbody>
                 </table>
                 <p style="font-size: 8px; margin-top: 5px; font-style: italic;">
-                    Legenda: CH: Carga Horária Anual | M: Média do Bimestre | F: Faltas | %: Frequência Mensal Estimada.<br/>
+                    Legenda: CH: Carga Horária Anual | N: Nota Bim. | R: Recup. Bim. | M: Média Bim. | F: Faltas | %: Frequência Mensal Estimada.<br/>
                     * O rendimento do ano letivo em curso é parcial e está sujeito a alterações até o fechamento do sistema.
                 </p>
             </div>

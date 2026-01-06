@@ -39,6 +39,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
 
     const [pendingGradesStudents, setPendingGradesStudents] = useState<any[]>([]);
     const [pendingGradesMap, setPendingGradesMap] = useState<Record<string, GradeEntry[]>>({});
+    const [allStudentGradesMap, setAllStudentGradesMap] = useState<Record<string, GradeEntry[]>>({}); // NEW: Holds ALL grades for frequency calc
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]); // Added for frequency calc
 
     // --- COMPUTED ---
@@ -139,10 +140,13 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
             // 3. Filter for PENDING items
             // Pending means: Any bimester isApproved === false, OR final recovery approved === false
             const pendingMap: Record<string, GradeEntry[]> = {};
+            const fullMap: Record<string, GradeEntry[]> = {}; // Store ALL grades per student
             const studentsWithPending: Set<string> = new Set();
 
             allGrades.forEach(grade => {
-
+                // Populate full map for frequency calculation
+                if (!fullMap[grade.studentId]) fullMap[grade.studentId] = [];
+                fullMap[grade.studentId].push(grade);
 
                 const hasPending = Object.values(grade.bimesters).some((b: any) =>
                     b.isApproved === false || b.isNotaApproved === false || b.isRecuperacaoApproved === false
@@ -176,6 +180,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
 
             setPendingGradesStudents(studentsData.filter((s: any) => studentsWithPending.has(s.id)));
             setPendingGradesMap(pendingMap);
+            setAllStudentGradesMap(fullMap);
 
         } catch (error) {
             console.error("Error fetching data:", error);
@@ -518,28 +523,9 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                                 return { ...grade, bimesters: calculatedBimesters, ...finalData };
                                                             });
 
-                                                        // 2. Preencher faltantes
+                                                        // 2. Apenas ordenar os existentes (não preencher faltantes)
                                                         let finalGrades: any[] = [...existingGrades];
                                                         if (subjectsInCurriculum.length > 0) {
-                                                            subjectsInCurriculum.forEach(subjectName => {
-                                                                const exists = existingGrades.some(g => g.subject === subjectName);
-                                                                if (!exists) {
-                                                                    finalGrades.push({
-                                                                        id: `empty_${subjectName}_${student.id}`,
-                                                                        studentId: student.id,
-                                                                        subject: subjectName,
-                                                                        bimesters: {
-                                                                            bimester1: { nota: null, recuperacao: null, media: -1, faltas: 0 },
-                                                                            bimester2: { nota: null, recuperacao: null, media: -1, faltas: 0 },
-                                                                            bimester3: { nota: null, recuperacao: null, media: -1, faltas: 0 },
-                                                                            bimester4: { nota: null, recuperacao: null, media: -1, faltas: 0 },
-                                                                        },
-                                                                        mediaAnual: 0,
-                                                                        mediaFinal: 0,
-                                                                        situacaoFinal: 'Cursando'
-                                                                    });
-                                                                }
-                                                            });
                                                             finalGrades.sort((a, b) => subjectsInCurriculum.indexOf(a.subject) - subjectsInCurriculum.indexOf(b.subject));
                                                         }
 
@@ -668,8 +654,9 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                                     );
                                                                 })}
                                                                 {(() => {
-                                                                    const studentGrades = pendingGradesMap[student.id] || [];
-                                                                    const generalFreq = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel || "");
+                                                                    // Use ALL grades for this student to calculate general frequency correctly
+                                                                    const allStudentGrades = allStudentGradesMap[student.id] || [];
+                                                                    const generalFreq = calculateGeneralFrequency(allStudentGrades, attendanceRecords, student.id, student.gradeLevel || "");
                                                                     return (
                                                                         <tr className="bg-gray-100/80 font-bold border-t-2 border-gray-400">
                                                                             <td colSpan={24} className="px-4 py-2 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[10px]">
