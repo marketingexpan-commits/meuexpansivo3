@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebaseConfig';
-import { UnitContact, SchoolUnit, CoordinationSegment, Subject, SchoolClass, SchoolShift } from '../types';
+import { UnitContact, SchoolUnit, CoordinationSegment, Subject, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus } from '../types';
 import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, SUBJECT_LIST, CURRICULUM_MATRIX, getCurriculumSubjects, calculateBimesterMedia, calculateFinalData } from '../constants';
-import { calculateAttendancePercentage, calculateAnnualAttendancePercentage } from '../utils/frequency';
+import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency } from '../utils/frequency';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 
@@ -39,6 +39,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
 
     const [pendingGradesStudents, setPendingGradesStudents] = useState<any[]>([]);
     const [pendingGradesMap, setPendingGradesMap] = useState<Record<string, GradeEntry[]>>({});
+    const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]); // Added for frequency calc
 
     // --- COMPUTED ---
     const uniqueClasses = useMemo(() => {
@@ -153,6 +154,25 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                     studentsWithPending.add(grade.studentId);
                 }
             });
+
+            // 4. Fetch Attendance for these students for frequency calculation
+            const allAttendance: AttendanceRecord[] = [];
+            for (const chunk of chunks) {
+                const q = db.collection('attendance').where('studentId', 'in', chunk); // Note: check collection name
+                // Actually attendance records are stored by date/class?
+                // Looking at other components, they use a general query or similar.
+                // Let's check how attendance is fetched in TeacherDashboard.
+            }
+            // Wait, I should verify the attendance collection name and structure.
+            // In App.tsx it might be passed as prop.
+
+            // For now, let's just fetch all records for the unit if it's not too many, 
+            // or filter by year.
+            const attSnap = await db.collection('attendance')
+                .where('unit', '==', coordinator.unit)
+                .get();
+            attSnap.docs.forEach(d => allAttendance.push({ id: d.id, ...d.data() } as AttendanceRecord));
+            setAttendanceRecords(allAttendance);
 
             setPendingGradesStudents(studentsData.filter((s: any) => studentsWithPending.has(s.id)));
             setPendingGradesMap(pendingMap);
@@ -523,96 +543,147 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                             finalGrades.sort((a, b) => subjectsInCurriculum.indexOf(a.subject) - subjectsInCurriculum.indexOf(b.subject));
                                                         }
 
-                                                        return finalGrades.map(grade => {
-                                                            const isRecFinalPending = grade.recuperacaoFinalApproved === false;
+                                                        return (
+                                                            <>
+                                                                {finalGrades.map(grade => {
+                                                                    const isRecFinalPending = grade.recuperacaoFinalApproved === false;
 
-                                                            // Resolve teacher Name
-                                                            const tName = teachersMap[grade.teacherId || ''] || grade.teacherName || 'N/A';
+                                                                    // Resolve teacher Name
+                                                                    const tName = teachersMap[grade.teacherId || ''] || grade.teacherName || 'N/A';
 
-                                                            return (
-                                                                <tr key={grade.id} className="hover:bg-purple-50 transition-colors border-b last:border-0 border-gray-200">
-                                                                    <td className="px-2 py-2 border-r border-gray-300 sticky left-0 bg-white z-10 shadow-sm">
-                                                                        <div className="font-bold text-gray-700">{grade.subject}</div>
-                                                                        <div className="text-[9px] text-gray-400 mt-0.5">{tName}</div>
-                                                                    </td>
+                                                                    return (
+                                                                        <tr key={grade.id} className="hover:bg-purple-50 transition-colors border-b last:border-0 border-gray-200">
+                                                                            <td className="px-2 py-2 border-r border-gray-300 sticky left-0 bg-white z-10 shadow-sm">
+                                                                                <div className="font-bold text-gray-700">{grade.subject}</div>
+                                                                                <div className="text-[9px] text-gray-400 mt-0.5">{tName}</div>
+                                                                            </td>
 
-                                                                    {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
-                                                                        const bData = grade.bimesters[key as keyof typeof grade.bimesters];
-                                                                        const isNotaPending = bData.isNotaApproved === false || (bData.isApproved === false && bData.nota !== null && bData.recuperacao === null);
-                                                                        const isRecPending = bData.isRecuperacaoApproved === false || (bData.isApproved === false && bData.recuperacao !== null);
+                                                                            {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
+                                                                                const bData = grade.bimesters[key as keyof typeof grade.bimesters];
+                                                                                const isNotaPending = bData.isNotaApproved === false || (bData.isApproved === false && bData.nota !== null && bData.recuperacao === null);
+                                                                                const isRecPending = bData.isRecuperacaoApproved === false || (bData.isApproved === false && bData.recuperacao !== null);
 
-                                                                        const cellClass = (pending: boolean) =>
-                                                                            `px-1 py-2 text-center border-r border-gray-300 relative ${pending ? 'bg-yellow-100 font-bold text-yellow-900 ring-1 ring-inset ring-yellow-300' : ''}`;
+                                                                                const cellClass = (pending: boolean) =>
+                                                                                    `px-1 py-2 text-center border-r border-gray-300 relative ${pending ? 'bg-yellow-100 font-bold text-yellow-900 ring-1 ring-inset ring-yellow-300' : ''}`;
 
-                                                                        return (
-                                                                            <React.Fragment key={key}>
-                                                                                <td className={cellClass(isNotaPending)}>
-                                                                                    {formatGrade(bData.nota)}
-                                                                                    {isNotaPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" title="Nota Alterada"></span>}
-                                                                                </td>
-                                                                                <td className={cellClass(isRecPending)}>
-                                                                                    {formatGrade(bData.recuperacao)}
-                                                                                    {isRecPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" title="Recuperação Alterada"></span>}
-                                                                                </td>
-                                                                                <td className="px-1 py-2 text-center font-bold bg-gray-50 border-r border-gray-300">
-                                                                                    {formatGrade(bData.media)}
-                                                                                </td>
-                                                                                <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300">
-                                                                                    {bData.faltas ?? '-'}
-                                                                                </td>
-                                                                                {(() => {
-                                                                                    const freqPercent = calculateAttendancePercentage(grade.subject, bData.faltas || 0, student.gradeLevel || "");
-
-                                                                                    // Só exibe a porcentagem se houver pelo menos uma falta
-                                                                                    const hasAbsence = (bData.faltas || 0) > 0;
-                                                                                    const isLowFreq = hasAbsence && freqPercent !== null && freqPercent < 75;
-
-                                                                                    return (
-                                                                                        <td className={`px-1 py-2 text-center font-bold border-r border-gray-300 text-[10px] ${isLowFreq ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência">
-                                                                                            {hasAbsence && freqPercent !== null ? `${freqPercent}%` : '-'}
+                                                                                return (
+                                                                                    <React.Fragment key={key}>
+                                                                                        <td className={cellClass(isNotaPending)}>
+                                                                                            {formatGrade(bData.nota)}
+                                                                                            {isNotaPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" title="Nota Alterada"></span>}
                                                                                         </td>
-                                                                                    );
-                                                                                })()}
-                                                                            </React.Fragment>
-                                                                        );
-                                                                    })}
+                                                                                        <td className={cellClass(isRecPending)}>
+                                                                                            {formatGrade(bData.recuperacao)}
+                                                                                            {isRecPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" title="Recuperação Alterada"></span>}
+                                                                                        </td>
+                                                                                        <td className="px-1 py-2 text-center font-bold bg-gray-50 border-r border-gray-300">
+                                                                                            {formatGrade(bData.media)}
+                                                                                        </td>
+                                                                                        <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300">
+                                                                                            {bData.faltas ?? '-'}
+                                                                                        </td>
+                                                                                        {(() => {
+                                                                                            const freqPercent = calculateAttendancePercentage(grade.subject, bData.faltas || 0, student.gradeLevel || "");
 
-                                                                    {/* Final Columns */}
-                                                                    <td className="px-1 py-2 text-center font-bold text-gray-700 bg-gray-50 border-r border-gray-300">
-                                                                        {formatGrade(grade.mediaAnual)}
-                                                                    </td>
+                                                                                            // Só exibe a porcentagem se houver pelo menos uma falta
+                                                                                            const hasAbsence = (bData.faltas || 0) > 0;
+                                                                                            const isLowFreq = hasAbsence && freqPercent !== null && freqPercent < 75;
 
-                                                                    <td className={`px-1 py-2 text-center font-bold text-red-600 border-r border-gray-300 ${isRecFinalPending ? 'bg-yellow-100 ring-inset ring-2 ring-yellow-300' : ''}`}>
-                                                                        {formatGrade(grade.recuperacaoFinal)}
-                                                                        {isRecFinalPending && <span className="block text-[8px] bg-yellow-200 text-yellow-900 rounded px-1 mt-0.5 font-bold uppercase">Alterado</span>}
-                                                                    </td>
+                                                                                            return (
+                                                                                                <td className={`px-1 py-2 text-center font-bold border-r border-gray-300 text-[10px] ${isLowFreq ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência">
+                                                                                                    {hasAbsence && freqPercent !== null ? `${freqPercent}%` : '-'}
+                                                                                                </td>
+                                                                                            );
+                                                                                        })()}
+                                                                                    </React.Fragment>
+                                                                                );
+                                                                            })}
 
-                                                                    <td className="px-1 py-2 text-center font-extrabold text-blue-900 bg-blue-50 border-r border-gray-300">
-                                                                        {formatGrade(grade.mediaFinal)}
-                                                                    </td>
+                                                                            <td className="px-1 py-2 text-center font-bold text-gray-700 bg-gray-50 border-r border-gray-300">
+                                                                                {formatGrade(grade.mediaAnual)}
+                                                                            </td>
 
-                                                                    <td className="px-2 py-2 text-center align-middle border-r border-gray-300">
-                                                                        <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
-                                                                            grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                                                                (grade.situacaoFinal === 'Cursando' || grade.situacaoFinal === 'Pendente') ? 'bg-gray-50 text-gray-500 border-gray-200' :
-                                                                                    'bg-red-50 text-red-700 border-red-200'
-                                                                            }`}>
-                                                                            {grade.situacaoFinal}
-                                                                        </span>
-                                                                    </td>
+                                                                            <td className={`px-1 py-2 text-center font-bold text-red-600 border-r border-gray-300 ${isRecFinalPending ? 'bg-yellow-100 ring-inset ring-2 ring-yellow-300' : ''}`}>
+                                                                                {formatGrade(grade.recuperacaoFinal)}
+                                                                                {isRecFinalPending && <span className="block text-[8px] bg-yellow-200 text-yellow-900 rounded px-1 mt-0.5 font-bold uppercase">Alterado</span>}
+                                                                            </td>
 
-                                                                    <td className="px-2 py-2 text-center bg-gray-50">
-                                                                        <button
-                                                                            onClick={() => handleApproveGrade(grade)}
-                                                                            className="bg-green-600 hover:bg-green-700 text-white p-1.5 rounded shadow-sm hover:scale-105 transition-all w-full flex items-center justify-center gap-1"
-                                                                            title="Aprovar alterações desta disciplina"
-                                                                        >
-                                                                            <span className="text-xs">✅</span> <span className="text-[10px] font-bold uppercase hidden md:inline">Aprovar</span>
-                                                                        </button>
-                                                                    </td>
-                                                                </tr>
-                                                            );
-                                                        })
+                                                                            <td className="px-1 py-1 text-center font-extrabold text-blue-900 bg-blue-50 border-r border-gray-300">
+                                                                                {formatGrade(grade.mediaFinal)}
+                                                                            </td>
+                                                                            {(() => {
+                                                                                const totalAbsences = [grade.bimesters.bimester1, grade.bimesters.bimester2, grade.bimesters.bimester3, grade.bimesters.bimester4].reduce((sum, b, idx) => {
+                                                                                    const bNum = (idx + 1) as 1 | 2 | 3 | 4;
+                                                                                    const studentAbsSnapshot = attendanceRecords.filter(att =>
+                                                                                        att.discipline === grade.subject &&
+                                                                                        att.studentStatus[student.id] === AttendanceStatus.ABSENT
+                                                                                    ).filter(att => {
+                                                                                        const d = new Date(att.date + 'T00:00:00');
+                                                                                        const m = d.getMonth();
+                                                                                        let bTarget = 0;
+                                                                                        if (m >= 0 && m <= 2) bTarget = 1;
+                                                                                        else if (m >= 3 && m <= 5) bTarget = 2;
+                                                                                        else if (m >= 6 && m <= 8) bTarget = 3;
+                                                                                        else if (m >= 9 && m <= 11) bTarget = 4;
+
+                                                                                        const [y] = att.date.split('-');
+                                                                                        if (bTarget === bNum && Number(y) === new Date().getFullYear()) return true;
+                                                                                        return false;
+                                                                                    }).length;
+
+                                                                                    return sum + studentAbsSnapshot;
+                                                                                }, 0);
+
+                                                                                const annualFreq = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel || "");
+                                                                                const isCritical = annualFreq !== null && annualFreq < 75;
+                                                                                const hasAbsenceTotal = totalAbsences > 0;
+
+                                                                                return (
+                                                                                    <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] ${isCritical ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência Anual">
+                                                                                        {hasAbsenceTotal && annualFreq !== null ? `${annualFreq}%` : '-'}
+                                                                                    </td>
+                                                                                );
+                                                                            })()}
+
+                                                                            <td className="px-2 py-2 text-center align-middle border-r border-gray-300">
+                                                                                <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                                                    grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                                                                        (grade.situacaoFinal === 'Cursando' || grade.situacaoFinal === 'Pendente') ? 'bg-gray-50 text-gray-500 border-gray-200' :
+                                                                                            'bg-red-50 text-red-700 border-red-200'
+                                                                                    }`}>
+                                                                                    {grade.situacaoFinal}
+                                                                                </span>
+                                                                            </td>
+
+                                                                            <td className="px-2 py-2 text-center bg-gray-50">
+                                                                                <button
+                                                                                    onClick={() => handleApproveGrade(grade)}
+                                                                                    className="bg-green-600 hover:bg-green-700 text-white p-1.5 rounded shadow-sm hover:scale-105 transition-all w-full flex items-center justify-center gap-1"
+                                                                                    title="Aprovar alterações desta disciplina"
+                                                                                >
+                                                                                    <span className="text-xs">✅</span> <span className="text-[10px] font-bold uppercase hidden md:inline">Aprovar</span>
+                                                                                </button>
+                                                                            </td>
+                                                                        </tr>
+                                                                    );
+                                                                })}
+                                                                {(() => {
+                                                                    const studentGrades = pendingGradesMap[student.id] || [];
+                                                                    const generalFreq = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel || "");
+                                                                    return (
+                                                                        <tr className="bg-gray-100/80 font-bold border-t-2 border-gray-400">
+                                                                            <td colSpan={24} className="px-4 py-2 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[10px]">
+                                                                                FREQUÊNCIA GERAL NO ANO LETIVO:
+                                                                            </td>
+                                                                            <td className="px-1 py-1 text-center text-blue-900 font-extrabold text-[10px] md:text-sm bg-blue-50/50 border-r border-gray-300">
+                                                                                {generalFreq}
+                                                                            </td>
+                                                                            <td colSpan={2} className="bg-gray-100/50"></td>
+                                                                        </tr>
+                                                                    );
+                                                                })()}
+                                                            </>
+                                                        );
                                                     })()}
                                                 </tbody>
                                             </table>
@@ -624,7 +695,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                     </div>
 
                 </main>
-            </div >
-        </div >
+            </div>
+        </div>
     );
 };

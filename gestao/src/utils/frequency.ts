@@ -1,4 +1,6 @@
 import { CURRICULUM_MATRIX } from "../constants";
+import { AttendanceStatus } from "../types";
+import { getBimesterFromDate, getCurrentSchoolYear } from "./academicUtils";
 
 /**
  * Calculates the attendance percentage for a given subject and student grade level.
@@ -70,4 +72,55 @@ export const calculateAnnualAttendancePercentage = (
 
     const percentage = ((totalExpectedClasses - totalAbsences) / totalExpectedClasses) * 100;
     return Math.max(0, Math.min(100, parseFloat(percentage.toFixed(1))));
+};
+
+/**
+ * Calculates the general attendance percentage across all subjects.
+ */
+export const calculateGeneralFrequency = (
+    grades: any[],
+    attendanceRecords: any[],
+    studentId: string,
+    gradeLevel: string
+): string => {
+    if (!grades || grades.length === 0) return '-';
+
+    let totalExpected = 0;
+    let totalAbsences = 0;
+    const currentYear = getCurrentSchoolYear();
+
+    let levelKey = '';
+    if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
+    else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
+    else if (gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ens. Médio';
+
+    if (!levelKey) return '-';
+
+    grades.forEach(g => {
+        const weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[g.subject] || 0;
+        if (weeklyClasses > 0) {
+            let activeBimesters = 0;
+            [1, 2, 3, 4].forEach(bim => {
+                const hasRecords = attendanceRecords.some(record => {
+                    const rYear = parseInt(record.date.split('-')[0], 10);
+                    return rYear === currentYear && record.discipline === g.subject && getBimesterFromDate(record.date) === bim;
+                });
+                if (hasRecords) activeBimesters++;
+            });
+
+            totalExpected += (weeklyClasses * 10 * activeBimesters);
+
+            totalAbsences += attendanceRecords.filter(record => {
+                const rYear = parseInt(record.date.split('-')[0], 10);
+                return rYear === currentYear &&
+                    record.discipline === g.subject &&
+                    record.studentStatus &&
+                    record.studentStatus[studentId] === AttendanceStatus.ABSENT;
+            }).length;
+        }
+    });
+
+    if (totalExpected === 0) return '100%';
+    const freq = ((totalExpected - totalAbsences) / totalExpected) * 100;
+    return freq.toFixed(1) + '%';
 };

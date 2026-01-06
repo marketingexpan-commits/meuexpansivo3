@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial } from '../types';
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
 import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects } from '../constants'; // Import Sync Fix
-import { calculateAttendancePercentage, calculateAnnualAttendancePercentage } from '../utils/frequency';
+import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency } from '../utils/frequency';
 import { getStudyTips } from '../services/geminiService';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
@@ -1149,6 +1149,20 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                         </td>
                                                     </tr>
                                                 ))}
+                                                {studentGrades.length > 0 && (() => {
+                                                    const generalFreq = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel);
+                                                    return (
+                                                        <tr className="bg-gray-100/80 font-bold border-t-2 border-gray-400">
+                                                            <td colSpan={19} className="px-4 py-1 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[11px]">
+                                                                FREQUÊNCIA GERAL NO ANO LETIVO:
+                                                            </td>
+                                                            <td className="px-1 py-1 text-center text-blue-900 font-extrabold text-[11px] md:text-sm bg-blue-50/50 border-r border-gray-300">
+                                                                {generalFreq}
+                                                            </td>
+                                                            <td className="bg-gray-100/50"></td>
+                                                        </tr>
+                                                    );
+                                                })()}
                                                 {studentGrades.length === 0 && (
                                                     <tr><td colSpan={21} className="px-6 py-8 text-center text-gray-500 italic">Nenhuma nota lançada para este período letivo.</td></tr>
                                                 )}
