@@ -14,12 +14,14 @@ import {
     Briefcase,
     Layers,
     UserCog,
-    History
+    History,
+    FileBarChart // Import for Boletim icon
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { DeclarationSearchModal } from '../components/DeclarationSearchModal';
 import { HistorySearchModal } from '../components/HistorySearchModal';
+import { BulletinSearchModal } from '../components/BulletinSearchModal'; // Import new modal
 
 interface SidebarItemProps {
     icon: React.ElementType;
@@ -65,7 +67,8 @@ function SidebarItem({ icon: Icon, label, path, collapsed }: SidebarItemProps) {
 export function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
     const [showDeclarationModal, setShowDeclarationModal] = useState(false);
-    const [showHistoryModal, setShowHistoryModal] = useState(false); // New State
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [showBulletinModal, setShowBulletinModal] = useState(false); // New State for Boletim
     const [isMatriculasOpen, setIsMatriculasOpen] = useState(true);
     const [isArquivosOpen, setIsArquivosOpen] = useState(true);
     const [isFinanceiroOpen, setIsFinanceiroOpen] = useState(true);
@@ -193,6 +196,13 @@ export function Sidebar() {
                                 <History className="w-4 h-4 mr-2 text-slate-400" />
                                 Histórico
                             </button>
+                            <button
+                                onClick={() => setShowBulletinModal(true)} // Toggle Boletim Modal
+                                className="flex items-center w-full p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all text-xs font-medium cursor-pointer"
+                            >
+                                <FileBarChart className="w-4 h-4 mr-2 text-slate-400" />
+                                Boletim
+                            </button>
                         </div>
                     )}
                 </div>
@@ -273,6 +283,10 @@ export function Sidebar() {
 
             {showHistoryModal && (
                 <HistorySearchModal onClose={() => setShowHistoryModal(false)} />
+            )}
+
+            {showBulletinModal && (
+                <BulletinSearchModal onClose={() => setShowBulletinModal(false)} />
             )}
         </aside>
     );
