@@ -102,9 +102,9 @@ export function Sidebar() {
                                 style={{ filter: 'brightness(0) saturate(100%) invert(9%) sepia(62%) saturate(4383%) hue-rotate(227deg) brightness(60%) contrast(100%)' }}
                             />
                             <div className="flex flex-col justify-center">
-                                <span className="text-[7px] text-blue-950 font-bold uppercase tracking-widest leading-none mb-0">Sistema</span>
+                                <span className="text-[10px] text-blue-950 font-bold uppercase tracking-widest leading-none mb-0">Sistema</span>
                                 <h1 className="text-lg font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
-                                <span className="text-[7px] text-blue-950/60 font-semibold uppercase tracking-wider leading-none mt-1.5">Gestão Escolar</span>
+                                <span className="text-[10px] text-blue-950/60 font-semibold uppercase tracking-wider leading-none mt-1.5">Gestão Escolar</span>
                             </div>
                         </>
                     )}
