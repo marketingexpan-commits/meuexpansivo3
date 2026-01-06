@@ -1,5 +1,5 @@
 
-import { UNIT_DETAILS } from './receiptGenerator';
+import { UNIT_DETAILS } from '../constants';
 import type { Student } from '../types';
 
 

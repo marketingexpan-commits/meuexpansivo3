@@ -26,9 +26,9 @@ export function Matriculas() {
     const [filterGrade, setFilterGrade] = useState('');
     const [filterClass, setFilterClass] = useState('');
     const [filterShift, setFilterShift] = useState('');
-    const [filterStatus, setFilterStatus] = useState('');
+    const [filterStatus, setFilterStatus] = useState('active');
 
-    const hasActiveFilters = filterGrade || filterClass || filterShift || filterStatus || searchTerm;
+    const hasActiveFilters = filterGrade || filterClass || filterShift || (filterStatus && filterStatus !== 'active') || searchTerm;
 
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -95,7 +95,24 @@ export function Matriculas() {
         })();
         const matchesClass = !filterClass || student.schoolClass === filterClass;
         const matchesShift = !filterShift || student.shift === filterShift;
-        const matchesStatus = !filterStatus || (filterStatus === 'active' ? !student.isBlocked : student.isBlocked);
+        const matchesStatus = !filterStatus || (() => {
+            if (filterStatus === 'active') {
+                // Active means NOT Blocked AND NOT (Graduated/Transferred/Evaded)
+                // Or explicitly: Cursando, Ativo, Aprovado
+                // For now, let's keep it simple: Active = !isBlocked and !Concluido/Evadido/Transferido
+                // Actually, user wants to HIDE Graduated/Evaded from Default view.
+                // If filterStatus is 'active', we want to show 'current' students.
+                return !student.isBlocked && student.status !== 'CONCLUÍDO' && student.status !== 'EVADIDO' && student.status !== 'TRANSFERIDO';
+            }
+            if (filterStatus === 'archived') {
+                return student.status === 'CONCLUÍDO' || student.status === 'EVADIDO' || student.status === 'TRANSFERIDO';
+            }
+            if (filterStatus === 'blocked') {
+                return student.isBlocked;
+            }
+            // Specific status match
+            return student.status === filterStatus;
+        })();
 
         return matchesSearch && matchesGrade && matchesClass && matchesShift && matchesStatus;
     });
@@ -229,8 +246,15 @@ export function Matriculas() {
                                 value={filterStatus}
                                 onChange={(e) => setFilterStatus(e.target.value)}
                                 options={[
-                                    { label: 'Ativo', value: 'active' },
+                                    { label: 'Ativo (Cursando)', value: 'active' }, // Meta-filter
+                                    { label: 'Arquivado (Ex-Alunos)', value: 'archived' }, // Meta-filter
                                     { label: 'Bloqueado', value: 'blocked' },
+                                    { label: '--- Status Específico ---', value: '' },
+                                    { label: 'Cursando', value: 'CURSANDO' },
+                                    { label: 'Concluído', value: 'CONCLUÍDO' },
+                                    { label: 'Transferido', value: 'TRANSFERIDO' },
+                                    { label: 'Evadido', value: 'EVADIDO' },
+                                    { label: 'Reprovado', value: 'REPROVADO' },
                                 ]}
                             />
                             <Button variant="ghost" onClick={clearFilters} className="w-full text-slate-500 hover:text-red-500 hover:bg-red-50">

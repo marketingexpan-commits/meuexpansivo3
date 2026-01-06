@@ -20,6 +20,7 @@ const STUDENT_STATUS_OPTIONS = [
     { label: 'APROVADO', value: 'APROVADO' },
     { label: 'ATIVO', value: 'ATIVO' },
     { label: 'INATIVO', value: 'INATIVO' },
+    { label: 'CONCLUÍDO', value: 'CONCLUÍDO' },
 ];
 
 const HEALTH_CHRONIC_OPTIONS = ['Asma', 'Bronquite', 'Diabetes', 'Epilepsia', 'Hipertensão', 'Reumatismo'];

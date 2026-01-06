@@ -1,6 +1,6 @@
 
 import type { Student } from '../types';
-import { UNIT_DETAILS } from './receiptGenerator';
+import { UNIT_DETAILS } from '../constants';
 
 export const generateStudentList = (students: Student[], groupTitle: string, type: 'simple' | 'complete') => {
     const printWindow = window.open('', '_blank');

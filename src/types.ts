@@ -103,6 +103,8 @@ export interface GradeEntry {
   lastUpdated: string;
 }
 
+export type StudentStatus = 'CURSANDO' | 'TRANSFERIDO' | 'EVADIDO' | 'TRANCADO' | 'RESERVADO' | 'REPROVADO' | 'APROVADO' | 'ATIVO' | 'INATIVO' | 'CONCLUÍDO';
+
 export interface Student {
   id: string;
   code: string;
@@ -116,6 +118,7 @@ export interface Student {
   phoneNumber?: string;
   valor_mensalidade?: number;
   isScholarship?: boolean;
+  status?: StudentStatus;
 }
 
 export interface Teacher {

@@ -71,6 +71,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [sUnit, setSUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_1);
     const [sShift, setSShift] = useState<SchoolShift>(SchoolShift.MORNING);
     const [sClass, setSClass] = useState<SchoolClass>(SchoolClass.A);
+    const [sStatus, setSStatus] = useState<string>('CURSANDO'); // New State
     const [sPass, setSPass] = useState('');
     const [showStudentPassword, setShowStudentPassword] = useState(false);
     const [studentToDelete, setStudentToDelete] = useState<string | null>(null);
@@ -125,12 +126,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const handleGenerateAdminPass = () => { setAPass(generatePassword()); setShowAdminPassword(true); };
 
 
+    // Student Filter Mode
+    const [studentFilterMode, setStudentFilterMode] = useState<'active' | 'archived'>('active');
+
     // --- FILTRAGEM ---
     const filteredStudents = students.filter(student => {
         const matchesUnit = isGeneralAdmin ? true : student.unit === adminUnit;
         const term = studentSearchTerm.toLowerCase();
         const matchesSearch = student.name.toLowerCase().includes(term) || student.code.includes(term);
-        return matchesUnit && matchesSearch;
+
+        // Status Filter
+        let matchesStatus = true;
+        if (studentFilterMode === 'active') {
+            // Show only Current/Active students
+            matchesStatus = !student.status || student.status === 'CURSANDO' || student.status === 'ATIVO' || student.status === 'APROVADO';
+            // Explicitly exclude archived ones just in case
+            if (student.status === 'CONCLUÍDO' || student.status === 'EVADIDO' || student.status === 'TRANSFERIDO' || student.status === 'INATIVO') {
+                matchesStatus = false;
+            }
+        } else {
+            // Show Archived students
+            matchesStatus = student.status === 'CONCLUÍDO' || student.status === 'EVADIDO' || student.status === 'TRANSFERIDO' || student.status === 'INATIVO';
+        }
+
+        return matchesUnit && matchesSearch && matchesStatus;
     });
 
     const filteredTeachers = teachers.filter(teacher => {
@@ -246,10 +265,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setSUnit(student.unit);
         setSShift(student.shift);
         setSClass(student.schoolClass);
+        setSStatus(student.status || 'CURSANDO'); // Populate Status
         setSPass(student.password); setShowStudentPassword(false);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
-    const cancelEditingStudent = () => { setEditingStudentId(null); setSName(''); setSCode(''); setSPass(''); };
+    const cancelEditingStudent = () => { setEditingStudentId(null); setSName(''); setSCode(''); setSPass(''); setSStatus('CURSANDO'); };
 
     const fullHandleStudentSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -257,14 +277,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         if (editingStudentId) {
             const original = students.find(s => s.id === editingStudentId);
             if (!original) return;
-            const updated = { ...original, name: sName, code: sCode, gradeLevel: sGrade, unit: unitToSave, shift: sShift, schoolClass: sClass, password: sPass.trim() ? sPass : original.password };
+            const updated = {
+                ...original,
+                name: sName,
+                code: sCode,
+                gradeLevel: sGrade,
+                unit: unitToSave,
+                shift: sShift,
+                schoolClass: sClass,
+                password: sPass.trim() ? sPass : original.password,
+                status: sStatus as any // Update Status
+            };
             onEditStudent(updated);
             alert("Atualizado!");
             cancelEditingStudent();
         } else {
-            onAddStudent({ id: Date.now().toString(), name: sName, code: sCode, gradeLevel: sGrade, unit: unitToSave, shift: sShift, schoolClass: sClass, password: sPass, isBlocked: false });
+            onAddStudent({
+                id: Date.now().toString(),
+                name: sName,
+                code: sCode,
+                gradeLevel: sGrade,
+                unit: unitToSave,
+                shift: sShift,
+                schoolClass: sClass,
+                password: sPass,
+                isBlocked: false,
+                status: sStatus as any // New Student Status
+            });
             alert("Cadastrado!");
-            setSName(''); setSCode(''); setSPass('');
+            setSName(''); setSCode(''); setSPass(''); setSStatus('CURSANDO');
         }
     };
 
@@ -430,6 +471,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             ) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}
                                         </div>
                                         <div>
+                                            <label className="text-sm font-medium">Situação (Status)</label>
+                                            <select value={sStatus} onChange={e => setSStatus(e.target.value)} className="w-full p-2 border rounded bg-slate-50 border-slate-300 text-slate-700 font-medium">
+                                                <option value="CURSANDO">Cursando</option>
+                                                <option value="CONCLUÍDO">Concluído (Graduado)</option>
+                                                <option value="TRANSFERIDO">Transferido</option>
+                                                <option value="EVADIDO">Evadido</option>
+                                                <option value="ATIVO">Ativo</option>
+                                                <option value="INATIVO">Inativo</option>
+                                            </select>
+                                        </div>
+                                        <div>
                                             <label className="text-sm font-medium">Senha</label>
                                             <div className="flex gap-2 relative">
                                                 <input type={showStudentPassword ? "text" : "password"} value={sPass} onChange={e => setSPass(e.target.value)} className="w-full p-2 border rounded" required={!editingStudentId} />
@@ -444,9 +496,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             </div>
                             <div className="lg:col-span-2">
                                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                                    <div className="p-4 bg-gray-50 border-b flex justify-between">
-                                        <h3 className="font-bold">Alunos ({filteredStudents.length})</h3>
-                                        <input type="text" placeholder="Buscar..." value={studentSearchTerm} onChange={e => setStudentSearchTerm(e.target.value)} className="p-1 border rounded text-sm" />
+                                    <div className="p-4 bg-gray-50 border-b flex flex-col sm:flex-row justify-between gap-4">
+                                        <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-gray-200">
+                                            <button
+                                                onClick={() => setStudentFilterMode('active')}
+                                                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${studentFilterMode === 'active' ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+                                            >
+                                                Ativos/Cursando
+                                            </button>
+                                            <button
+                                                onClick={() => setStudentFilterMode('archived')}
+                                                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${studentFilterMode === 'archived' ? 'bg-purple-100 text-purple-700 shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+                                            >
+                                                Ex-Alunos (Histórico)
+                                            </button>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="font-bold text-gray-700 hidden sm:block">({filteredStudents.length})</h3>
+                                            <input type="text" placeholder="Buscar..." value={studentSearchTerm} onChange={e => setStudentSearchTerm(e.target.value)} className="p-1.5 border rounded text-sm w-full sm:w-48" />
+                                        </div>
                                     </div>
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-sm text-left">

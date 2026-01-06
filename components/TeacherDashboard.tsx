@@ -5,6 +5,7 @@ import { db, storage } from '../firebaseConfig';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 import { getAttendanceBreakdown, AttendanceBreakdown } from '../src/utils/attendanceUtils';
+import { getBimesterFromDate, getCurrentSchoolYear } from '../src/utils/academicUtils';
 import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects, SCHOOL_GRADES_LIST, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST, EARLY_CHILDHOOD_REPORT_TEMPLATE } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage } from '../utils/frequency';
 import { Button } from './Button';
@@ -121,23 +122,19 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     const calculatedAbsences = useMemo(() => {
         if (!selectedStudent) return { 1: 0, 2: 0, 3: 0, 4: 0 };
         const absences = { 1: 0, 2: 0, 3: 0, 4: 0 };
-        const currentYear = new Date().getFullYear();
+        const currentYear = getCurrentSchoolYear();
 
         attendanceRecords.forEach(record => {
             // Filter: Only count absences for the currently selected subject
             if (selectedSubject && record.discipline !== selectedSubject) return;
 
             if (record.studentStatus[selectedStudent.id] === AttendanceStatus.ABSENT) {
-                const [y, mStr] = record.date.split('-');
+                const [y] = record.date.split('-');
                 const yNum = Number(y);
-                const mNum = Number(mStr); // 1-12
 
                 if (yNum === currentYear) {
-                    // Explicit Ranges
-                    if (mNum >= 1 && mNum <= 3) absences[1]++;
-                    else if (mNum >= 4 && mNum <= 6) absences[2]++;
-                    else if (mNum >= 7 && mNum <= 9) absences[3]++;
-                    else if (mNum >= 10 && mNum <= 12) absences[4]++;
+                    const bimester = getBimesterFromDate(record.date);
+                    absences[bimester]++;
                 }
             }
         });
@@ -157,7 +154,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
 
     const { absenceData, currentBimester } = useMemo(() => {
         if (attendanceStudents.length === 0) return { absenceData: {} as Record<string, StudentAbsenceSummary>, currentBimester: 1 };
-        const currentYear = new Date().getFullYear();
+        const currentYear = getCurrentSchoolYear();
         const currentMonth = new Date().getMonth();
         const bimesterNumber = Math.floor(currentMonth / 3) + 1;
 
@@ -198,7 +195,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     useEffect(() => {
         if (!selectedStudent) { setCurrentGradeData(null); setCurrentReport(null); return; }
         if (isEarlyChildhoodStudent) {
-            const year = new Date().getFullYear();
+            const year = getCurrentSchoolYear();
             const reportId = `${selectedStudent.id}_${selectedSemester}_${year}`;
             const existingReport = earlyChildhoodReports.find(r => r.id === reportId);
             if (existingReport) { setCurrentReport(existingReport); setTeacherObservations(existingReport.teacherObservations || ''); }
@@ -343,24 +340,14 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
             // 2. TRIGGER: Synchronize Absences to 'Grades' Collection
             // Goal: Immediately reflect "Faltas" in the Grade/Bulletin document without manual "Save Grade"
 
-            const [yearStr, monthStr] = attendanceDate.split('-');
+            const [yearStr] = attendanceDate.split('-');
             const yearNum = Number(yearStr);
-            const monthNum = Number(monthStr);
+            const currentSchoolYear = getCurrentSchoolYear();
 
-            // Determine Bimester (Simple Quarter Logic matches existing codebase)
-            let targetBimester: 1 | 2 | 3 | 4 | null = null;
-            if (monthNum >= 1 && monthNum <= 3) targetBimester = 1;
-            else if (monthNum >= 4 && monthNum <= 6) targetBimester = 2;
-            else if (monthNum >= 7 && monthNum <= 9) targetBimester = 3;
-            else if (monthNum >= 9 && monthNum <= 12) targetBimester = 4; // Including 9 in both? Existing code used basic range. Let's stick to 1-3, 4-6, 7-9, 10-12
+            // Determine Bimester
+            const targetBimester = getBimesterFromDate(attendanceDate);
 
-            // Correction based on line 107 logic:
-            if (monthNum >= 1 && monthNum <= 3) targetBimester = 1;
-            else if (monthNum >= 4 && monthNum <= 6) targetBimester = 2;
-            else if (monthNum >= 7 && monthNum <= 9) targetBimester = 3;
-            else if (monthNum >= 10 && monthNum <= 12) targetBimester = 4;
-
-            if (targetBimester && yearNum === new Date().getFullYear()) {
+            if (targetBimester && yearNum === currentSchoolYear) {
                 const bimesterKey = `bimester${targetBimester}` as keyof GradeEntry['bimesters'];
 
                 // Helper to calculate total absences for a specific student/subject/bimester
@@ -378,18 +365,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
 
                     allRelevantRecords.forEach(r => {
                         if (r.studentStatus[student.id] === AttendanceStatus.ABSENT) {
-                            const [y, m] = r.date.split('-');
-                            const mN = Number(m);
+                            const [y] = r.date.split('-');
                             const yN = Number(y);
-                            if (yN !== yearNum) return;
+                            if (yN !== currentSchoolYear) return;
 
-                            let rBim = 0;
-                            if (mN >= 1 && mN <= 3) rBim = 1;
-                            else if (mN >= 4 && mN <= 6) rBim = 2;
-                            else if (mN >= 7 && mN <= 9) rBim = 3;
-                            else if (mN >= 10 && mN <= 12) rBim = 4;
-
-                            if (rBim === targetBimester) {
+                            if (getBimesterFromDate(r.date) === targetBimester) {
                                 totalAbsences++;
                             }
                         }
@@ -1359,12 +1339,12 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                                         const yNum = Number(y);
                                                                                         const mNum = Number(mStr); // 1-12
 
-                                                                                        if (yNum === new Date().getFullYear()) {
+                                                                                        if (yNum === getCurrentSchoolYear()) {
                                                                                             // Explicit check against bimesterNum (1,2,3,4)
-                                                                                            if (bimesterNum === 1 && mNum >= 1 && mNum <= 3) return acc + 1;
-                                                                                            if (bimesterNum === 2 && mNum >= 4 && mNum <= 6) return acc + 1;
-                                                                                            if (bimesterNum === 3 && mNum >= 7 && mNum <= 9) return acc + 1;
-                                                                                            if (bimesterNum === 4 && mNum >= 10 && mNum <= 12) return acc + 1;
+                                                                                            if (getBimesterFromDate(record.date) === bimesterNum) return acc + 1;
+                                                                                            
+                                                                                            
+                                                                                            
                                                                                         }
                                                                                     }
                                                                                     return acc;
@@ -1376,10 +1356,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                                         <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-300">{formatGrade(bData.recuperacao)}</td>
                                                                                         <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs">{formatGrade(bData.media)}</td>
                                                                                         <td className="px-1 py-2 text-center text-gray-500 text-xs border-r border-gray-300">
-                                                                                            {bData.faltas !== undefined && bData.faltas !== null ? bData.faltas : (currentStudentAbsences || '')}
+                                                                                            {currentStudentAbsences || 0}
                                                                                         </td>
                                                                                         {(() => {
-                                                                                            const absences = bData.faltas !== undefined && bData.faltas !== null ? bData.faltas : currentStudentAbsences;
+                                                                                            const absences = currentStudentAbsences;
                                                                                             const freqPercent = calculateAttendancePercentage(grade.subject, absences, selectedStudent?.gradeLevel || "");
 
                                                                                             // Só exibe a porcentagem se houver pelo menos uma falta
@@ -1401,7 +1381,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                             {(() => {
                                                                                 const totalAbsences = [grade.bimesters.bimester1, grade.bimesters.bimester2, grade.bimesters.bimester3, grade.bimesters.bimester4].reduce((sum, b, idx) => {
                                                                                     const bNum = (idx + 1) as 1 | 2 | 3 | 4;
-                                                                                    if (b.faltas !== undefined && b.faltas !== null) return sum + b.faltas;
+                                                                                    if (false) return sum;
 
                                                                                     const studentAbsSnapshot = attendanceRecords.filter(att =>
                                                                                         att.discipline === grade.subject &&
@@ -1409,10 +1389,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                                     ).filter(att => {
                                                                                         const d = new Date(att.date + 'T00:00:00');
                                                                                         const m = d.getMonth() + 1;
-                                                                                        if (bNum === 1 && m >= 1 && m <= 3) return true;
-                                                                                        if (bNum === 2 && m >= 4 && m <= 6) return true;
-                                                                                        if (bNum === 3 && m >= 7 && m <= 9) return true;
-                                                                                        if (bNum === 4 && m >= 10 && m <= 12) return true;
+                                                                                        if (getBimesterFromDate(att.date) === bNum && parseInt(att.date.split('-')[0], 10) === getCurrentSchoolYear()) return true;
+                                                                                        
+                                                                                        
+                                                                                        
                                                                                         return false;
                                                                                     }).length;
 

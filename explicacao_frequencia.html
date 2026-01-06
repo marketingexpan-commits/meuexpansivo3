@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cálculo de Frequência - Meu Expansivo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #1a426f;
+            --secondary-color: #3498db;
+            --bg-color: #f5f7fa;
+            --text-color: #333;
+            --border-color: #ccc;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            /* Web-safe fallback */
+            line-height: 1.4;
+            /* Slightly tighter line height */
+            font-size: 11pt;
+            /* Professional document size */
+            color: var(--text-color);
+            max-width: 850px;
+            /* Slightly wider to accommodate tables */
+            margin: 0 auto;
+            padding: 30px 50px;
+            /* Standardize specific padding */
+        }
+
+        h1 {
+            color: #1a426f;
+            font-size: 18pt;
+            border-bottom: 2px solid #1a426f;
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #2c5e91;
+            font-size: 14pt;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 4px;
+        }
+
+        h3 {
+            color: #1f4d78;
+            font-size: 12pt;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        p,
+        ul,
+        li {
+            margin-bottom: 10px;
+        }
+
+        .box {
+            background-color: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-left: 4px solid #3498db;
+            padding: 12px 15px;
+            margin: 15px 0;
+            border-radius: 2px;
+        }
+
+        .formula {
+            background-color: #eff6fa;
+            border: 1px solid #dcdcdc;
+            padding: 12px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.1em;
+            margin: 15px 0;
+            color: #2c3e50;
+            border-radius: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10pt;
+            /* Smaller font for tables */
+            margin: 15px 0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        th,
+        td {
+            border: 1px solid #ccc;
+            /* Subtler border */
+            padding: 2px 6px;
+            /* Ultra-compact padding */
+            text-align: left;
+            vertical-align: middle;
+            line-height: 1.1;
+            /* Minimal line height */
+        }
+
+        th {
+            background-color: #e9ecef;
+            /* Lighter, professional header */
+            color: #333;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        td.center {
+            text-align: center;
+            width: 15%;
+            /* Prevent exaggeration on number columns */
+        }
+
+        /* Specific column widths control */
+        th:first-child,
+        td:first-child {
+            width: 45%;
+        }
+
+        @media print {
+            body {
+                padding: 0;
+                max-width: 100%;
+            }
+
+            .no-print {
+                display: none;
+            }
+
+            .box,
+            .formula {
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="no-print"
+        style="background: #fff3cd; color: #856404; padding: 15px; margin-bottom: 20px; border: 1px solid #ffeeba; border-radius: 4px; text-align: center;">
+        <strong>Dica:</strong> Pressione <code>Ctrl + P</code> (ou Cmd + P) e escolha "Salvar como PDF" para gerar o
+        arquivo.
+    </div>
+
+    <h1>Entendendo o Cálculo de Frequência - Meu Expansivo</h1>
+    <p>Este documento explica como o sistema <strong>Meu Expansivo</strong> calcula automaticamente a porcentagem de
+        frequência dos alunos, garantindo transparência para pais, alunos e professores.</p>
+
+    <h2>1. A Lógica do Cálculo</h2>
+    <p>O sistema baseia-se na <strong>Carga Horária Semanal</strong> de cada disciplina para estimar o total de aulas
+        dadas em um período.</p>
+
+    <div class="formula">
+        Frequência (%) = ((Total Aulas - Total Faltas) / Total Aulas) × 100
+    </div>
+
+    <div class="box">
+        <h3>O que são "Aulas Previstas"?</h3>
+        <p>O sistema padroniza o calendário letivo da seguinte forma para fins de cálculo:</p>
+        <ul>
+            <li><strong>Por Bimestre:</strong> Considera-se que cada bimestre possui <strong>10 semanas
+                    letivas</strong>.</li>
+            <li><strong>Anual:</strong> Considera-se o total de <strong>40 semanas letivas</strong> (equivalente aos
+                <strong>200 dias letivos</strong>).</li>
+        </ul>
+        <p>Portanto:<br>
+            <strong>Total de Aulas (Bimestre)</strong> = (Aulas por Semana) × 10<br>
+            <strong>Total de Aulas (Anual)</strong> = (Aulas por Semana) × 40
+        </p>
+    </div>
+
+    <h2>2. Matriz Curricular de Referência</h2>
+    <p>Abaixo, a quantidade de aulas semanais configurada para cada nível de ensino:</p>
+
+    <h3>🐣 Fundamental I</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Disciplina</th>
+                <th>Aulas/Semana</th>
+                <th>Total Bimestre (10 sem)</th>
+                <th>Total Anual (40 sem)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Português, Matemática</td>
+                <td class="center">4</td>
+                <td class="center">40</td>
+                <td class="center">160</td>
+            </tr>
+            <tr>
+                <td>Ciências, Geografia, História, Inglês, Artes</td>
+                <td class="center">2</td>
+                <td class="center">20</td>
+                <td class="center">80</td>
+            </tr>
+            <tr>
+                <td>Espanhol, Filosofia, Projeto de Vida, Música</td>
+                <td class="center">1</td>
+                <td class="center">10</td>
+                <td class="center">40</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>🚀 Fundamental II</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Disciplina</th>
+                <th>Aulas/Semana</th>
+                <th>Total Bimestre (10 sem)</th>
+                <th>Total Anual (40 sem)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Matemática, Português</td>
+                <td class="center">4</td>
+                <td class="center">40</td>
+                <td class="center">160</td>
+            </tr>
+            <tr>
+                <td>História, Geografia, Ciências</td>
+                <td class="center">2</td>
+                <td class="center">20</td>
+                <td class="center">80</td>
+            </tr>
+            <tr>
+                <td>Inglês, Espanhol, Francês, Artes, Redação, Ed. Física, Projeto de Vida</td>
+                <td class="center">1</td>
+                <td class="center">10</td>
+                <td class="center">40</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>🎓 Ensino Médio</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Disciplina</th>
+                <th>Aulas/Semana</th>
+                <th>Total Bimestre (10 sem)</th>
+                <th>Total Anual (40 sem)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Matemática, Física</td>
+                <td class="center">4</td>
+                <td class="center">40</td>
+                <td class="center">160</td>
+            </tr>
+            <tr>
+                <td>Português, Biologia, História, Geografia, Química, Literatura, Redação, Filosofia</td>
+                <td class="center">2</td>
+                <td class="center">20</td>
+                <td class="center">80</td>
+            </tr>
+            <tr>
+                <td>Sociologia, Inglês, Espanhol</td>
+                <td class="center">1</td>
+                <td class="center">10</td>
+                <td class="center">40</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>3. Exemplos Práticos de Aplicação</h2>
+
+    <div class="box">
+        <h3>Exemplo A: Aluno do Ensino Médio em Matemática</h3>
+        <ul>
+            <li><strong>Carga Horária:</strong> 4 aulas/semana.</li>
+            <li><strong>Aulas no Bimestre:</strong> 4 × 10 = <strong>40 aulas</strong>.</li>
+            <li><strong>Situação:</strong> O aluno teve <strong>6 faltas</strong> no bimestre.</li>
+        </ul>
+        <p><strong>Cálculo:</strong> (40 - 6) / 40 = 0,85 → <strong>85% de Frequência</strong></p>
+    </div>
+
+    <div class="box">
+        <h3>Exemplo B: Aluno do Fundamental II em Inglês</h3>
+        <ul>
+            <li><strong>Carga Horária:</strong> 1 aula/semana.</li>
+            <li><strong>Aulas no Bimestre:</strong> 1 × 10 = <strong>10 aulas</strong>.</li>
+            <li><strong>Situação:</strong> O aluno teve <strong>2 faltas</strong> no bimestre.</li>
+        </ul>
+        <p><strong>Cálculo:</strong> (10 - 2) / 10 = 0,80 → <strong>80% de Frequência</strong></p>
+    </div>
+
+    <div class="box">
+        <h3>Exemplo C: Frequência Anual (Ensino Médio - Física)</h3>
+        <p>Imagine o final do ano letivo para a disciplina de Física (4 aulas/semana).</p>
+        <ul>
+            <li><strong>Total de Aulas no Ano:</strong> 4 aulas x 40 semanas = <strong>160 aulas</strong>.</li>
+            <li><strong>Total de Faltas no Ano:</strong> O aluno faltou 20 vezes ao longo dos 4 bimestres.</li>
+        </ul>
+        <p><strong>Cálculo Final:</strong> (160 - 20) / 160 = 0,875 → <strong>87,5% de Frequência Anual</strong></p>
+    </div>
+
+    <h2>4. Observações Importantes</h2>
+    <ol>
+        <li><strong>Limite Mínimo e Máximo:</strong> A frequência nunca será menor que 0% ou maior que 100%.</li>
+        <li><strong>Atualização:</strong> O cálculo é feito automaticamente assim que o professor lança as faltas no
+            sistema.</li>
+        <li><strong>Faltas Justificadas:</strong> Devem ser tratadas administrativamente para que não impactem o
+            registro, ou abonadas pelo sistema conforme a política da escola.</li>
+    </ol>
+</body>
+
+</html>

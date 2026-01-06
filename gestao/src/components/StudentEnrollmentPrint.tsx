@@ -1,5 +1,5 @@
 import type { Student } from '../types';
-import { UNIT_DETAILS } from '../utils/receiptGenerator';
+import { UNIT_DETAILS } from '../constants';
 
 interface StudentEnrollmentPrintProps {
     student: Partial<Student>;

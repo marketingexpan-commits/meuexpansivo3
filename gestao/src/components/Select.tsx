@@ -30,7 +30,7 @@ export function Select({ label, error, className, id, options, ...props }: Selec
                     )}
                     {...props}
                 >
-                    <option value="" disabled selected>Selecione uma opção...</option>
+                    <option value="" disabled>Selecione uma opção...</option>
                     {options.map((opt) => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}

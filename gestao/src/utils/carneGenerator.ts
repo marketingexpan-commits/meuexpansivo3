@@ -1,6 +1,6 @@
 import type { Student } from '../types';
 import { generatePixPayload } from './pixUtils';
-import { UNIT_DETAILS } from './receiptGenerator';
+import { UNIT_DETAILS } from '../constants';
 
 interface Installment {
     month: string;

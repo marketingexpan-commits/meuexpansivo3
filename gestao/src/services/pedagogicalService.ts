@@ -25,12 +25,6 @@ export const pedagogicalService = {
         try {
             const q = collection(db, ATTENDANCE_COLLECTION);
             const snap = await getDocs(q);
-
-            // O Firestore não permite filtrar por chaves de mapa facilmente, 
-            // então buscamos e filtramos na memória se for necessário, 
-            // ou se houver studentStatus.studentId == status.
-            // No entanto, AttendanceRecord armazena studentStatus como um mapa { studentId: status }.
-            // Então filtramos no JS.
             const allRecords = snap.docs.map(d => ({ id: d.id, ...d.data() })) as AttendanceRecord[];
             return allRecords.filter(record => record.studentStatus && record.studentStatus[studentId]);
         } catch (error) {
@@ -39,25 +33,21 @@ export const pedagogicalService = {
         }
     },
 
-    // Calcular frequência percentual baseada nas faltas das notas
+    // Calcular frequência percentual baseada nas faltas das notas (Sumário)
     calculateFrequencyFromGrades(grades: GradeEntry[], gradeLevel: string = "Fundamental I") {
         if (grades.length === 0) return 100;
 
         let totalExpectedClasses = 0;
         let totalAbsences = 0;
 
-        // 1. Determine Level Key for Matrix access
-        let levelKey = '';
-        if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
-        else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
+        let levelKey = 'Fundamental I';
+        if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
         else if (gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ens. Médio';
 
-        // 2. Iterate through all subjects and bimesters
         grades.forEach(gradeEntry => {
             const subject = gradeEntry.subject;
             const weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[subject] || 0;
 
-            // For each bimester, add 10 weeks of classes
             Object.values(gradeEntry.bimesters).forEach(b => {
                 if (weeklyClasses > 0) {
                     totalExpectedClasses += (weeklyClasses * 10);

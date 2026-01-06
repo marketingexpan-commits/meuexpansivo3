@@ -381,7 +381,7 @@ export interface Student {
   isScholarship?: boolean; // Indicates if the student is exempt from monthly fees
   phoneNumber?: string;
   photoUrl?: string; // Base64 or URL for 3x4 student photo
-  status?: 'CURSANDO' | 'TRANSFERIDO' | 'EVADIDO' | 'TRANCADO' | 'RESERVADO' | 'REPROVADO' | 'APROVADO' | 'ATIVO' | 'INATIVO';
+  status?: 'CURSANDO' | 'TRANSFERIDO' | 'EVADIDO' | 'TRANCADO' | 'RESERVADO' | 'REPROVADO' | 'APROVADO' | 'ATIVO' | 'INATIVO' | 'CONCLUÍDO';
   nis?: string; // NIS for Bolsa Família
 }
 
@@ -477,3 +477,32 @@ export const SCHOOL_CLASSES_OPTIONS = [
   { label: 'D', value: 'D' },
   { label: 'E', value: 'E' }
 ];
+// ... existing types
+
+export interface AcademicHistoryRecord {
+  id: string;
+  year: string;
+  gradeLevel: string; // e.g. "6º Ano", "1ª Série"
+  schoolName: string;
+  cityState: string;
+  status: string; // "Aprovado", "Reprovado", "Cursando"
+  average?: string | null; // Optional final grade
+  attendance?: string | null; // Optional attendance percentage
+  totalHours?: string | null; // Optional total hours
+  observation?: string | null;
+  subjects?: { // Added for detailed grades
+    name: string;
+    grade: string;
+    status: string;
+    ch?: string | null; // Carga Horária
+    b1?: string | null;
+    b2?: string | null;
+    b3?: string | null;
+    b4?: string | null;
+  }[];
+}
+
+export interface Student {
+  // ... (existing fields)
+  academicHistory?: AcademicHistoryRecord[];
+}
