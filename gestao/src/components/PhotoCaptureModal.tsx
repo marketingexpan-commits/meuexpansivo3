@@ -12,6 +12,7 @@ interface PhotoCaptureModalProps {
 export function PhotoCaptureModal({ isOpen, onClose, onCapture }: PhotoCaptureModalProps) {
     const [stream, setStream] = useState<MediaStream | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
     const [error, setError] = useState<string | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -22,14 +23,16 @@ export function PhotoCaptureModal({ isOpen, onClose, onCapture }: PhotoCaptureMo
             startCamera();
         }
         return () => stopCamera();
-    }, [isOpen, previewUrl]);
+    }, [isOpen, previewUrl, facingMode]);
 
     async function startCamera() {
         try {
             setError(null);
+            stopCamera(); // Ensure old stream is stopped
+
             const mediaStream = await navigator.mediaDevices.getUserMedia({
                 video: {
-                    facingMode: 'user',
+                    facingMode: facingMode,
                     width: { ideal: 1280 },
                     height: { ideal: 720 }
                 },
@@ -132,8 +135,8 @@ export function PhotoCaptureModal({ isOpen, onClose, onCapture }: PhotoCaptureMo
                                     ref={videoRef}
                                     autoPlay
                                     playsInline
-                                    className="w-full h-full object-cover mirror"
-                                    style={{ transform: 'scaleX(-1)' }} // Mirror mode
+                                    className={`w-full h-full object-cover ${facingMode === 'user' ? 'mirror' : ''}`}
+                                    style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
                                 />
                                 {/* Overlay Guide */}
                                 <div className="absolute inset-0 border-[40px] border-black/40 pointer-events-none">
@@ -141,6 +144,21 @@ export function PhotoCaptureModal({ isOpen, onClose, onCapture }: PhotoCaptureMo
                                         <div className="w-3/4 h-3/4 border border-white/20 rounded-full opacity-30"></div>
                                     </div>
                                 </div>
+
+                                {/* Camera Toggle Button */}
+                                <div className="absolute top-4 right-4">
+                                    <button
+                                        onClick={() => {
+                                            setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+                                            setPreviewUrl(null); // Reset preview to trigger effect
+                                        }}
+                                        className="p-3 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-colors"
+                                        title="Alternar Câmera"
+                                    >
+                                        <RefreshCw className="w-5 h-5" />
+                                    </button>
+                                </div>
+
                                 <div className="absolute bottom-4 left-0 right-0 flex justify-center">
                                     <button
                                         onClick={handleCapture}
