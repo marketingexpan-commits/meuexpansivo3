@@ -60,7 +60,7 @@ const calculateSubjectFrequency = (
 
     const frequency = ((expectedClasses - absences) / expectedClasses) * 100;
     if (absences === 0) return '-';
-    return Math.max(0, Math.min(100, frequency)).toFixed(0) + '%';
+    return Math.max(0, Math.min(100, frequency)).toFixed(1) + '%';
 };
 
 export const generateSchoolHistory = (
@@ -229,11 +229,11 @@ export const generateSchoolHistory = (
             let activeBimesters = 0;
             [1, 2, 3, 4].forEach(b => { if (hasAnyRecords(b)) activeBimesters++; });
 
-            const expectedClassesSoFar = weeklyClasses * 10 * activeBimesters;
+            const annualExpectedClasses = weeklyClasses * 40;
             const allAbsences = absencesB1 + absencesB2 + absencesB3 + absencesB4;
 
-            const totalFrequency = (expectedClassesSoFar > 0 && allAbsences > 0)
-                ? (((expectedClassesSoFar - allAbsences) / expectedClassesSoFar) * 100).toFixed(0) + '%'
+            const totalFrequency = (annualExpectedClasses > 0 && allAbsences > 0)
+                ? (((annualExpectedClasses - allAbsences) / annualExpectedClasses) * 100).toFixed(1) + '%'
                 : '-';
 
             const totalCH = weeklyClasses > 0 ? (weeklyClasses * 40) : '-';
