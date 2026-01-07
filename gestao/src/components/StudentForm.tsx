@@ -5,6 +5,7 @@ import { Checkbox } from './Checkbox';
 import { Button } from './Button';
 import { User, MapPin, Users, GraduationCap, X, Loader2, Camera, Upload, MessagesSquare, Heart, FileText, Printer } from 'lucide-react';
 import { StudentEnrollmentPrint } from './StudentEnrollmentPrint';
+import { PhotoCaptureModal } from './PhotoCaptureModal';
 import { clsx } from 'clsx';
 import { studentService } from '../services/studentService';
 import type { Student } from '../types';
@@ -54,6 +55,7 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
     const [activeTab, setActiveTab] = useState<'personal' | 'academic' | 'family' | 'filiation' | 'address' | 'health' | 'documents' | 'observations'>('personal');
     const [isLoading, setIsLoading] = useState(false);
     const [printBlank, setPrintBlank] = useState(false);
+    const [isCameraOpen, setIsCameraOpen] = useState(false);
 
     // Initial state setup
     const [formData, setFormData] = useState<Partial<Student> & any>(() => {
@@ -621,9 +623,39 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                                         </button>
                                     )}
                                 </div>
+                                <div className="mt-3 flex flex-col gap-2 w-full max-w-[128px]">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="w-full gap-2 text-[10px] h-8 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                                        onClick={() => setIsCameraOpen(true)}
+                                    >
+                                        <Camera className="w-3 h-3" />
+                                        Tirar Foto
+                                    </Button>
+
+                                    <div className="relative group w-full">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="w-full gap-2 text-[10px] h-8"
+                                        >
+                                            <Upload className="w-3 h-3" />
+                                            Anexar Arquivo
+                                        </Button>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleFileChange}
+                                            className="absolute inset-0 opacity-0 cursor-pointer"
+                                            title="Anexar foto 3x4"
+                                        />
+                                    </div>
+                                </div>
                                 <div className="mt-2 text-center md:text-left">
-                                    <p className="text-[10px] text-slate-500 font-medium">Padrão 3x4 (JPEG/PNG)</p>
-                                    <p className="text-[9px] text-slate-400">O sistema otimiza o peso automaticamente</p>
+                                    <p className="text-[9px] text-slate-400">Padrão 3x4 (JPEG/PNG)</p>
                                 </div>
                             </div>
 
@@ -1187,6 +1219,11 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                     isBlank={printBlank}
                 />
             </div>
+            <PhotoCaptureModal
+                isOpen={isCameraOpen}
+                onClose={() => setIsCameraOpen(false)}
+                onCapture={(base64) => setFormData((prev: any) => ({ ...prev, photoUrl: base64 }))}
+            />
         </div>
     );
 }
