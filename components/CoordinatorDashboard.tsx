@@ -203,13 +203,20 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                 if (updatedBimesters[k].isRecuperacaoApproved === false) updatedBimesters[k].isRecuperacaoApproved = true;
             });
 
-            let updatedRecFinalApproved = grade.recuperacaoFinalApproved;
-            if (updatedRecFinalApproved === false) updatedRecFinalApproved = true;
+            // Force approval of final recovery if it was pending or undefined
+            const updatedRecFinalApproved = true;
 
-            await db.collection('grades').doc(grade.id).update({
+            // SANITIZE PAYLOAD: Recursively remove undefined values to prevent Firestore crash
+            const sanitizeUndefined = (obj: any): any => {
+                return JSON.parse(JSON.stringify(obj));
+            };
+
+            const payload = sanitizeUndefined({
                 bimesters: updatedBimesters,
                 recuperacaoFinalApproved: updatedRecFinalApproved
             });
+
+            await db.collection('grades').doc(grade.id).update(payload);
 
             // Create notification for teacher if teacherId exists
             console.log('[CoordinatorDashboard] Aprovação de nota:', {
