@@ -12,7 +12,7 @@ interface PhotoCaptureModalProps {
 export function PhotoCaptureModal({ isOpen, onClose, onCapture }: PhotoCaptureModalProps) {
     const [stream, setStream] = useState<MediaStream | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-    const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+    const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
     const [error, setError] = useState<string | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
