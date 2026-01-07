@@ -6,7 +6,7 @@ const https = require('https');
 // CONFIGURAÇÃO ZENVIA (Lê do .env)
 // -------------------------------------------------------------
 const ZENVIA_API_TOKEN = process.env.ZENVIA_API_TOKEN;
-const ZENVIA_SENDER_ID = 'marketing.expan'; // FIXO conforme suporte
+const ZENVIA_SENDER_ID = process.env.ZENVIA_FROM_NAME || 'marketing.expan';
 
 // Helper para enviar SMS via Zenvia API (v2)
 async function sendZenviaSMS(phoneNumber, messageText) {

@@ -20,7 +20,7 @@ export default async function handler(request, response) {
     try {
         const { subject, difficultyTopic, gradeLevel } = request.body;
         // Prioriza a chave nova se não tiver no env
-        const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "AIzaSyCB-YNCrnUJE_W7l4hNcwlEmtpSoCjSJIw";
+        const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 
         if (!apiKey) {
             throw new Error('GEMINI_API_KEY não configurada no servidor.');
