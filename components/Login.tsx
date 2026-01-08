@@ -118,6 +118,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
   };
 
   const [secretClickCount, setSecretClickCount] = useState(0);
+  const [hoveredTab, setHoveredTab] = useState<string | null>(null);
 
   const handleSecretClick = () => {
     if (showHiddenTabs) return;
@@ -248,42 +249,44 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
   return (
     <>
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-0 md:p-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#E8E8E8] p-4 md:p-6">
 
-        {/* --- HEADER EXTERNO (ESTILO GESTÃO) --- */}
-        <div className="flex items-center justify-center mb-0 md:mb-6 gap-3 md:gap-4 animate-fade-in-down py-6 md:py-0 scale-90 md:scale-100">
+        {/* --- HEADER HORIZONTAL (ESTILO REFERÊNCIA) --- */}
+        <div className="flex items-center gap-4 mb-8 animate-fade-in-down">
           <div
             ref={logoRef}
             onClick={handleSecretClick}
-            className={`cursor-pointer active:scale-95 transition-transform h-12 md:h-16 w-auto mt-2 ${showStaticLogo ? 'opacity-100' : 'opacity-0'} transition-opacity duration-0`}
+            className={`cursor-pointer active:scale-95 transition-transform h-16 md:h-20 w-auto ${showStaticLogo ? 'opacity-100' : 'opacity-0'} transition-opacity duration-0`}
           >
-            <SchoolLogo className="!h-full w-auto drop-shadow-sm" />
+            <SchoolLogo className="!h-full w-auto" />
           </div>
           <div className="flex flex-col justify-center">
-            <span className="text-[10px] text-blue-950 font-bold uppercase tracking-widest leading-none mb-0.5">Aplicativo</span>
-            <h1 className="text-xl md:text-2xl font-extrabold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
-            <span className="text-[11px] text-blue-950/60 font-semibold uppercase tracking-widest leading-none mt-2">Portal da Família</span>
+            <span className="text-xs text-orange-600 font-semibold uppercase tracking-[0.15em] leading-none mb-1">Aplicativo</span>
+            <h1 className="text-2xl md:text-3xl font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
           </div>
         </div>
 
-        {/* --- CARD CONTAINER (Wrapper) --- */}
-        <div className="max-w-md w-full relative min-h-screen md:min-h-0">
+        {/* --- CARD CONTAINER --- */}
+        <div className="max-w-md w-full relative">
 
           {/* --- SPLASH SCREEN (OVERLAY ON CARD) --- */}
           {showSplash && (
             <>
-              <div className="absolute left-0 right-0 bottom-0 top-[-6rem] z-[60] pointer-events-none">
+              {/* CONTENÇÃO DA TELA DE ABERTURA (Full-height e largura do card no PC) */}
+              <div className="fixed inset-0 z-[60] pointer-events-none flex justify-center">
+                <div className="w-full h-full max-w-md relative">
 
-                {/* CAMADAS DE FUNDO (Recortadas no formato do Card) */}
-                <div className="absolute inset-0 md:rounded-2xl overflow-hidden shadow-xl">
-                  {/* CAMADA DE FUNDO BRANCA */}
-                  <div
-                    className={`absolute inset-0 bg-white transition-opacity duration-1000 ${splashFading ? 'opacity-0' : 'opacity-100'}`}
-                  >
-                    {/* CAMADA DE FUNDO (GRADIENTE AZUL) */}
+                  {/* CAMADAS DE FUNDO */}
+                  <div className="absolute inset-0 md:rounded-2xl overflow-hidden shadow-xl">
+                    {/* CAMADA DE FUNDO BRANCA */}
                     <div
-                      className={`absolute inset-0 bg-gradient-to-br from-blue-950 to-slate-900 transition-opacity duration-[1500ms] ${animateLogo ? 'opacity-0' : 'opacity-100'}`}
-                    />
+                      className={`absolute inset-0 bg-white transition-opacity duration-1000 ${splashFading ? 'opacity-0' : 'opacity-100'}`}
+                    >
+                      {/* CAMADA DE FUNDO (GRADIENTE AZUL) */}
+                      <div
+                        className={`absolute inset-0 bg-gradient-to-br from-blue-950 to-slate-900 transition-opacity duration-[1500ms] ${animateLogo ? 'opacity-0' : 'opacity-100'}`}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -329,54 +332,78 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
             </>
           )}
 
-          {/* --- CONTEÚDO DO CARD (Clipped) --- */}
-          <div className="bg-white md:rounded-2xl shadow-xl overflow-hidden relative">
+          {/* --- CARD PRINCIPAL (CINZA COM ABAS) --- */}
+          <div
+            className="rounded-2xl overflow-hidden relative shadow-lg"
+            style={{
+              background: `linear-gradient(90deg, 
+                ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 0%, 
+                ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} ${showHiddenTabs ? '25%' : '50%'}, 
+                ${(activeTab === 'teacher' && !showHiddenTabs) || (activeTab === 'admin' && showHiddenTabs) || hoveredTab === (showHiddenTabs ? 'admin' : 'teacher') ? '#D1D5DB' : '#E5E7EB'} ${showHiddenTabs ? '75%' : '50%'},
+                ${(activeTab === 'teacher' && !showHiddenTabs) || (activeTab === 'admin' && showHiddenTabs) || hoveredTab === (showHiddenTabs ? 'admin' : 'teacher') ? '#D1D5DB' : '#E5E7EB'} 100%)`
+            }}
+          >
 
-            {/* --- MENU DE ABAS --- */}
-            {/* justify-between ou w-full com flex-1 em cada item para garantir distribuição igualitária */}
-            <div className="flex w-full border-b border-gray-200 bg-gray-50 -mt-0 relative z-10 overflow-hidden box-border">
+            {/* ABAS INTEGRADAS NO CARD CINZA (SEM PADDING PARA SER TOTALMENTE FLUSH) */}
+            <div className="flex w-full relative">
               <button
-                className={`flex-1 min-w-0 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 flex items-center justify-center ${activeTab === 'student' ? 'text-blue-900 border-blue-900 bg-white' : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-100'
+                className={`flex-1 py-4 text-sm font-semibold text-center transition-all ${activeTab === 'student'
+                  ? 'bg-gray-300 text-blue-950 hover:bg-gray-400'
+                  : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                   }`}
                 style={{ WebkitTapHighlightColor: 'transparent' }}
                 onClick={() => switchTab('student')}
+                onMouseEnter={() => setHoveredTab('student')}
+                onMouseLeave={() => setHoveredTab(null)}
               >
-                <span className="truncate px-1">Família / Aluno</span>
+                Aluno / Família
               </button>
               <button
-                className={`flex-1 min-w-0 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 flex items-center justify-center ${activeTab === 'teacher' ? 'text-blue-900 border-blue-900 bg-white' : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-100'
+                className={`flex-1 py-4 text-sm font-semibold text-center transition-all ${activeTab === 'teacher'
+                  ? 'bg-gray-300 text-blue-950 hover:bg-gray-400'
+                  : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                   }`}
                 style={{ WebkitTapHighlightColor: 'transparent' }}
                 onClick={() => switchTab('teacher')}
+                onMouseEnter={() => setHoveredTab('teacher')}
+                onMouseLeave={() => setHoveredTab(null)}
               >
-                <span className="truncate px-1">Professores</span>
+                Professor
               </button>
 
               {/* ABAS OCULTAS (ADMIN / COORDENADOR) */}
               {showHiddenTabs && (
                 <>
                   <button
-                    className={`flex-1 min-w-0 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 flex items-center justify-center ${activeTab === 'coordinator' ? 'text-purple-800 border-purple-800 bg-purple-50' : 'text-gray-500 border-transparent hover:text-purple-600 hover:bg-purple-50'
+                    className={`flex-1 py-4 text-sm font-semibold text-center transition-all ${activeTab === 'coordinator'
+                      ? 'bg-gray-300 text-blue-950 hover:bg-gray-400'
+                      : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                       }`}
                     style={{ WebkitTapHighlightColor: 'transparent' }}
                     onClick={() => switchTab('coordinator')}
+                    onMouseEnter={() => setHoveredTab('coordinator')}
+                    onMouseLeave={() => setHoveredTab(null)}
                   >
-                    <span className="truncate px-1">Coord.</span>
+                    Coord.
                   </button>
                   <button
-                    className={`flex-1 min-w-0 py-3 text-xs sm:text-sm font-medium text-center focus:outline-none focus:ring-0 focus:ring-offset-0 outline-none select-none transition-colors border-b-2 flex items-center justify-center ${activeTab === 'admin' ? 'text-blue-900 border-blue-900 bg-white' : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-100'
+                    className={`flex-1 py-4 text-sm font-semibold text-center transition-all ${activeTab === 'admin'
+                      ? 'bg-gray-300 text-blue-950 hover:bg-gray-400'
+                      : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                       }`}
                     style={{ WebkitTapHighlightColor: 'transparent' }}
                     onClick={() => switchTab('admin')}
+                    onMouseEnter={() => setHoveredTab('admin')}
+                    onMouseLeave={() => setHoveredTab(null)}
                   >
-                    <span className="truncate px-1">Admin</span>
+                    Admin
                   </button>
                 </>
               )}
             </div>
 
-            {/* --- CONTEÚDO --- */}
-            <div className="p-8 pb-6">
+            {/* ÁREA BRANCA DO FORMULÁRIO (COM BORDAS ARREDONDADAS NO TOPO TAMBÉM) */}
+            <div className="bg-white rounded-2xl p-6 relative z-10 shadow-inner">
 
               <form onSubmit={handleSubmit} className="space-y-5 animate-fade-in-up">
 
@@ -504,61 +531,53 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                 {/* Botão Acessar Portal */}
                 <button
                   type="submit"
-                  className={`w-full py-3.5 text-lg font-bold text-white rounded-lg transition-all transform active:scale-95 shadow-lg ${activeTab === 'coordinator' ? 'bg-purple-700 hover:bg-purple-800' : 'bg-orange-600 hover:bg-orange-700'
+                  className={`w-full py-4 text-lg font-bold text-white rounded-xl transition-all transform active:scale-95 ${activeTab === 'coordinator' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-orange-600 hover:bg-orange-700'
                     }`}
                 >
                   Acessar
                 </button>
 
               </form>
-
-              {/* SEPARADOR SUTIL */}
-              <div className="border-t border-gray-100 my-6"></div>
-
-              {/* --- BOTÕES DO RODAPÉ (RESTAURADOS) --- */}
-              <div className="grid grid-cols-2 gap-4 pb-4">
-                {/* BOTÃO FALE CONOSCO (ESTILO CINZA CLARO) */}
-                <button
-                  type="button"
-                  onClick={() => setIsContactOpen(true)}
-                  className="py-3 px-4 bg-gray-100 hover:bg-gray-200 text-blue-950 rounded-xl font-bold transition-all flex items-center justify-center gap-2 text-sm group active:scale-95 shadow hover:shadow-lg"
-                >
-                  <span className="bg-gray-200 p-1.5 rounded-lg transition-colors group-active:bg-gray-400">
-                    <svg className="w-5 h-5 text-gray-600 transition-transform duration-300 group-active:rotate-12 group-hover:rotate-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
-                  </span>
-                  <span>Fale Conosco</span>
-                </button>
-
-                {/* BOTÃO INSTAGRAM (AGORA ESTILO HARMÔNICO AO FALE CONOSCO) */}
-                <a
-                  href="https://www.instagram.com/redeexpansivo"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="py-3 px-4 bg-gray-100 hover:bg-gray-200 text-blue-950 rounded-xl font-bold transition-all flex items-center justify-center gap-2 text-sm group active:scale-95 shadow hover:shadow-lg"
-                >
-                  <span className="bg-gray-200 p-1.5 rounded-lg transition-colors group-active:bg-gray-400">
-                    <svg className="w-5 h-5 text-gray-600 transition-transform duration-300 group-active:rotate-12 group-hover:rotate-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"></path></svg>
-                  </span>
-                  <span>Instagram</span>
-                </a>
-
-                {/* BOTÃO MURAL DIGITAL (AGORA ABAIXO E FULL WIDTH) */}
-                <button
-                  type="button"
-                  onClick={() => setIsMuralOpen(true)}
-                  className="col-span-2 py-3 px-4 text-white rounded-xl font-bold transition-all transform active:scale-95 flex items-center justify-center gap-2 text-sm bg-gradient-to-r from-blue-950 to-slate-900 hover:from-blue-900 hover:to-slate-800 shadow-md hover:shadow-xl group mt-1"
-                >
-                  <span className="bg-white/20 p-1.5 rounded-lg transition-colors group-active:bg-white/30">
-                    <svg className="w-5 h-5 opacity-90 transition-transform duration-300 group-active:rotate-12 group-hover:rotate-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                  </span>
-                  <span>Mural Digital</span>
-                </button>
-              </div>
             </div>
           </div>
 
-          {/* CRÉDITOS DO DESENVOLVEDOR (FORA DO CARD) */}
-          <div className="mt-4 text-center">
+          {/* --- BOTÕES DO RODAPÉ (FORA DO CARD) --- */}
+          <div className="mt-4 space-y-3">
+            {/* DOIS BOTÕES LADO A LADO */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setIsContactOpen(true)}
+                className="py-3 px-4 bg-gray-200 hover:bg-gray-300 text-blue-950 border border-gray-300 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 text-sm transform active:scale-95 group"
+              >
+                <svg className="w-5 h-5 transition-transform duration-200 group-active:scale-125" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
+                <span>Fale Conosco</span>
+              </button>
+
+              <a
+                href="https://www.instagram.com/redeexpansivo"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="py-3 px-4 bg-gray-200 hover:bg-gray-300 text-blue-950 border border-gray-300 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 text-sm transform active:scale-95 group"
+              >
+                <svg className="w-5 h-5 transition-transform duration-200 group-active:scale-125" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"></path></svg>
+                <span>Instagram</span>
+              </a>
+            </div>
+
+            {/* BOTÃO MURAL DIGITAL FULL WIDTH */}
+            <button
+              type="button"
+              onClick={() => setIsMuralOpen(true)}
+              className="w-full py-3 px-4 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2 text-sm bg-blue-950 hover:bg-blue-900 shadow-sm"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+              <span>Mural Digital</span>
+            </button>
+          </div>
+
+          {/* CRÉDITOS DO DESENVOLVEDOR */}
+          <div className="mt-6 text-center">
             <p className="text-[10px] text-gray-500">© 2025 Expansivo Rede de Ensino. Todos os direitos reservados.</p>
             <p className="text-[10px] text-gray-500 mt-1">
               <span>Desenvolvido por: </span>
