@@ -1,6 +1,13 @@
 // src/components/TeacherDashboard.tsx
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { Teacher, Student, GradeEntry, BimesterData, SchoolUnit, Subject, SchoolClass, AttendanceRecord, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, Ticket, TicketStatus, AppNotification, ClassMaterial } from '../types';
+import {
+    Teacher, Student, GradeEntry, BimesterData, SchoolUnit, Subject, SchoolClass, AttendanceRecord, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, Ticket,
+    TicketStatus,
+    AppNotification,
+    DailyAgenda,
+    ExamGuide,
+    ClassMaterial
+} from '../types';
 import { db, storage } from '../firebaseConfig';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
@@ -98,6 +105,24 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     const [uploadError, setUploadError] = useState<string | null>(null);
     const [uploadedMaterials, setUploadedMaterials] = useState<ClassMaterial[]>([]);
     const [isLoadingMaterials, setIsLoadingMaterials] = useState(false);
+
+    // --- STATES PARA AGENDA E ROTEIROS ---
+    const [agendaDate, setAgendaDate] = useState(new Date().toISOString().split('T')[0]);
+    const [agendaSubject, setAgendaSubject] = useState('');
+    const [agendaGrade, setAgendaGrade] = useState('');
+    const [agendaClass, setAgendaClass] = useState('');
+    const [contentInClass, setContentInClass] = useState('');
+    const [homework, setHomework] = useState('');
+    const [isSavingAgenda, setIsSavingAgenda] = useState(false);
+
+    const [examDate, setExamDate] = useState('');
+    const [examTitle, setExamTitle] = useState('');
+    const [examContent, setExamContent] = useState('');
+    const [examSubject, setExamSubject] = useState('');
+    const [examGrade, setExamGrade] = useState('');
+    const [examClass, setExamClass] = useState('');
+    const [isSavingExam, setIsSavingExam] = useState(false);
+
 
     // Estados para Notificações
     const [showNotifications, setShowNotifications] = useState(false);
@@ -690,6 +715,81 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
         }
     };
 
+    // --- HANDLERS PARA AGENDA E ROTEIROS ---
+    const handleSaveAgenda = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!agendaSubject || !agendaGrade || !agendaClass || !contentInClass || !agendaDate) {
+            alert("Preencha todos os campos obrigatórios.");
+            return;
+        }
+
+        setIsSavingAgenda(true);
+        try {
+            const newAgenda: DailyAgenda = {
+                id: `agenda-${Date.now()}`,
+                teacherId: teacher.id,
+                teacherName: teacher.name,
+                gradeLevel: agendaGrade,
+                schoolClass: agendaClass,
+                subject: agendaSubject,
+                date: agendaDate,
+                contentInClass,
+                homework,
+                timestamp: new Date().toISOString(),
+                unit: activeUnit
+            };
+
+            await db.collection('daily_agenda').doc(newAgenda.id).set(newAgenda);
+            alert("Agenda salva com sucesso!");
+
+            // Limpar campos (exceto data e turma para facilitar lançamentos sequenciais)
+            setContentInClass('');
+            setHomework('');
+        } catch (error) {
+            console.error("Erro ao salvar agenda:", error);
+            alert("Erro ao salvar agenda.");
+        } finally {
+            setIsSavingAgenda(false);
+        }
+    };
+
+    const handleSaveExamGuide = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!examSubject || !examGrade || !examClass || !examDate || !examTitle || !examContent) {
+            alert("Preencha todos os campos obrigatórios.");
+            return;
+        }
+
+        setIsSavingExam(true);
+        try {
+            const newGuide: ExamGuide = {
+                id: `exam-${Date.now()}`,
+                teacherId: teacher.id,
+                teacherName: teacher.name,
+                gradeLevel: examGrade,
+                schoolClass: examClass,
+                subject: examSubject,
+                examDate,
+                title: examTitle,
+                content: examContent,
+                timestamp: new Date().toISOString(),
+                unit: activeUnit
+            };
+
+            await db.collection('exam_guides').doc(newGuide.id).set(newGuide);
+            alert("Roteiro de prova salvo com sucesso!");
+
+            // Limpar campos
+            setExamTitle('');
+            setExamContent('');
+        } catch (error) {
+            console.error("Erro ao salvar roteiro:", error);
+            alert("Erro ao salvar roteiro.");
+        } finally {
+            setIsSavingExam(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans">
             <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${activeTab === 'menu' ? 'max-w-md' : 'max-w-5xl'}`}>
@@ -848,12 +948,32 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
 
                                     <button
                                         onClick={() => setActiveTab('materials')}
+                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-500 hover:shadow-md transition-all group aspect-square"
+                                    >
+                                        <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                            <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                                        </div>
+                                        <h3 className="font-bold text-gray-800 text-sm text-center">Materiais de Aula</h3>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setActiveTab('agenda')}
                                         className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-purple-500 hover:shadow-md transition-all group aspect-square"
                                     >
                                         <div className="w-12 h-12 bg-purple-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-purple-100 transition-colors">
-                                            <svg className="w-7 h-7 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                                            <svg className="w-7 h-7 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                         </div>
-                                        <h3 className="font-bold text-gray-800 text-sm text-center">Materiais de Aula</h3>
+                                        <h3 className="font-bold text-gray-800 text-sm text-center">Agenda Diária</h3>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setActiveTab('exam_guides')}
+                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-orange-500 hover:shadow-md transition-all group aspect-square"
+                                    >
+                                        <div className="w-12 h-12 bg-orange-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-orange-100 transition-colors">
+                                            <svg className="w-7 h-7 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                        </div>
+                                        <h3 className="font-bold text-gray-800 text-sm text-center">Roteiros de Prova</h3>
                                     </button>
                                 </div>
                             </div>
@@ -866,8 +986,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                             {/* FORMULÁRIO DE UPLOAD */}
                             <div className="w-full md:w-1/3 p-6 border rounded-lg shadow-md bg-white">
                                 <h2 className="text-xl font-bold mb-4 text-blue-950 flex items-center gap-2">
-                                    <div className="w-8 h-8 bg-purple-50 rounded-full flex items-center justify-center">
-                                        <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                                    <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center">
+                                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
                                     </div>
                                     Enviar Material
                                 </h2>
@@ -989,6 +1109,118 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         </div>
                                     )}
                                 </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* CONTEÚDO TAB: AGENDA DIÁRIA */}
+                    {activeTab === 'agenda' && (
+                        <div className="flex flex-col md:flex-row space-y-6 md:space-y-0 md:space-x-6">
+                            <div className="w-full md:w-1/3 p-6 border rounded-lg shadow-md bg-white">
+                                <h2 className="text-xl font-bold mb-4 text-purple-600 flex items-center gap-2">
+                                    <div className="w-8 h-8 bg-purple-50 rounded-full flex items-center justify-center">
+                                        <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                    </div>
+                                    Nova Agenda
+                                </h2>
+                                <form onSubmit={handleSaveAgenda} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Data</label>
+                                        <input type="date" value={agendaDate} onChange={e => setAgendaDate(e.target.value)} className="w-full p-2 border border-blue-200 rounded focus:ring-purple-500 focus:border-purple-500" required />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Disciplina</label>
+                                        <select value={agendaSubject} onChange={e => setAgendaSubject(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
+                                            <option value="">Selecione...</option>
+                                            {teacherSubjects.map(s => <option key={s} value={s as string}>{s as string}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1">Série</label>
+                                            <select value={agendaGrade} onChange={e => setAgendaGrade(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
+                                                <option value="">Selecione...</option>
+                                                {SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1">Turma</label>
+                                            <select value={agendaClass} onChange={e => setAgendaClass(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
+                                                {SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Conteúdo em Sala</label>
+                                        <textarea value={contentInClass} onChange={e => setContentInClass(e.target.value)} rows={3} className="w-full p-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500" placeholder="Resumo do que foi dado em aula..." required />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Para Casa (Tarefas)</label>
+                                        <textarea value={homework} onChange={e => setHomework(e.target.value)} rows={2} className="w-full p-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500" placeholder="Exercícios, páginas do livro..." />
+                                    </div>
+                                    <Button type="submit" disabled={isSavingAgenda} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-lg shadow-md transition-colors flex justify-center items-center">
+                                        {isSavingAgenda ? 'Salvando...' : 'Salvar Agenda'}
+                                    </Button>
+                                </form>
+                            </div>
+                            <div className="w-full md:w-2/3 p-6 border rounded-lg shadow-md bg-gray-50 flex items-center justify-center text-gray-400">
+                                <p>Histórico de agendas será exibido aqui (Em breve).</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* CONTEÚDO TAB: ROTEIROS DE PROVA */}
+                    {activeTab === 'exam_guides' && (
+                        <div className="flex flex-col md:flex-row space-y-6 md:space-y-0 md:space-x-6">
+                            <div className="w-full md:w-1/3 p-6 border rounded-lg shadow-md bg-white">
+                                <h2 className="text-xl font-bold mb-4 text-orange-600 flex items-center gap-2">
+                                    <div className="w-8 h-8 bg-orange-50 rounded-full flex items-center justify-center">
+                                        <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                    </div>
+                                    Novo Roteiro
+                                </h2>
+                                <form onSubmit={handleSaveExamGuide} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Título da Avaliação</label>
+                                        <input type="text" value={examTitle} onChange={e => setExamTitle(e.target.value)} className="w-full p-2 border border-gray-300 rounded focus:ring-orange-500 focus:border-orange-500" placeholder="Ex: Prova Mensal 1" required />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Data da Prova</label>
+                                        <input type="date" value={examDate} onChange={e => setExamDate(e.target.value)} className="w-full p-2 border border-blue-200 rounded focus:ring-orange-500 focus:border-orange-500" required />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Disciplina</label>
+                                        <select value={examSubject} onChange={e => setExamSubject(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
+                                            <option value="">Selecione...</option>
+                                            {teacherSubjects.map(s => <option key={s} value={s as string}>{s as string}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1">Série</label>
+                                            <select value={examGrade} onChange={e => setExamGrade(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
+                                                <option value="">Selecione...</option>
+                                                {SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1">Turma</label>
+                                            <select value={examClass} onChange={e => setExamClass(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
+                                                {SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Conteúdo (Tópicos)</label>
+                                        <textarea value={examContent} onChange={e => setExamContent(e.target.value)} rows={5} className="w-full p-2 border border-gray-300 rounded focus:ring-orange-500 focus:border-orange-500" placeholder="Liste os assuntos que cairão na prova..." required />
+                                    </div>
+                                    <Button type="submit" disabled={isSavingExam} className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 rounded-lg shadow-md transition-colors flex justify-center items-center">
+                                        {isSavingExam ? 'Salvando...' : 'Salvar Roteiro'}
+                                    </Button>
+                                </form>
+                            </div>
+                            <div className="w-full md:w-2/3 p-6 border rounded-lg shadow-md bg-gray-50 flex items-center justify-center text-gray-400">
+                                <p>Histórico de roteiros será exibido aqui (Em breve).</p>
                             </div>
                         </div>
                     )}

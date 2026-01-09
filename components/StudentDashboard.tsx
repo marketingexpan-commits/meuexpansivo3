@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
-import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial, Occurrence } from '../types';
+import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial, Occurrence, DailyAgenda, ExamGuide } from '../types';
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
 import { getBimesterFromDate } from '../src/utils/academicUtils';
 import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects } from '../constants'; // Import Sync Fix
@@ -27,7 +27,8 @@ import {
     MessageCircle,
     User,
     Folder,
-    ClipboardList
+    ClipboardList,
+    LogOut
 } from 'lucide-react';
 import { db } from '../firebaseConfig';
 
@@ -119,6 +120,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const [classMaterials, setClassMaterials] = useState<ClassMaterial[]>([]);
     const [isLoadingMaterials, setIsLoadingMaterials] = useState(false);
     const [materialsError, setMaterialsError] = useState<string | null>(null);
+    const [materialsTab, setMaterialsTab] = useState<'files' | 'agenda' | 'exams'>('files');
+    const [agendas, setAgendas] = useState<DailyAgenda[]>([]);
+    const [examGuides, setExamGuides] = useState<ExamGuide[]>([]);
 
     // Estados para Ocorrências
     const [occurrences, setOccurrences] = useState<Occurrence[]>([]);
@@ -454,6 +458,44 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         }
     };
 
+    const loadAgenda = async () => {
+        try {
+            const snapshot = await db.collection('daily_agenda')
+                .where('unit', '==', student.unit)
+                .get();
+            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DailyAgenda));
+            // Filter in memory for safety
+            const filtered = data.filter(a => a.gradeLevel === student.gradeLevel && a.schoolClass === student.schoolClass);
+            filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            setAgendas(filtered);
+        } catch (error) {
+            console.error("Erro ao carregar agenda:", error);
+        }
+    };
+
+    const loadExamGuides = async () => {
+        try {
+            const snapshot = await db.collection('exam_guides')
+                .where('unit', '==', student.unit)
+                .get();
+            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ExamGuide));
+            // Filter
+            const filtered = data.filter(e => e.gradeLevel === student.gradeLevel && e.schoolClass === student.schoolClass);
+            // Sort by examDate ASC (Next exams first)
+            filtered.sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime());
+            setExamGuides(filtered);
+        } catch (error) {
+            console.error("Erro ao carregar roteiros:", error);
+        }
+    };
+
+    useEffect(() => {
+        if (currentView === 'materials') {
+            loadAgenda();
+            loadExamGuides();
+        }
+    }, [currentView]);
+
     // --- OCCURRENCES LOADING LOGIC ---
     useEffect(() => {
         if (currentView === 'occurrences') {
@@ -581,28 +623,28 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 <div className="flex items-center justify-between mb-6">
                                     {/* Logo Area */}
                                     <div className="flex items-center gap-2">
-                                        <div className="h-10 w-auto shrink-0">
+                                        <div className="h-8 sm:h-10 w-auto shrink-0">
                                             <SchoolLogo className="!h-full w-auto" />
                                         </div>
                                         <div className="flex flex-col justify-center">
-                                            <span className="text-[9px] text-orange-600 font-bold uppercase tracking-[0.15em] leading-none mb-1">Aplicativo</span>
-                                            <h1 className="text-lg font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
-                                            <span className="text-[9px] text-blue-950/60 font-bold uppercase tracking-wider leading-none mt-1">Portal da Família</span>
+                                            <span className="hidden sm:block text-[9px] text-orange-600 font-bold uppercase tracking-[0.15em] leading-none mb-1">Aplicativo</span>
+                                            <h1 className="text-sm sm:text-lg font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
+                                            <span className="hidden sm:block text-[9px] text-blue-950/60 font-bold uppercase tracking-wider leading-none mt-1">Portal da Família</span>
                                         </div>
                                     </div>
 
                                     {/* Right Actions Area: Banner Icon, Notify, Logout */}
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1 sm:gap-2">
                                         {/* Banner Trigger Icon */}
                                         <button
                                             onClick={() => setIsBannerOpen(true)}
-                                            className="w-10 h-10 flex items-center justify-center bg-blue-100/50 hover:bg-blue-100 rounded-full text-blue-600 transition-colors relative group"
+                                            className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-blue-100/50 hover:bg-blue-100 rounded-full text-blue-600 transition-colors relative group"
                                             title="Ver Informativo"
                                         >
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
-                                            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                                            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 sm:h-3 sm:w-3">
                                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                                                <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                                                <span className="relative inline-flex rounded-full h-full w-full bg-blue-500"></span>
                                             </span>
                                         </button>
 
@@ -673,7 +715,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                 </div>
                                             )}
                                         </div>
-                                        <Button variant="secondary" onClick={onLogout} className="text-sm font-semibold py-1.5 px-4 h-10">Sair</Button>
+
+                                        {/* Logout Button (Responsive) */}
+                                        <div className="hidden sm:block">
+                                            <Button variant="secondary" onClick={onLogout} className="text-sm font-semibold py-1.5 px-4 h-10">Sair</Button>
+                                        </div>
+                                        <button
+                                            onClick={onLogout}
+                                            className="sm:hidden p-2 text-gray-600 hover:text-red-600 transition-colors relative hover:bg-red-50 rounded-full"
+                                            title="Sair"
+                                        >
+                                            <LogOut className="w-6 h-6" />
+                                        </button>
                                     </div>
                                 </div>
 
@@ -904,60 +957,194 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         <div className="mb-8 print:hidden">
                             <h3 className="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2">
                                 <Folder className="w-6 h-6 text-teal-600" />
-                                Biblioteca de Materiais
+                                Conteúdo Acadêmico
                             </h3>
+
+                            {/* TABS */}
+                            <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+                                <button
+                                    onClick={() => setMaterialsTab('files')}
+                                    className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${materialsTab === 'files' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}
+                                >
+                                    Arquivos de Aula
+                                </button>
+                                <button
+                                    onClick={() => setMaterialsTab('agenda')}
+                                    className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${materialsTab === 'agenda' ? 'bg-purple-600 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}
+                                >
+                                    Agenda Diária
+                                </button>
+                                <button
+                                    onClick={() => setMaterialsTab('exams')}
+                                    className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${materialsTab === 'exams' ? 'bg-orange-600 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}
+                                >
+                                    Roteiros de Prova
+                                </button>
+                            </div>
+
                             <div className="w-full bg-white p-6 border rounded-lg shadow-md h-[600px] flex flex-col">
                                 <div className="flex-1 overflow-y-auto pr-2">
-                                    {isLoadingMaterials ? (
-                                        <GridSkeleton count={4} />
-                                    ) : materialsError ? (
-                                        <ErrorState
-                                            title="Erro ao carregar materiais"
-                                            message={materialsError}
-                                            onRetry={() => {
-                                                setIsLoadingMaterials(true);
-                                                setMaterialsError(null);
-                                                // The actual listener is in App.tsx or managed by parent, 
-                                                // so we just reset state to trigger re-render if it's dynamic.
-                                            }}
-                                        />
-                                    ) : classMaterials.length > 0 ? (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {classMaterials.map(mat => (
-                                                <div key={mat.id} className="bg-gray-50 hover:bg-white p-4 rounded-lg shadow-sm hover:shadow-md border border-gray-200 transition-all group">
-                                                    <div className="flex justify-between items-start">
-                                                        <div>
-                                                            <div className="flex items-center gap-2 mb-1">
-                                                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 uppercase tracking-wide">{mat.subject}</span>
-                                                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800 uppercase tracking-wide">{mat.shift}</span>
+
+                                    {/* TAB: FILES */}
+                                    {materialsTab === 'files' && (
+                                        isLoadingMaterials ? (
+                                            <GridSkeleton count={4} />
+                                        ) : materialsError ? (
+                                            <ErrorState
+                                                title="Erro ao carregar materiais"
+                                                message={materialsError}
+                                                onRetry={() => {
+                                                    setIsLoadingMaterials(true);
+                                                    setMaterialsError(null);
+                                                }}
+                                            />
+                                        ) : classMaterials.length > 0 ? (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {classMaterials.map(mat => (
+                                                    <div key={mat.id} className="bg-gray-50 hover:bg-white p-4 rounded-lg shadow-sm hover:shadow-md border border-gray-200 transition-all group">
+                                                        <div className="flex justify-between items-start">
+                                                            <div>
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 uppercase tracking-wide">{mat.subject}</span>
+                                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800 uppercase tracking-wide">{mat.shift}</span>
+                                                                </div>
+                                                                <h3 className="font-bold text-gray-800 text-lg leading-tight mb-1">{mat.title}</h3>
+                                                                <p className="text-xs text-gray-500">
+                                                                    Prof. {mat.teacherName.split(' ')[0]} • {new Date(mat.timestamp).toLocaleDateString()}
+                                                                </p>
                                                             </div>
-                                                            <h3 className="font-bold text-gray-800 text-lg leading-tight mb-1">{mat.title}</h3>
-                                                            <p className="text-xs text-gray-500">
-                                                                Prof. {mat.teacherName.split(' ')[0]} • {new Date(mat.timestamp).toLocaleDateString()}
-                                                            </p>
+                                                            <div className="bg-white p-2 rounded-full shadow-sm group-hover:scale-110 transition-transform">
+                                                                <FileText className="w-5 h-5 text-red-500" />
+                                                            </div>
                                                         </div>
-                                                        <div className="bg-white p-2 rounded-full shadow-sm group-hover:scale-110 transition-transform">
-                                                            <FileText className="w-5 h-5 text-red-500" />
-                                                        </div>
+                                                        <a
+                                                            href={mat.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="mt-4 flex items-center justify-center gap-2 w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-bold text-sm transition-colors"
+                                                        >
+                                                            <Download className="w-4 h-4" />
+                                                            Baixar Material
+                                                        </a>
                                                     </div>
-                                                    <a
-                                                        href={mat.url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="mt-4 flex items-center justify-center gap-2 w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-bold text-sm transition-colors"
-                                                    >
-                                                        <Download className="w-4 h-4" />
-                                                        Baixar Material
-                                                    </a>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                                            <Folder className="w-16 h-16 mb-4 opacity-20" />
-                                            <p className="italic text-lg">Nenhum material disponível para sua turma no momento.</p>
-                                        </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                                                <Folder className="w-16 h-16 mb-4 opacity-20" />
+                                                <p className="italic text-lg">Nenhum material disponível para sua turma no momento.</p>
+                                            </div>
+                                        )
                                     )}
+
+                                    {/* TAB: AGENDA */}
+                                    {materialsTab === 'agenda' && (
+                                        agendas.length > 0 ? (
+                                            <div className="space-y-6">
+                                                {/* Group by Date Logic handled visually */}
+                                                {agendas.map((item, index) => {
+                                                    const isNewDay = index === 0 || agendas[index - 1].date !== item.date;
+                                                    return (
+                                                        <div key={item.id} className="animate-fade-in-up">
+                                                            {isNewDay && (
+                                                                <div className="flex items-center gap-4 mb-4 mt-6 first:mt-0">
+                                                                    <div className="bg-pink-100 text-pink-800 px-3 py-1 rounded-full text-sm font-bold border border-pink-200 shadow-sm flex items-center gap-2">
+                                                                        <CalendarDays className="w-4 h-4" />
+                                                                        {new Date(item.date).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                                                                    </div>
+                                                                    <div className="h-px bg-gray-200 flex-1"></div>
+                                                                </div>
+                                                            )}
+
+                                                            <div className="ml-4 border-l-2 border-pink-200 pl-6 pb-2 relative">
+                                                                <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-pink-400 border-2 border-white shadow-sm"></div>
+
+                                                                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                                                                    <div className="flex justify-between items-start mb-2">
+                                                                        <span className="font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded text-xs uppercase tracking-wide">{item.subject}</span>
+                                                                        <span className="text-[10px] text-gray-400">Prof. {item.teacherName.split(' ')[0]}</span>
+                                                                    </div>
+
+                                                                    <div className="space-y-3">
+                                                                        <div>
+                                                                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-0.5">Em Sala</p>
+                                                                            <p className="text-gray-800 text-sm leading-relaxed">{item.contentInClass}</p>
+                                                                        </div>
+                                                                        {item.homework && (
+                                                                            <div className="bg-yellow-50 p-3 rounded-md border border-yellow-100">
+                                                                                <p className="text-xs font-bold text-yellow-700 uppercase tracking-wider mb-0.5 flex items-center gap-1">
+                                                                                    <span className="w-2 h-2 rounded-full bg-yellow-500 block"></span>
+                                                                                    Para Casa
+                                                                                </p>
+                                                                                <p className="text-gray-800 text-sm font-medium">{item.homework}</p>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                                                <CalendarDays className="w-16 h-16 mb-4 opacity-20" />
+                                                <p className="italic text-lg">Nenhuma agenda registrada recentemente.</p>
+                                            </div>
+                                        )
+                                    )}
+
+                                    {/* TAB: EXAMS */}
+                                    {materialsTab === 'exams' && (
+                                        examGuides.length > 0 ? (
+                                            <div className="space-y-4">
+                                                {examGuides.map(guide => {
+                                                    const today = new Date();
+                                                    today.setHours(0, 0, 0, 0);
+                                                    const examDate = new Date(guide.examDate + 'T00:00:00'); // Fix timezone offset issue simple
+                                                    const diffTime = examDate.getTime() - today.getTime();
+                                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                                    const isPast = diffDays < 0;
+
+                                                    return (
+                                                        <div key={guide.id} className={`bg-white p-5 rounded-lg shadow-sm border transition-all ${isPast ? 'border-gray-200 opacity-70' : 'border-indigo-200 hover:border-indigo-400 hover:shadow-md'}`}>
+                                                            <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-4">
+                                                                <div>
+                                                                    <div className="flex items-center gap-2 mb-1">
+                                                                        <span className="font-bold text-xs uppercase tracking-wide bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">{guide.subject}</span>
+                                                                        {isPast ? (
+                                                                            <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded">Realizada</span>
+                                                                        ) : diffDays === 0 ? (
+                                                                            <span className="text-[10px] font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded animate-pulse">É HOJE!</span>
+                                                                        ) : (
+                                                                            <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded">Faltam {diffDays} dias</span>
+                                                                        )}
+                                                                    </div>
+                                                                    <h3 className="font-bold text-xl text-gray-800">{guide.title}</h3>
+                                                                    <p className="text-sm text-gray-500">{new Date(guide.examDate).toLocaleDateString()} • Prof. {guide.teacherName}</p>
+                                                                </div>
+                                                                <div className="text-center bg-indigo-50 p-3 rounded-lg min-w-[80px]">
+                                                                    <span className="block text-indigo-900 font-bold text-2xl leading-none">{new Date(guide.examDate).getDate()}</span>
+                                                                    <span className="block text-indigo-600 text-[10px] uppercase font-bold">{new Date(guide.examDate).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</span>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="bg-gray-50 p-4 rounded-md border border-gray-100">
+                                                                <p className="font-bold text-xs text-gray-500 uppercase tracking-wider mb-2">Conteúdo da Avaliação:</p>
+                                                                <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{guide.content}</p>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                                                <ClipboardList className="w-16 h-16 mb-4 opacity-20" />
+                                                <p className="italic text-lg">Nenhuma avaliação agendada.</p>
+                                            </div>
+                                        )
+                                    )}
+
                                 </div>
                             </div>
                         </div>
@@ -1090,6 +1277,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             <thead className="bg-blue-50 print:bg-gray-100">
                                                 <tr>
                                                     <th rowSpan={2} className="px-2 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-20 md:w-32 sticky left-0 bg-blue-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[10px] md:text-sm">Disciplina</th>
+                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-12 text-[10px] leading-tight" title="Carga Horária Anual">C.H.</th>
                                                     {[1, 2, 3, 4].map(num => (
                                                         <th key={num} colSpan={5} className="px-1 py-2 text-center font-bold text-gray-700 uppercase border-r border-gray-300">
                                                             {num}º Bim
@@ -1122,6 +1310,22 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 Prof. {getTeacherName(grade.subject)}
                                                             </span>
                                                         </td>
+                                                        {/* Workload Calculation */}
+                                                        {(() => {
+                                                            let levelKey = '';
+                                                            if (student.gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
+                                                            else if (student.gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
+                                                            else if (student.gradeLevel.includes('Ens. Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ens. Médio';
+
+                                                            const weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[grade.subject] || 0;
+                                                            const annualWorkload = weeklyClasses * 40; // 40 weeks standard
+
+                                                            return (
+                                                                <td className="px-1 py-2 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-12 font-medium bg-gray-50/30">
+                                                                    {annualWorkload > 0 ? `${annualWorkload} h` : '-'}
+                                                                </td>
+                                                            );
+                                                        })()}
                                                         {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
                                                             const bData = grade.bimesters[key as keyof typeof grade.bimesters];
                                                             const bimesterNum = Number(key.replace('bimester', '')) as 1 | 2 | 3 | 4;

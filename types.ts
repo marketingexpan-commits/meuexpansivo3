@@ -407,3 +407,34 @@ export const OCCURRENCE_TEMPLATES: Record<string, string[]> = {
     'Saída antecipada sem justificativa'
   ]
 };
+
+// --- NOVAS FUNCIONALIDADES: AGENDA E ROTEIROS ---
+
+export interface DailyAgenda {
+  id: string;
+  teacherId: string;
+  teacherName: string;
+  gradeLevel: string; // Série (ex: 9º Ano)
+  schoolClass: string; // Turma (ex: A)
+  subject: string; // Disciplina
+  date: string; // YYYY-MM-DD
+  contentInClass: string; // Conteúdo dado em sala
+  homework: string; // Tarefa de casa
+  timestamp: string;
+  unit: SchoolUnit;
+}
+
+export interface ExamGuide {
+  id: string;
+  teacherId: string;
+  teacherName: string;
+  gradeLevel: string;
+  schoolClass: string;
+  subject: string;
+  examDate: string; // YYYY-MM-DD
+  title: string; // ex: Avaliação Mensal 1
+  content: string; // Tópicos da prova
+  timestamp: string;
+  unit: SchoolUnit;
+}
+// End of types definitions
