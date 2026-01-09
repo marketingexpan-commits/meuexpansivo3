@@ -3,6 +3,7 @@ import { CURRICULUM_MATRIX, UNIT_DETAILS } from '../constants';
 import { getBimesterFromDate, getCurrentSchoolYear } from './academicUtils';
 import type { Student, AcademicHistoryRecord, GradeEntry, AttendanceRecord } from '../types';
 import { AttendanceStatus } from '../types';
+import { calculateGeneralFrequency as calculateUnifiedFrequency } from './frequency';
 
 // Helper to calculate frequency per subject/bimester
 const calculateSubjectFrequency = (
@@ -268,37 +269,14 @@ export const generateSchoolHistory = (
 
     // Calculate General Average Frequency (Across all subjects)
     const calculateGeneralFrequency = () => {
-        let levelKey = 'Fundamental I';
-        if (student.gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-        else if (student.gradeLevel.includes('Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ens. Médio';
-
-        const matrix = CURRICULUM_MATRIX[levelKey];
-        if (!matrix) return '-';
-
-        // 1. Calculate Total Expected (Full Grade x weeks x elapsed)
-        let totalExpected = 0;
-        Object.values(matrix).forEach(ch => {
-            if (typeof ch === 'number' && ch > 0) {
-                totalExpected += (ch * 10 * elapsedBimesters);
-            }
-        });
-
-        // 2. Sum ALL absences for this year
-        const currentYear = getCurrentSchoolYear();
-        const totalAbsences = attendanceRecords.filter(record => {
-            const rYear = parseInt(record.date.split('-')[0], 10);
-            return rYear === currentYear &&
-                record.unit === student.unit &&
-                record.gradeLevel === student.gradeLevel &&
-                record.schoolClass === student.schoolClass &&
-                record.studentStatus &&
-                record.studentStatus[student.id] === AttendanceStatus.ABSENT;
-        }).length;
-
-        if (totalExpected === 0) return '-';
-
-        const freq = ((totalExpected - totalAbsences) / totalExpected) * 100;
-        return Math.max(0, Math.min(100, freq)).toFixed(1) + '%';
+        return calculateUnifiedFrequency(
+            currentGrades,
+            attendanceRecords,
+            student.id,
+            student.gradeLevel,
+            student.unit,
+            student.schoolClass
+        );
     };
 
     const content = `

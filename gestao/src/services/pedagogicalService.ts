@@ -2,7 +2,7 @@
 import { db } from '../firebaseConfig';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import type { GradeEntry, AttendanceRecord } from '../types';
-import { CURRICULUM_MATRIX } from '../constants';
+import { calculateGeneralFrequency } from '../utils/frequency';
 
 const GRADES_COLLECTION = 'grades';
 const ATTENDANCE_COLLECTION = 'attendance';
@@ -33,49 +33,15 @@ export const pedagogicalService = {
         }
     },
 
-    // Calcular frequência percentual baseada nas faltas (Regra Logs-First)
+    // Calcular frequência percentual baseada nas faltas (Regra Logs-First Sincronizada)
     calculateFrequencyFromGrades(grades: GradeEntry[], gradeLevel: string = "Fundamental I", attendanceRecords: AttendanceRecord[] = []) {
-        if (grades.length === 0) return 100;
+        if (!grades || grades.length === 0) return 100;
 
-        let totalExpectedClasses = 0;
-        let totalAbsences = 0;
-        const currentYear = new Date().getFullYear();
+        // Delegamos para a função unificada que é usada no App do Aluno
+        const studentId = grades[0].studentId;
+        const freqString = calculateGeneralFrequency(grades, attendanceRecords, studentId, gradeLevel);
 
-        let levelKey = 'Fundamental I';
-        if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-        else if (gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ens. Médio';
-
-        grades.forEach(gradeEntry => {
-            const subject = gradeEntry.subject;
-            const weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[subject] || 0;
-
-            if (weeklyClasses > 0) {
-
-                [1, 2, 3, 4].forEach(bim => {
-                    // RULE: Strict Log-Based counting for Pedagogical Service
-                    const bAbsences = attendanceRecords.filter(r => {
-                        const rYear = parseInt(r.date.split('-')[0], 10);
-                        const rMonth = parseInt(r.date.split('-')[1], 10);
-                        const bimFromMonth = rMonth <= 4 ? 1 : rMonth <= 7 ? 2 : rMonth <= 9 ? 3 : 4;
-                        return rYear === currentYear &&
-                            r.discipline === subject &&
-                            bimFromMonth === bim &&
-                            r.studentStatus &&
-                            r.studentStatus[gradeEntry.studentId] === 'Faltou';
-                    }).length;
-
-                    // RULE: Only contribute if there are assinaladas absences
-                    if (bAbsences > 0) {
-                        totalExpectedClasses += (weeklyClasses * 10);
-                        totalAbsences += bAbsences;
-                    }
-                });
-            }
-        });
-
-        if (totalExpectedClasses === 0) return 100;
-
-        const frequencia = ((totalExpectedClasses - totalAbsences) / totalExpectedClasses) * 100;
-        return Math.max(0, Math.min(100, parseFloat(frequencia.toFixed(1))));
+        // Converte "95.5%" para 95.5
+        return parseFloat(freqString.replace('%', '')) || 100;
     }
 };

@@ -72,7 +72,9 @@ export const calculateGeneralFrequency = (
     _grades: GradeEntry[],
     attendanceRecords: AttendanceRecord[],
     studentId: string,
-    gradeLevel: string
+    gradeLevel: string,
+    studentUnit?: string,
+    studentClass?: string
 ): string => {
     const currentYear = getCurrentSchoolYear();
     const today = new Date().toISOString().split('T')[0];
@@ -109,9 +111,16 @@ export const calculateGeneralFrequency = (
     // 2. Sum ALL absences from logs for this year
     const totalAbsences = (attendanceRecords || []).filter(record => {
         const rYear = parseInt(record.date.split('-')[0], 10);
-        return rYear === currentYear &&
-            record.studentStatus &&
-            record.studentStatus[studentId] === AttendanceStatus.ABSENT;
+
+        // Base Match
+        const isTargetYear = rYear === currentYear;
+        const hasStudentRecord = record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT;
+
+        // Optional Filters (contextual for reports)
+        const unitMatch = studentUnit ? record.unit === studentUnit : true;
+        const classMatch = studentClass ? record.schoolClass === studentClass : true;
+
+        return isTargetYear && hasStudentRecord && unitMatch && classMatch;
     }).length;
 
     if (totalExpected === 0) return '-';
