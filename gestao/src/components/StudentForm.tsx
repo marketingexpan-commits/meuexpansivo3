@@ -7,6 +7,7 @@ import { User, MapPin, Users, GraduationCap, X, Loader2, Camera, Upload, Message
 import { StudentEnrollmentPrint } from './StudentEnrollmentPrint';
 import { PhotoCaptureModal } from './PhotoCaptureModal';
 import { clsx } from 'clsx';
+import { ImageCropperModal } from './ImageCropperModal';
 import { studentService } from '../services/studentService';
 import type { Student } from '../types';
 import { EDUCATION_LEVELS, GRADES_BY_LEVEL, SCHOOL_SHIFTS, SCHOOL_CLASSES_OPTIONS } from '../types';
@@ -56,6 +57,8 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [printBlank, setPrintBlank] = useState(false);
     const [isCameraOpen, setIsCameraOpen] = useState(false);
+    const [isCropperOpen, setIsCropperOpen] = useState(false);
+    const [rawPhoto, setRawPhoto] = useState<string | null>(null);
 
     // Initial state setup
     const [formData, setFormData] = useState<Partial<Student> & any>(() => {
@@ -375,46 +378,17 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
             return;
         }
 
-        // 2. Validar tamanho original (máximo 1MB para evitar travamentos no processamento)
-        if (file.size > 1 * 1024 * 1024) {
-            alert('A imagem original é muito grande. Por favor, escolha um arquivo com menos de 1MB.');
-            return;
-        }
-
         const reader = new FileReader();
         reader.onloadend = () => {
-            const img = new Image();
-            img.onload = () => {
-                // 3. Otimização: Redimensionar para 3x4 (300x400px) usando Canvas
-                const targetWidth = 300;
-                const targetHeight = 400;
-
-                const canvas = document.createElement('canvas');
-                canvas.width = targetWidth;
-                canvas.height = targetHeight;
-
-                const ctx = canvas.getContext('2d');
-                if (!ctx) return;
-
-                // Desenhar mantendo o aspecto (cortando excessos se necessário)
-                const scale = Math.max(targetWidth / img.width, targetHeight / img.height);
-                const x = (targetWidth / 2) - (img.width / 2) * scale;
-                const y = (targetHeight / 2) - (img.height / 2) * scale;
-
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(0, 0, targetWidth, targetHeight);
-                ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
-
-                // 4. Exportar como JPEG comprimido (qualidade 0.7)
-                const optimizedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-                console.log('Original size:', (reader.result as string).length);
-                console.log('Optimized size:', optimizedBase64.length);
-
-                setFormData((prev: any) => ({ ...prev, photoUrl: optimizedBase64 }));
-            };
-            img.src = reader.result as string;
+            setRawPhoto(reader.result as string);
+            setIsCropperOpen(true);
         };
         reader.readAsDataURL(file);
+    };
+
+    const handleCropComplete = (croppedBase64: string) => {
+        setFormData((prev: any) => ({ ...prev, photoUrl: croppedBase64 }));
+        setRawPhoto(null);
     };
 
     // Helper state for Level dropdown
@@ -1223,6 +1197,17 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                 isOpen={isCameraOpen}
                 onClose={() => setIsCameraOpen(false)}
                 onCapture={(base64) => setFormData((prev: any) => ({ ...prev, photoUrl: base64 }))}
+            />
+
+            {/* Image Cropper Modal */}
+            <ImageCropperModal
+                isOpen={isCropperOpen}
+                imageSrc={rawPhoto}
+                onClose={() => {
+                    setIsCropperOpen(false);
+                    setRawPhoto(null);
+                }}
+                onCropComplete={handleCropComplete}
             />
         </div>
     );
