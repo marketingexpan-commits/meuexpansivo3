@@ -132,6 +132,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     // Estado para controle do mês de frequência
     const [selectedBimester, setSelectedBimester] = useState<number>(Math.floor(new Date().getMonth() / 3) + 1);
 
+    // State for the Informational Banner visibility
+    const [isBannerOpen, setIsBannerOpen] = useState(false);
+
     const MONTH_NAMES = [
         "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
         "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
@@ -573,27 +576,37 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     {currentView === 'menu' && (
                         <div className="animate-fade-in-up flex flex-col h-full justify-between">
                             <div className="space-y-1">
-                                {/* Informational Banner Area */}
-                                <div className="flex gap-3 mb-4">
-                                    <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 flex-1 flex flex-col justify-center">
-                                        <div className="flex items-start gap-3">
-                                            <div className="bg-blue-500 p-2 rounded-lg shrink-0">
-                                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
-                                            </div>
-                                            <div>
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <h3 className="text-blue-900 font-bold text-sm tracking-wide">Rematrículas Abertas 2026</h3>
-                                                    <span className="bg-green-500 text-[9px] px-1.5 py-0.5 rounded text-white font-extrabold uppercase tracking-wide">Novo</span>
-                                                </div>
-                                                <p className="text-blue-700 text-xs leading-tight">
-                                                    Garanta sua renovação com condições especiais até o final do mês. Procure a secretaria!
-                                                </p>
-                                            </div>
+
+                                {/* Header with Logo (Left) and Actions (Right) */}
+                                <div className="flex items-center justify-between mb-6">
+                                    {/* Logo Area */}
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-10 w-auto shrink-0">
+                                            <SchoolLogo className="!h-full w-auto" />
+                                        </div>
+                                        <div className="flex flex-col justify-center">
+                                            <span className="text-[9px] text-orange-600 font-bold uppercase tracking-[0.15em] leading-none mb-1">Aplicativo</span>
+                                            <h1 className="text-lg font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
+                                            <span className="text-[9px] text-blue-950/60 font-bold uppercase tracking-wider leading-none mt-1">Portal da Família</span>
                                         </div>
                                     </div>
 
-                                    {/* Buttons separate column */}
-                                    <div className="flex flex-col items-end justify-center gap-2 shrink-0">
+                                    {/* Right Actions Area: Banner Icon, Notify, Logout */}
+                                    <div className="flex items-center gap-2">
+                                        {/* Banner Trigger Icon */}
+                                        <button
+                                            onClick={() => setIsBannerOpen(true)}
+                                            className="w-10 h-10 flex items-center justify-center bg-blue-100/50 hover:bg-blue-100 rounded-full text-blue-600 transition-colors relative group"
+                                            title="Ver Informativo"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
+                                            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                                <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                                            </span>
+                                        </button>
+
+                                        {/* Notification Bell */}
                                         <div className="relative">
                                             <button
                                                 onClick={() => setShowNotifications(!showNotifications)}
@@ -660,7 +673,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                 </div>
                                             )}
                                         </div>
-                                        <Button variant="secondary" onClick={onLogout} className="text-sm font-semibold py-1.5 px-4">Sair</Button>
+                                        <Button variant="secondary" onClick={onLogout} className="text-sm font-semibold py-1.5 px-4 h-10">Sair</Button>
                                     </div>
                                 </div>
 
@@ -698,16 +711,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-2 mt-8 mb-10 pl-2">
-                                    <div className="h-10 w-auto shrink-0">
-                                        <SchoolLogo className="!h-full w-auto" />
-                                    </div>
-                                    <div className="flex flex-col justify-center">
-                                        <span className="text-[9px] text-orange-600 font-bold uppercase tracking-[0.15em] leading-none mb-1">Aplicativo</span>
-                                        <h1 className="text-lg font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
-                                        <span className="text-[9px] text-blue-950/60 font-bold uppercase tracking-wider leading-none mt-1">Portal da Família</span>
-                                    </div>
-                                </div>
+
                                 <div className="text-left pb-4">
                                     <p className="text-gray-500 text-sm">Selecione uma opção para visualizar.</p>
                                 </div>
@@ -1566,6 +1570,64 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     )}
                 </div>
             </div>
+
+            {/* --- Banner Modal --- */}
+            {isBannerOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm animate-fade-in">
+                    <div
+                        className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden animate-scale-in"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Modal Header */}
+                        <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-4 text-white relative">
+                            <button
+                                onClick={() => setIsBannerOpen(false)}
+                                className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 p-1.5 rounded-full transition-colors"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-2 backdrop-blur-sm">
+                                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
+                            </div>
+                            <h3 className="text-lg font-bold">Informativo Escolar</h3>
+                        </div>
+
+                        {/* Modal Content */}
+                        <div className="p-4">
+                            <div className="flex items-start gap-4">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <h4 className="text-gray-900 font-bold text-lg">Rematrículas Abertas 2026</h4>
+                                        <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-bold border border-green-200">NOVO</span>
+                                    </div>
+                                    <p className="text-gray-600 text-sm leading-relaxed mb-4">
+                                        Garanta sua renovação com condições especiais até o final deste mês. Procure a secretaria da sua unidade para mais informações e não perca os prazos!
+                                    </p>
+
+                                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-sm text-blue-800 flex gap-3">
+                                        <InfoIcon className="w-5 h-5 shrink-0 text-blue-500" />
+                                        <span>Horário de atendimento: Segunda a Sexta, das 8h às 11h30 | das 13h às 17h.</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-4 flex justify-end">
+                                <button
+                                    onClick={() => setIsBannerOpen(false)}
+                                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium text-sm transition-colors"
+                                >
+                                    Fechar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
+
+// Simple Info Icon Component for the Modal
+const InfoIcon = ({ className }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+);
