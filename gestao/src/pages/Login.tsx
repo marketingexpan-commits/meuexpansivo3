@@ -59,7 +59,7 @@ export function Login() {
                         src={SCHOOL_LOGO_URL}
                         alt="Logo Colégio Expansivo"
                         className="h-14 object-contain"
-                        style={{ filter: 'brightness(0) saturate(100%) invert(9%) sepia(62%) saturate(4383%) hue-rotate(227deg) brightness(60%) contrast(100%)' }}
+                        style={{ filter: 'brightness(20%)' }}
                     />
                     <div className="flex flex-col justify-center">
                         <span className="text-[10px] text-blue-950 font-bold uppercase tracking-widest leading-none mb-0.5">Sistema</span>
@@ -94,7 +94,7 @@ export function Login() {
                                         <button
                                             type="button"
                                             onClick={() => setShowPassword(!showPassword)}
-                                            className="focus:outline-none hover:text-blue-600 transition-colors"
+                                            className="focus:outline-none hover:text-blue-950 transition-colors"
                                         >
                                             {showPassword ? (
                                                 <EyeOff className="w-5 h-5" />
@@ -124,7 +124,7 @@ export function Login() {
                                     href="https://wa.me/5584988739180?text=Olá,%20esqueci%20minha%20senha%20no%20sistema%20Meu%20Expansivo."
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-xs text-slate-400 hover:text-blue-600 transition-colors"
+                                    className="text-xs text-slate-400 hover:text-blue-950 transition-colors"
                                 >
                                     Esqueceu a senha? Contate o suporte.
                                 </a>
@@ -142,7 +142,7 @@ export function Login() {
                             href="https://wa.me/5584988739180"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="hover:text-blue-600 hover:underline transition-colors font-semibold"
+                            className="hover:text-blue-950 hover:underline transition-colors font-semibold"
                         >
                             HC Apps | 84988739180
                         </a>

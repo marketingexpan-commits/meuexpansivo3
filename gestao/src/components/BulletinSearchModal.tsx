@@ -117,7 +117,7 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
                 {/* Header */}
                 <div className="bg-slate-50 border-b border-slate-100 p-6 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center shadow-sm`}>
+                        <div className={`w-12 h-12 bg-blue-950/10 text-blue-950 rounded-2xl flex items-center justify-center shadow-sm`}>
                             <FileBarChart className="w-6 h-6" />
                         </div>
                         <div>
@@ -144,14 +144,14 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
                         <div className="flex p-1 bg-slate-100 rounded-xl">
                             <button
                                 onClick={() => setSearchType('INDIVIDUAL')}
-                                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${searchType === 'INDIVIDUAL' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${searchType === 'INDIVIDUAL' ? 'bg-white text-blue-950 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                                     }`}
                             >
                                 <User className="w-4 h-4" /> Individual
                             </button>
                             <button
                                 onClick={() => setSearchType('CLASS')}
-                                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${searchType === 'CLASS' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${searchType === 'CLASS' ? 'bg-white text-blue-950 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                                     }`}
                             >
                                 <Users className="w-4 h-4" /> Por Turma
@@ -179,7 +179,7 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
                                         <select
                                             value={gradeLevel}
                                             onChange={(e) => setGradeLevel(e.target.value)}
-                                            className="w-full h-12 rounded-xl border-slate-200 focus:border-purple-500 focus:ring-purple-500"
+                                            className="w-full h-12 rounded-xl border-slate-200 focus:border-blue-950 focus:ring-blue-950"
                                         >
                                             <option value="">Selecione a Série</option>
                                             {allGradesOptions.map(g => (
@@ -193,7 +193,7 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
                                             <select
                                                 value={shift}
                                                 onChange={(e) => setShift(e.target.value)}
-                                                className="w-full h-12 rounded-xl border-slate-200 focus:border-purple-500 focus:ring-purple-500"
+                                                className="w-full h-12 rounded-xl border-slate-200 focus:border-blue-950 focus:ring-blue-950"
                                             >
                                                 <option value="">Selecione</option>
                                                 {SCHOOL_SHIFTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
@@ -204,7 +204,7 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
                                             <select
                                                 value={schoolClass}
                                                 onChange={(e) => setSchoolClass(e.target.value)}
-                                                className="w-full h-12 rounded-xl border-slate-200 focus:border-purple-500 focus:ring-purple-500"
+                                                className="w-full h-12 rounded-xl border-slate-200 focus:border-blue-950 focus:ring-blue-950"
                                             >
                                                 <option value="">Selecione</option>
                                                 {SCHOOL_CLASSES_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
@@ -226,7 +226,7 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
                             <Button
                                 onClick={handleSearch}
                                 disabled={isLoading}
-                                className="w-full py-7 font-bold text-base bg-purple-600 hover:bg-purple-700 shadow-xl shadow-purple-200 rounded-2xl transition-all"
+                                className="w-full py-7 font-bold text-base bg-blue-950 hover:bg-black shadow-xl shadow-blue-950/20 rounded-2xl transition-all"
                             >
                                 {isLoading ? (
                                     <><Loader2 className="w-5 h-5 mr-3 animate-spin" /> Buscando...</>
@@ -255,7 +255,7 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
                                 </>
                             ) : (
                                 <div className="text-center space-y-2">
-                                    <div className="bg-purple-100 w-12 h-12 mx-auto rounded-full flex items-center justify-center text-purple-600 mb-3">
+                                    <div className="bg-blue-950/10 w-12 h-12 mx-auto rounded-full flex items-center justify-center text-blue-950 mb-3">
                                         <Users className="w-6 h-6" />
                                     </div>
                                     <p className="font-medium text-slate-900 text-lg">
@@ -271,7 +271,7 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
                         <div className="flex flex-col gap-3">
                             <Button
                                 onClick={handleGenerate}
-                                className="w-full py-4 font-bold text-base bg-green-600 hover:bg-green-700 shadow-lg shadow-green-200 rounded-xl transition-all"
+                                className="w-full py-4 font-bold text-base bg-blue-950 hover:bg-black shadow-lg shadow-blue-900/20 rounded-xl transition-all"
                             >
                                 <FileBarChart className="w-5 h-5 mr-2" />
                                 {searchType === 'INDIVIDUAL' ? 'Gerar Boletim' : 'Gerar Boletins da Turma'}

@@ -173,15 +173,15 @@ export function HistoryEditor({ student, onSave, onCancel }: HistoryEditorProps)
                     <h3 className="font-bold text-slate-800">Composição do Histórico</h3>
                     <p className="text-xs text-slate-500">Adicione os anos anteriores cursados em outras instituições.</p>
                 </div>
-                <Button onClick={handleAddNew} disabled={isAdding || !!editingId} className="bg-blue-600 text-white hover:bg-blue-700">
+                <Button onClick={handleAddNew} disabled={isAdding || !!editingId} className="bg-blue-950 text-white hover:bg-black">
                     <Plus className="w-4 h-4 mr-2" /> Adicionar Ano
                 </Button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {(isAdding || editingId) && (
-                    <div className="bg-white p-4 rounded-xl border-2 border-blue-100 shadow-lg animate-in fade-in slide-in-from-top-2">
-                        <h4 className="font-bold text-blue-800 mb-4 text-sm uppercase tracking-wide border-b border-blue-50 pb-2 flex justify-between">
+                    <div className="bg-white p-4 rounded-xl border-2 border-blue-950/20 shadow-lg animate-in fade-in slide-in-from-top-2">
+                        <h4 className="font-bold text-blue-950 mb-4 text-sm uppercase tracking-wide border-b border-blue-950/10 pb-2 flex justify-between">
                             {isAdding ? 'Novo Registro' : 'Editar Registro'}
                             <button onClick={() => { setIsAdding(false); setEditingId(null); }} className="text-slate-400 hover:text-red-500"><X className="w-4 h-4" /></button>
                         </h4>
@@ -233,7 +233,7 @@ export function HistoryEditor({ student, onSave, onCancel }: HistoryEditorProps)
                         <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
                             <div className="flex items-center justify-between mb-3">
                                 <h5 className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                                    <BookOpen className="w-4 h-4 text-blue-500" /> Notas / Disciplinas (Opcional)
+                                    <BookOpen className="w-4 h-4 text-blue-950" /> Notas / Disciplinas (Opcional)
                                 </h5>
                                 <span className="text-xs text-slate-400 bg-white px-2 py-1 rounded border">
                                     {formData.subjects?.length || 0} lançadas
@@ -241,14 +241,14 @@ export function HistoryEditor({ student, onSave, onCancel }: HistoryEditorProps)
                             </div>
 
                             {/* Add Subject Form */}
-                            <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100 mb-4">
-                                <label className="text-xs font-bold text-blue-700 uppercase mb-2 block">Adicionar Disciplina e Notas</label>
+                            <div className="bg-blue-950/5 p-3 rounded-lg border border-blue-950/10 mb-4">
+                                <label className="text-xs font-bold text-blue-950 uppercase mb-2 block">Adicionar Disciplina e Notas</label>
                                 <div className="grid grid-cols-12 gap-2 items-end">
                                     <div className="col-span-3">
                                         <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Disciplina</label>
                                         <input
                                             list="common-subjects"
-                                            className="w-full text-sm border-slate-200 rounded-md focus:ring-blue-500 focus:border-blue-500 h-9"
+                                            className="w-full text-sm border-slate-200 rounded-md focus:ring-blue-950 focus:border-blue-950 h-9"
                                             placeholder="Nome..."
                                             value={subjectForm.name}
                                             onChange={e => setSubjectForm(prev => ({ ...prev, name: e.target.value }))}
@@ -275,7 +275,7 @@ export function HistoryEditor({ student, onSave, onCancel }: HistoryEditorProps)
                                         <div key={bim} className="col-span-1">
                                             <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block text-center">{bim}ºB</label>
                                             <input
-                                                className="w-full text-xs border-slate-200 rounded-md focus:ring-blue-500 focus:border-blue-500 text-center h-9 px-0"
+                                                className="w-full text-xs border-slate-200 rounded-md focus:ring-blue-950 focus:border-blue-950 text-center h-9 px-0"
                                                 placeholder="N/A"
                                                 value={(subjectForm as any)[`b${bim}`] || ''}
                                                 onChange={e => setSubjectForm(prev => ({ ...prev, [`b${bim}`]: e.target.value }))}
@@ -287,7 +287,7 @@ export function HistoryEditor({ student, onSave, onCancel }: HistoryEditorProps)
                                     <div className="col-span-2">
                                         <label className="text-[10px] font-bold text-slate-700 uppercase mb-1 block text-center">Final</label>
                                         <input
-                                            className="w-full text-sm font-bold border-blue-200 bg-white rounded-md focus:ring-blue-500 focus:border-blue-500 text-center h-9"
+                                            className="w-full text-sm font-bold border-blue-950/20 bg-white rounded-md focus:ring-blue-950 focus:border-blue-950 text-center h-9"
                                             placeholder="Nota"
                                             value={subjectForm.grade}
                                             onChange={e => setSubjectForm(prev => ({ ...prev, grade: e.target.value }))}
@@ -296,7 +296,7 @@ export function HistoryEditor({ student, onSave, onCancel }: HistoryEditorProps)
                                     </div>
 
                                     <div className="col-span-2">
-                                        <Button size="sm" onClick={handleAddSubject} disabled={!subjectForm.name} className="w-full h-9 bg-blue-600 text-white hover:bg-blue-700">
+                                        <Button size="sm" onClick={handleAddSubject} disabled={!subjectForm.name} className="w-full h-9 bg-blue-950 text-white hover:bg-black">
                                             <Plus className="w-4 h-4" />
                                         </Button>
                                     </div>
@@ -364,7 +364,7 @@ export function HistoryEditor({ student, onSave, onCancel }: HistoryEditorProps)
                 )}
 
                 {records.map(record => (
-                    <div key={record.id} className={`bg-white p-4 rounded-xl border border-slate-200 flex flex-col gap-3 group hover:border-blue-300 transition-colors ${editingId === record.id ? 'hidden' : ''}`}>
+                    <div key={record.id} className={`bg-white p-4 rounded-xl border border-slate-200 flex flex-col gap-3 group hover:border-blue-950/50 transition-colors ${editingId === record.id ? 'hidden' : ''}`}>
                         <div className="flex items-start justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="w-14 h-14 bg-slate-100 rounded-xl flex flex-col items-center justify-center border border-slate-200">
@@ -382,7 +382,7 @@ export function HistoryEditor({ student, onSave, onCancel }: HistoryEditorProps)
                                         {record.status}
                                     </span>
                                     {(record.subjects?.length || 0) > 0 && (
-                                        <div className="text-[10px] text-blue-500 mt-1 font-medium bg-blue-50 px-2 py-0.5 rounded-full inline-block">
+                                        <div className="text-[10px] text-blue-950 mt-1 font-medium bg-blue-950/10 px-2 py-0.5 rounded-full inline-block">
                                             {record.subjects?.length} disciplinas
                                         </div>
                                     )}
@@ -430,10 +430,10 @@ export function HistoryEditor({ student, onSave, onCancel }: HistoryEditorProps)
                     <Button
                         onClick={handleFinalSave}
                         disabled={isSaving || isAdding || !!editingId}
-                        className="bg-blue-800 hover:bg-blue-900 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="bg-blue-950 hover:bg-black text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-blue-900/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isSaving ? (
-                            <>Salvnado...</>
+                            <>Salvando...</>
                         ) : (
                             <><Save className="w-5 h-5 mr-2" /> Salvar e Gerar PDF</>
                         )}

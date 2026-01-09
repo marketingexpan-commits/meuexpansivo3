@@ -80,7 +80,7 @@ export function HistorySearchModal({ onClose }: HistorySearchModalProps) {
                 {/* Header */}
                 <div className="bg-slate-50 border-b border-slate-100 p-6 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center shadow-sm`}>
+                        <div className={`w-12 h-12 bg-blue-950/10 text-blue-950 rounded-2xl flex items-center justify-center shadow-sm`}>
                             <Clock className="w-6 h-6" />
                         </div>
                         <div>
@@ -126,7 +126,7 @@ export function HistorySearchModal({ onClose }: HistorySearchModalProps) {
                             <Button
                                 onClick={handleSearch}
                                 disabled={isLoading}
-                                className="w-full py-7 font-bold text-base bg-amber-600 hover:bg-amber-700 shadow-xl shadow-amber-200 rounded-2xl transition-all"
+                                className="w-full py-7 font-bold text-base bg-blue-950 hover:bg-black shadow-xl shadow-blue-950/20 rounded-2xl transition-all"
                             >
                                 {isLoading ? (
                                     <><Loader2 className="w-5 h-5 mr-3 animate-spin" /> Buscando...</>

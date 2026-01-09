@@ -45,7 +45,7 @@ export function Dashboard() {
         return (
             <div className="h-[60vh] flex items-center justify-center">
                 <div className="flex flex-col items-center gap-2">
-                    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                    <Loader2 className="w-8 h-8 animate-spin text-blue-950" />
                     <p className="text-slate-500 font-medium">Carregando indicadores...</p>
                 </div>
             </div>
@@ -60,11 +60,11 @@ export function Dashboard() {
                         <div>
                             <p className="text-sm font-medium text-slate-500 mb-1">Total de Alunos</p>
                             <h3 className="text-2xl font-bold text-slate-800">{stats.totalStudents}</h3>
-                            <p className="text-xs text-green-600 mt-1 flex items-center font-medium">
+                            <p className="text-xs text-blue-950 mt-1 flex items-center font-medium">
                                 <TrendingUp className="w-3 h-3 mr-1" /> Ativos no sistema
                             </p>
                         </div>
-                        <div className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100">
+                        <div className="p-3 bg-blue-950/10 text-blue-950 rounded-xl border border-blue-950/20">
                             <Users className="w-6 h-6" />
                         </div>
                     </CardContent>
@@ -75,11 +75,11 @@ export function Dashboard() {
                         <div>
                             <p className="text-sm font-medium text-slate-500 mb-1">Inadimplência</p>
                             <h3 className="text-2xl font-bold text-slate-800">{stats.delinquencyRate}%</h3>
-                            <p className={stats.delinquencyRate > 5 ? "text-xs text-red-600 mt-1 flex items-center font-medium" : "text-xs text-green-600 mt-1 flex items-center font-medium"}>
+                            <p className={stats.delinquencyRate > 5 ? "text-xs text-orange-600 mt-1 flex items-center font-medium" : "text-xs text-blue-950 mt-1 flex items-center font-medium"}>
                                 <AlertCircle className="w-3 h-3 mr-1" /> {stats.delinquencyRate > 5 ? 'Atenção ao financeiro' : 'Dentro do esperado'}
                             </p>
                         </div>
-                        <div className={`p-3 rounded-xl border ${stats.delinquencyRate > 5 ? 'bg-red-50 text-red-600 border-red-100' : 'bg-green-50 text-green-600 border-green-100'}`}>
+                        <div className={`p-3 rounded-xl border ${stats.delinquencyRate > 5 ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-blue-50 text-blue-950 border-blue-100'}`}>
                             <AlertCircle className="w-6 h-6" />
                         </div>
                     </CardContent>
@@ -94,7 +94,7 @@ export function Dashboard() {
                                 Últimos 30 dias
                             </p>
                         </div>
-                        <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100">
+                        <div className="p-3 bg-blue-950/10 text-blue-950 rounded-xl border border-blue-950/20">
                             <Users className="w-6 h-6" />
                         </div>
                     </CardContent>
@@ -121,9 +121,9 @@ export function Dashboard() {
                     <CardContent className="p-0">
                         <div className="divide-y divide-slate-100">
                             {[
-                                { title: 'Verificação de Turmas', date: 'Hoje', desc: 'Concluir a enturmação dos novos alunos do 1º Ano.', color: 'bg-blue-500' },
-                                { title: 'Lembrete Financeiro', date: 'Amanhã', desc: 'Disparo automático de SMS para vencimentos do dia 05.', color: 'bg-orange-500' },
-                                { title: 'Censo Escolar', date: '15 Jan', desc: 'Data limite para atualização de CPFs dos responsáveis.', color: 'bg-purple-500' },
+                                { title: 'Verificação de Turmas', date: 'Hoje', desc: 'Concluir a enturmação dos novos alunos do 1º Ano.', color: 'bg-blue-950' },
+                                { title: 'Lembrete Financeiro', date: 'Amanhã', desc: 'Disparo automático de SMS para vencimentos do dia 05.', color: 'bg-orange-600' },
+                                { title: 'Censo Escolar', date: '15 Jan', desc: 'Data limite para atualização de CPFs dos responsáveis.', color: 'bg-blue-950' },
                             ].map((item, i) => (
                                 <div key={i} className="flex items-start p-4 hover:bg-slate-50 transition-colors">
                                     <div className={`w-2 h-2 mt-2 rounded-full ${item.color} mr-4 shrink-0`}></div>

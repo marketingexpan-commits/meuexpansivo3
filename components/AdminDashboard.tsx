@@ -49,6 +49,8 @@ import { maskCPF, sanitizePhone } from '../utils/formattingUtils';
 import { calculateFinancials } from '../utils/financialUtils';
 import ManualPaymentModal from './Admin/ManualPaymentModal';
 import StudentFinancialModal from './Admin/StudentFinancialModal';
+import { CalendarManagement } from './CalendarManagement';
+
 
 interface AdminDashboardProps {
     admin: Admin;
@@ -126,6 +128,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
     // --- ESTADOS GERAIS ---
     const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+    const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
+
 
     // --- MASK HELPERS ---
     const maskCPF = (value: string) => {
@@ -1027,8 +1031,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-fade-in">
                         <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 animate-fade-in-up border border-slate-100">
                             <div className="flex flex-col items-center text-center">
-                                <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4 border-4 border-red-100">
-                                    <ShieldAlert className="w-8 h-8 text-red-600" />
+                                <div className="w-16 h-16 bg-blue-950/10 rounded-full flex items-center justify-center mb-4 border-4 border-blue-950/20">
+                                    <ShieldAlert className="w-8 h-8 text-blue-950" />
                                 </div>
                                 <h3 className="text-xl font-bold text-slate-900 mb-2">Confirmar Exclusão</h3>
                                 <p className="text-sm text-slate-500 mb-8 leading-relaxed">
@@ -1113,7 +1117,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             isActive={activeTab === 'contacts'}
                             onClick={() => { setActiveTab('contacts'); setIsSidebarOpen(false); }}
                         />
+                        <SidebarItem
+                            icon={<Calendar size={18} />}
+                            label="Calendário"
+                            onClick={() => { setIsCalendarModalOpen(true); setIsSidebarOpen(false); }}
+                        />
                     </SidebarCategory>
+
 
                     <SidebarCategory icon={<DollarSign size={20} />} title="Financeiro">
                         <SidebarItem
@@ -1195,7 +1205,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     </div>
                                     <div className="flex flex-col items-end border-r border-slate-200 pr-4">
                                         <span className="text-[9px] font-bold text-slate-400 uppercase leading-none mb-1 group-hover:text-slate-500">Acessos Hoje</span>
-                                        <span className="text-sm font-bold text-blue-600 leading-none text-center w-full">{dailyLoginsCount}</span>
+                                        <span className="text-sm font-bold text-blue-950 leading-none text-center w-full">{dailyLoginsCount}</span>
                                     </div>
                                     <div className="flex flex-col items-end">
                                         <span className="text-[9px] font-bold text-orange-400 uppercase leading-none mb-1 group-hover:text-orange-500">Total Visitas</span>
@@ -1207,7 +1217,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             {isGeneralAdmin && (
                                 <button
                                     onClick={() => setIsMaintenanceModalOpen(true)}
-                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                    className="p-2 text-slate-400 hover:text-blue-950 hover:bg-blue-950/10 rounded-lg transition-all"
                                     title="Configurações / Manutenção"
                                 >
                                     <Settings size={20} />
@@ -1216,7 +1226,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                             <button
                                 onClick={onLogout}
-                                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                className="p-2 text-slate-400 hover:text-orange-600 hover:bg-orange-600/10 rounded-lg transition-all"
                                 title="Sair do sistema"
                             >
                                 <LogOut size={20} />
@@ -1248,7 +1258,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     id="scholarship-switch"
                                     checked={sScholarship}
                                     onChange={e => setSScholarship(e.target.checked)}
-                                    className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
+                                    className="w-5 h-5 text-blue-950 rounded focus:ring-blue-950 cursor-pointer"
                                 />
                                 <div className="flex flex-col">
                                     <label htmlFor="scholarship-switch" className="text-sm font-bold text-gray-800 cursor-pointer">
@@ -1258,7 +1268,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 </div>
                             </div>
 
-                            <div><label className="text-sm font-medium font-bold text-green-700">Valor da Mensalidade (R$)</label><input type="number" step="0.01" value={sValorMensalidade} onChange={e => setSValorMensalidade(e.target.value)} className="w-full p-2 border rounded font-bold text-green-800" placeholder="0.00" disabled={sScholarship} /></div>
+                            <div><label className="text-sm font-medium font-bold text-blue-950">Valor da Mensalidade (R$)</label><input type="number" step="0.01" value={sValorMensalidade} onChange={e => setSValorMensalidade(e.target.value)} className="w-full p-2 border rounded font-bold text-blue-950" placeholder="0.00" disabled={sScholarship} /></div>
                             <div className="grid grid-cols-2 gap-2">
                                 <div><label className="text-sm font-medium">E-mail</label><input type="email" value={sEmail} onChange={e => setSEmail(e.target.value)} className="w-full p-2 border rounded" placeholder="email@exemplo.com" /></div>
                                 <div>
@@ -1400,7 +1410,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                         <button onClick={() => {
                                                             setSelectedStudentForFinancial(s);
                                                             setIsFinancialModalOpen(true);
-                                                        }} className="p-2 text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 border border-emerald-100 transition-all hover:scale-110 shadow-sm">
+                                                        }} className="p-2 text-blue-950 bg-blue-950/10 rounded-lg hover:bg-blue-950/20 border border-blue-950/10 transition-all hover:scale-110 shadow-sm">
                                                             <DollarSign className="w-4 h-4" />
                                                         </button>
                                                     </div>
@@ -1411,7 +1421,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                             Editar
                                                             <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-800"></span>
                                                         </span>
-                                                        <button onClick={() => startEditingStudent(s)} className="p-2 text-blue-900 bg-blue-50 rounded-lg hover:bg-blue-100 border border-blue-100 transition-all hover:scale-110 shadow-sm">
+                                                        <button onClick={() => startEditingStudent(s)} className="p-2 text-blue-950 bg-blue-950/10 rounded-lg hover:bg-blue-950/20 border border-blue-950/10 transition-all hover:scale-110 shadow-sm">
                                                             <Pencil className="w-4 h-4" />
                                                         </button>
                                                     </div>
@@ -1422,7 +1432,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                             {s.isBlocked ? 'Desbloquear' : 'Bloquear'}
                                                             <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-800"></span>
                                                         </span>
-                                                        <button onClick={() => onToggleBlockStudent(s.id)} className={`p-2 rounded-lg border transition-all hover:scale-110 shadow-sm ${s.isBlocked ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-100'}`}>
+                                                        <button onClick={() => onToggleBlockStudent(s.id)} className={`p-2 rounded-lg border transition-all hover:scale-110 shadow-sm ${s.isBlocked ? 'bg-blue-950/10 text-blue-950 border-blue-950/20 hover:bg-blue-950/20' : 'bg-blue-950/10 text-blue-950 border-blue-950/20 hover:bg-blue-950/20'}`}>
                                                             {s.isBlocked ? <UserCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
                                                         </button>
                                                     </div>
@@ -1433,7 +1443,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                             Excluir
                                                             <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-800"></span>
                                                         </span>
-                                                        <button onClick={() => initiateDeleteStudent(s.id)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 border border-red-100 transition-all hover:scale-110 shadow-sm">
+                                                        <button onClick={() => initiateDeleteStudent(s.id)} className="p-2 text-blue-950 bg-blue-950/10 rounded-lg hover:bg-blue-950/20 border border-blue-950/10 transition-all hover:scale-110 shadow-sm">
                                                             <Trash2 className="w-4 h-4" />
                                                         </button>
                                                     </div>
@@ -1446,7 +1456,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                         {activeTab === 'messages' && (<div className="animate-fade-in-up"><div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-4 border-b border-gray-200"><h2 className="text-2xl font-bold text-gray-900 mb-3 sm:mb-0">Central de Mensagens</h2><div className="flex items-center gap-2 p-1 bg-gray-100 rounded-lg border border-gray-200"><button onClick={() => setMessageFilter('new')} className={`px-3 py-1 text-sm rounded-md font-bold transition-all ${messageFilter === 'new' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Não Lidas</button><button onClick={() => setMessageFilter('all')} className={`px-3 py-1 text-sm rounded-md font-bold transition-all ${messageFilter === 'all' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Todas</button></div></div>{filteredMessages.length > 0 ? (<div className="space-y-4">{filteredMessages.map(message => {
                             const sender = students.find(s => s.id === message.studentId);
-                            const typeStyles = { [MessageType.COMPLIMENT]: { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-800' }, [MessageType.SUGGESTION]: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-800' }, [MessageType.COMPLAINT]: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-800' }, }; const style = typeStyles[message.messageType]; return (<div key={message.id} className={`p-5 rounded-lg shadow-sm border ${message.status === 'new' ? 'bg-white border-l-4 border-l-blue-950' : 'bg-gray-50 border-gray-200'}`}><div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 pb-3 border-b"><div><p className="font-bold text-gray-800">{message.studentName}</p><p className="text-xs text-gray-500">Unidade: <span className="font-semibold">{message.unit}</span></p> {sender && (<p className="text-xs text-gray-600 font-medium mt-0.5">{sender.gradeLevel} - {sender.schoolClass} ({sender.shift})</p>)}</div><p className="text-xs text-gray-400 mt-2 sm:mt-0">{formatDate(message.timestamp)}</p></div><div className="flex gap-4 mb-4"><span className={`px-2 py-1 text-xs font-bold rounded ${style.bg} ${style.border} ${style.text}`}>{message.messageType}</span><span className="text-xs text-gray-500 font-medium self-center">Para: <span className="font-bold text-gray-700">{message.recipient}</span></span></div><p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p><div className="mt-4 pt-3 border-t flex justify-end"><button onClick={() => onUpdateMessageStatus(message.id, message.status === 'new' ? 'read' : 'new')} className={`text-xs font-bold py-1 px-3 rounded-full transition-colors ${message.status === 'new' ? 'bg-blue-100 text-blue-950 hover:bg-blue-200' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>{message.status === 'new' ? 'Marcar como Lida' : 'Marcar como Não Lida'}</button></div></div>);
+                            const typeStyles = { [MessageType.COMPLIMENT]: { bg: 'bg-orange-600/10', border: 'border-orange-600/20', text: 'text-orange-600' }, [MessageType.SUGGESTION]: { bg: 'bg-blue-950/10', border: 'border-blue-950/20', text: 'text-blue-950' }, [MessageType.COMPLAINT]: { bg: 'bg-orange-600/10', border: 'border-orange-600/20', text: 'text-orange-600' }, }; const style = typeStyles[message.messageType]; return (<div key={message.id} className={`p-5 rounded-lg shadow-sm border ${message.status === 'new' ? 'bg-white border-l-4 border-l-blue-950' : 'bg-gray-50 border-gray-200'}`}><div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 pb-3 border-b"><div><p className="font-bold text-gray-800">{message.studentName}</p><p className="text-xs text-gray-500">Unidade: <span className="font-semibold">{message.unit}</span></p> {sender && (<p className="text-xs text-gray-600 font-medium mt-0.5">{sender.gradeLevel} - {sender.schoolClass} ({sender.shift})</p>)}</div><p className="text-xs text-gray-400 mt-2 sm:mt-0">{formatDate(message.timestamp)}</p></div><div className="flex gap-4 mb-4"><span className={`px-2 py-1 text-xs font-bold rounded ${style.bg} ${style.border} ${style.text}`}>{message.messageType}</span><span className="text-xs text-gray-500 font-medium self-center">Para: <span className="font-bold text-gray-700">{message.recipient}</span></span></div><p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p><div className="mt-4 pt-3 border-t flex justify-end"><button onClick={() => onUpdateMessageStatus(message.id, message.status === 'new' ? 'read' : 'new')} className={`text-xs font-bold py-1 px-3 rounded-full transition-colors ${message.status === 'new' ? 'bg-blue-950/10 text-blue-950 hover:bg-blue-950/20' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>{message.status === 'new' ? 'Marcar como Lida' : 'Marcar como Não Lida'}</button></div></div>);
                         })}</div>) : (<div className="text-center py-16"><p className="text-gray-500">Nenhuma mensagem {messageFilter === 'new' ? 'não lida' : ''} encontrada.</p></div>)}</div>)}
 
                         {activeTab === 'attendance' && (
@@ -1506,7 +1516,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                             <p className="text-xs text-gray-500">{record.unit} | Data: {formatDate(record.date, false)}</p>
                                                         </div>
                                                         <div className="flex items-center gap-4 mt-2 md:mt-0 text-sm">
-                                                            <span className="font-bold text-green-600">{presents} Presentes</span>
+                                                            <span className="font-bold text-blue-950">{presents} Presentes</span>
                                                             <span className="font-bold text-red-600">{absents} Ausentes</span>
                                                         </div>
                                                     </div>
@@ -1522,7 +1532,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                                                 <span className="text-sm text-gray-800 font-medium">{student ? student.name : 'Aluno Removido'}</span>
                                                                                 {student && <span className="text-xs text-gray-400 ml-2">({student.shift})</span>}
                                                                             </div>
-                                                                            <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${status === AttendanceStatus.PRESENT ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{status}</span>
+                                                                            <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${status === AttendanceStatus.PRESENT ? 'bg-blue-100 text-blue-950' : 'bg-red-100 text-red-800'}`}>{status}</span>
                                                                         </li>
                                                                     );
                                                                 })}
@@ -1589,10 +1599,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                             type="text"
                                                             value={contactPassword}
                                                             onChange={e => setContactPassword(e.target.value)}
-                                                            className="w-full p-2 border rounded border-blue-200 bg-blue-50"
+                                                            className="w-full p-2 border rounded border-blue-950/20 bg-blue-950/5"
                                                             placeholder="Crie uma senha para este coordenador"
                                                         />
-                                                        <p className="text-xs text-blue-600 mt-1">* Visível e editável apenas por Admin Geral</p>
+                                                        <p className="text-xs text-blue-950 mt-1">* Visível e editável apenas por Admin Geral</p>
                                                     </div>
                                                 )}
 
@@ -1942,7 +1952,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                                         <div className="text-xs text-gray-500">{ticket.gradeLevel} - {ticket.schoolClass} ({ticket.unit})</div>
                                                                     </td>
                                                                     <td className="px-6 py-4">
-                                                                        <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">{ticket.subject}</span>
+                                                                        <span className="px-2 py-1 rounded bg-blue-950/10 text-blue-950 text-xs font-bold border border-blue-950/20">{ticket.subject}</span>
                                                                     </td>
                                                                     <td className="px-6 py-4">
                                                                         <div className="mb-2">
@@ -1950,21 +1960,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                                             <p className="text-gray-600 italic">"{ticket.message}"</p>
                                                                         </div>
                                                                         {ticket.response && (
-                                                                            <div className="bg-green-50 p-2 rounded border border-green-100">
-                                                                                <span className="font-bold text-green-800 text-xs uppercase block mb-1">
-                                                                                    Resposta {ticket.responderName ? `(${ticket.responderName})` : ''}:
+                                                                            <div className="bg-blue-950/10 p-2 rounded border border-blue-950/20">
+                                                                                <span className="font-bold text-blue-950 text-xs uppercase block mb-1">
+                                                                                    Resposta da Escola:
                                                                                 </span>
-                                                                                <p className="text-green-700 text-xs">{ticket.response}</p>
+                                                                                <p className="text-blue-950 text-xs">{ticket.response}</p>
                                                                             </div>
                                                                         )}
                                                                     </td>
                                                                     <td className="px-6 py-4 text-center">
                                                                         {ticket.status === TicketStatus.ANSWERED ? (
-                                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-950 border border-blue-200">
                                                                                 Respondido
                                                                             </span>
                                                                         ) : (
-                                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+                                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-600 border border-orange-200">
                                                                                 Pendente
                                                                             </span>
                                                                         )}
@@ -1977,7 +1987,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                                             </span>
                                                                             <button
                                                                                 onClick={() => handleDeleteTicket(ticket.id)}
-                                                                                className="text-red-400 hover:text-red-600 transition-colors p-2 hover:bg-red-50 rounded-full"
+                                                                                className="text-blue-950 hover:text-blue-900 transition-colors p-2 hover:bg-blue-50 rounded-full"
                                                                             >
                                                                                 <Trash2 className="w-5 h-5" />
                                                                             </button>
@@ -2013,7 +2023,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <div className="flex justify-between items-center p-4 bg-white border-b border-zinc-200">
                                 <div className="flex items-center gap-4">
                                     <div className="bg-zinc-100 p-2 rounded-xl border border-zinc-200">
-                                        <Settings className="w-6 h-6 text-zinc-700" />
+                                        <Settings className="w-6 h-6 text-blue-950" />
                                     </div>
                                     <div>
                                         <h2 className="text-2xl font-bold text-zinc-900 leading-tight">
@@ -2022,7 +2032,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         <p className="text-sm text-zinc-500">Ferramentas avançadas de administração e virada de ano.</p>
                                     </div>
                                 </div>
-                                <button onClick={() => setIsMaintenanceModalOpen(false)} className="text-zinc-400 hover:text-zinc-700 transition-all p-2 rounded-full hover:bg-zinc-100">
+                                <button onClick={() => setIsMaintenanceModalOpen(false)} className="text-blue-950 hover:text-blue-900 transition-all p-2 rounded-full hover:bg-zinc-100">
                                     <X className="w-8 h-8" />
                                 </button>
                             </div>
@@ -2067,7 +2077,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                                     {/* 1. BACKUP */}
                                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-all group flex flex-col h-full">
-                                        <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center mb-5 group-hover:bg-slate-900 group-hover:text-white transition-all text-slate-600 shadow-inner">
+                                        <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center mb-5 group-hover:bg-blue-950 group-hover:text-white transition-all text-blue-950 shadow-inner">
                                             <FileBarChart className="w-6 h-6" />
                                         </div>
                                         <h3 className="text-lg font-bold text-slate-800 mb-2">1. Exportar Dados</h3>
@@ -2256,7 +2266,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                                     {/* 3. RESET */}
                                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-all group flex flex-col h-full">
-                                        <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center mb-5 group-hover:bg-red-600 group-hover:text-white transition-all text-red-600 shadow-inner">
+                                        <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center mb-5 group-hover:bg-orange-600 group-hover:text-white transition-all text-orange-600 shadow-inner">
                                             <ShieldAlert className="w-6 h-6" />
                                         </div>
                                         <h3 className="text-lg font-bold text-slate-800 mb-2">3. Novo Ano Letivo</h3>
@@ -2541,7 +2551,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 )
             }
 
-            {/* MANUAL PAYMENT METHOD MODAL */}
             <ManualPaymentModal
                 isOpen={isManualPaymentModalOpen}
                 onClose={() => { setIsManualPaymentModalOpen(false); setSelectedManualFee(null); }}
@@ -2550,6 +2559,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 setManualPaymentMethod={setManualPaymentMethod}
             />
 
+            <CalendarManagement
+                isOpen={isCalendarModalOpen}
+                onClose={() => setIsCalendarModalOpen(false)}
+                unit={adminUnit || 'all'}
+                isAdmin={true}
+            />
+
         </>
+
     );
 }

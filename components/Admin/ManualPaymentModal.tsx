@@ -48,7 +48,7 @@ const ManualPaymentModal: React.FC<ManualPaymentModalProps> = ({
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-in border border-slate-200">
                 <div className="bg-white p-6 border-b border-zinc-100 relative overflow-hidden">
                     <div className="relative z-10 text-center">
-                        <div className="w-14 h-14 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-center mx-auto mb-3">
+                        <div className="w-14 h-14 bg-blue-950/10 rounded-xl border border-blue-950/10 flex items-center justify-center mx-auto mb-3">
                             <span className="text-2xl">💰</span>
                         </div>
                         <h3 className="text-xl font-bold text-zinc-900 mb-1 leading-tight">Confirmar Recebimento</h3>
@@ -60,7 +60,7 @@ const ManualPaymentModal: React.FC<ManualPaymentModalProps> = ({
                     <div className="bg-slate-50 p-6 rounded-2xl mb-8 border border-slate-100 text-center shadow-inner relative group">
                         <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-2">Valor Total a Receber</p>
                         <div className="flex flex-col items-center">
-                            <span className="text-4xl font-black text-emerald-700 tracking-tighter">
+                            <span className="text-4xl font-black text-blue-950 tracking-tighter">
                                 R$ {fin.total.toFixed(2).replace('.', ',')}
                             </span>
                             {fin.total > fin.originalValue && (
@@ -86,8 +86,8 @@ const ManualPaymentModal: React.FC<ManualPaymentModalProps> = ({
                                 key={method.id}
                                 onClick={() => setManualPaymentMethod(method.id)}
                                 className={`group p-4 rounded-2xl border-2 flex flex-col items-center justify-center gap-3 transition-all duration-300 ${manualPaymentMethod === method.id
-                                    ? 'border-emerald-500 bg-emerald-50/50 text-emerald-700 shadow-lg shadow-emerald-100/50'
-                                    : 'border-slate-100 hover:border-emerald-200 text-slate-400 hover:text-emerald-500 bg-white hover:bg-emerald-50/30'}`}
+                                    ? 'border-blue-950 bg-blue-950/10 text-blue-950 shadow-lg shadow-blue-950/10'
+                                    : 'border-slate-100 hover:border-blue-200 text-slate-400 hover:text-blue-950 bg-white hover:bg-blue-950/5'}`}
                             >
                                 <span className={`text-3xl filter transition-all duration-300 ${manualPaymentMethod === method.id ? 'scale-110 drop-shadow-sm' : 'grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100'}`}>
                                     {method.icon}
@@ -99,7 +99,7 @@ const ManualPaymentModal: React.FC<ManualPaymentModalProps> = ({
 
                     <button
                         onClick={handleConfirmManualPayment}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-wider py-4 rounded-2xl shadow-xl shadow-emerald-100 active:scale-[0.98] transition-all flex items-center justify-center gap-3 group"
+                        className="w-full bg-blue-950 hover:bg-black text-white font-black uppercase tracking-wider py-4 rounded-2xl shadow-xl shadow-blue-100 active:scale-[0.98] transition-all flex items-center justify-center gap-3 group"
                     >
                         <span className="group-hover:scale-125 transition-transform">✅</span>
                         Finalizar Recebimento

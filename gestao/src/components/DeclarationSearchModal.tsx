@@ -85,7 +85,7 @@ export function DeclarationSearchModal({ onClose }: DeclarationSearchModalProps)
             title: 'Matrícula e Frequência',
             description: 'Atesta matrícula e frequência regular.',
             icon: <School className="w-5 h-5" />,
-            color: 'bg-blue-50 text-blue-600 border-blue-100'
+            color: 'bg-blue-950/5 text-blue-950 border-blue-950/10'
         },
         {
             id: 'BOLSA_FAMILIA' as DeclarationType,
@@ -107,7 +107,7 @@ export function DeclarationSearchModal({ onClose }: DeclarationSearchModalProps)
             title: 'Conclusão de Curso',
             description: 'Atestado de conclusão (Ef/EM).',
             icon: <GraduationCap className="w-5 h-5" />,
-            color: 'bg-amber-50 text-amber-600 border-amber-100'
+            color: 'bg-orange-50 text-orange-600 border-orange-200/50'
         },
         {
             id: 'QUITACAO' as DeclarationType,
@@ -126,7 +126,7 @@ export function DeclarationSearchModal({ onClose }: DeclarationSearchModalProps)
                 {/* Header */}
                 <div className="bg-slate-50 border-b border-slate-100 p-6 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 ${step === 'SELECTION' ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-600'} rounded-2xl flex items-center justify-center shadow-sm`}>
+                        <div className={`w-12 h-12 ${step === 'SELECTION' ? 'bg-blue-950 text-white' : 'bg-blue-950/10 text-blue-950'} rounded-2xl flex items-center justify-center shadow-sm`}>
                             <FileText className="w-6 h-6" />
                         </div>
                         <div>
@@ -172,7 +172,7 @@ export function DeclarationSearchModal({ onClose }: DeclarationSearchModalProps)
                             <Button
                                 onClick={handleSearch}
                                 disabled={isLoading}
-                                className="w-full py-7 font-bold text-base bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-200 rounded-2xl transition-all"
+                                className="w-full py-7 font-bold text-base bg-blue-950 hover:bg-black shadow-xl shadow-blue-950/20 rounded-2xl transition-all"
                             >
                                 {isLoading ? (
                                     <><Loader2 className="w-5 h-5 mr-3 animate-spin" /> Verificando dados...</>
@@ -226,7 +226,7 @@ export function DeclarationSearchModal({ onClose }: DeclarationSearchModalProps)
                             <Button
                                 variant="ghost"
                                 onClick={() => setStep('SEARCH')}
-                                className="text-blue-600 hover:bg-blue-50 font-bold text-xs"
+                                className="text-blue-950 hover:bg-blue-950/10 font-bold text-xs"
                             >
                                 Trocar Aluno
                             </Button>

@@ -15,8 +15,10 @@ import {
     User,
     CheckCircle2,
     Trash2,
-    Filter
+    Filter,
+    Calendar as CalendarIcon
 } from 'lucide-react';
+import { CalendarManagement } from './CalendarManagement';
 
 // Types for Grade coordination (copied/adapted from AdminDashboard)
 interface GradeEntry {
@@ -127,6 +129,9 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
         description: ''
     });
     const [isSavingOcc, setIsSavingOcc] = useState(false);
+
+    // --- CALENDAR MANAGEMENT STATE ---
+    const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
 
     // --- HELPER ---
     const formatGrade = (val: number | null | undefined) => (val !== null && val !== undefined && val !== -1) ? val.toFixed(1) : '-';
@@ -481,7 +486,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                 <main className="flex-1 w-full p-4 md:p-8 bg-gray-50/50 overflow-y-auto">
 
                     {/* Welcome Card with inline header info */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-6 mb-8">
+                    <div className="bg-white rounded-2xl shadow-sm border border-blue-100 p-6 mb-8">
                         {/* Compact top bar with logout */}
                         <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
                             <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -501,8 +506,17 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                             <div className="flex items-center gap-3">
                                 <Button
                                     variant="primary"
+                                    onClick={() => setIsCalendarModalOpen(true)}
+                                    className="text-sm font-semibold py-1.5 px-4 flex items-center gap-2 shadow-sm hover:opacity-90 transition-opacity"
+                                    style={{ backgroundColor: '#020617', color: '#FFFFFF' }} // Blue-950
+                                >
+                                    <CalendarIcon className="w-4 h-4" />
+                                    Gerenciar Calendário
+                                </Button>
+                                <Button
+                                    variant="primary"
                                     onClick={() => setIsOccModalOpen(true)}
-                                    className="text-sm font-semibold py-1.5 px-4 !bg-red-600 hover:!bg-red-700 flex items-center gap-2"
+                                    className="text-sm font-semibold py-1.5 px-4 !bg-blue-950 hover:!bg-blue-900 flex items-center gap-2"
                                 >
                                     <ClipboardList className="w-4 h-4" />
                                     Postar Ocorrência
@@ -511,7 +525,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                     variant="primary"
                                     onClick={() => { setIsHistoryModalOpen(true); handleFetchOccurrenceHistory(); }}
                                     className="text-sm font-semibold py-1.5 px-4 flex items-center gap-2 shadow-sm hover:opacity-90 transition-opacity"
-                                    style={{ backgroundColor: '#4B5563', color: '#FFFFFF' }}
+                                    style={{ backgroundColor: '#020617', color: '#FFFFFF' }}
                                 >
                                     <ClipboardList className="w-4 h-4" />
                                     Gerenciar Ocorrências
@@ -552,7 +566,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                             <Button
                                 onClick={handleFetchPendingGrades}
                                 disabled={loading}
-                                className="w-full py-4 text-lg !bg-purple-700 hover:!bg-purple-800 shadow-xl text-white font-bold rounded-xl transition-all transform hover:scale-[1.01]"
+                                className="w-full py-4 text-lg !bg-blue-950 hover:!bg-black shadow-xl text-white font-bold rounded-xl transition-all transform hover:scale-[1.01]"
                             >
                                 {loading ? 'Carregando...' : '🔍 Buscar Todas as Pendências'}
                             </Button>
@@ -563,7 +577,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                     {/* RESULTS AREA */}
                     {pendingGradesStudents.length === 0 && !loading && (
                         <div className="text-center py-12 bg-white rounded-2xl border border-gray-200 border-dashed">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-50 text-purple-300 mb-4">
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-950/10 text-blue-950 mb-4">
                                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             </div>
                             <h3 className="text-lg font-medium text-gray-900">Tudo em dia!</h3>
@@ -583,7 +597,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                         <select
                                             value={quickClassFilter}
                                             onChange={(e) => setQuickClassFilter(e.target.value)}
-                                            className="p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-purple-500 outline-none shadow-sm min-w-[120px]"
+                                            className="p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950 outline-none shadow-sm min-w-[120px]"
                                         >
                                             <option value="all">Todas</option>
                                             {uniqueClasses.map(cls => (
@@ -600,7 +614,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                         <select
                                             value={quickShiftFilter}
                                             onChange={(e) => setQuickShiftFilter(e.target.value)}
-                                            className="p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-purple-500 outline-none shadow-sm min-w-[150px]"
+                                            className="p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950 outline-none shadow-sm min-w-[150px]"
                                         >
                                             <option value="all">Todos os Turnos</option>
                                             {uniqueShifts.map(s => (
@@ -617,7 +631,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                         <select
                                             value={quickGradeFilter}
                                             onChange={(e) => setQuickGradeFilter(e.target.value)}
-                                            className="p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-purple-500 outline-none shadow-sm min-w-[250px]"
+                                            className="p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950 outline-none shadow-sm min-w-[250px]"
                                         >
                                             <option value="all">Todas as Séries</option>
                                             {uniqueGrades.map(grade => (
@@ -634,7 +648,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                         <select
                                             value={quickSubjectFilter}
                                             onChange={(e) => setQuickSubjectFilter(e.target.value)}
-                                            className="p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-purple-500 outline-none shadow-sm min-w-[200px]"
+                                            className="p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950 outline-none shadow-sm min-w-[200px]"
                                         >
                                             <option value="all">Todas as Disciplinas</option>
                                             {uniqueSubjects.map(sub => (
@@ -647,7 +661,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                 {(quickClassFilter !== 'all' || quickGradeFilter !== 'all' || quickShiftFilter !== 'all' || quickSubjectFilter !== 'all') && (
                                     <button
                                         onClick={() => { setQuickClassFilter('all'); setQuickGradeFilter('all'); setQuickShiftFilter('all'); setQuickSubjectFilter('all'); }}
-                                        className="mb-1 text-purple-600 text-xs font-bold hover:text-purple-800 underline px-2 transition-colors"
+                                        className="mb-1 text-blue-950 text-xs font-bold hover:text-blue-900 underline px-2 transition-colors"
                                     >
                                         Limpar Filtros
                                     </button>
@@ -660,7 +674,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                     {filteredDisplayStudents.length === 0 && pendingGradesStudents.length > 0 && (
                         <div className="text-center py-12 bg-gray-50 rounded-xl border border-gray-200 border-dashed mb-6">
                             <p className="text-gray-500 italic">Nenhum aluno encontrado com os filtros selecionados.</p>
-                            <button onClick={() => { setQuickClassFilter('all'); setQuickGradeFilter('all'); setQuickShiftFilter('all'); setQuickSubjectFilter('all'); }} className="text-purple-600 font-bold text-sm mt-2 hover:underline">Limpar filtros</button>
+                            <button onClick={() => { setQuickClassFilter('all'); setQuickGradeFilter('all'); setQuickShiftFilter('all'); setQuickSubjectFilter('all'); }} className="text-blue-950 font-bold text-sm mt-2 hover:underline">Limpar filtros</button>
                         </div>
                     )}
 
@@ -674,9 +688,9 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
 
                             return (
                                 <div key={student.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden animate-fade-in-up">
-                                    <div className="p-4 bg-purple-50 border-b border-purple-100 flex justify-between items-center">
+                                    <div className="p-4 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-purple-200 flex items-center justify-center text-purple-800 font-bold text-sm">
+                                            <div className="w-10 h-10 rounded-full bg-blue-200 flex items-center justify-center text-blue-950 font-bold text-sm">
                                                 {student.name.substring(0, 2).toUpperCase()}
                                             </div>
                                             <div>
@@ -688,7 +702,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="text-xs font-bold text-purple-700 bg-purple-100 px-3 py-1 rounded-full">
+                                        <div className="text-xs font-bold text-blue-950 bg-blue-100 px-3 py-1 rounded-full">
                                             {grades.length} Pendência(s)
                                         </div>
                                     </div>
@@ -755,7 +769,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                                     const tName = teachersMap[grade.teacherId || ''] || grade.teacherName || 'N/A';
 
                                                                     return (
-                                                                        <tr key={grade.id} className="hover:bg-purple-50 transition-colors border-b last:border-0 border-gray-200">
+                                                                        <tr key={grade.id} className="hover:bg-blue-50 transition-colors border-b last:border-0 border-gray-200">
                                                                             <td className="px-2 py-2 border-r border-gray-300 sticky left-0 bg-white z-10 shadow-sm">
                                                                                 <div className="font-bold text-gray-700">{grade.subject}</div>
                                                                                 <div className="text-[9px] text-gray-400 mt-0.5">{tName}</div>
@@ -773,11 +787,11 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                                                     <React.Fragment key={key}>
                                                                                         <td className={cellClass(isNotaPending) + " w-8 md:w-10"}>
                                                                                             {formatGrade(bData.nota)}
-                                                                                            {isNotaPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" title="Nota Alterada"></span>}
+                                                                                            {isNotaPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-orange-600 rounded-full animate-pulse" title="Nota Alterada"></span>}
                                                                                         </td>
                                                                                         <td className={cellClass(isRecPending) + " w-8 md:w-10"}>
                                                                                             {formatGrade(bData.recuperacao)}
-                                                                                            {isRecPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" title="Recuperação Alterada"></span>}
+                                                                                            {isRecPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-orange-600 rounded-full animate-pulse" title="Recuperação Alterada"></span>}
                                                                                         </td>
                                                                                         <td className="px-1 py-2 text-center font-bold bg-gray-50 border-r border-gray-300 w-8 md:w-10">
                                                                                             {formatGrade(bData.media)}
@@ -1241,6 +1255,12 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                     </div>
                 </div>
             )}
+            {/* CALENDAR MANAGEMENT MODAL */}
+            <CalendarManagement
+                isOpen={isCalendarModalOpen}
+                onClose={() => setIsCalendarModalOpen(false)}
+                unit={coordinator.unit}
+            />
         </div>
     );
 };

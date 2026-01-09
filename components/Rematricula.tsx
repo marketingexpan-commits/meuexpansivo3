@@ -43,7 +43,7 @@ export const Rematricula: React.FC<RematriculaProps> = ({ students, grades, onRe
         if (studentGrades.length === 0) return { color: 'text-gray-400', label: 'Sem notas lançadas', approved: false };
 
         const allApproved = studentGrades.every(g => g.situacaoFinal === 'Aprovado');
-        if (allApproved) return { color: 'text-green-600', label: 'Aprovado', approved: true };
+        if (allApproved) return { color: 'text-blue-600', label: 'Aprovado', approved: true };
 
         const hasReprovado = studentGrades.some(g => g.situacaoFinal === 'Reprovado');
         if (hasReprovado) return { color: 'text-red-600', label: 'Reprovado', approved: false };
@@ -135,13 +135,13 @@ export const Rematricula: React.FC<RematriculaProps> = ({ students, grades, onRe
                     <h2 className="text-2xl font-bold text-blue-950">Rematrícula & Promoção 2026</h2>
                     <p className="text-gray-500">Gestão de virada de ano e enturmação para o próximo ciclo escolar.</p>
                 </div>
-                <Button
+                <button
                     onClick={handleConfirmRematricula}
                     disabled={isExecuting || filteredStudents.length === 0}
-                    className="bg-green-600 hover:bg-green-700 w-full md:w-auto"
+                    className="bg-blue-950 hover:bg-black w-full md:w-auto text-white p-3 rounded-lg font-bold shadow-md"
                 >
                     {isExecuting ? 'Processando...' : `Confirmar Rematrícula 2026 (${filteredStudents.length})`}
-                </Button>
+                </button>
             </div>
 
             {/* FILTROS */}
@@ -238,7 +238,7 @@ export const Rematricula: React.FC<RematriculaProps> = ({ students, grades, onRe
                                                 <select
                                                     value={currentSelection}
                                                     onChange={e => handleGradeChange(student.id, e.target.value)}
-                                                    className={`w-full p-2 rounded border text-sm font-bold ${currentSelection === student.gradeLevel ? 'border-red-200 bg-red-50 text-red-900' : 'border-green-200 bg-green-50 text-green-900'}`}
+                                                    className={`w-full p-2 rounded border text-sm font-bold ${currentSelection === student.gradeLevel ? 'border-red-200 bg-red-50 text-red-900' : 'border-blue-200 bg-blue-50 text-blue-900'}`}
                                                 >
                                                     {SCHOOL_GRADES_LIST.map(g => (
                                                         <option key={g} value={g}>{g}</option>
@@ -261,6 +261,6 @@ export const Rematricula: React.FC<RematriculaProps> = ({ students, grades, onRe
                     O sistema arquivará a série de 2025 no histórico do aluno e criará novas pautas de notas vazias para o ano letivo de 2026.
                 </p>
             </div>
-        </div>
+        </div >
     );
 };

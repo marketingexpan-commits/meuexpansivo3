@@ -19,7 +19,7 @@ export function Button({
     ...props
 }: ButtonProps) {
     const variants = {
-        primary: "bg-orange-600 text-white hover:bg-orange-700 shadow-md active:scale-95 transition-all text-base font-bold",
+        primary: "bg-blue-950 text-white hover:bg-black shadow-md border-b-4 border-blue-900 active:translate-y-0.5 active:border-b-0 transition-all text-base font-bold",
         secondary: "bg-gray-100 text-gray-900 hover:bg-gray-200",
         outline: "border border-gray-300 bg-transparent hover:bg-gray-50 text-gray-700",
         ghost: "bg-transparent hover:bg-gray-100 text-gray-700",
@@ -37,7 +37,7 @@ export function Button({
         <button
             className={twMerge(
                 clsx(
-                    "inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer",
+                    "inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-950 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer",
                     variants[variant],
                     sizes[size],
                     className

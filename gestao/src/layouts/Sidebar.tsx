@@ -44,16 +44,16 @@ function SidebarItem({ icon: Icon, label, path, collapsed }: SidebarItemProps) {
                 clsx(
                     "flex items-center w-full p-3 rounded-lg transition-all duration-200 group relative cursor-pointer",
                     isActive
-                        ? "bg-blue-700/10 text-blue-700 font-medium"
+                        ? "bg-blue-950/10 text-blue-950 font-medium"
                         : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
                     collapsed && "justify-center"
                 )
             )}
         >
-            <Icon className={clsx("w-5 h-5", isActive ? "text-blue-700" : "text-slate-500 group-hover:text-slate-700")} />
+            <Icon className={clsx("w-5 h-5", isActive ? "text-blue-950" : "text-slate-500 group-hover:text-slate-700")} />
 
             {!collapsed && <span className="ml-3 text-sm truncate">{label}</span>}
-            {!collapsed && <ChevronRight className={clsx("ml-auto w-4 h-4 text-slate-300 transition-opacity", isActive ? "opacity-100 text-blue-300" : "opacity-0 group-hover:opacity-100")} />}
+            {!collapsed && <ChevronRight className={clsx("ml-auto w-4 h-4 text-slate-300 transition-opacity", isActive ? "opacity-100 text-blue-950" : "opacity-0 group-hover:opacity-100")} />}
 
             {collapsed && (
                 <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 whitespace-nowrap">
@@ -97,7 +97,7 @@ export function Sidebar() {
                             src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"
                             alt="Logo"
                             className="h-8 w-auto object-contain"
-                            style={{ filter: 'brightness(0) saturate(100%) invert(9%) sepia(62%) saturate(4383%) hue-rotate(227deg) brightness(60%) contrast(100%)' }}
+                            style={{ filter: 'brightness(0) saturate(100%) invert(9%) sepia(62%) saturate(4383%) hue-rotate(227deg) brightness(20%) contrast(100%)' }}
                         />
                     ) : (
                         <>
@@ -105,7 +105,7 @@ export function Sidebar() {
                                 src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"
                                 alt="Meu Expansivo"
                                 className="h-9 object-contain"
-                                style={{ filter: 'brightness(0) saturate(100%) invert(9%) sepia(62%) saturate(4383%) hue-rotate(227deg) brightness(60%) contrast(100%)' }}
+                                style={{ filter: 'brightness(0) saturate(100%) invert(9%) sepia(62%) saturate(4383%) hue-rotate(227deg) brightness(20%) contrast(100%)' }}
                             />
                             <div className="flex flex-col justify-center">
                                 <span className="text-[10px] text-blue-950 font-bold uppercase tracking-widest leading-none mb-0">Sistema</span>

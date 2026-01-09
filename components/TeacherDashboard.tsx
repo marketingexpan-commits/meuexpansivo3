@@ -79,6 +79,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
     const [attendanceGrade, setAttendanceGrade] = useState('');
     const [attendanceClass, setAttendanceClass] = useState<SchoolClass>(SchoolClass.A);
+    const [attendanceShift, setAttendanceShift] = useState<string>('');
     const [attendanceSubject, setAttendanceSubject] = useState<string>('');
     const [attendanceStudents, setAttendanceStudents] = useState<Student[]>([]);
     const [studentStatuses, setStudentStatuses] = useState<Record<string, AttendanceStatus>>({});
@@ -329,7 +330,12 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
         if (!attendanceGrade) { alert("Por favor, selecione uma série."); return; }
         if (!attendanceSubject) { alert("Por favor, selecione uma disciplina."); return; }
         setIsAttendanceLoading(true);
-        const studentsInClass = students.filter(s => s.unit === activeUnit && s.gradeLevel === attendanceGrade && s.schoolClass === attendanceClass);
+        const studentsInClass = students.filter(s =>
+            s.unit === activeUnit &&
+            s.gradeLevel === attendanceGrade &&
+            s.schoolClass === attendanceClass &&
+            (!attendanceShift || s.shift === attendanceShift)
+        );
         setAttendanceStudents(studentsInClass);
         // ID Includes Discipline now
         const recordId = `${attendanceDate}_${activeUnit}_${attendanceGrade}_${attendanceClass}_${attendanceSubject}`;
@@ -913,34 +919,34 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                 <div className="grid grid-cols-2 gap-4">
                                     <button
                                         onClick={() => setActiveTab('grades')}
-                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-500 hover:shadow-md transition-all group aspect-square"
+                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
                                     >
                                         <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                                            <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                                            <svg className="w-7 h-7 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm text-center">Lançar Notas</h3>
                                     </button>
 
                                     <button
                                         onClick={() => setActiveTab('attendance')}
-                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-green-500 hover:shadow-md transition-all group aspect-square"
+                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
                                     >
-                                        <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-green-100 transition-colors">
-                                            <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                                        <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                            <svg className="w-7 h-7 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm text-center">Chamada Diária</h3>
                                     </button>
 
                                     <button
                                         onClick={() => setActiveTab('tickets')}
-                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-yellow-500 hover:shadow-md transition-all group aspect-square relative"
+                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square relative"
                                     >
-                                        <div className="w-12 h-12 bg-yellow-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-yellow-100 transition-colors">
-                                            <svg className="w-7 h-7 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                        <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                            <svg className="w-7 h-7 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm text-center">Dúvidas dos Alunos</h3>
                                         {pendingTicketsCount > 0 && (
-                                            <span className="absolute top-2 right-2 bg-red-500 text-white rounded-full px-2 py-0.5 text-xs font-bold animate-pulse">
+                                            <span className="absolute top-2 right-2 bg-orange-600 text-white rounded-full px-2 py-0.5 text-xs font-bold animate-pulse">
                                                 {pendingTicketsCount}
                                             </span>
                                         )}
@@ -948,30 +954,30 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
 
                                     <button
                                         onClick={() => setActiveTab('materials')}
-                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-500 hover:shadow-md transition-all group aspect-square"
+                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
                                     >
                                         <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                                            <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                                            <svg className="w-7 h-7 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm text-center">Materiais de Aula</h3>
                                     </button>
 
                                     <button
                                         onClick={() => setActiveTab('agenda')}
-                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-purple-500 hover:shadow-md transition-all group aspect-square"
+                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
                                     >
-                                        <div className="w-12 h-12 bg-purple-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-purple-100 transition-colors">
-                                            <svg className="w-7 h-7 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                        <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                            <svg className="w-7 h-7 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm text-center">Agenda Diária</h3>
                                     </button>
 
                                     <button
                                         onClick={() => setActiveTab('exam_guides')}
-                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-orange-500 hover:shadow-md transition-all group aspect-square"
+                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
                                     >
-                                        <div className="w-12 h-12 bg-orange-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-orange-100 transition-colors">
-                                            <svg className="w-7 h-7 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                        <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                            <svg className="w-7 h-7 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm text-center">Roteiros de Prova</h3>
                                     </button>
@@ -987,7 +993,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                             <div className="w-full md:w-1/3 p-6 border rounded-lg shadow-md bg-white">
                                 <h2 className="text-xl font-bold mb-4 text-blue-950 flex items-center gap-2">
                                     <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center">
-                                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                                        <svg className="w-5 h-5 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
                                     </div>
                                     Enviar Material
                                 </h2>
@@ -1117,9 +1123,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                     {activeTab === 'agenda' && (
                         <div className="flex flex-col md:flex-row space-y-6 md:space-y-0 md:space-x-6">
                             <div className="w-full md:w-1/3 p-6 border rounded-lg shadow-md bg-white">
-                                <h2 className="text-xl font-bold mb-4 text-purple-600 flex items-center gap-2">
-                                    <div className="w-8 h-8 bg-purple-50 rounded-full flex items-center justify-center">
-                                        <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                <h2 className="text-xl font-bold mb-4 text-blue-950 flex items-center gap-2">
+                                    <div className="w-8 h-8 bg-blue-950/10 rounded-full flex items-center justify-center">
+                                        <svg className="w-5 h-5 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                     </div>
                                     Nova Agenda
                                 </h2>
@@ -1158,7 +1164,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Para Casa (Tarefas)</label>
                                         <textarea value={homework} onChange={e => setHomework(e.target.value)} rows={2} className="w-full p-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500" placeholder="Exercícios, páginas do livro..." />
                                     </div>
-                                    <Button type="submit" disabled={isSavingAgenda} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-lg shadow-md transition-colors flex justify-center items-center">
+                                    <Button type="submit" disabled={isSavingAgenda} className="w-full bg-blue-950 hover:bg-black text-white font-bold py-2 rounded-lg shadow-md transition-colors flex justify-center items-center">
                                         {isSavingAgenda ? 'Salvando...' : 'Salvar Agenda'}
                                     </Button>
                                 </form>
@@ -1174,8 +1180,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                         <div className="flex flex-col md:flex-row space-y-6 md:space-y-0 md:space-x-6">
                             <div className="w-full md:w-1/3 p-6 border rounded-lg shadow-md bg-white">
                                 <h2 className="text-xl font-bold mb-4 text-orange-600 flex items-center gap-2">
-                                    <div className="w-8 h-8 bg-orange-50 rounded-full flex items-center justify-center">
-                                        <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                    <div className="w-8 h-8 bg-blue-950/10 rounded-full flex items-center justify-center">
+                                        <svg className="w-5 h-5 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                     </div>
                                     Novo Roteiro
                                 </h2>
@@ -1285,8 +1291,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         // --- PAINEL DE RELATÓRIO INFANTIL ---
                                         <div>
                                             <h2 className="text-xl font-bold mb-6 text-blue-950 flex items-center">
-                                                <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center mr-3">
-                                                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                                                <div className="w-8 h-8 bg-blue-950/10 rounded-full flex items-center justify-center mr-3">
+                                                    <svg className="w-5 h-5 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                                                 </div>
                                                 Relatório de Desenvolvimento Infantil
                                             </h2>
@@ -1359,8 +1365,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         <div>
                                             <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-2">
                                                 <h2 className="text-xl font-bold text-blue-950 flex items-center">
-                                                    <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center mr-3">
-                                                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                                                    <div className="w-8 h-8 bg-blue-950/10 rounded-full flex items-center justify-center mr-3">
+                                                        <svg className="w-5 h-5 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                                                     </div>
                                                     Lançamento de Notas
                                                 </h2>
@@ -1646,7 +1652,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                                         );
                                                                                     })()}
                                                                                     <td className="px-1 py-2 text-center align-middle">
-                                                                                        <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                                                        <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-blue-50 text-blue-950 border-blue-100' :
                                                                                             grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
                                                                                                 (grade.situacaoFinal === 'Cursando' || grade.situacaoFinal === 'Pendente') ? 'bg-gray-50 text-gray-500 border-gray-200' :
                                                                                                     'bg-red-50 text-red-700 border-red-200'
@@ -1684,12 +1690,12 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                         <div className="animate-fade-in-up">
                             <div className="p-6 border rounded-lg shadow-md bg-white">
                                 <h2 className="text-xl font-bold mb-4 text-blue-950 flex items-center gap-2">
-                                    <div className="w-8 h-8 bg-green-50 rounded-full flex items-center justify-center">
-                                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                                    <div className="w-8 h-8 bg-blue-950/10 rounded-full flex items-center justify-center">
+                                        <svg className="w-5 h-5 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
                                     </div>
                                     Chamada Diária
                                 </h2>
-                                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-gray-50 rounded-lg border mb-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 p-4 bg-gray-50 rounded-lg border mb-6">
                                     <div>
                                         <label className="text-sm font-bold text-gray-700 mb-1 block">Série/Ano</label>
                                         <select value={attendanceGrade} onChange={e => setAttendanceGrade(e.target.value)} className="w-full p-2 border rounded">
@@ -1703,6 +1709,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                             {SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
                                         </select>
                                     </div>
+                                    <div>
+                                        <label className="text-sm font-bold text-gray-700 mb-1 block">Turno</label>
+                                        <select value={attendanceShift} onChange={e => setAttendanceShift(e.target.value)} className="w-full p-2 border rounded">
+                                            <option value="">Todos</option>
+                                            {SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
+                                        </select>
+                                    </div>
+
+
                                     <div>
                                         <label className="text-sm font-bold text-gray-700 mb-1 block">Disciplina</label>
                                         <select value={attendanceSubject} onChange={e => setAttendanceSubject(e.target.value)} className="w-full p-2 border rounded">
@@ -1720,7 +1735,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         <select
                                             value={selectedFilterBimester}
                                             onChange={e => setSelectedFilterBimester(Number(e.target.value))}
-                                            className="w-full p-2 border rounded text-blue-900 font-medium bg-blue-50 border-blue-200"
+                                            className="w-full p-2 border rounded text-blue-950 font-medium bg-blue-950/10 border-blue-950/20"
                                         >
                                             <option value={1}>1º Bimestre</option>
                                             <option value={2}>2º Bimestre</option>
@@ -1758,7 +1773,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${student.shift === 'Matutino' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>
                                                                         {student.shift}
                                                                     </span>
-                                                                    {status === AttendanceStatus.PRESENT && <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">PRESENTE</span>}
+                                                                    {status === AttendanceStatus.PRESENT && <span className="text-[10px] bg-blue-100 text-blue-950 px-2 py-0.5 rounded-full font-bold">PRESENTE</span>}
                                                                     {status === AttendanceStatus.ABSENT && <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">FALTOU</span>}
                                                                 </div>
                                                                 <div className="mt-1 text-xs text-gray-500 space-y-0.5">
@@ -1785,7 +1800,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                             <button
                                                                 onClick={() => handleStatusChange(student.id, AttendanceStatus.PRESENT)}
                                                                 className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all duration-200 border ${status === AttendanceStatus.PRESENT
-                                                                    ? 'bg-green-500 text-white border-green-600 shadow-md transform scale-105'
+                                                                    ? 'bg-blue-950 text-white border-blue-900 shadow-md transform scale-105'
                                                                     : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                                                                     }`}
                                                             >
@@ -1853,7 +1868,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                 </td>
                                                                 <td className="px-6 py-4 text-center">
                                                                     <div className="inline-flex rounded-md shadow-sm" role="group">
-                                                                        <button type="button" onClick={() => handleStatusChange(student.id, AttendanceStatus.PRESENT)} className={`px-4 py-2 text-sm font-medium border rounded-l-lg transition-colors ${studentStatuses[student.id] === AttendanceStatus.PRESENT ? 'bg-green-500 text-white border-green-600 z-10' : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-100'}`}>Presente</button>
+                                                                        <button type="button" onClick={() => handleStatusChange(student.id, AttendanceStatus.PRESENT)} className={`px-4 py-2 text-sm font-medium border rounded-l-lg transition-colors ${studentStatuses[student.id] === AttendanceStatus.PRESENT ? 'bg-blue-950 text-white border-blue-900 z-10' : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-100'}`}>Presente</button>
                                                                         <button type="button" onClick={() => handleStatusChange(student.id, AttendanceStatus.ABSENT)} className={`px-4 py-2 text-sm font-medium border rounded-r-lg transition-colors ${studentStatuses[student.id] === AttendanceStatus.ABSENT ? 'bg-red-600 text-white border-red-700 z-10' : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-100'}`}>Faltou</button>
                                                                     </div>
                                                                 </td>
@@ -1876,8 +1891,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                         <div className="animate-fade-in-up">
                             <div className="p-6 border rounded-lg shadow-md bg-white">
                                 <h2 className="text-xl font-bold mb-6 text-blue-950 flex items-center gap-2">
-                                    <div className="w-8 h-8 bg-yellow-50 rounded-full flex items-center justify-center">
-                                        <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    <div className="w-8 h-8 bg-blue-950/10 rounded-full flex items-center justify-center">
+                                        <svg className="w-5 h-5 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                     </div>
                                     Dúvidas e Perguntas
                                 </h2>

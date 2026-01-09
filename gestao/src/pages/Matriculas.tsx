@@ -178,11 +178,11 @@ export function Matriculas() {
                         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Gestão de Matrículas</h1>
                         {students.length > 0 && (
                             <div className="flex items-center gap-2">
-                                <span className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border border-blue-100 shadow-sm">
+                                <span className="bg-blue-950/10 text-blue-950 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border border-blue-950/20 shadow-sm">
                                     {students.length} Alunos
                                 </span>
                                 {hasActiveFilters && filteredStudents.length !== students.length && (
-                                    <span className="bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border border-indigo-100 shadow-sm animate-in fade-in slide-in-from-left-2 transition-all">
+                                    <span className="bg-blue-950/10 text-blue-950 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border border-blue-950/20 shadow-sm animate-in fade-in slide-in-from-left-2 transition-all">
                                         {filteredStudents.length} Filtrados
                                     </span>
                                 )}
@@ -272,7 +272,7 @@ export function Matriculas() {
                     return (
                         <div className="flex flex-col sm:flex-row items-center gap-3 justify-center bg-white border border-slate-200 py-3 px-6 rounded-2xl shadow-sm animate-in fade-in slide-in-from-top-2">
                             <div className="flex items-center gap-2 text-slate-700 font-semibold whitespace-nowrap">
-                                <span className="text-indigo-600 flex items-center justify-center bg-indigo-50 w-6 h-6 rounded-full text-xs">
+                                <span className="text-blue-950 flex items-center justify-center bg-blue-950/10 w-6 h-6 rounded-full text-xs">
                                     <Search className="w-3.5 h-3.5" />
                                 </span>
                                 <span>Resultado da Pesquisa:</span>
@@ -285,7 +285,7 @@ export function Matriculas() {
 
                             <div className="flex items-center gap-3 text-sm">
                                 <div className="flex items-center gap-1.5">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    <span className="w-2 h-2 rounded-full bg-blue-950"></span>
                                     <span className="text-slate-500 font-medium">Enturmados:</span>
                                     <span className="text-slate-900 font-bold tabular-nums">{filteredStudents.length - missingEnturmacao}</span>
                                 </div>
@@ -356,11 +356,11 @@ export function Matriculas() {
                                 <Card key={groupName} className="border-slate-200 shadow-sm overflow-hidden">
                                     <CardHeader className={`${groupName.includes('Pendente') ? 'bg-amber-50/50' : 'bg-slate-50/80'} border-b border-slate-100 py-3 px-4 flex flex-row items-center justify-between`}>
                                         <div className="flex items-center gap-2">
-                                            <div className={`w-2 h-8 rounded-full ${groupName.includes('Pendente') ? 'bg-amber-400' :
-                                                groupName.includes('ENS. MÉDIO') ? 'bg-indigo-500' :
-                                                    groupName.includes('FUNDAMENTAL II') ? 'bg-blue-500' :
-                                                        groupName.includes('FUNDAMENTAL I') ? 'bg-sky-500' :
-                                                            groupName.includes('INFANTIL') || groupName.includes('NÍVEL') ? 'bg-rose-400' : 'bg-slate-400'
+                                            <div className={`w-2 h-8 rounded-full ${groupName.includes('Pendente') ? 'bg-orange-600' :
+                                                groupName.includes('ENS. MÉDIO') ? 'bg-blue-950' :
+                                                    groupName.includes('FUNDAMENTAL II') ? 'bg-blue-950' :
+                                                        groupName.includes('FUNDAMENTAL I') ? 'bg-blue-950' :
+                                                            groupName.includes('INFANTIL') || groupName.includes('NÍVEL') ? 'bg-blue-950' : 'bg-slate-400'
                                                 }`}></div>
                                             <div>
                                                 <h3 className="text-sm font-bold text-slate-800 uppercase tracking-tight">
@@ -375,7 +375,7 @@ export function Matriculas() {
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                className="h-7 px-2 text-xs text-slate-500 hover:text-blue-600 hover:bg-blue-50"
+                                                className="h-7 px-2 text-xs text-slate-500 hover:text-blue-950 hover:bg-blue-50"
                                                 onClick={() => generateStudentList(studentsInGroup, groupName, 'simple')}
                                                 title="Lista Simples (A4 Retrato)"
                                             >
@@ -385,7 +385,7 @@ export function Matriculas() {
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                className="h-7 px-2 text-xs text-slate-500 hover:text-indigo-600 hover:bg-indigo-50"
+                                                className="h-7 px-2 text-xs text-slate-500 hover:text-blue-950 hover:bg-blue-50"
                                                 onClick={() => generateStudentList(studentsInGroup, groupName, 'complete')}
                                                 title="Lista Completa (A4 Paisagem)"
                                             >
@@ -418,14 +418,14 @@ export function Matriculas() {
                                                             <td className="px-6 py-3 text-center">
                                                                 <div className="flex flex-col items-center gap-1">
                                                                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${(!student.status || student.status === 'CURSANDO' || student.status === 'ATIVO')
-                                                                        ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                                                                        ? "bg-blue-50 text-blue-950 border-blue-100"
                                                                         : (student.status === 'REPROVADO' || student.status === 'EVADIDO' || student.status === 'TRANSFERIDO')
-                                                                            ? "bg-red-50 text-red-700 border-red-100"
+                                                                            ? "bg-orange-50 text-orange-600 border-orange-100"
                                                                             : "bg-slate-50 text-slate-600 border-slate-200"
                                                                         }`}>
                                                                         {student.status || 'CURSANDO'}
                                                                     </span>
-                                                                    <span className={`text-[9px] font-medium ${student.isBlocked ? 'text-red-400' : 'text-slate-400'}`}>
+                                                                    <span className={`text-[9px] font-medium ${student.isBlocked ? 'text-orange-600' : 'text-slate-400'}`}>
                                                                         {student.isBlocked ? 'Acesso Bloqueado' : 'Acesso Ativo'}
                                                                     </span>
                                                                 </div>
@@ -435,12 +435,12 @@ export function Matriculas() {
                                                                     variant="outline"
                                                                     size="sm"
                                                                     onClick={() => handleEdit(student)}
-                                                                    className="h-7 px-3 text-xs font-medium text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300"
+                                                                    className="h-7 px-3 text-xs font-medium text-blue-950 border-blue-100 hover:bg-blue-50 hover:text-blue-950 hover:border-blue-200"
                                                                 >
                                                                     <Pencil className="w-3 h-3 mr-1.5" />
                                                                     Editar
                                                                 </Button>
-                                                                <Button variant="ghost" size="sm" onClick={() => handlePrintCarne(student)} className="h-8 w-8 p-0 rounded-full hover:bg-purple-50 hover:text-purple-600" title="Imprimir Carnê">
+                                                                <Button variant="ghost" size="sm" onClick={() => handlePrintCarne(student)} className="h-8 w-8 p-0 rounded-full hover:bg-blue-50 hover:text-blue-950" title="Imprimir Carnê">
                                                                     <Printer className="w-4 h-4" />
                                                                 </Button>
                                                             </td>
@@ -466,7 +466,7 @@ export function Matriculas() {
 
                         {isLoading && (
                             <div className="flex justify-center items-center py-12">
-                                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                                <Loader2 className="w-8 h-8 animate-spin text-blue-950" />
                             </div>
                         )}
                     </div>

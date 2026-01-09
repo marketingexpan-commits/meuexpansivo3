@@ -167,7 +167,7 @@ export function FinanceiroConfig() {
     return (
         <div className="p-8 max-w-7xl mx-auto">
             <div className="flex items-center gap-4 mb-8">
-                <div className="p-3 bg-slate-900 text-white rounded-xl shadow-lg">
+                <div className="p-3 bg-blue-950 text-white rounded-xl shadow-lg">
                     <UserCog className="w-8 h-8" />
                 </div>
                 <div>
@@ -196,12 +196,12 @@ export function FinanceiroConfig() {
                                             key={unit}
                                             onClick={() => setSelectedUnit(unit)}
                                             className={`w-full text-left px-4 py-3 rounded-xl transition-all font-bold text-sm flex items-center justify-between ${selectedUnit === unit
-                                                ? 'bg-indigo-50 text-indigo-700 ring-2 ring-indigo-100'
+                                                ? 'bg-blue-950/10 text-blue-950 ring-2 ring-blue-950/20'
                                                 : 'text-slate-500 hover:bg-slate-50'
                                                 }`}
                                         >
                                             <span>{unit}</span>
-                                            {selectedUnit === unit && <div className="w-2 h-2 rounded-full bg-indigo-500"></div>}
+                                            {selectedUnit === unit && <div className="w-2 h-2 rounded-full bg-blue-950"></div>}
                                         </button>
                                     ))}
                                 </div>
@@ -209,14 +209,14 @@ export function FinanceiroConfig() {
                         </Card>
                     )}
 
-                    <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl">
-                        <h4 className="font-bold text-blue-900 flex items-center gap-2 text-sm mb-2">
+                    <div className="bg-blue-950/5 border border-blue-950/10 p-4 rounded-xl">
+                        <h4 className="font-bold text-blue-950 flex items-center gap-2 text-sm mb-2">
                             <Smartphone className="w-4 h-4" />
                             Sincronização
                         </h4>
-                        <p className="text-xs text-blue-800/80 leading-relaxed">
+                        <p className="text-xs text-blue-950/80 leading-relaxed">
                             As alterações feitas aqui são atualizadas automaticamente no
-                            <strong className="text-blue-900"> App do Aluno</strong>.
+                            <strong className="text-blue-950"> App do Aluno</strong>.
                             Verifique os dados com atenção antes de salvar.
                         </p>
                     </div>
@@ -226,13 +226,13 @@ export function FinanceiroConfig() {
                     <Card className="border-slate-200 shadow-md relative overflow-hidden">
                         {isLoading && (
                             <div className="absolute inset-0 bg-white/80 z-20 flex items-center justify-center backdrop-blur-sm">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-950"></div>
                             </div>
                         )}
                         <CardContent className="p-8">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                                    <span className="w-2 h-8 bg-indigo-500 rounded-full block"></span>
+                                    <span className="w-2 h-8 bg-blue-950 rounded-full block"></span>
                                     Dados de Contato
                                 </h3>
                             </div>
@@ -284,7 +284,7 @@ export function FinanceiroConfig() {
                                         value={settings.defaultMessage}
                                         onChange={(e) => setSettings({ ...settings, defaultMessage: e.target.value })}
                                         placeholder="Digite a mensagem padrão que aparecerá ao clicar no botão do WhatsApp"
-                                        className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all text-sm min-h-[100px] resize-y font-medium text-slate-700 bg-slate-50 focus:bg-white"
+                                        className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-blue-950 focus:ring-2 focus:ring-blue-950/20 outline-none transition-all text-sm min-h-[100px] resize-y font-medium text-slate-700 bg-slate-50 focus:bg-white"
                                     />
                                     <p className="text-[10px] text-slate-400 text-right">
                                         Mensagem pré-preenchida no WhatsApp do aluno.
@@ -295,7 +295,7 @@ export function FinanceiroConfig() {
                                     <Button
                                         onClick={handleSave}
                                         disabled={isSaving}
-                                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl shadow-lg shadow-indigo-200 flex items-center gap-2 font-bold transition-all hover:scale-105 active:scale-95"
+                                        className="bg-blue-950 hover:bg-black text-white px-8 py-3 rounded-xl shadow-lg shadow-blue-900/20 flex items-center gap-2 font-bold transition-all hover:scale-105 active:scale-95"
                                     >
                                         {isSaving ? (
                                             <>

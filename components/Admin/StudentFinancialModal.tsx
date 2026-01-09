@@ -39,8 +39,8 @@ const StudentFinancialModal: React.FC<StudentFinancialModalProps> = ({
                 <div className="bg-white p-6 border-b border-zinc-100 relative overflow-hidden">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center relative z-10 gap-4">
                         <div className="flex items-center gap-4">
-                            <div className="min-w-[50px] w-[50px] h-[50px] bg-zinc-50 rounded-xl border border-zinc-200 flex items-center justify-center shrink-0">
-                                <FileText className="w-6 h-6 text-zinc-700" />
+                            <div className="min-w-[50px] w-[50px] h-[50px] bg-blue-950/10 rounded-xl border border-blue-950/20 flex items-center justify-center shrink-0">
+                                <FileText className="w-6 h-6 text-blue-950" />
                             </div>
                             <div className="flex flex-col">
                                 <h2 className="text-xl md:text-2xl font-bold text-zinc-900 leading-tight">
@@ -55,7 +55,7 @@ const StudentFinancialModal: React.FC<StudentFinancialModalProps> = ({
                                 </div>
                             </div>
                         </div>
-                        <button onClick={onClose} className="absolute top-0 right-0 md:static p-2 hover:bg-zinc-100 rounded-full transition-all text-zinc-400 hover:text-zinc-700 group -mr-2 md:mr-0 -mt-2 md:mt-0">
+                        <button onClick={onClose} className="absolute top-0 right-0 md:static p-2 hover:bg-blue-950/10 rounded-full transition-all text-blue-950/40 hover:text-blue-950 group -mr-2 md:mr-0 -mt-2 md:mt-0">
                             <X className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" />
                         </button>
                     </div>
@@ -83,7 +83,7 @@ const StudentFinancialModal: React.FC<StudentFinancialModalProps> = ({
                                             <span className="font-black text-xl text-slate-800 tracking-tight">{fee.month}</span>
                                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Referência</span>
                                         </div>
-                                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm border ${isPaid ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm border ${isPaid ? 'bg-blue-950/10 text-blue-950 border-blue-950/20' : 'bg-orange-600/10 text-orange-600 border-orange-600/20'}`}>
                                             {fee.status}
                                         </span>
                                     </div>
@@ -104,8 +104,8 @@ const StudentFinancialModal: React.FC<StudentFinancialModalProps> = ({
                                                 Vencimento: <span className="font-bold text-slate-700">{new Date(fee.dueDate).toLocaleDateString('pt-BR')}</span>
                                             </div>
                                             {fee.paymentDate && (
-                                                <div className="flex items-center gap-2 text-xs text-emerald-600 font-bold bg-emerald-50/50 p-2 rounded-lg mt-1">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                <div className="flex items-center gap-2 text-xs text-blue-950 font-bold bg-blue-950/5 p-2 rounded-lg mt-1">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-950/40" />
                                                     Liquidado em: {new Date(fee.paymentDate).toLocaleDateString('pt-BR')}
                                                 </div>
                                             )}
@@ -137,7 +137,7 @@ const StudentFinancialModal: React.FC<StudentFinancialModalProps> = ({
                                                     onSetManualPaymentMethod('Pix');
                                                     onSetIsManualPaymentModalOpen(true);
                                                 }}
-                                                className="w-full py-3 text-xs font-black uppercase tracking-wider text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-lg shadow-emerald-100 active:scale-95 transition-all text-center"
+                                                className="w-full py-3 text-xs font-black uppercase tracking-wider text-white bg-blue-950 hover:bg-black rounded-xl shadow-lg shadow-blue-100 active:scale-95 transition-all text-center"
                                             >
                                                 Receber Agora
                                             </button>

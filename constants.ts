@@ -363,3 +363,18 @@ export const SCHOOL_SHIFTS = [
   { label: 'Matutino', value: 'Matutino' },
   { label: 'Vespertino', value: 'Vespertino' }
 ];
+
+import { CalendarEvent } from './types';
+
+export const MOCK_CALENDAR_EVENTS: CalendarEvent[] = [
+  { id: 'ev1', title: 'Início do Ano Letivo', startDate: '2026-01-19', type: 'event', description: 'Boas-vindas aos alunos e responsáveis.' },
+  { id: 'ev2', title: 'Carnaval', startDate: '2026-02-16', endDate: '2026-02-18', type: 'holiday', description: 'Recesso escolar.' },
+  { id: 'ev3', title: 'Prova de Matemática - 1º Bimestre', startDate: '2026-03-20', type: 'exam', description: 'Conteúdo: Razões e Proporções.' },
+  { id: 'ev4', title: 'Reunião de Pais e Mestres', startDate: '2026-04-10', type: 'meeting', description: 'Entrega de boletins do 1º Bimestre.' },
+  { id: 'ev5', title: 'Dia do Trabalho', startDate: '2026-05-01', type: 'holiday' },
+  { id: 'ev6', title: 'Festa Junina', startDate: '2026-06-21', type: 'event', description: 'Grande arraiá do Expansivo.' },
+  { id: 'ev7', title: 'Férias Escolares', startDate: '2026-07-01', endDate: '2026-07-31', type: 'vacation' },
+  { id: 'ev8', title: 'Independência do Brasil', startDate: '2026-09-07', type: 'holiday' },
+  { id: 'ev9', title: 'Semana de Provas Finais', startDate: '2026-11-23', endDate: '2026-11-27', type: 'exam' },
+  { id: 'ev10', title: 'Encerramento do Ano Letivo', startDate: '2026-12-15', type: 'event' }
+];

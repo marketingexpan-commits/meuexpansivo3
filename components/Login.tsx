@@ -446,7 +446,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                     <select
                       value={selectedCoordinatorUnit}
                       onChange={(e) => setSelectedCoordinatorUnit(e.target.value as SchoolUnit)}
-                      className="w-full px-4 py-3 border border-purple-300 rounded-lg text-gray-700 focus:outline-none focus:border-purple-900 bg-purple-50 transition-colors"
+                      className="w-full px-4 py-3 border border-blue-300 rounded-lg text-gray-700 focus:outline-none focus:border-blue-950 bg-blue-50 transition-colors"
                       required
                     >
                       {SCHOOL_UNITS_LIST.map(unit => (
@@ -487,7 +487,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className={`w-full px-4 py-3 border rounded-lg text-gray-700 placeholder-gray-400 focus:outline-none transition-colors pr-10 ${activeTab === 'coordinator' ? 'border-purple-300 focus:border-purple-900' : 'border-gray-300 focus:border-blue-950'
+                      className={`w-full px-4 py-3 border rounded-lg text-gray-700 placeholder-gray-400 focus:outline-none transition-colors pr-10 ${activeTab === 'coordinator' ? 'border-blue-300 focus:border-blue-950' : 'border-gray-300 focus:border-blue-950'
                         }`}
                       required
                     />
@@ -531,7 +531,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                 {/* Botão Acessar Portal */}
                 <button
                   type="submit"
-                  className={`w-full py-4 text-lg font-bold text-white rounded-xl transition-all transform active:scale-95 ${activeTab === 'coordinator' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-orange-600 hover:bg-orange-700'
+                  className={`w-full py-4 text-lg font-bold text-white rounded-xl transition-all transform active:scale-95 ${activeTab === 'coordinator' ? 'bg-blue-900 hover:bg-blue-950' : 'bg-orange-600 hover:bg-orange-700'
                     }`}
                 >
                   Acessar

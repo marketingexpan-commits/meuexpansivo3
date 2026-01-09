@@ -139,7 +139,7 @@ export function ImageCropperModal({ isOpen, imageSrc, onClose, onCropComplete }:
                                 step={0.1}
                                 aria-label="Zoom"
                                 onChange={(e) => setZoom(Number(e.target.value))}
-                                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-950"
                             />
                             <ZoomIn className="w-4 h-4 text-slate-400" />
                         </div>
@@ -157,7 +157,7 @@ export function ImageCropperModal({ isOpen, imageSrc, onClose, onCropComplete }:
                                 step={1}
                                 aria-label="Rotação"
                                 onChange={(e) => setRotation(Number(e.target.value))}
-                                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-orange-600"
+                                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-950"
                             />
                             <span className="text-xs text-slate-500 w-8 text-right">{rotation}°</span>
                         </div>

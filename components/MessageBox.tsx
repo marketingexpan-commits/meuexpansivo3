@@ -123,16 +123,19 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
       </h3>
       <div className="bg-white p-6 rounded-lg shadow-md border border-gray-100">
         {isSent ? (
-          <div className="flex flex-col items-center justify-center h-48 text-center bg-green-50 rounded-lg border border-green-200 animate-fade-in">
-            <svg className="w-12 h-12 text-green-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            <h4 className="text-lg font-bold text-green-800">Mensagem Enviada!</h4>
-            <p className="text-sm text-green-700">Obrigado pelo seu feedback. A escola analisará sua mensagem em breve.</p>
+          <div className="flex flex-col items-center justify-center h-48 text-center bg-orange-50 rounded-lg border border-orange-200 animate-fade-in">
+            <svg className="w-12 h-12 text-orange-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <h4 className="text-lg font-bold text-orange-800">Mensagem Enviada!</h4>
+            <p className="text-sm text-orange-700">Obrigado pelo seu feedback. A escola analisará sua mensagem em breve.</p>
             {(recipient === MessageRecipient.DIRECTION || recipient === MessageRecipient.COORDINATION) && (
-              <p className="text-xs text-green-600 mt-2 font-semibold">Seu WhatsApp foi aberto para notificar a liderança.</p>
+              <p className="text-xs text-orange-600 mt-2 font-semibold">Seu WhatsApp foi aberto para notificar a liderança.</p>
             )}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="bg-blue-950 text-white px-4 py-2 rounded-t-lg font-bold">
+              Mensagens
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="recipient" className="block text-sm font-medium text-gray-700 mb-1">Destinatário</label>

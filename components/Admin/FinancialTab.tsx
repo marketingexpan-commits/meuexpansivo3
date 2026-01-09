@@ -10,7 +10,8 @@ import {
     PieChart,
     Search,
     TrendingUp,
-    Users
+    Users,
+    Phone
 } from 'lucide-react';
 import {
     SchoolUnit,
@@ -193,8 +194,11 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
         <div className="space-y-8 animate-fade-in-up">
             {/* CONFIGURAÇÃO DO SETOR FINANCEIRO */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-blue-200">
-                <h2 className="text-lg font-bold text-blue-900 mb-4 flex items-center gap-2">
-                    <span>⚙️</span> Configuração de Contato (WhatsApp)
+                <h2 className="text-lg font-bold text-blue-950 mb-4 flex items-center gap-2">
+                    <div className="w-8 h-8 bg-blue-950/10 rounded-full flex items-center justify-center">
+                        <Phone className="w-4 h-4 text-blue-950" />
+                    </div>
+                    Configuração de Contato (WhatsApp)
                 </h2>
                 <p className="text-sm text-gray-500 mb-6">
                     Defina aqui o número de WhatsApp que receberá os comprovantes de pagamento desta unidade.
@@ -240,7 +244,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
                 <div className="mt-4 flex justify-end">
                     <Button
                         onClick={handleSaveContact}
-                        className="bg-green-600 hover:bg-green-700 text-white px-8 py-2.5 rounded-lg shadow-sm flex items-center gap-2"
+                        className="bg-blue-950 hover:bg-black text-white px-8 py-2.5 rounded-lg shadow-sm flex items-center gap-2"
                     >
                         <span>💾</span> {editingContactId ? 'Atualizar Contato' : 'Salvar Contato'}
                     </Button>
@@ -248,11 +252,12 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
             </div>
 
             {/* FINANCIAL DASHBOARD */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-purple-200">
+            {/* FINANCIAL DASHBOARD */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-blue-950/10">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                     <div>
                         <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                            <DollarSign className="w-5 h-5 text-emerald-600" /> Resumo Financeiro
+                            <DollarSign className="w-5 h-5 text-blue-950" /> Resumo Financeiro
                         </h2>
                         <p className="text-sm text-gray-500">Acompanhamento de receitas via Mensalidades, por Unidade</p>
                     </div>
@@ -268,7 +273,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
                                     <select
                                         value={historyFilterUnit}
                                         onChange={e => setHistoryFilterUnit(e.target.value)}
-                                        className="w-full p-2.5 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-purple-500 transition-all font-medium"
+                                        className="w-full p-2.5 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-blue-950 transition-all font-medium"
                                     >
                                         <option value="">Selecione...</option>
                                         {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}
@@ -285,7 +290,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
                                     type="month"
                                     value={historyFilterMonth}
                                     onChange={e => setHistoryFilterMonth(e.target.value)}
-                                    className="w-full p-2.5 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-purple-500 transition-all font-medium"
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-blue-950 transition-all font-medium"
                                 />
                             </div>
                         </div>
@@ -341,14 +346,14 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
                             <div className="flex gap-3 flex-wrap">
                                 <button
                                     onClick={onGenerateFees}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow flex items-center gap-2 text-sm"
+                                    className="bg-blue-950 hover:bg-black text-white font-bold py-2 px-4 rounded-lg shadow flex items-center gap-2 text-sm"
                                 >
                                     <span>⚙️</span> Gerar Carnês (Lote)
                                 </button>
                                 {onFixDuplicates && (
                                     <button
                                         onClick={onFixDuplicates}
-                                        className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow flex items-center gap-2 text-sm"
+                                        className="bg-blue-950 hover:bg-black text-white font-bold py-2 px-4 rounded-lg shadow flex items-center gap-2 text-sm"
                                     >
                                         <span>🧹</span> Corrigir Duplicidades
                                     </button>
@@ -365,24 +370,24 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
                     ) : (
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="bg-white p-5 rounded-xl border-l-4 border-l-green-500 shadow-sm border border-gray-100 flex flex-col justify-between">
+                                <div className="bg-white p-5 rounded-xl border-l-4 border-l-blue-950 shadow-sm border border-gray-100 flex flex-col justify-between">
                                     <div>
                                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Recebido (Realizado)</p>
-                                        <h3 className="text-2xl font-black text-green-700">R$ {totalReceived.toFixed(2).replace('.', ',')}</h3>
+                                        <h3 className="text-2xl font-black text-blue-950">R$ {totalReceived.toFixed(2).replace('.', ',')}</h3>
                                     </div>
-                                    <div className="mt-4 text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded w-fit">
+                                    <div className="mt-4 text-xs font-medium text-blue-950 bg-blue-50 px-2 py-1 rounded w-fit">
                                         {receivedRecordsLength} pagamentos confirmados
                                     </div>
                                 </div>
 
-                                <div className={`bg-white p-5 rounded-xl border-l-4 border-l-red-500 shadow-sm border border-gray-100 flex flex-col justify-between cursor-pointer hover:bg-red-50 transition-colors ${showDelinquencyList ? 'ring-2 ring-red-500' : ''}`}
+                                <div className={`bg-white p-5 rounded-xl border-l-4 border-l-orange-500 shadow-sm border border-gray-100 flex flex-col justify-between cursor-pointer hover:bg-orange-50 transition-colors ${showDelinquencyList ? 'ring-2 ring-orange-500' : ''}`}
                                     onClick={() => setShowDelinquencyList(!showDelinquencyList)}>
                                     <div>
                                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Pendente (Inadimplência)</p>
-                                        <h3 className="text-2xl font-black text-red-600">R$ {totalPending.toFixed(2).replace('.', ',')}</h3>
+                                        <h3 className="text-2xl font-black text-orange-600">R$ {totalPending.toFixed(2).replace('.', ',')}</h3>
                                     </div>
                                     <div className="mt-4 flex justify-between items-center">
-                                        <span className="text-xs font-bold text-red-700 bg-red-100 px-2 py-1 rounded flex items-center gap-1">
+                                        <span className="text-xs font-bold text-orange-700 bg-orange-100 px-2 py-1 rounded flex items-center gap-1">
                                             <span>⚠️</span> {delinquentStudents.length} Alunos
                                         </span>
                                         <span className="text-[10px] text-gray-400 font-medium">Clique para ver lista</span>
@@ -401,7 +406,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
                                         </div>
                                         <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                                             <div
-                                                className="bg-blue-600 h-2 rounded-full transition-all duration-1000"
+                                                className="bg-blue-950 h-2 rounded-full transition-all duration-1000"
                                                 style={{ width: `${progress}%` }}
                                             ></div>
                                         </div>
@@ -411,10 +416,10 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
 
                             {/* DELINQUENCY LIST */}
                             {showDelinquencyList && delinquentStudents.length > 0 && (
-                                <div className="bg-red-50 rounded-xl border border-red-200 overflow-hidden animate-fade-in">
-                                    <div className="bg-red-100 px-6 py-3 border-b border-red-200 flex justify-between items-center">
+                                <div className="bg-orange-50 rounded-xl border border-orange-200 overflow-hidden animate-fade-in">
+                                    <div className="bg-orange-100 px-6 py-3 border-b border-orange-200 flex justify-between items-center">
                                         <div className="flex items-center gap-4">
-                                            <h4 className="font-bold text-red-800 flex items-center gap-2">
+                                            <h4 className="font-bold text-orange-800 flex items-center gap-2">
                                                 <span>📋</span> Lista de Pendências ({delinquentStudents.length})
                                             </h4>
                                             {delinquentStudents.some(s => s.studentPhone) && (
@@ -423,14 +428,14 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
                                                         setBulkCurrentIndex(0);
                                                         setIsBulkSendingModalOpen(true);
                                                     }}
-                                                    className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1 animate-pulse"
+                                                    className="bg-blue-950 hover:bg-black text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1 animate-pulse"
                                                 >
                                                     <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" /></svg>
                                                     Cobrar Todos ({delinquentStudents.filter(s => s.studentPhone).length})
                                                 </button>
                                             )}
                                         </div>
-                                        <button onClick={() => setShowDelinquencyList(false)} className="text-red-600 hover:text-red-800 text-sm font-bold">Fechar</button>
+                                        <button onClick={() => setShowDelinquencyList(false)} className="text-orange-600 hover:text-orange-800 text-sm font-bold">Fechar</button>
                                     </div>
                                     <div className="overflow-x-auto max-h-96 overflow-y-auto">
                                         <table className="w-full text-left bg-white">
@@ -444,12 +449,12 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
                                             </thead>
                                             <tbody className="divide-y divide-gray-100">
                                                 {delinquentStudents.map((st, idx) => (
-                                                    <tr key={idx} className="hover:bg-red-50/30">
+                                                    <tr key={idx} className="hover:bg-orange-50/30">
                                                         <td className="px-6 py-3 text-sm font-bold text-gray-800">{st.studentName}</td>
                                                         <td className="px-6 py-3 text-sm text-gray-600">{st.studentClass} ({st.studentShift})</td>
                                                         <td className="px-6 py-3 text-right">
                                                             <div className="flex flex-col items-end">
-                                                                <span className="text-sm font-bold text-red-600">R$ {st.value.toFixed(2)}</span>
+                                                                <span className="text-sm font-bold text-orange-600">R$ {st.value.toFixed(2)}</span>
                                                                 {st.value > st.originalValue && (
                                                                     <span className="text-[10px] text-gray-400">
                                                                         (Orig: R$ {st.originalValue.toFixed(2)})
@@ -463,7 +468,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
                                                                     href={`https://wa.me/${st.studentPhone ? sanitizePhone(st.studentPhone) : ''}?text=Prezado responsável, informamos que consta uma pendência financeira referente ao aluno(a) *${st.studentName}* relativa ao mês de *${st.month}*. Valor atualizado (com juros/multa): *R$ ${st.value.toFixed(2)}*. Para regularizar, acesse a área financeira do nosso aplicativo: https://meuexpansivo.vercel.app/ . Caso já tenha efetuado o pagamento, por favor, desconsidere esta mensagem.`}
                                                                     target="_blank"
                                                                     rel="noreferrer"
-                                                                    className="inline-flex items-center gap-1 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold hover:bg-green-600"
+                                                                    className="inline-flex items-center gap-1 bg-blue-950 text-white px-3 py-1 rounded-full text-xs font-bold hover:bg-black"
                                                                 >
                                                                     Cobrar
                                                                 </a>
@@ -571,7 +576,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
                                                         <span className="text-gray-300 text-xs" title="Sem recibo disponível">-</span>
                                                     )}
                                                 </td>
-                                                <td className="px-6 py-4 text-sm font-bold text-green-700 text-right">
+                                                <td className="px-6 py-4 text-sm font-bold text-blue-950 text-right">
                                                     {(() => {
                                                         const fin = calculateFinancials(rec);
                                                         return (
@@ -612,7 +617,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
                             if (!currentStudent) {
                                 return (
                                     <div className="p-8 text-center flex flex-col items-center">
-                                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                                        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
                                             <span className="text-3xl">✅</span>
                                         </div>
                                         <h2 className="text-2xl font-bold text-gray-800 mb-2">Envio Concluído!</h2>
@@ -639,7 +644,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
                                         </div>
                                         <div className="w-full bg-blue-950/50 rounded-full h-1.5 overflow-hidden">
                                             <div
-                                                className="bg-green-400 h-full transition-all duration-300"
+                                                className="bg-blue-950 h-full transition-all duration-300"
                                                 style={{ width: `${progressPercent}%` }}
                                             ></div>
                                         </div>
@@ -670,7 +675,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
                                                     setBulkCurrentIndex(prev => prev + 1);
                                                 }, 1000);
                                             }}
-                                            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-green-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-lg"
+                                            className="w-full bg-blue-950 hover:bg-black text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-lg"
                                         >
                                             Próximo Aluno ➡️
                                         </a>

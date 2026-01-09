@@ -438,3 +438,15 @@ export interface ExamGuide {
   unit: SchoolUnit;
 }
 // End of types definitions
+
+export type EventType = 'holiday' | 'exam' | 'meeting' | 'event' | 'vacation';
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  description?: string;
+  startDate: string; // ISO (YYYY-MM-DD)
+  endDate?: string;
+  type: EventType;
+}
+

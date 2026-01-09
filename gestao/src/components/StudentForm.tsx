@@ -543,7 +543,7 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                                 className={clsx(
                                     "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap cursor-pointer",
                                     activeTab === tab.id
-                                        ? "border-blue-600 text-blue-600"
+                                        ? "border-blue-950 text-blue-950"
                                         : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                                 )}
                             >
@@ -562,7 +562,7 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                             <div className="md:col-span-2 lg:col-span-1 flex flex-col items-center">
                                 <label className="text-sm font-medium text-gray-700 mb-2 block w-full text-center md:text-left">Foto 3x4</label>
                                 <div className="relative group">
-                                    <div className="w-32 h-40 bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg overflow-hidden flex flex-col items-center justify-center transition-all group-hover:border-blue-400 group-hover:bg-blue-50/30">
+                                    <div className="w-32 h-40 bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg overflow-hidden flex flex-col items-center justify-center transition-all group-hover:border-blue-950/40 group-hover:bg-blue-950/5">
                                         {formData.photoUrl ? (
                                             <img src={formData.photoUrl} alt="Preview" className="w-full h-full object-cover" />
                                         ) : (
@@ -602,7 +602,7 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                                         type="button"
                                         variant="outline"
                                         size="sm"
-                                        className="w-full gap-2 text-[10px] h-8 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                                        className="w-full gap-2 text-[10px] h-8 bg-blue-950/10 border-blue-950/20 text-blue-950 hover:bg-blue-950/20"
                                         onClick={() => setIsCameraOpen(true)}
                                     >
                                         <Camera className="w-3 h-3" />
@@ -694,7 +694,7 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                                 value={formData.status || 'CURSANDO'}
                                 onChange={(e) => handleSelectChange('status', e.target.value)}
                                 options={STUDENT_STATUS_OPTIONS}
-                                className="bg-blue-50/30 border-blue-100"
+                                className="bg-blue-950/5 border-blue-950/10"
                             />
 
                             <Select
@@ -768,14 +768,14 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                             />
 
                             <div className="col-span-2 pt-2">
-                                <label className={`flex items-start gap-3 p-4 rounded-xl border transition-colors cursor-pointer ${formData.isScholarship ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+                                <label className={`flex items-start gap-3 p-4 rounded-xl border transition-colors cursor-pointer ${formData.isScholarship ? 'border-orange-200 bg-orange-50' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
                                     <div className="flex items-center h-5 mt-1">
                                         <input
                                             type="checkbox"
                                             name="isScholarship"
                                             checked={formData.isScholarship || false}
                                             onChange={handleChange}
-                                            className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                            className="w-5 h-5 rounded border-slate-300 text-blue-950 focus:ring-blue-900 cursor-pointer"
                                         />
                                     </div>
                                     <div className="flex flex-col">
@@ -796,7 +796,7 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                                     onChange={handleChange}
                                     label="Autorização de Desconto/Bolsa (Obrigatório se houver desconto)"
                                     placeholder="Nome de quem autorizou (Ex: João Silva)"
-                                    className="border-slate-200 focus:ring-blue-500 bg-white"
+                                    className="border-slate-200 focus:ring-blue-950 bg-white"
                                 />
                             </div>
 
@@ -842,9 +842,9 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
 
                     {activeTab === 'family' && (
                         <div className="space-y-6">
-                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-start gap-3">
-                                <Users className="w-4 h-4 text-yellow-700 mt-1 flex-shrink-0" />
-                                <p className="text-sm text-yellow-800 leading-relaxed">
+                            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-start gap-3">
+                                <Users className="w-4 h-4 text-orange-600 mt-1 flex-shrink-0" />
+                                <p className="text-sm text-orange-900 leading-relaxed">
                                     <strong>Atenção:</strong> Esta aba é exclusiva para o <strong>Responsável Financeiro e Pedagógico</strong> (quem assina o contrato).
                                     Para dados do Pai e Mãe, use a aba <strong>Filiação</strong>.
                                 </p>
@@ -852,7 +852,7 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
 
                             <div className="border-t border-gray-100 pt-4">
                                 <h3 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
-                                    <Users className="w-4 h-4 text-blue-600" />
+                                    <Users className="w-4 h-4 text-blue-950" />
                                     Responsável Financeiro/Pedagógico
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1093,9 +1093,9 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
 
                     {activeTab === 'documents' && (
                         <div className="space-y-6">
-                            <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-2">
-                                <h3 className="text-sm font-semibold text-blue-800 mb-1">Checklist de Documentos ✅</h3>
-                                <p className="text-xs text-blue-600">
+                            <div className="bg-blue-950/5 border border-blue-950/10 rounded-lg p-4 mb-2">
+                                <h3 className="text-sm font-semibold text-blue-950 mb-1">Checklist de Documentos ✅</h3>
+                                <p className="text-xs text-blue-950/80">
                                     Marque os documentos que já foram entregues fisicamente na secretaria.
                                 </p>
                             </div>
@@ -1131,9 +1131,9 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
 
                     {activeTab === 'observations' && (
                         <div className="space-y-4">
-                            <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-4">
-                                <h3 className="text-sm font-semibold text-blue-800 mb-1">Anotações Gerais</h3>
-                                <p className="text-xs text-blue-600">
+                            <div className="bg-blue-950/5 border border-blue-950/10 rounded-lg p-4 mb-4">
+                                <h3 className="text-sm font-semibold text-blue-950 mb-1">Anotações Gerais</h3>
+                                <p className="text-xs text-blue-950/80">
                                     Utilize este espaço para registrar informações importantes que não se enquadram nos outros campos.
                                     Ex: Restrições alimentares, autorizações de saída, histórico de comportamento, etc.
                                 </p>
@@ -1142,7 +1142,7 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                                 name="observacoes_gerais"
                                 value={formData.observacoes_gerais || ''}
                                 onChange={(e) => setFormData((prev: any) => ({ ...prev, observacoes_gerais: e.target.value }))}
-                                className="w-full h-64 p-4 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm leading-relaxed"
+                                className="w-full h-64 p-4 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-950 focus:border-transparent resize-none text-sm leading-relaxed"
                                 placeholder="Digite aqui as observações sobre o aluno..."
                             />
                         </div>
@@ -1156,7 +1156,7 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                     <Button
                         variant="outline"
                         onClick={handlePrint}
-                        className="cursor-pointer flex items-center gap-2 border-blue-200 text-blue-700 hover:bg-blue-50"
+                        className="cursor-pointer flex items-center gap-2 border-blue-950/20 text-blue-950 hover:bg-blue-950/5"
                         title="Imprimir Ficha com Dados"
                     >
                         <Printer className="w-4 h-4" />
@@ -1174,7 +1174,7 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                     <Button
                         onClick={handleSubmit}
                         disabled={isLoading}
-                        className="cursor-pointer bg-orange-600 hover:bg-orange-700 flex items-center gap-2"
+                        className="cursor-pointer bg-blue-950 hover:bg-black flex items-center gap-2 shadow-lg shadow-blue-900/20"
                     >
                         {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                         {student ? 'Salvar Matrícula' : 'Confirmar Matrícula'}

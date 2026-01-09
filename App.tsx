@@ -161,21 +161,20 @@ const AppContent: React.FC = () => {
         setInitialLoad(prev => ({ ...prev, teachers: true }));
       }));
 
-      // Fetch Attendance for the specific class
+      // Fetch Attendance for the specific student based on their ID
       const studentUser = session.user as Student;
-      // Fetch Attendance for the specific unit and filter in memory to avoid complex indices
       unsubs.push(db.collection('attendance')
         .where('unit', '==', userUnit)
         .onSnapshot(snap => {
           const allAttendance = snap.docs.map(doc => doc.data() as AttendanceRecord);
+          // Filter records where this specific student has a recorded status
           const filtered = allAttendance.filter(record =>
-            record.gradeLevel === studentUser.gradeLevel &&
-            record.schoolClass === studentUser.schoolClass
+            record.studentStatus && (record.studentStatus[studentUser.id] !== undefined)
           );
           setAttendanceRecords(filtered);
           setInitialLoad(prev => ({ ...prev, attendance: true }));
         }, (err) => {
-          console.error("Attendance listen error (switched to unit-only filter):", err);
+          console.error("Attendance listen error:", err);
           setInitialLoad(prev => ({ ...prev, attendance: true }));
         }));
 

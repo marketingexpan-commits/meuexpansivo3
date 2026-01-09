@@ -89,7 +89,7 @@ export const CoordinationTab: React.FC<CoordinationTabProps> = ({
             <div className="mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                     <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                        <div className="bg-purple-100 text-purple-700 p-2 rounded-lg">
+                        <div className="bg-blue-950/10 text-blue-950 p-2 rounded-lg">
                             <GraduationCap className="w-5 h-5" />
                         </div>
                         Coordenação Pedagógica
@@ -97,7 +97,7 @@ export const CoordinationTab: React.FC<CoordinationTabProps> = ({
                     <button
                         onClick={fetchPendingGrades}
                         disabled={isLoadingCoordination}
-                        className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-bold transition-all disabled:opacity-50 shadow-sm"
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-950 hover:bg-black text-white rounded-lg text-sm font-bold transition-all disabled:opacity-50 shadow-sm"
                     >
                         <RefreshCw className={`w-4 h-4 ${isLoadingCoordination ? 'animate-spin' : ''}`} />
                         Atualizar
@@ -153,7 +153,7 @@ export const CoordinationTab: React.FC<CoordinationTabProps> = ({
             </div>
 
             {isLoadingCoordination ? (
-                <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600"></div></div>
+                <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-950"></div></div>
             ) : filteredStudents.length === 0 ? (
                 <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
                     <p className="text-gray-500 font-medium">Nenhuma nota pendente de aprovação com os filtros atuais. 🎉</p>
@@ -184,7 +184,7 @@ export const CoordinationTab: React.FC<CoordinationTabProps> = ({
                                                 ))}
                                                 <th rowSpan={2} className="px-1 py-2 text-center font-bold uppercase border-r border-gray-300 w-12 leading-tight">Média<br />Anual</th>
                                                 <th rowSpan={2} className="px-1 py-2 text-center font-bold text-red-700 uppercase border-r border-gray-300 bg-red-50 w-12 leading-tight">Rec.<br />Final</th>
-                                                <th rowSpan={2} className="px-1 py-2 text-center font-bold text-blue-950 uppercase border-r border-gray-300 bg-blue-50 w-12 leading-tight">Média<br />Final</th>
+                                                <th rowSpan={2} className="px-1 py-2 text-center font-bold text-blue-950 uppercase border-r border-gray-300 bg-blue-950/10 w-12 leading-tight">Média<br />Final</th>
                                                 <th rowSpan={2} className="px-2 py-2 text-center font-bold uppercase w-20">Situação</th>
                                                 <th rowSpan={2} className="px-2 py-2 text-center font-bold uppercase w-20 bg-gray-100">Ação</th>
                                             </tr>
@@ -204,7 +204,7 @@ export const CoordinationTab: React.FC<CoordinationTabProps> = ({
                                                 const isRecFinalPending = grade.recuperacaoFinalApproved === false;
 
                                                 return (
-                                                    <tr key={grade.id} className="hover:bg-purple-50 transition-colors border-b last:border-0 border-gray-200">
+                                                    <tr key={grade.id} className="hover:bg-blue-50 transition-colors border-b last:border-0 border-gray-200">
                                                         <td className="px-2 py-2 font-bold text-gray-700 border-r border-gray-300 sticky left-0 bg-white z-10 shadow-sm">
                                                             {grade.subject}
                                                         </td>
@@ -221,11 +221,11 @@ export const CoordinationTab: React.FC<CoordinationTabProps> = ({
                                                                 <React.Fragment key={key}>
                                                                     <td className={cellClass(isNotaPending)}>
                                                                         {formatGrade(bData.nota)}
-                                                                        {isNotaPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" title="Nota Alterada"></span>}
+                                                                        {isNotaPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-orange-600 rounded-full animate-pulse" title="Nota Alterada"></span>}
                                                                     </td>
                                                                     <td className={cellClass(isRecPending)}>
                                                                         {formatGrade(bData.recuperacao)}
-                                                                        {isRecPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" title="Recuperação Alterada"></span>}
+                                                                        {isRecPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-orange-600 rounded-full animate-pulse" title="Recuperação Alterada"></span>}
                                                                     </td>
                                                                     <td className="px-1 py-2 text-center font-bold bg-gray-50 border-r border-gray-300">
                                                                         {formatGrade(bData.media)}
@@ -247,13 +247,13 @@ export const CoordinationTab: React.FC<CoordinationTabProps> = ({
                                                             {isRecFinalPending && <span className="block text-[8px] bg-yellow-200 text-yellow-900 rounded px-1 mt-0.5 font-bold uppercase">Alterado</span>}
                                                         </td>
 
-                                                        <td className="px-1 py-2 text-center font-extrabold text-blue-900 bg-blue-50 border-r border-gray-300">
+                                                        <td className="px-1 py-2 text-center font-extrabold text-blue-950 bg-blue-950/10 border-r border-gray-300">
                                                             {formatGrade(grade.mediaFinal)}
                                                         </td>
 
                                                         <td className="px-2 py-2 text-center align-middle border-r border-gray-300">
-                                                            <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
-                                                                grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                                            <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-blue-950/10 text-blue-950 border-blue-950/20' :
+                                                                grade.situacaoFinal === 'Recuperação' ? 'bg-orange-50 text-orange-600 border-orange-200' :
                                                                     'bg-red-50 text-red-700 border-red-200'
                                                                 }`}>
                                                                 {grade.situacaoFinal}
@@ -263,7 +263,7 @@ export const CoordinationTab: React.FC<CoordinationTabProps> = ({
                                                         <td className="px-2 py-2 text-center bg-gray-50">
                                                             <button
                                                                 onClick={() => handleApproveGrade(grade)}
-                                                                className="bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-lg shadow-sm hover:scale-105 transition-all w-full flex items-center justify-center gap-2"
+                                                                className="bg-blue-950 hover:bg-blue-900 text-white p-2 rounded-lg shadow-sm hover:scale-105 transition-all w-full flex items-center justify-center gap-2"
                                                                 title="Aprovar alterações desta disciplina"
                                                             >
                                                                 <Check className="w-4 h-4" />
