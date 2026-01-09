@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
-import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial } from '../types';
+import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial, Occurrence } from '../types';
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
 import { getBimesterFromDate } from '../src/utils/academicUtils';
 import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects } from '../constants'; // Import Sync Fix
@@ -26,7 +26,8 @@ import {
     Mail,
     MessageCircle,
     User,
-    Folder
+    Folder,
+    ClipboardList
 } from 'lucide-react';
 import { db } from '../firebaseConfig';
 
@@ -102,7 +103,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState({ title: '', tip: '' });
     const [isLoadingAI, setIsLoadingAI] = useState(false);
-    const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro' | 'tickets' | 'materials'>('menu');
+    const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro' | 'tickets' | 'materials' | 'occurrences'>('menu');
     const [showNotifications, setShowNotifications] = useState(false);
 
     // Estado para o sistema de Dúvidas (Tickets)
@@ -118,6 +119,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const [classMaterials, setClassMaterials] = useState<ClassMaterial[]>([]);
     const [isLoadingMaterials, setIsLoadingMaterials] = useState(false);
     const [materialsError, setMaterialsError] = useState<string | null>(null);
+
+    // Estados para Ocorrências
+    const [occurrences, setOccurrences] = useState<Occurrence[]>([]);
+    const [isLoadingOccurrences, setIsLoadingOccurrences] = useState(false);
 
     const unreadNotifications = (notifications || []).filter(n => n && !n.read).length;
 
@@ -446,6 +451,30 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         }
     };
 
+    // --- OCCURRENCES LOADING LOGIC ---
+    useEffect(() => {
+        if (currentView === 'occurrences') {
+            loadOccurrences();
+        }
+    }, [currentView]);
+
+    const loadOccurrences = async () => {
+        setIsLoadingOccurrences(true);
+        try {
+            const snap = await db.collection('occurrences')
+                .where('studentId', '==', student.id)
+                .get();
+            const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Occurrence));
+            // Sort in memory to avoid need for composite index
+            data.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+            setOccurrences(data);
+        } catch (error) {
+            console.error("Erro ao carregar ocorrências:", error);
+        } finally {
+            setIsLoadingOccurrences(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans transition-all duration-500 ease-in-out print:min-h-0 print:h-auto print:bg-white print:p-0 print:block print:overflow-visible">
             <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${currentView === 'menu' ? 'max-w-md' : 'max-w-5xl'} print:min-h-0 print:h-auto print:shadow-none print:rounded-none`}>
@@ -492,18 +521,26 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                         onClick={() => {
                                                             if (!n.read && onMarkNotificationAsRead) onMarkNotificationAsRead(n.id);
 
-                                                            const titleLower = n.title.toLowerCase();
-                                                            const messageLower = n.message.toLowerCase();
+                                                            // Normalize strings to ignore accents (e.g. 'ê' -> 'e')
+                                                            const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-                                                            if (titleLower.includes('boletim') || titleLower.includes('nota') || messageLower.includes('boletim')) {
+                                                            const titleNorm = normalize(n.title);
+                                                            const messageNorm = normalize(n.message);
+
+                                                            // Check for occurrence keywords (accent-insensitive)
+                                                            if (titleNorm.includes('ocorrencia') || titleNorm.includes('advertencia') || messageNorm.includes('ocorrencia')) {
+                                                                console.log("Navigating to occurrences", n); // Debug
+                                                                setCurrentView('occurrences');
+                                                            } else if (titleNorm.includes('boletim') || titleNorm.includes('nota')) {
                                                                 setCurrentView(isEarlyChildhood ? 'early_childhood' : 'grades');
-                                                            } else if (titleLower.includes('frequência') || titleLower.includes('falta')) {
+                                                            } else if (titleNorm.includes('frequencia') || titleNorm.includes('falta')) {
                                                                 setCurrentView('attendance');
-                                                            } else if (titleLower.includes('financeiro') || titleLower.includes('mensalidade') || titleLower.includes('pagamento')) {
+                                                            } else if (titleNorm.includes('financeiro') || titleNorm.includes('mensalidade') || titleNorm.includes('pagamento')) {
                                                                 setCurrentView('financeiro');
-                                                            } else if (titleLower.includes('material') || titleLower.includes('conteúdo') || titleLower.includes('aula')) {
+                                                            } else if (titleNorm.includes('material') || titleNorm.includes('conteudo') || titleNorm.includes('aula')) {
                                                                 setCurrentView('materials');
                                                             } else {
+                                                                // Default fallback
                                                                 setCurrentView('tickets');
                                                             }
 
@@ -586,16 +623,19 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                     onClick={() => {
                                                                         if (!n.read && onMarkNotificationAsRead) onMarkNotificationAsRead(n.id);
 
-                                                                        const titleLower = n.title.toLowerCase();
-                                                                        const messageLower = n.message.toLowerCase();
+                                                                        const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                                                                        const titleNorm = normalize(n.title);
+                                                                        const messageNorm = normalize(n.message);
 
-                                                                        if (titleLower.includes('boletim') || titleLower.includes('nota') || messageLower.includes('boletim')) {
+                                                                        if (titleNorm.includes('ocorrencia') || titleNorm.includes('advertencia') || messageNorm.includes('ocorrencia')) {
+                                                                            setCurrentView('occurrences');
+                                                                        } else if (titleNorm.includes('boletim') || titleNorm.includes('nota') || messageNorm.includes('boletim')) {
                                                                             setCurrentView(isEarlyChildhood ? 'early_childhood' : 'grades');
-                                                                        } else if (titleLower.includes('frequência') || titleLower.includes('falta')) {
+                                                                        } else if (titleNorm.includes('frequencia') || titleNorm.includes('falta')) {
                                                                             setCurrentView('attendance');
-                                                                        } else if (titleLower.includes('financeiro') || titleLower.includes('mensalidade') || titleLower.includes('pagamento')) {
+                                                                        } else if (titleNorm.includes('financeiro') || titleNorm.includes('mensalidade') || titleNorm.includes('pagamento')) {
                                                                             setCurrentView('financeiro');
-                                                                        } else if (titleLower.includes('material') || titleLower.includes('conteúdo') || titleLower.includes('aula')) {
+                                                                        } else if (titleNorm.includes('material') || titleNorm.includes('conteudo') || titleNorm.includes('aula')) {
                                                                             setCurrentView('materials');
                                                                         } else {
                                                                             setCurrentView('tickets');
@@ -643,14 +683,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-2 mt-12 mb-14">
-                                    <div className="h-9 w-auto">
-                                        <SchoolLogo className="!h-full w-auto drop-shadow-sm" />
+                                <div className="flex items-center gap-2 mt-8 mb-10 pl-2">
+                                    <div className="h-10 w-auto shrink-0">
+                                        <SchoolLogo className="!h-full w-auto" />
                                     </div>
                                     <div className="flex flex-col justify-center">
-                                        <span className="text-[10px] text-blue-950 font-bold uppercase tracking-widest leading-none mb-0">Aplicativo</span>
+                                        <span className="text-[9px] text-orange-600 font-bold uppercase tracking-[0.15em] leading-none mb-1">Aplicativo</span>
                                         <h1 className="text-lg font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
-                                        <span className="text-[10px] text-blue-950/60 font-semibold uppercase tracking-wider leading-none mt-1.5">Portal da Família</span>
+                                        <span className="text-[9px] text-blue-950/60 font-bold uppercase tracking-wider leading-none mt-1">Portal da Família</span>
                                     </div>
                                 </div>
                                 <div className="text-left pb-4">
@@ -725,6 +765,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             <CreditCard className="w-6 h-6 text-blue-600" />
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Financeiro</h3>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setCurrentView('occurrences')}
+                                        className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-red-600 hover:shadow-md transition-all group aspect-square"
+                                    >
+                                        <div className="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-red-100 transition-colors">
+                                            <ClipboardList className="w-6 h-6 text-red-600" />
+                                        </div>
+                                        <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Ocorrências</h3>
                                     </button>
                                 </div>
                             </div>
@@ -1453,6 +1503,50 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     )}
                                 </div>
                             </div>
+                        </div>
+                    )}
+                    {currentView === 'occurrences' && (
+                        <div className="animate-fade-in-up">
+                            <h3 className="text-xl font-bold mb-4 text-gray-800 border-b border-gray-200 pb-2 flex items-center gap-2">
+                                <ClipboardList className="w-6 h-6 text-red-600" />
+                                Livro de Ocorrências
+                            </h3>
+
+                            {isLoadingOccurrences ? (
+                                <TableSkeleton rows={3} />
+                            ) : occurrences.length === 0 ? (
+                                <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-100">
+                                    <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <ClipboardList className="w-8 h-8 text-green-500" />
+                                    </div>
+                                    <h4 className="font-bold text-gray-800 mb-1">Nenhuma ocorrência registrada</h4>
+                                    <p className="text-gray-500 text-sm">Parabéns! Seu histórico comportamental está excelente.</p>
+                                    <Button onClick={() => setCurrentView('menu')} className="mt-4">
+                                        Voltar ao Menu
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {occurrences.map(occ => (
+                                        <div key={occ.id} className="bg-white border-l-4 border-red-500 rounded-r-lg shadow-sm p-4 hover:shadow-md transition-shadow">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div>
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 bg-gray-100 px-2 py-0.5 rounded mr-2">{occ.category}</span>
+                                                    <span className="text-xs text-gray-400">{new Date(occ.date).toLocaleDateString()}</span>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider block">Coordenador Pedagógico</span>
+                                                    <span className="text-xs font-bold text-gray-600 block">{occ.authorName}</span>
+                                                </div>
+                                            </div>
+                                            <h4 className="text-lg font-bold text-gray-900 mb-2">{occ.title}</h4>
+                                            <div className="bg-red-50 p-3 rounded-lg border border-red-100 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+                                                {occ.description}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

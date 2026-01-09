@@ -506,3 +506,51 @@ export interface Student {
   // ... (existing fields)
   academicHistory?: AcademicHistoryRecord[];
 }
+
+// --- SISTEMA DE OCORRÊNCIAS ---
+
+export enum OccurrenceCategory {
+  PEDAGOGICAL = 'Pedagógica',
+  DISCIPLINARY = 'Disciplinar',
+  POSITIVE = 'Elogio/Positiva',
+  HEALTH = 'Saúde',
+  OTHER = 'Outra'
+}
+
+export interface Occurrence {
+  id: string;
+  studentId: string;
+  studentName: string;
+  gradeLevel: string;
+  schoolClass: string;
+  shift: string;
+  unit: SchoolUnit;
+  category: OccurrenceCategory;
+  title: string;
+  description: string;
+  date: string; // ISO ou YYYY-MM-DD
+  authorId: string;
+  authorName: string;
+  authorRole: string;
+  isReadByStudent: boolean;
+  timestamp: any; // Firebase server timestamp ou ISO
+}
+
+export const OCCURRENCE_TEMPLATES: Record<string, string[]> = {
+  infantil_fund1: [
+    'Dificuldade de acompanhamento pedagógico',
+    'Conflito interpessoal em sala',
+    'Falta de material escolar',
+    'Excelente participação em aula',
+    'Mal estar súbito',
+    'Atraso recorrente'
+  ],
+  fund2_medio: [
+    'Uso inadequado de celular/eletrônico',
+    'Indisciplina em sala de aula',
+    'Falta de entrega de atividades',
+    'Destaque acadêmico / Olimpíadas',
+    'Conversa excessiva durante explicações',
+    'Saída antecipada sem justificativa'
+  ]
+};

@@ -1,10 +1,22 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebaseConfig';
-import { UnitContact, SchoolUnit, CoordinationSegment, Subject, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus } from '../types';
-import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, SUBJECT_LIST, CURRICULUM_MATRIX, getCurriculumSubjects, calculateBimesterMedia, calculateFinalData } from '../constants';
+import { UnitContact, SchoolUnit, CoordinationSegment, Subject, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES } from '../types';
+import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, SUBJECT_LIST, CURRICULUM_MATRIX, getCurriculumSubjects, calculateBimesterMedia, calculateFinalData, GRADES_BY_LEVEL, SCHOOL_CLASSES_OPTIONS, SCHOOL_SHIFTS } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency } from '../utils/frequency';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
+import {
+    AlertCircle,
+    X,
+    Search,
+    Plus,
+    ChevronRight,
+    ClipboardList,
+    User,
+    CheckCircle2,
+    Trash2,
+    Filter
+} from 'lucide-react';
 
 // Types for Grade coordination (copied/adapted from AdminDashboard)
 interface GradeEntry {
@@ -36,6 +48,12 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
     const [quickGradeFilter, setQuickGradeFilter] = useState<string>('all'); // NEW: Filter by Grade
     const [quickShiftFilter, setQuickShiftFilter] = useState<string>('all'); // NEW: Filter by Shift
     const [quickSubjectFilter, setQuickSubjectFilter] = useState<string>('all'); // NEW: Filter by Subject
+    // --- OCCURRENCE HISTORY STATE ---
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [historyOccurrences, setHistoryOccurrences] = useState<Occurrence[]>([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [historyFilterTerm, setHistoryFilterTerm] = useState('');
+    const [studentSearchTerm, setStudentSearchTerm] = useState(''); // NEW: Search for students in occurrence modal
 
     const [pendingGradesStudents, setPendingGradesStudents] = useState<any[]>([]);
     const [pendingGradesMap, setPendingGradesMap] = useState<Record<string, GradeEntry[]>>({});
@@ -90,6 +108,25 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
 
     const [teachersMap, setTeachersMap] = useState<Record<string, string>>({}); // ID -> Name
     const [loading, setLoading] = useState(false);
+
+    // --- OCCURRENCE MODAL STATE ---
+    const [isOccModalOpen, setIsOccModalOpen] = useState(false);
+    const [occStep, setOccStep] = useState<'filters' | 'select_student' | 'form'>('filters');
+    const [occFilters, setOccFilters] = useState({
+        level: '',
+        grade: '',
+        class: '',
+        shift: ''
+    });
+    const [occStudents, setOccStudents] = useState<any[]>([]);
+    const [selectedOccStudent, setSelectedOccStudent] = useState<any | null>(null);
+    const [occData, setOccData] = useState<Partial<Occurrence>>({
+        category: OccurrenceCategory.PEDAGOGICAL,
+        date: new Date().toISOString().split('T')[0],
+        title: '',
+        description: ''
+    });
+    const [isSavingOcc, setIsSavingOcc] = useState(false);
 
     // --- HELPER ---
     const formatGrade = (val: number | null | undefined) => (val !== null && val !== undefined && val !== -1) ? val.toFixed(1) : '-';
@@ -282,6 +319,160 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
         }
     };
 
+    const handleOccurrencesFetchStudents = async () => {
+        if (!occFilters.level || !occFilters.grade || !occFilters.class || !occFilters.shift) {
+            alert("Por favor, selecione todos os filtros.");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            // Buscar alunos filtrando apenas por UNIDADE e TURMA inicialmente para evitar problemas de formatação de strings no banco
+            const snap = await db.collection('students')
+                .where('unit', '==', coordinator.unit)
+                .where('schoolClass', '==', occFilters.class)
+                .get();
+
+            let students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+            // Refinar filtros em memória (mais seguro contra divergências de string e UTF-8)
+            students = students.filter((s: any) => {
+                // Verificar Turno
+                if (s.shift !== occFilters.shift) return false;
+
+                // Verificar Série (Grade) - Tenta correspondência exata ou parcial para ser robusto
+                // Ex: "3ª Série" deve bater com "3ª Série" ou "3ª Série - Ensino Médio"
+                const dbGrade = (s.gradeLevel || '').trim();
+                const filterGrade = occFilters.grade.trim();
+
+                return dbGrade === filterGrade || dbGrade.startsWith(filterGrade);
+            });
+
+            setOccStudents(students);
+            if (students.length === 0) {
+                alert("Nenhum aluno encontrado com esses filtros.");
+            } else {
+                setOccStep('select_student');
+            }
+        } catch (error) {
+            console.error("Erro ao buscar alunos para ocorrência:", error);
+            alert("Erro ao buscar alunos.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSaveOccurrence = async () => {
+        if (!occData.title || !occData.description || !selectedOccStudent) {
+            alert("Por favor, preencha todos os campos obrigatórios.");
+            return;
+        }
+
+        setIsSavingOcc(true);
+        try {
+            const newOcc: Omit<Occurrence, 'id'> = {
+                studentId: selectedOccStudent.id,
+                studentName: selectedOccStudent.name,
+                gradeLevel: selectedOccStudent.gradeLevel,
+                schoolClass: selectedOccStudent.schoolClass,
+                shift: selectedOccStudent.shift,
+                unit: selectedOccStudent.unit,
+                category: occData.category as OccurrenceCategory,
+                title: occData.title,
+                description: occData.description,
+                date: occData.date || new Date().toISOString().split('T')[0],
+                authorId: coordinator.id,
+                authorName: coordinator.name,
+                authorRole: 'Coordenação',
+                isReadByStudent: false,
+                timestamp: new Date().toISOString()
+            };
+
+            const docRef = await db.collection('occurrences').add(newOcc);
+
+            // Notificação
+            if (onCreateNotification) {
+                await onCreateNotification(
+                    'Nova Ocorrência',
+                    `Você recebeu uma nova ocorrência: ${occData.title}`,
+                    selectedOccStudent.id
+                );
+            }
+
+            alert("Ocorrência registrada com sucesso!");
+            setIsOccModalOpen(false);
+            // Reset state
+            setOccStep('filters');
+            setSelectedOccStudent(null);
+            setOccData({
+                category: OccurrenceCategory.PEDAGOGICAL,
+                date: new Date().toISOString().split('T')[0],
+                title: '',
+                description: ''
+            });
+        } catch (error) {
+            console.error("Erro ao salvar ocorrência:", error);
+            alert("Erro ao salvar ocorrência.");
+        } finally {
+            setIsSavingOcc(false);
+        }
+    };
+
+    // --- OCCURRENCE HISTORY LOGIC ---
+    const handleFetchOccurrenceHistory = async () => {
+        setHistoryLoading(true);
+        try {
+            // Fetch occurrences for this unit
+            const snap = await db.collection('occurrences')
+                .where('unit', '==', coordinator.unit)
+                .orderBy('timestamp', 'desc')
+                .limit(100)
+                .get();
+
+            const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Occurrence));
+            setHistoryOccurrences(data);
+        } catch (error) {
+            console.error("Erro ao buscar histórico de ocorrências:", error);
+            // Fallback for missing index if orderBy timestamp fails (should be rare if index exists or simple query)
+            try {
+                const snap = await db.collection('occurrences')
+                    .where('unit', '==', coordinator.unit)
+                    .get();
+                const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Occurrence));
+                data.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+                setHistoryOccurrences(data);
+            } catch (e) {
+                console.error("Fallback fetch failed", e);
+            }
+        } finally {
+            setHistoryLoading(false);
+        }
+    };
+
+    const handleDeleteOccurrence = async (id: string) => {
+        if (!confirm("Tem certeza que deseja excluir esta ocorrência? Esta ação não pode ser desfeita.")) return;
+
+        try {
+            await db.collection('occurrences').doc(id).delete();
+            setHistoryOccurrences(prev => prev.filter(occ => occ.id !== id));
+            alert("Ocorrência excluída com sucesso.");
+        } catch (error) {
+            console.error("Erro ao excluir ocorrência:", error);
+            alert("Erro ao excluir ocorrência.");
+        }
+    };
+
+    const filteredHistory = useMemo(() => {
+        if (!historyFilterTerm) return historyOccurrences;
+        const term = historyFilterTerm.toLowerCase();
+        return historyOccurrences.filter(occ =>
+            occ.studentName.toLowerCase().includes(term) ||
+            occ.schoolClass.toLowerCase().includes(term) ||
+            occ.title.toLowerCase().includes(term) ||
+            occ.gradeLevel.toLowerCase().includes(term)
+        );
+    }, [historyOccurrences, historyFilterTerm]);
+
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans">
             <div className="w-full max-w-7xl bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col">
@@ -307,25 +498,44 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                     </>
                                 )}
                             </div>
-                            <Button
-                                variant="secondary"
-                                onClick={onLogout}
-                                className="text-sm font-semibold py-1.5 px-4"
-                            >
-                                Sair
-                            </Button>
+                            <div className="flex items-center gap-3">
+                                <Button
+                                    variant="primary"
+                                    onClick={() => setIsOccModalOpen(true)}
+                                    className="text-sm font-semibold py-1.5 px-4 !bg-red-600 hover:!bg-red-700 flex items-center gap-2"
+                                >
+                                    <ClipboardList className="w-4 h-4" />
+                                    Postar Ocorrência
+                                </Button>
+                                <Button
+                                    variant="primary"
+                                    onClick={() => { setIsHistoryModalOpen(true); handleFetchOccurrenceHistory(); }}
+                                    className="text-sm font-semibold py-1.5 px-4 flex items-center gap-2 shadow-sm hover:opacity-90 transition-opacity"
+                                    style={{ backgroundColor: '#4B5563', color: '#FFFFFF' }}
+                                >
+                                    <ClipboardList className="w-4 h-4" />
+                                    Gerenciar Ocorrências
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    onClick={onLogout}
+                                    className="text-sm font-semibold py-1.5 px-4"
+                                >
+                                    Sair
+                                </Button>
+                            </div>
                         </div>
 
                         {/* Welcome Message */}
                         <div className="flex flex-col items-start text-left">
-                            <div className="flex items-center gap-2 mt-4 mb-6">
-                                <div className="h-9 w-auto">
-                                    <SchoolLogo className="!h-full w-auto drop-shadow-sm" />
+                            <div className="flex items-center gap-2 mt-6 mb-8 pl-1">
+                                <div className="h-10 w-auto shrink-0">
+                                    <SchoolLogo className="!h-full w-auto" />
                                 </div>
                                 <div className="flex flex-col justify-center">
-                                    <span className="text-[10px] text-blue-950 font-bold uppercase tracking-widest leading-none mb-0">Aplicativo</span>
+                                    <span className="text-[9px] text-orange-600 font-bold uppercase tracking-[0.15em] leading-none mb-1">Aplicativo</span>
                                     <h1 className="text-lg font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
-                                    <span className="text-[10px] text-blue-950/60 font-semibold uppercase tracking-wider leading-none mt-1.5">Gestão Pedagógica</span>
+                                    <span className="text-[9px] text-blue-950/60 font-bold uppercase tracking-wider leading-none mt-1">Gestão Pedagógica</span>
                                 </div>
                             </div>
                             <p className="text-gray-600 max-w-2xl">
@@ -690,6 +900,347 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
 
                 </main>
             </div>
+
+            {/* OCCURRENCE MODAL */}
+            {isOccModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
+                        {/* Header */}
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-red-50/50">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-red-100 text-red-600 rounded-xl">
+                                    <ClipboardList className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-black text-gray-900 leading-tight">Postar Ocorrência</h2>
+                                    <p className="text-xs text-gray-500 font-medium">Registro oficial de acompanhamento do aluno</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setIsOccModalOpen(false)}
+                                className="p-2 hover:bg-white rounded-full transition-colors text-gray-400 hover:text-gray-600 shadow-sm"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {/* Steps Indicator */}
+                            <div className="flex items-center justify-between mb-8 px-4">
+                                {[
+                                    { step: 'filters', label: 'Filtros' },
+                                    { step: 'select_student', label: 'Seleção' },
+                                    { step: 'form', label: 'Detalhes' }
+                                ].map((s, idx) => (
+                                    <React.Fragment key={s.step}>
+                                        <div className="flex flex-col items-center gap-2">
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${occStep === s.step ? 'bg-red-600 text-white shadow-lg shadow-red-200' :
+                                                (occStep === 'select_student' && idx === 0) || (occStep === 'form' && idx <= 1) ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'
+                                                }`}>
+                                                {(occStep === 'select_student' && idx === 0) || (occStep === 'form' && idx <= 1) ? <CheckCircle2 className="w-5 h-5" /> : idx + 1}
+                                            </div>
+                                            <span className={`text-[10px] font-bold uppercase tracking-wider ${occStep === s.step ? 'text-red-600' : 'text-gray-400'}`}>
+                                                {s.label}
+                                            </span>
+                                        </div>
+                                        {idx < 2 && <div className={`flex-1 h-0.5 mx-4 ${(occStep === 'select_student' && idx === 0) || (occStep === 'form' && idx <= 1) ? 'bg-green-500' : 'bg-gray-100'}`}></div>}
+                                    </React.Fragment>
+                                ))}
+                            </div>
+
+                            {/* Step 1: Filters */}
+                            {occStep === 'filters' && (
+                                <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Nível de Ensino</label>
+                                            <select
+                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-red-500 transition-all"
+                                                value={occFilters.level}
+                                                onChange={(e) => setOccFilters({ ...occFilters, level: e.target.value, grade: '' })}
+                                            >
+                                                <option value="">Selecione o nível</option>
+                                                {Object.keys(GRADES_BY_LEVEL).map(level => (
+                                                    <option key={level} value={level}>{level}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Série/Ano</label>
+                                            <select
+                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-red-500 transition-all disabled:opacity-50"
+                                                value={occFilters.grade}
+                                                disabled={!occFilters.level}
+                                                onChange={(e) => setOccFilters({ ...occFilters, grade: e.target.value })}
+                                            >
+                                                <option value="">Selecione a série</option>
+                                                {occFilters.level && GRADES_BY_LEVEL[occFilters.level]?.map(grade => (
+                                                    <option key={grade} value={grade}>{grade}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Turma</label>
+                                            <select
+                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-red-500 transition-all"
+                                                value={occFilters.class}
+                                                onChange={(e) => setOccFilters({ ...occFilters, class: (e.target.value as SchoolClass) })}
+                                            >
+                                                <option value="">Selecione a turma</option>
+                                                {SCHOOL_CLASSES_OPTIONS.map(opt => (
+                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Turno</label>
+                                            <select
+                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-red-500 transition-all"
+                                                value={occFilters.shift}
+                                                onChange={(e) => setOccFilters({ ...occFilters, shift: (e.target.value as SchoolShift) })}
+                                            >
+                                                <option value="">Selecione o turno</option>
+                                                {SCHOOL_SHIFTS.map(opt => (
+                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <Button
+                                        onClick={handleOccurrencesFetchStudents}
+                                        disabled={loading}
+                                        className="w-full py-4 text-base !bg-red-600 hover:!bg-red-700 shadow-lg text-white font-bold rounded-xl transition-all"
+                                    >
+                                        {loading ? 'Buscando...' : '🔍 Buscar Alunos'}
+                                    </Button>
+                                </div>
+                            )}
+
+                            {/* Step 2: Select Student */}
+                            {occStep === 'select_student' && (
+                                <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider">Escolha o Aluno ({occStudents.length})</h3>
+                                        <button onClick={() => setOccStep('filters')} className="text-xs text-red-600 font-bold hover:underline">Alterar Filtros</button>
+                                    </div>
+                                    <div className="mb-4 relative">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                        <input
+                                            type="text"
+                                            placeholder="Buscar por nome ou RM..."
+                                            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                                            value={studentSearchTerm}
+                                            onChange={(e) => setStudentSearchTerm(e.target.value)}
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-2">
+                                        {occStudents.filter(s =>
+                                            s.name.toLowerCase().includes(studentSearchTerm.toLowerCase()) ||
+                                            (s.code && s.code.toLowerCase().includes(studentSearchTerm.toLowerCase()))
+                                        ).map(student => (
+                                            <button
+                                                key={student.id}
+                                                onClick={() => {
+                                                    setSelectedOccStudent(student);
+                                                    setOccStep('form');
+                                                }}
+                                                className="flex items-center justify-between p-4 rounded-xl border border-gray-100 hover:border-red-200 hover:bg-red-50 transition-all group text-left"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-red-100 group-hover:text-red-500 transition-colors">
+                                                        <User className="w-5 h-5" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-gray-900 leading-tight">{student.name}</p>
+                                                        <p className="text-[10px] text-gray-500 font-medium uppercase tracking-tighter mt-0.5">RM: {student.code}</p>
+                                                    </div>
+                                                </div>
+                                                <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-red-500 transition-colors" />
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Step 3: Occurrence Form */}
+                            {occStep === 'form' && selectedOccStudent && (
+                                <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                                    <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-red-600 shadow-sm">
+                                                <User className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-1">Aluno Selecionado</p>
+                                                <p className="font-bold text-gray-900">{selectedOccStudent.name}</p>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => setOccStep('select_student')} className="text-xs text-red-600 font-bold hover:underline px-3 py-1 bg-white rounded-lg shadow-sm">Trocar</button>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Categoria</label>
+                                            <select
+                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-red-500"
+                                                value={occData.category}
+                                                onChange={(e) => setOccData({ ...occData, category: (e.target.value as OccurrenceCategory) })}
+                                            >
+                                                {Object.entries(OccurrenceCategory).map(([key, value]) => (
+                                                    <option key={key} value={value}>{value}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Data do Ocorrido</label>
+                                            <input
+                                                type="date"
+                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-red-500"
+                                                value={occData.date}
+                                                onChange={(e) => setOccData({ ...occData, date: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex justify-between">
+                                            <span>Título da Ocorrência</span>
+                                            <span className="text-[10px] text-gray-400 capitalize">Modelos disponíveis abaixo</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder="Ex: Falta de material, Comportamento..."
+                                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-red-500 placeholder:text-gray-300"
+                                            value={occData.title}
+                                            onChange={(e) => setOccData({ ...occData, title: e.target.value })}
+                                        />
+
+                                        {/* Templates */}
+                                        <div className="flex flex-wrap gap-2 pt-1">
+                                            {(coordinator.segment ? OCCURRENCE_TEMPLATES[coordinator.segment] : []).map(template => (
+                                                <button
+                                                    key={template}
+                                                    onClick={() => setOccData({ ...occData, title: template })}
+                                                    className="px-3 py-1.5 bg-white border border-gray-100 rounded-full text-[10px] font-bold text-gray-500 hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-all shadow-sm"
+                                                >
+                                                    + {template}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Descrição Detalhada</label>
+                                        <textarea
+                                            rows={4}
+                                            placeholder="Descreva o ocorrido com detalhes para registro no prontuário do aluno..."
+                                            className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl font-medium text-gray-700 outline-none focus:ring-2 focus:ring-red-500 placeholder:text-gray-300 resize-none"
+                                            value={occData.description}
+                                            onChange={(e) => setOccData({ ...occData, description: e.target.value })}
+                                        />
+                                    </div>
+
+                                    <Button
+                                        onClick={handleSaveOccurrence}
+                                        disabled={isSavingOcc}
+                                        className="w-full py-4 text-base !bg-green-600 hover:!bg-green-700 shadow-xl text-white font-black rounded-xl transition-all"
+                                    >
+                                        {isSavingOcc ? 'Salvando Ocorrência...' : '💾 Confirmar e Registrar'}
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* OCCURRENCE HISTORY MODAL */}
+            {isHistoryModalOpen && (
+                <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="flex justify-between items-center p-6 bg-white border-b border-gray-100 rounded-t-3xl">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-blue-50 rounded-xl">
+                                    <ClipboardList className="w-6 h-6 text-blue-600" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-black tracking-tight leading-none text-gray-900">Gerenciar Ocorrências</h2>
+                                    <p className="text-xs text-gray-500 font-medium opacity-90 mt-1">Histórico e Exclusão</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setIsHistoryModalOpen(false)} className="text-gray-400 hover:text-red-500 hover:bg-gray-100 p-2 rounded-full transition-colors">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-hidden flex flex-col bg-gray-50">
+                            {/* Filter Bar */}
+                            <div className="p-4 bg-white border-b border-gray-100 flex gap-4 items-center">
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Filtrar por aluno, turma, série..."
+                                        className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        value={historyFilterTerm}
+                                        onChange={(e) => setHistoryFilterTerm(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* List */}
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                                {historyLoading ? (
+                                    <div className="text-center py-10 text-gray-400">Carregando histórico...</div>
+                                ) : filteredHistory.length === 0 ? (
+                                    <div className="text-center py-10 text-gray-400">Nenhuma ocorrência encontrada.</div>
+                                ) : (
+                                    filteredHistory.map(occ => (
+                                        <div key={occ.id} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between gap-4 group hover:border-blue-200 transition-colors">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${occ.category === OccurrenceCategory.DISCIPLINARY ? 'bg-red-100 text-red-600' :
+                                                        occ.category === OccurrenceCategory.POSITIVE ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'
+                                                        }`}>
+                                                        {occ.category}
+                                                    </span>
+                                                    <span className="text-xs text-gray-400 font-medium">{new Date(occ.date).toLocaleDateString()}</span>
+                                                </div>
+                                                <h4 className="font-bold text-gray-900">{occ.title}</h4>
+                                                <p className="text-sm text-gray-600 mt-1 line-clamp-2">{occ.description}</p>
+
+                                                <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-50">
+                                                    <div className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded">
+                                                        <User className="w-3 h-3" />
+                                                        <span className="font-bold">{occ.studentName}</span>
+                                                    </div>
+                                                    <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded border border-gray-100">{occ.gradeLevel}</span>
+                                                    <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded border border-gray-100">{occ.schoolClass}</span>
+                                                    <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded border border-gray-100">{occ.shift}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-end">
+                                                <button
+                                                    onClick={() => handleDeleteOccurrence(occ.id)}
+                                                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                    title="Excluir Ocorrência"
+                                                >
+                                                    <Trash2 className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

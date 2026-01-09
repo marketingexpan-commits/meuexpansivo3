@@ -52,23 +52,23 @@ export function Sidebar({ isOpen, onClose, children, userName = "Admin", onLogou
                 `}
             >
                 {/* Header */}
-                <div className="h-16 flex items-center px-4 border-b border-slate-100 bg-white">
+                <div className="h-auto min-h-[5rem] py-3 flex items-center px-4 border-b border-slate-100 bg-white shadow-sm transition-all duration-300">
                     <div className={`flex items-center gap-3 overflow-hidden transition-all duration-300 ${collapsed ? "justify-center w-full" : ""}`}>
                         {collapsed ? (
                             <img
                                 src={SCHOOL_LOGO_URL}
                                 alt="Logo"
-                                className="h-8 w-auto object-contain"
+                                className="h-10 w-auto object-contain"
                             />
                         ) : (
-                            <div className="flex items-center gap-2 w-full px-2">
-                                <div className="h-9 w-auto shrink-0">
-                                    <SchoolLogo className="!h-full w-auto drop-shadow-sm" />
+                            <div className="flex items-center gap-2 w-full">
+                                <div className="h-10 w-auto shrink-0">
+                                    <SchoolLogo className="!h-full w-auto" />
                                 </div>
                                 <div className="flex flex-col justify-center overflow-hidden">
-                                    <span className="text-[10px] text-blue-950 font-bold uppercase tracking-widest leading-none mb-0 truncate">Aplicativo</span>
+                                    <span className="text-[9px] text-orange-600 font-bold uppercase tracking-[0.15em] leading-none mb-1 truncate">Aplicativo</span>
                                     <h1 className="text-lg font-bold text-blue-950 tracking-tight leading-none truncate">Meu Expansivo</h1>
-                                    <span className="text-[10px] text-blue-950/60 font-semibold uppercase tracking-wider leading-none mt-1.5 truncate">Painel Administrativo</span>
+                                    <span className="text-[9px] text-blue-950/60 font-bold uppercase tracking-wider leading-none mt-1 truncate">Painel Administrativo</span>
                                 </div>
                             </div>
                         )}

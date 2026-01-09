@@ -342,3 +342,24 @@ export const CURRICULUM_MATRIX: Record<string, Record<string, number>> = {
     [Subject.ENTREPRENEURSHIP]: 0
   }
 };
+
+// --- CONSTANTES PARA FILTROS (Ocorrências) ---
+export const GRADES_BY_LEVEL: Record<string, string[]> = {
+  'Educação Infantil': ['Nível I', 'Nível II', 'Nível III', 'Nível IV', 'Nível V'],
+  'Fundamental I': ['1º Ano', '2º Ano', '3º Ano', '4º Ano', '5º Ano'],
+  'Fundamental II': ['6º Ano', '7º Ano', '8º Ano', '9º Ano'],
+  'Ensino Médio': ['1ª Série', '2ª Série', '3ª Série']
+};
+
+export const SCHOOL_CLASSES_OPTIONS = [
+  { label: 'A', value: 'A' },
+  { label: 'B', value: 'B' },
+  { label: 'C', value: 'C' },
+  { label: 'D', value: 'D' },
+  { label: 'E', value: 'E' }
+];
+
+export const SCHOOL_SHIFTS = [
+  { label: 'Matutino', value: 'Matutino' },
+  { label: 'Vespertino', value: 'Vespertino' }
+];

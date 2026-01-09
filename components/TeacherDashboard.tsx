@@ -797,14 +797,14 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                     {activeTab === 'menu' && (
                         <div className="animate-fade-in-up flex flex-col h-full justify-between w-full">
                             <div className="space-y-6">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <div className="h-9 w-auto">
-                                        <SchoolLogo className="!h-full w-auto drop-shadow-sm" />
+                                <div className="flex items-center gap-2 mb-10 pl-2">
+                                    <div className="h-10 w-auto shrink-0">
+                                        <SchoolLogo className="!h-full w-auto" />
                                     </div>
                                     <div className="flex flex-col justify-center">
-                                        <span className="text-[10px] text-blue-950 font-bold uppercase tracking-widest leading-none mb-0">Aplicativo</span>
+                                        <span className="text-[9px] text-orange-600 font-bold uppercase tracking-[0.15em] leading-none mb-1">Aplicativo</span>
                                         <h1 className="text-lg font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
-                                        <span className="text-[10px] text-blue-950/60 font-semibold uppercase tracking-wider leading-none mt-1.5">Portal do Professor</span>
+                                        <span className="text-[9px] text-blue-950/60 font-bold uppercase tracking-wider leading-none mt-1">Portal do Professor</span>
                                     </div>
                                 </div>
                                 <div className="text-left pb-4">
