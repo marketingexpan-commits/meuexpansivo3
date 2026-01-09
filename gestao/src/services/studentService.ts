@@ -113,5 +113,53 @@ export const studentService = {
             console.error("Erro na correção de turmas vazias:", error);
             throw error;
         }
+    },
+
+    // --- NOVO: GERADOR DE MATRÍCULA CENTRALIZADO ---
+
+    // Busca o próximo código disponível na rede (Maior + 1)
+    async getNextStudentCode() {
+        try {
+            const allStudents = await this.getStudents();
+            let maxCode = 0;
+
+            const testCodes = ['88888', '54321', '12345', '11111', '77777', '00000', '33333', '66666'];
+
+            allStudents.forEach(student => {
+                const studentCode = student.code?.toString().trim();
+                // Ignorar códigos de teste na busca do maior real
+                if (studentCode && !testCodes.includes(studentCode)) {
+                    const codeNum = parseInt(studentCode, 10);
+                    if (!isNaN(codeNum)) {
+                        if (codeNum > maxCode) maxCode = codeNum;
+                    }
+                }
+            });
+
+            return (maxCode + 1).toString();
+        } catch (error) {
+            console.error("Erro ao calcular próximo código:", error);
+            return '';
+        }
+    },
+
+    // Valida se um código já existe no banco
+    async isCodeUnique(code: string, excludeStudentId?: string) {
+        try {
+            const q = query(collection(db, STUDENTS_COLLECTION), where('code', '==', code));
+            const querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty) return true;
+
+            // Se houver registros, verificar se não é o próprio aluno sendo editado
+            if (excludeStudentId) {
+                return querySnapshot.docs.every(doc => doc.id === excludeStudentId);
+            }
+
+            return false;
+        } catch (error) {
+            console.error("Erro ao validar unicidade do código:", error);
+            return false; // Por segurança, assume que não é único se houver erro
+        }
     }
 };

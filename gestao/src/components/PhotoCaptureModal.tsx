@@ -187,7 +187,7 @@ export function PhotoCaptureModal({ isOpen, onClose, onCapture }: PhotoCaptureMo
                             </Button>
                             <Button
                                 onClick={handleSave}
-                                className="flex-1 gap-2 py-6 bg-blue-950 hover:bg-black"
+                                className="flex-1 gap-2 py-6"
                             >
                                 <Check className="w-4 h-4" />
                                 Confirmar Foto

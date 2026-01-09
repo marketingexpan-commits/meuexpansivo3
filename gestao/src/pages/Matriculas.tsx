@@ -33,6 +33,7 @@ export function Matriculas() {
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
+
     // Effect to handle URL actions
     useEffect(() => {
         if (searchParams.get('action') === 'new') {

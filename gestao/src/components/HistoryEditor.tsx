@@ -173,7 +173,7 @@ export function HistoryEditor({ student, onSave, onCancel }: HistoryEditorProps)
                     <h3 className="font-bold text-slate-800">Composição do Histórico</h3>
                     <p className="text-xs text-slate-500">Adicione os anos anteriores cursados em outras instituições.</p>
                 </div>
-                <Button onClick={handleAddNew} disabled={isAdding || !!editingId} className="bg-blue-950 text-white hover:bg-black">
+                <Button onClick={handleAddNew} disabled={isAdding || !!editingId} className="">
                     <Plus className="w-4 h-4 mr-2" /> Adicionar Ano
                 </Button>
             </div>
@@ -296,7 +296,7 @@ export function HistoryEditor({ student, onSave, onCancel }: HistoryEditorProps)
                                     </div>
 
                                     <div className="col-span-2">
-                                        <Button size="sm" onClick={handleAddSubject} disabled={!subjectForm.name} className="w-full h-9 bg-blue-950 text-white hover:bg-black">
+                                        <Button size="sm" onClick={handleAddSubject} disabled={!subjectForm.name} className="w-full h-9">
                                             <Plus className="w-4 h-4" />
                                         </Button>
                                     </div>
@@ -430,7 +430,7 @@ export function HistoryEditor({ student, onSave, onCancel }: HistoryEditorProps)
                     <Button
                         onClick={handleFinalSave}
                         disabled={isSaving || isAdding || !!editingId}
-                        className="bg-blue-950 hover:bg-black text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-blue-900/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="font-bold py-3 px-6 rounded-xl shadow-lg shadow-blue-900/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isSaving ? (
                             <>Salvando...</>

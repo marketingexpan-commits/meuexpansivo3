@@ -97,7 +97,7 @@ export function Sidebar() {
                             src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"
                             alt="Logo"
                             className="h-8 w-auto object-contain"
-                            style={{ filter: 'brightness(0) saturate(100%) invert(9%) sepia(62%) saturate(4383%) hue-rotate(227deg) brightness(20%) contrast(100%)' }}
+                            style={{ filter: 'brightness(0) saturate(100%) invert(10%) sepia(31%) saturate(5441%) hue-rotate(212deg) brightness(97%) contrast(99%)' }}
                         />
                     ) : (
                         <>
@@ -105,7 +105,7 @@ export function Sidebar() {
                                 src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"
                                 alt="Meu Expansivo"
                                 className="h-9 object-contain"
-                                style={{ filter: 'brightness(0) saturate(100%) invert(9%) sepia(62%) saturate(4383%) hue-rotate(227deg) brightness(20%) contrast(100%)' }}
+                                style={{ filter: 'brightness(0) saturate(100%) invert(10%) sepia(31%) saturate(5441%) hue-rotate(212deg) brightness(97%) contrast(99%)' }}
                             />
                             <div className="flex flex-col justify-center">
                                 <span className="text-[10px] text-blue-950 font-bold uppercase tracking-widest leading-none mb-0">Sistema</span>

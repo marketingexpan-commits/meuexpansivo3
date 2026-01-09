@@ -131,6 +131,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
 
 
+
+
     // --- MASK HELPERS ---
     const maskCPF = (value: string) => {
         const v = value.replace(/\D/g, '');
@@ -1231,6 +1233,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             >
                                 <LogOut size={20} />
                             </button>
+
+
                         </div>
                     </header>
 

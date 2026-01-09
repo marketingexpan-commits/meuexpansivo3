@@ -669,7 +669,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     </div>
 
                                     {/* Right Actions Area: Banner Icon, Notify, Logout */}
-                                    <div className="flex items-center gap-1 sm:gap-2">
+                                    <div className="flex items-center gap-1 sm:gap-2 relative">
                                         {/* Banner Trigger Icon */}
                                         <button
                                             onClick={() => setIsBannerOpen(true)}
@@ -696,60 +696,62 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                     </span>
                                                 )}
                                             </button>
-                                            {showNotifications && (
-                                                <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden ring-1 ring-black ring-opacity-5 text-left">
-                                                    <div className="p-3 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
-                                                        <h4 className="font-bold text-blue-900 text-sm">Notificações</h4>
-                                                        <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-gray-600">
-                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                                        </button>
-                                                    </div>
-                                                    <div className="max-h-60 overflow-y-auto">
-                                                        {notifications.length > 0 ? (
-                                                            notifications.map(n => (
-                                                                <div
-                                                                    key={n.id}
-                                                                    className={`p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer ${!n.read ? 'bg-blue-50/30' : ''}`}
-                                                                    onClick={() => {
-                                                                        if (!n.read && onMarkNotificationAsRead) onMarkNotificationAsRead(n.id);
-
-                                                                        const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                                                                        const titleNorm = normalize(n.title);
-                                                                        const messageNorm = normalize(n.message);
-
-                                                                        if (titleNorm.includes('ocorrencia') || titleNorm.includes('advertencia') || messageNorm.includes('ocorrencia')) {
-                                                                            setCurrentView('occurrences');
-                                                                        } else if (titleNorm.includes('boletim') || titleNorm.includes('nota') || messageNorm.includes('boletim')) {
-                                                                            setCurrentView(isEarlyChildhood ? 'early_childhood' : 'grades');
-                                                                        } else if (titleNorm.includes('frequencia') || titleNorm.includes('falta')) {
-                                                                            setCurrentView('attendance');
-                                                                        } else if (titleNorm.includes('financeiro') || titleNorm.includes('mensalidade') || titleNorm.includes('pagamento')) {
-                                                                            setCurrentView('financeiro');
-                                                                        } else if (titleNorm.includes('material') || titleNorm.includes('conteudo') || titleNorm.includes('aula')) {
-                                                                            setCurrentView('materials');
-                                                                        } else {
-                                                                            setCurrentView('tickets');
-                                                                        }
-
-                                                                        setShowNotifications(false);
-                                                                    }}
-                                                                >
-                                                                    <div className="flex justify-between items-start mb-1">
-                                                                        <span className="font-bold text-xs text-gray-800">{n.title}</span>
-                                                                        <span className="text-[10px] text-gray-400">{new Date(n.timestamp).toLocaleDateString()}</span>
-                                                                    </div>
-                                                                    <p className="text-xs text-gray-600 line-clamp-2">{n.message}</p>
-                                                                </div>
-                                                            ))
-                                                        ) : (
-                                                            <div className="p-4 text-center text-gray-500 text-xs italic">
-                                                                Nenhuma notificação.
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            )}
                                         </div>
+
+                                        {showNotifications && (
+                                            <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden ring-1 ring-black ring-opacity-5 text-left">
+                                                <div className="p-3 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
+                                                    <h4 className="font-bold text-blue-900 text-sm">Notificações</h4>
+                                                    <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-gray-600">
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                    </button>
+                                                </div>
+                                                <div className="max-h-60 overflow-y-auto">
+                                                    {notifications.length > 0 ? (
+                                                        notifications.map(n => (
+                                                            <div
+                                                                key={n.id}
+                                                                className={`p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer ${!n.read ? 'bg-blue-50/30' : ''}`}
+                                                                onClick={() => {
+                                                                    if (!n.read && onMarkNotificationAsRead) onMarkNotificationAsRead(n.id);
+
+                                                                    const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                                                                    const titleNorm = normalize(n.title);
+                                                                    const messageNorm = normalize(n.message);
+
+                                                                    if (titleNorm.includes('ocorrencia') || titleNorm.includes('advertencia') || messageNorm.includes('ocorrencia')) {
+                                                                        setCurrentView('occurrences');
+                                                                    } else if (titleNorm.includes('boletim') || titleNorm.includes('nota') || messageNorm.includes('boletim')) {
+                                                                        setCurrentView(isEarlyChildhood ? 'early_childhood' : 'grades');
+                                                                    } else if (titleNorm.includes('frequencia') || titleNorm.includes('falta')) {
+                                                                        setCurrentView('attendance');
+                                                                    } else if (titleNorm.includes('financeiro') || titleNorm.includes('mensalidade') || titleNorm.includes('pagamento')) {
+                                                                        setCurrentView('financeiro');
+                                                                    } else if (titleNorm.includes('material') || titleNorm.includes('conteudo') || titleNorm.includes('aula')) {
+                                                                        setCurrentView('materials');
+                                                                    } else {
+                                                                        setCurrentView('tickets');
+                                                                    }
+
+                                                                    setShowNotifications(false);
+                                                                }}
+                                                            >
+                                                                <div className="flex justify-between items-start mb-1">
+                                                                    <span className="font-bold text-xs text-gray-800">{n.title}</span>
+                                                                    <span className="text-[10px] text-gray-400">{new Date(n.timestamp).toLocaleDateString()}</span>
+                                                                </div>
+                                                                <p className="text-xs text-gray-600 line-clamp-2">{n.message}</p>
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        <div className="p-4 text-center text-gray-500 text-xs italic">
+                                                            Nenhuma notificação.
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+
 
                                         {/* Logout Button */}
                                         <Button variant="secondary" onClick={onLogout} className="text-sm font-semibold py-1.5 px-4 h-10">Sair</Button>
@@ -1814,57 +1816,58 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             </div>
 
             {/* --- Banner Modal --- */}
-            {isBannerOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm animate-fade-in">
-                    <div
-                        className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden animate-scale-in"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {/* Modal Header */}
-                        <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-4 text-white relative">
-                            <button
-                                onClick={() => setIsBannerOpen(false)}
-                                className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 p-1.5 rounded-full transition-colors"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-2 backdrop-blur-sm">
-                                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
-                            </div>
-                            <h3 className="text-lg font-bold">Informativo Escolar</h3>
-                        </div>
-
-                        {/* Modal Content */}
-                        <div className="p-4">
-                            <div className="flex items-start gap-4">
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <h4 className="text-gray-900 font-bold text-lg">Rematrículas Abertas 2026</h4>
-                                        <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-bold border border-green-200">NOVO</span>
-                                    </div>
-                                    <p className="text-gray-600 text-sm leading-relaxed mb-4">
-                                        Garanta sua renovação com condições especiais até o final deste mês. Procure a secretaria da sua unidade para mais informações e não perca os prazos!
-                                    </p>
-
-                                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-sm text-blue-800 flex gap-3">
-                                        <InfoIcon className="w-5 h-5 shrink-0 text-blue-500" />
-                                        <span>Horário de atendimento: Segunda a Sexta, das 8h às 11h30 | das 13h às 17h.</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="mt-4 flex justify-end">
+            {
+                isBannerOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm animate-fade-in">
+                        <div
+                            className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden animate-scale-in"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* Modal Header */}
+                            <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-4 text-white relative">
                                 <button
                                     onClick={() => setIsBannerOpen(false)}
-                                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium text-sm transition-colors"
+                                    className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 p-1.5 rounded-full transition-colors"
                                 >
-                                    Fechar
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                                 </button>
+                                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-2 backdrop-blur-sm">
+                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
+                                </div>
+                                <h3 className="text-lg font-bold">Informativo Escolar</h3>
+                            </div>
+
+                            {/* Modal Content */}
+                            <div className="p-4">
+                                <div className="flex items-start gap-4">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <h4 className="text-gray-900 font-bold text-lg">Rematrículas Abertas 2026</h4>
+                                            <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-bold border border-green-200">NOVO</span>
+                                        </div>
+                                        <p className="text-gray-600 text-sm leading-relaxed mb-4">
+                                            Garanta sua renovação com condições especiais até o final deste mês. Procure a secretaria da sua unidade para mais informações e não perca os prazos!
+                                        </p>
+
+                                        <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-sm text-blue-800 flex gap-3">
+                                            <InfoIcon className="w-5 h-5 shrink-0 text-blue-500" />
+                                            <span>Horário de atendimento: Segunda a Sexta, das 8h às 11h30 | das 13h às 17h.</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 flex justify-end">
+                                    <button
+                                        onClick={() => setIsBannerOpen(false)}
+                                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium text-sm transition-colors"
+                                    >
+                                        Fechar
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
         </div>
     );
 };

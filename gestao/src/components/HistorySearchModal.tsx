@@ -126,7 +126,7 @@ export function HistorySearchModal({ onClose }: HistorySearchModalProps) {
                             <Button
                                 onClick={handleSearch}
                                 disabled={isLoading}
-                                className="w-full py-7 font-bold text-base bg-blue-950 hover:bg-black shadow-xl shadow-blue-950/20 rounded-2xl transition-all"
+                                className="w-full py-7 font-bold text-base shadow-xl shadow-blue-950/20 rounded-2xl transition-all"
                             >
                                 {isLoading ? (
                                     <><Loader2 className="w-5 h-5 mr-3 animate-spin" /> Buscando...</>

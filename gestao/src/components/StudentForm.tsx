@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Input } from './Input';
 import { Select } from './Select';
 import { Checkbox } from './Checkbox';
@@ -207,13 +207,23 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
             initialData.schoolClass = normalizeClass(student.schoolClass);
         }
 
-        // Normalize schoolClass (e.g. "03" -> "C")
-        if (student && student.schoolClass) {
-            initialData.schoolClass = normalizeClass(student.schoolClass);
-        }
-
         return initialData;
     });
+
+    // --- LOGICA DE GERADOR DE MATRÍCULA ---
+    useEffect(() => {
+        const fetchNextCode = async () => {
+            if (!student && !formData.code) {
+                setIsLoading(true);
+                const nextCode = await studentService.getNextStudentCode();
+                if (nextCode) {
+                    setFormData((prev: any) => ({ ...prev, code: nextCode }));
+                }
+                setIsLoading(false);
+            }
+        };
+        fetchNextCode();
+    }, [student]); // Carrega ao abrir nova matrícula
 
     // Check if unit should be disabled
     const userUnit = localStorage.getItem('userUnit');
@@ -425,6 +435,14 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
             // Basic validation
             if (!formData.name) return alert("Nome é obrigatório");
             if (!formData.unit) return alert("Unidade é obrigatória"); // Ensure unit is present
+            if (!formData.code) return alert("Código de matrícula é obrigatório");
+
+            // Validação de Unicidade Global
+            const isUnique = await studentService.isCodeUnique(formData.code, student?.id);
+            if (!isUnique) {
+                setIsLoading(false);
+                return alert(`O código ${formData.code} já está em uso por outro aluno na rede. Por favor, utilize um código diferente.`);
+            }
 
             // Synchronize phone fields & Sanitize Financials
             let cleanTuition = formData.valor_mensalidade;
@@ -760,11 +778,12 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                             />
 
                             <Input
-                                label="Número de Matrícula"
+                                name="code"
+                                label="Número de Matrícula (Global)"
                                 value={formData.code || ''}
-                                disabled={true}
-                                placeholder={student ? "Matrícula do aluno" : "Será gerado ao salvar"}
-                                className="bg-gray-50"
+                                onChange={handleChange}
+                                placeholder={student ? "Matrícula do aluno" : "Gerando sugestão..."}
+                                className="bg-blue-50/30 border-blue-900/10 font-bold"
                             />
 
                             <div className="col-span-2 pt-2">
@@ -1174,7 +1193,7 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                     <Button
                         onClick={handleSubmit}
                         disabled={isLoading}
-                        className="cursor-pointer bg-blue-950 hover:bg-black flex items-center gap-2 shadow-lg shadow-blue-900/20"
+                        className="cursor-pointer flex items-center gap-2"
                     >
                         {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                         {student ? 'Salvar Matrícula' : 'Confirmar Matrícula'}

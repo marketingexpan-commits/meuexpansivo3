@@ -59,7 +59,7 @@ export function Login() {
                         src={SCHOOL_LOGO_URL}
                         alt="Logo Colégio Expansivo"
                         className="h-14 object-contain"
-                        style={{ filter: 'brightness(20%)' }}
+                        style={{ filter: 'brightness(0) saturate(100%) invert(10%) sepia(31%) saturate(5441%) hue-rotate(212deg) brightness(97%) contrast(99%)' }}
                     />
                     <div className="flex flex-col justify-center">
                         <span className="text-[10px] text-blue-950 font-bold uppercase tracking-widest leading-none mb-0.5">Sistema</span>
@@ -109,7 +109,7 @@ export function Login() {
                             <div className="pt-2">
                                 <Button
                                     type="submit"
-                                    className="w-full bg-blue-950 hover:bg-slate-900"
+                                    className="w-full"
                                     size="lg"
                                     isLoading={loading}
                                     variant="primary"

@@ -295,7 +295,7 @@ export function FinanceiroConfig() {
                                     <Button
                                         onClick={handleSave}
                                         disabled={isSaving}
-                                        className="bg-blue-950 hover:bg-black text-white px-8 py-3 rounded-xl shadow-lg shadow-blue-900/20 flex items-center gap-2 font-bold transition-all hover:scale-105 active:scale-95"
+                                        className="px-8 py-3 rounded-xl flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
                                     >
                                         {isSaving ? (
                                             <>

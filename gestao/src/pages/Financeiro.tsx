@@ -643,7 +643,7 @@ export function Financeiro() {
                     {activeTab === 'recebimentos' && (
                         <Button
                             onClick={() => setIsInstallmentModalOpen(true)}
-                            className="bg-blue-950 hover:bg-black text-white shadow-md border-b-4 border-blue-900 h-11 px-6 font-bold flex-1 sm:flex-none transition-all active:translate-y-0.5 active:border-b-0"
+                            className="flex-1 sm:flex-none"
                         >
                             <Landmark className="w-5 h-5 mr-2" />
                             Gerador de Carnês
@@ -652,7 +652,7 @@ export function Financeiro() {
                     {activeTab === 'recebimentos' && (
                         <Button
                             onClick={() => setIsDischargeModalOpen(true)}
-                            className="bg-blue-950 hover:bg-black text-white shadow-md border-b-4 border-blue-900 h-11 px-6 font-bold flex-1 sm:flex-none transition-all active:translate-y-0.5 active:border-b-0"
+                            className="flex-1 sm:flex-none"
                         >
                             <CheckCircle2 className="w-5 h-5 mr-2" />
                             Baixa Manual
@@ -661,7 +661,7 @@ export function Financeiro() {
                     {activeTab === 'pagamentos' && (
                         <Button
                             onClick={() => setIsExpenseModalOpen(true)}
-                            className="bg-blue-950 hover:bg-black text-white shadow-md border-b-4 border-blue-900 h-11 px-6 font-bold flex-1 sm:flex-none transition-all active:translate-y-0.5 active:border-b-0"
+                            className="flex-1 sm:flex-none"
                         >
                             <Plus className="w-5 h-5 mr-2" />
                             Nova Despesa
@@ -682,8 +682,8 @@ export function Financeiro() {
                             isLoading={isGenerating}
                             disabled={eligibleForBoletos === 0}
                             className={`h-11 px-6 font-bold flex-1 sm:flex-none transition-all ${eligibleForBoletos > 0
-                                ? 'bg-blue-950 hover:bg-black text-white shadow-lg ring-4 ring-blue-100 animate-pulse'
-                                : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none ring-0'}`}
+                                ? 'animate-pulse ring-4 ring-blue-100 flex-1 sm:flex-none'
+                                : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none ring-0 flex-1 sm:flex-none'}`}
                             title={eligibleForBoletos > 0 ? "Gera boletos no Mercado Pago para parcelas pendentes" : "Não há parcelas pendentes sem boleto para este aluno"}
                         >
                             <Barcode className="w-5 h-5 mr-2" />
