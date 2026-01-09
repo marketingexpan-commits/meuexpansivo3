@@ -665,11 +665,26 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 </div>
 
                                 {/* Student Info Card */}
-                                <div className="bg-blue-50/50 py-3 px-4 rounded-lg border border-blue-100 mb-4">
+                                <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-100 mb-4">
                                     <div className="flex items-center justify-between">
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Aluno(a)</span>
-                                            <span className="text-sm font-bold text-blue-900 leading-tight">{student.name}</span>
+                                        <div className="flex items-center gap-3">
+                                            {/* Foto do Aluno */}
+                                            {student.photoUrl ? (
+                                                <img
+                                                    src={student.photoUrl}
+                                                    alt={student.name}
+                                                    className="w-20 h-24 object-cover rounded shadow-sm border border-blue-200"
+                                                />
+                                            ) : (
+                                                <div className="w-20 h-24 rounded bg-blue-100 flex items-center justify-center text-blue-300 shadow-sm border border-blue-200">
+                                                    <User size={40} />
+                                                </div>
+                                            )}
+
+                                            <div className="flex flex-col">
+                                                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Aluno(a)</span>
+                                                <span className="text-sm font-bold text-blue-900 leading-tight">{student.name}</span>
+                                            </div>
                                         </div>
                                         <div className="flex flex-col items-end">
                                             <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Turma / Turno</span>

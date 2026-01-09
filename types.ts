@@ -294,6 +294,7 @@ export interface Student {
   gradeLevelSigla?: string; // New field to preserve original PDF sigla
   isScholarship?: boolean; // Indicates if the student is exempt from monthly fees
   phoneNumber?: string;
+  photoUrl?: string; // Base64 or URL for 3x4 student photo
 }
 
 export interface Teacher {
