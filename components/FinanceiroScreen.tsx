@@ -8,7 +8,7 @@ import { ALLOW_MOCK_LOGIN } from '../constants';
 import { CreditCard, AlertTriangle, GraduationCap, Lock, CheckCircle, Handshake } from 'lucide-react';
 
 // NOTE: Replace with your actual Firebase Functions URL or configure Vite proxy
-const MP_REFERENCE_URL = 'https://us-central1-meu-expansivo.cloudfunctions.net/createMercadoPagoPreference';
+const MP_REFERENCE_URL = 'https://us-central1-meu-expansivo-app.cloudfunctions.net/createMercadoPagoPreference';
 
 // Initialize outside component to avoid re-runs
 
@@ -693,7 +693,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                 }
             };
 
-            const response = await fetch('https://us-central1-meu-expansivo.cloudfunctions.net/processMercadoPagoPayment', {
+            const response = await fetch('https://us-central1-meu-expansivo-app.cloudfunctions.net/processMercadoPagoPayment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -1162,7 +1162,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                         // param.formData usually contains the Brick's collected data, but we can merge/override if needed
                                                         // For now, let's trust the Brick or the Backend Sanitizer we built.
 
-                                                        const response = await fetch('https://us-central1-meu-expansivo.cloudfunctions.net/processMercadoPagoPayment', {
+                                                        const response = await fetch('https://us-central1-meu-expansivo-app.cloudfunctions.net/processMercadoPagoPayment', {
                                                             method: 'POST',
                                                             headers: {
                                                                 'Content-Type': 'application/json'
@@ -1246,7 +1246,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                             const btn = document.getElementById('btn-verify-status-pix');
                                                             if (btn) btn.innerText = "Verificando...";
                                                             try {
-                                                                const response = await fetch('https://us-central1-meu-expansivo.cloudfunctions.net/verifyPaymentStatus', {
+                                                                const response = await fetch('https://us-central1-meu-expansivo-app.cloudfunctions.net/verifyPaymentStatus', {
                                                                     method: 'POST',
                                                                     headers: { 'Content-Type': 'application/json' },
                                                                     body: JSON.stringify({ paymentId: paymentResult.id })
@@ -1293,7 +1293,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                         if (btn) btn.innerText = "Verificando...";
 
                                                         try {
-                                                            const response = await fetch('https://us-central1-meu-expansivo.cloudfunctions.net/verifyPaymentStatus', {
+                                                            const response = await fetch('https://us-central1-meu-expansivo-app.cloudfunctions.net/verifyPaymentStatus', {
                                                                 method: 'POST',
                                                                 headers: { 'Content-Type': 'application/json' },
                                                                 body: JSON.stringify({ paymentId: paymentResult.id })
@@ -1367,7 +1367,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                             const btn = document.getElementById('btn-verify-status-boleto');
                                                             if (btn) btn.innerText = "Verificando...";
                                                             try {
-                                                                const response = await fetch('https://us-central1-meu-expansivo.cloudfunctions.net/verifyPaymentStatus', {
+                                                                const response = await fetch('https://us-central1-meu-expansivo-app.cloudfunctions.net/verifyPaymentStatus', {
                                                                     method: 'POST',
                                                                     headers: { 'Content-Type': 'application/json' },
                                                                     body: JSON.stringify({ paymentId: paymentResult.id })
