@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
 import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial } from '../types';
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
+import { getBimesterFromDate } from '../src/utils/academicUtils';
 import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects } from '../constants'; // Import Sync Fix
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency } from '../utils/frequency';
 import { getStudyTips } from '../services/geminiService';
@@ -134,6 +135,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth() + 1;
     const semester = currentMonth >= 7 ? 2 : 1;
+
+    // Dynamic detection of elapsed bimesters
+    const calendarBim = getBimesterFromDate(new Date().toISOString().split('T')[0]);
+    const maxDataBim = (attendanceRecords || []).reduce((max, record) => {
+        const rYear = parseInt(record.date.split('-')[0], 10);
+        if (rYear !== currentYear) return max;
+        if (!record.studentStatus || !record.studentStatus[student.id]) return max;
+        const b = getBimesterFromDate(record.date);
+        return b > max ? b : max;
+    }, 1);
+    const elapsedBimesters = Math.max(calendarBim, maxDataBim);
+
     const headerText = `Boletim Escolar ${currentYear}.${semester}`;
 
     // CORREÇÃO DE SINCRONIZAÇÃO: Recalcular médias dinamicamente
@@ -1022,11 +1035,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                 <tr className="bg-blue-50 print:bg-gray-100 text-[10px]">
                                                     {[1, 2, 3, 4].map(num => (
                                                         <React.Fragment key={num}>
-                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600" title="Nota">N{num}</th>
-                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600" title="Recuperação">R{num}</th>
-                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-bold text-blue-950 bg-blue-50" title="Média">M{num}</th>
-                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600" title="Faltas">F{num}</th>
-                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-bold text-gray-700 bg-gray-50" title="Frequência">%</th>
+                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600 w-8 md:w-10" title="Nota">N{num}</th>
+                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600 w-8 md:w-10" title="Recuperação">R{num}</th>
+                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-bold text-blue-950 bg-blue-50 w-8 md:w-10" title="Média">M{num}</th>
+                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600 w-8 md:w-10" title="Faltas">F{num}</th>
+                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-bold text-gray-700 bg-gray-50 w-10 md:w-12" title="Frequência">%</th>
                                                         </React.Fragment>
                                                     ))}
                                                 </tr>
@@ -1044,51 +1057,43 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             const bData = grade.bimesters[key as keyof typeof grade.bimesters];
                                                             const bimesterNum = Number(key.replace('bimester', '')) as 1 | 2 | 3 | 4;
 
+                                                            // RULE: Count absences strictly from logs
                                                             const currentAbsences = studentAttendance.reduce((acc, att) => {
                                                                 if (att.discipline !== grade.subject) return acc;
                                                                 if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
-                                                                    const d = new Date(att.date + 'T00:00:00');
-                                                                    if (d.getFullYear() === currentYear) {
-                                                                        const m = d.getMonth();
-
-                                                                        if (bimesterNum === 1 && m >= 0 && m <= 2) return acc + 1;
-                                                                        if (bimesterNum === 2 && m >= 3 && m <= 5) return acc + 1;
-                                                                        if (bimesterNum === 3 && m >= 6 && m <= 8) return acc + 1;
-                                                                        if (bimesterNum === 4 && m >= 9 && m <= 11) return acc + 1;
-                                                                    }
+                                                                    if (getBimesterFromDate(att.date) === bimesterNum) return acc + 1;
                                                                 }
                                                                 return acc;
                                                             }, 0);
 
+                                                            // RULE: Only active if there are assinaladas absences
+                                                            const isActive = currentAbsences > 0;
+
                                                             return (
                                                                 <React.Fragment key={key}>
-                                                                    <td className="px-1 py-1 text-center text-gray-500 font-medium text-[10px] md:text-sm border-r border-gray-300 relative">
+                                                                    <td className="px-1 py-1 text-center text-gray-500 font-medium text-[10px] md:text-sm border-r border-gray-300 relative w-8 md:w-10">
                                                                         {bData.isNotaApproved !== false ? formatGrade(bData.nota) : <span className="text-gray-300 pointer-events-none select-none cursor-help" title="Esta nota está em processo de atualização pela coordenação pedagógica.">-</span>}
                                                                         {bData.isNotaApproved === false && (
                                                                             <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-400 rounded-full cursor-help" title="Esta nota está em processo de atualização pela coordenação pedagógica."></div>
                                                                         )}
                                                                     </td>
-                                                                    <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 relative">
+                                                                    <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 relative w-8 md:w-10">
                                                                         {bData.isRecuperacaoApproved !== false ? formatGrade(bData.recuperacao) : <span className="text-gray-300 pointer-events-none select-none cursor-help" title="Esta nota está em processo de atualização pela coordenação pedagógica.">-</span>}
                                                                         {bData.isRecuperacaoApproved === false && (
                                                                             <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-400 rounded-full cursor-help" title="Esta nota está em processo de atualização pela coordenação pedagógica."></div>
                                                                         )}
                                                                     </td>
-                                                                    <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs">{(bData.isNotaApproved !== false && bData.isRecuperacaoApproved !== false) ? formatGrade(bData.media) : '-'}</td>
-                                                                    <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300">
-                                                                        {bData.faltas !== undefined && bData.faltas !== null ? bData.faltas : (currentAbsences || '')}
+                                                                    <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs w-8 md:w-10">{(bData.isNotaApproved !== false && bData.isRecuperacaoApproved !== false) ? formatGrade(bData.media) : '-'}</td>
+                                                                    <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-8 md:w-10">
+                                                                        {isActive ? currentAbsences : '-'}
                                                                     </td>
                                                                     {(() => {
-                                                                        const absences = bData.faltas !== undefined && bData.faltas !== null ? bData.faltas : currentAbsences;
-                                                                        const freqPercent = calculateAttendancePercentage(grade.subject, absences, student.gradeLevel);
-
-                                                                        // Só exibe a porcentagem se houver pelo menos uma falta
-                                                                        const hasAbsence = absences > 0;
-                                                                        const isLowFreq = hasAbsence && freqPercent !== null && freqPercent < 75;
+                                                                        const freqPercent = calculateAttendancePercentage(grade.subject, currentAbsences, student.gradeLevel);
+                                                                        const isLowFreq = freqPercent !== null && freqPercent < 75;
 
                                                                         return (
-                                                                            <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs ${isLowFreq ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência">
-                                                                                {hasAbsence && freqPercent !== null ? `${freqPercent}%` : '-'}
+                                                                            <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs w-10 md:w-12 ${isLowFreq ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência">
+                                                                                {isActive && freqPercent !== null ? `${freqPercent}%` : '-'}
                                                                             </td>
                                                                         );
                                                                     })()}
@@ -1105,36 +1110,23 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             {(grade.recuperacaoFinalApproved !== false && Object.values(grade.bimesters).every((b: any) => b.isNotaApproved !== false && b.isRecuperacaoApproved !== false)) ? formatGrade(grade.mediaFinal) : '-'}
                                                         </td>
                                                         {(() => {
-                                                            const totalAbsences = [grade.bimesters.bimester1, grade.bimesters.bimester2, grade.bimesters.bimester3, grade.bimesters.bimester4].reduce((sum, b, idx) => {
-                                                                const bNum = (idx + 1) as 1 | 2 | 3 | 4;
-                                                                if (b.faltas !== undefined && b.faltas !== null) return sum + b.faltas;
-
-                                                                // Dynamic calculation fallback
-                                                                const currentBimAbsences = studentAttendance.reduce((acc, att) => {
+                                                            const totalAbsences = [1, 2, 3, 4].reduce((sum, bNum) => {
+                                                                if (bNum > elapsedBimesters) return sum;
+                                                                return sum + studentAttendance.reduce((acc, att) => {
                                                                     if (att.discipline !== grade.subject) return acc;
                                                                     if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
-                                                                        const d = new Date(att.date + 'T00:00:00');
-                                                                        if (d.getFullYear() === currentYear) {
-                                                                            const m = d.getMonth();
-                                                                            if (bNum === 1 && m >= 0 && m <= 2) return acc + 1;
-                                                                            if (bNum === 2 && m >= 3 && m <= 5) return acc + 1;
-                                                                            if (bNum === 3 && m >= 6 && m <= 8) return acc + 1;
-                                                                            if (bNum === 4 && m >= 9 && m <= 11) return acc + 1;
-                                                                        }
+                                                                        if (getBimesterFromDate(att.date) === bNum) return acc + 1;
                                                                     }
                                                                     return acc;
                                                                 }, 0);
-                                                                return sum + currentBimAbsences;
                                                             }, 0);
 
-                                                            const annualFreq = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel);
+                                                            const annualFreq = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel, elapsedBimesters);
                                                             const isCritical = annualFreq !== null && annualFreq < 75;
-                                                            // Só mostra se houver pelo menos uma falta em todo o ano
-                                                            const hasAbsenceTotal = totalAbsences > 0;
 
                                                             return (
                                                                 <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs ${isCritical ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência Anual">
-                                                                    {hasAbsenceTotal && annualFreq !== null ? `${annualFreq}%` : '-'}
+                                                                    {annualFreq !== null ? `${annualFreq}%` : '-'}
                                                                 </td>
                                                             );
                                                         })()}
@@ -1153,18 +1145,17 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                     const generalFreq = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel);
                                                     return (
                                                         <tr className="bg-gray-100/80 font-bold border-t-2 border-gray-400">
-                                                            <td colSpan={19} className="px-4 py-1 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[11px]">
+                                                            <td colSpan={25} className="px-4 py-1 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[11px]">
                                                                 FREQUÊNCIA GERAL NO ANO LETIVO:
                                                             </td>
                                                             <td className="px-1 py-1 text-center text-blue-900 font-extrabold text-[11px] md:text-sm bg-blue-50/50 border-r border-gray-300">
                                                                 {generalFreq}
                                                             </td>
-                                                            <td className="bg-gray-100/50"></td>
                                                         </tr>
                                                     );
                                                 })()}
                                                 {studentGrades.length === 0 && (
-                                                    <tr><td colSpan={21} className="px-6 py-8 text-center text-gray-500 italic">Nenhuma nota lançada para este período letivo.</td></tr>
+                                                    <tr><td colSpan={26} className="px-6 py-8 text-center text-gray-500 italic">Nenhuma nota lançada para este período letivo.</td></tr>
                                                 )}
                                             </tbody>
                                         </table>

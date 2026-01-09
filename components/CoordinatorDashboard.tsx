@@ -503,11 +503,11 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                     <tr className="bg-gray-100 text-[10px]">
                                                         {[1, 2, 3, 4].map(num => (
                                                             <React.Fragment key={num}>
-                                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold" title="Nota">N</th>
-                                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold" title="Recuperação">R</th>
-                                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-bold bg-gray-200" title="Média">M</th>
-                                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold" title="Faltas">F</th>
-                                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold" title="Frequência">%</th>
+                                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold w-8 md:w-10" title="Nota">N</th>
+                                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold w-8 md:w-10" title="Recuperação">R</th>
+                                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-bold bg-gray-200 w-8 md:w-10" title="Média">M</th>
+                                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold w-8 md:w-10" title="Faltas">F</th>
+                                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold w-10 md:w-12" title="Frequência">%</th>
                                                             </React.Fragment>
                                                         ))}
                                                     </tr>
@@ -561,18 +561,18 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
 
                                                                                 return (
                                                                                     <React.Fragment key={key}>
-                                                                                        <td className={cellClass(isNotaPending)}>
+                                                                                        <td className={cellClass(isNotaPending) + " w-8 md:w-10"}>
                                                                                             {formatGrade(bData.nota)}
                                                                                             {isNotaPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" title="Nota Alterada"></span>}
                                                                                         </td>
-                                                                                        <td className={cellClass(isRecPending)}>
+                                                                                        <td className={cellClass(isRecPending) + " w-8 md:w-10"}>
                                                                                             {formatGrade(bData.recuperacao)}
                                                                                             {isRecPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" title="Recuperação Alterada"></span>}
                                                                                         </td>
-                                                                                        <td className="px-1 py-2 text-center font-bold bg-gray-50 border-r border-gray-300">
+                                                                                        <td className="px-1 py-2 text-center font-bold bg-gray-50 border-r border-gray-300 w-8 md:w-10">
                                                                                             {formatGrade(bData.media)}
                                                                                         </td>
-                                                                                        <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300">
+                                                                                        <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300 w-8 md:w-10">
                                                                                             {bData.faltas ?? '-'}
                                                                                         </td>
                                                                                         {(() => {
@@ -583,7 +583,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                                                             const isLowFreq = hasAbsence && freqPercent !== null && freqPercent < 75;
 
                                                                                             return (
-                                                                                                <td className={`px-1 py-2 text-center font-bold border-r border-gray-300 text-[10px] ${isLowFreq ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência">
+                                                                                                <td className={`px-1 py-2 text-center font-bold border-r border-gray-300 text-[10px] w-10 md:w-12 ${isLowFreq ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência">
                                                                                                     {hasAbsence && freqPercent !== null ? `${freqPercent}%` : '-'}
                                                                                                 </td>
                                                                                             );
@@ -666,13 +666,13 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                                     const generalFreq = calculateGeneralFrequency(allStudentGrades, attendanceRecords, student.id, student.gradeLevel || "");
                                                                     return (
                                                                         <tr className="bg-gray-100/80 font-bold border-t-2 border-gray-400">
-                                                                            <td colSpan={24} className="px-4 py-2 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[10px]">
+                                                                            <td colSpan={26} className="px-4 py-2 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[10px]">
                                                                                 FREQUÊNCIA GERAL NO ANO LETIVO:
                                                                             </td>
                                                                             <td className="px-1 py-1 text-center text-blue-900 font-extrabold text-[10px] md:text-sm bg-blue-50/50 border-r border-gray-300">
                                                                                 {generalFreq}
                                                                             </td>
-                                                                            <td colSpan={2} className="bg-gray-100/50"></td>
+
                                                                         </tr>
                                                                     );
                                                                 })()}

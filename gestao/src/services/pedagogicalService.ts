@@ -33,12 +33,13 @@ export const pedagogicalService = {
         }
     },
 
-    // Calcular frequência percentual baseada nas faltas das notas (Sumário)
-    calculateFrequencyFromGrades(grades: GradeEntry[], gradeLevel: string = "Fundamental I") {
+    // Calcular frequência percentual baseada nas faltas (Regra Logs-First)
+    calculateFrequencyFromGrades(grades: GradeEntry[], gradeLevel: string = "Fundamental I", attendanceRecords: AttendanceRecord[] = []) {
         if (grades.length === 0) return 100;
 
         let totalExpectedClasses = 0;
         let totalAbsences = 0;
+        const currentYear = new Date().getFullYear();
 
         let levelKey = 'Fundamental I';
         if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
@@ -48,12 +49,28 @@ export const pedagogicalService = {
             const subject = gradeEntry.subject;
             const weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[subject] || 0;
 
-            Object.values(gradeEntry.bimesters).forEach(b => {
-                if (weeklyClasses > 0) {
-                    totalExpectedClasses += (weeklyClasses * 10);
-                    totalAbsences += (b.faltas || 0);
-                }
-            });
+            if (weeklyClasses > 0) {
+
+                [1, 2, 3, 4].forEach(bim => {
+                    // RULE: Strict Log-Based counting for Pedagogical Service
+                    const bAbsences = attendanceRecords.filter(r => {
+                        const rYear = parseInt(r.date.split('-')[0], 10);
+                        const rMonth = parseInt(r.date.split('-')[1], 10);
+                        const bimFromMonth = rMonth <= 4 ? 1 : rMonth <= 7 ? 2 : rMonth <= 9 ? 3 : 4;
+                        return rYear === currentYear &&
+                            r.discipline === subject &&
+                            bimFromMonth === bim &&
+                            r.studentStatus &&
+                            r.studentStatus[gradeEntry.studentId] === 'Faltou';
+                    }).length;
+
+                    // RULE: Only contribute if there are assinaladas absences
+                    if (bAbsences > 0) {
+                        totalExpectedClasses += (weeklyClasses * 10);
+                        totalAbsences += bAbsences;
+                    }
+                });
+            }
         });
 
         if (totalExpectedClasses === 0) return 100;

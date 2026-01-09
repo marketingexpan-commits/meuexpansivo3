@@ -12,40 +12,9 @@ const calculateSubjectFrequency = (
     bimesterIndex: number, // 1 to 4
     attendanceRecords: AttendanceRecord[] = []
 ) => {
-    // bKey and data
-    const bKey = `bimester${bimesterIndex}` as keyof GradeEntry['bimesters'];
-    const bData = gradeEntry.bimesters[bKey];
-
-    // Se não houver dados do bimestre, consideramos que ainda não existe
-    if (!bData) {
-        return '-';
-    }
-
-    // Determine level for Matrix
-    let levelKey = 'Fundamental I';
-    if (student.gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-    else if (student.gradeLevel.includes('Ens. Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ens. Médio';
-
-    const weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[subject] || 0;
-    if (weeklyClasses === 0) return '-';
-
-    const expectedClasses = weeklyClasses * 10;
     const currentYear = getCurrentSchoolYear();
 
-    // NOVO: Verificar se existe PELO MENOS UM registro de chamada para esta matéria neste bimestre (FILTRANDO ANO)
-    const hasRecords = attendanceRecords.some(record => {
-        const rYear = parseInt(record.date.split('-')[0], 10);
-        return rYear === currentYear &&
-            record.discipline === subject &&
-            record.unit === student.unit &&
-            record.gradeLevel === student.gradeLevel &&
-            record.schoolClass === student.schoolClass &&
-            getBimesterFromDate(record.date) === bimesterIndex;
-    });
-
-    if (!hasRecords) return '-';
-
-    // NOVO: Pegar faltas reais dos logs de chamada (FILTRANDO ANO)
+    // RULE: Strict Log-Based counting
     const absences = attendanceRecords.filter(record => {
         const rYear = parseInt(record.date.split('-')[0], 10);
         return rYear === currentYear &&
@@ -58,8 +27,24 @@ const calculateSubjectFrequency = (
             record.studentStatus[gradeEntry.studentId] === AttendanceStatus.ABSENT;
     }).length;
 
-    const frequency = ((expectedClasses - absences) / expectedClasses) * 100;
+    // RULE: If 0 absences, return '-' for both count and %
     if (absences === 0) return '-';
+
+    // Determine level for Matrix
+    let levelKey = 'Fundamental I';
+    if (student.gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
+    else if (student.gradeLevel.includes('Ens. Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ens. Médio';
+
+    const weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[subject] || 0;
+    if (weeklyClasses === 0) return '-';
+
+    const expectedClasses = weeklyClasses * 10;
+    const finalAbsences = absences || 0;
+
+    // UI RULE: keep '-' if 0 absences for visual clarity in bimester columns
+    if (finalAbsences === 0) return '-';
+
+    const frequency = ((expectedClasses - finalAbsences) / expectedClasses) * 100;
     return Math.max(0, Math.min(100, frequency)).toFixed(1) + '%';
 };
 
@@ -77,6 +62,19 @@ export const generateSchoolHistory = (
 
     const unitInfo = UNIT_DETAILS[student.unit] || UNIT_DETAILS['Zona Norte'];
     const currentDate = new Date().toLocaleDateString('pt-BR');
+    const today = new Date().toISOString().split('T')[0];
+    const calendarBim = getBimesterFromDate(today);
+    const currentYear = getCurrentSchoolYear();
+
+    // Dynamic detection of elapsed bimesters
+    const maxDataBim = (attendanceRecords || []).reduce((max, record) => {
+        const rYear = parseInt(record.date.split('-')[0], 10);
+        if (rYear !== currentYear) return max;
+        if (!record.studentStatus || !record.studentStatus[student.id]) return max;
+        const b = getBimesterFromDate(record.date);
+        return b > max ? b : max;
+    }, 1);
+    const elapsedBimesters = Math.max(calendarBim, maxDataBim);
 
     // Helper to format grade
     const fG = (n: number | null | undefined) => {
@@ -148,10 +146,10 @@ export const generateSchoolHistory = (
                                 <th rowspan="2" style="width: 70px;">Resultado</th>
                             </tr>
                             <tr>
-                                <th>M</th><th>F</th><th>%</th>
-                                <th>M</th><th>F</th><th>%</th>
-                                <th>M</th><th>F</th><th>%</th>
-                                <th>M</th><th>F</th><th>%</th>
+                                <th style="width: 25px;">M</th><th style="width: 25px;">F</th><th style="width: 35px;">%</th>
+                                <th style="width: 25px;">M</th><th style="width: 25px;">F</th><th style="width: 35px;">%</th>
+                                <th style="width: 25px;">M</th><th style="width: 25px;">F</th><th style="width: 35px;">%</th>
+                                <th style="width: 25px;">M</th><th style="width: 25px;">F</th><th style="width: 35px;">%</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -159,10 +157,10 @@ export const generateSchoolHistory = (
                                 <tr>
                                     <td class="subject-col"><strong>${sub.name}</strong></td>
                                     <td>${sub.ch || '-'}</td>
-                                    <td style="background: #fdfdfd;">${sub.b1 || '-'}</td><td>-</td><td>-</td>
-                                    <td style="background: #fdfdfd;">${sub.b2 || '-'}</td><td>-</td><td>-</td>
-                                    <td style="background: #fdfdfd;">${sub.b3 || '-'}</td><td>-</td><td>-</td>
-                                    <td style="background: #fdfdfd;">${sub.b4 || '-'}</td><td>-</td><td>-</td>
+                                    <td style="background: #fdfdfd; width: 25px;">${sub.b1 || '-'}</td><td style="width: 25px;">-</td><td style="width: 35px;">-</td>
+                                    <td style="background: #fdfdfd; width: 25px;">${sub.b2 || '-'}</td><td style="width: 25px;">-</td><td style="width: 35px;">-</td>
+                                    <td style="background: #fdfdfd; width: 25px;">${sub.b3 || '-'}</td><td style="width: 25px;">-</td><td style="width: 35px;">-</td>
+                                    <td style="background: #fdfdfd; width: 25px;">${sub.b4 || '-'}</td><td style="width: 25px;">-</td><td style="width: 35px;">-</td>
                                     <td style="font-weight: bold; background: #f5f5f5;">${sub.grade || '-'}</td>
                                     <td style="font-size: 9px;">${sub.status || '-'}</td>
                                 </tr>
@@ -191,21 +189,8 @@ export const generateSchoolHistory = (
 
             const currentYear = getCurrentSchoolYear();
 
-            // Helpers para verificar presença de registros e faltas
-            const hasAnyRecords = (bim: number) => {
-                return attendanceRecords.some(record => {
-                    const rYear = parseInt(record.date.split('-')[0], 10);
-                    return rYear === currentYear &&
-                        record.discipline === g.subject &&
-                        record.unit === student.unit &&
-                        record.gradeLevel === student.gradeLevel &&
-                        record.schoolClass === student.schoolClass &&
-                        getBimesterFromDate(record.date) === bim;
-                });
-            };
-
-            const getRealAbsences = (bim: number) => {
-                return attendanceRecords.filter(record => {
+            const getBimesterAbsences = (bim: number) => {
+                const bAbsences = attendanceRecords.filter(record => {
                     const rYear = parseInt(record.date.split('-')[0], 10);
                     return rYear === currentYear &&
                         record.discipline === g.subject &&
@@ -216,23 +201,23 @@ export const generateSchoolHistory = (
                         record.studentStatus &&
                         record.studentStatus[g.studentId] === AttendanceStatus.ABSENT;
                 }).length;
+
+                return bAbsences > 0 ? bAbsences : null;
             };
 
-            const absencesB1 = getRealAbsences(1);
-            const absencesB2 = getRealAbsences(2);
-            const absencesB3 = getRealAbsences(3);
-            const absencesB4 = getRealAbsences(4);
+            const absencesB1 = getBimesterAbsences(1);
+            const absencesB2 = getBimesterAbsences(2);
+            const absencesB3 = getBimesterAbsences(3);
+            const absencesB4 = getBimesterAbsences(4);
 
             const weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[g.subject] || 0;
 
-            // Cálculo da Frequência Total considerando apenas bimestres com chamadas realizadas
-            let activeBimesters = 0;
-            [1, 2, 3, 4].forEach(b => { if (hasAnyRecords(b)) activeBimesters++; });
+            const annualExpectedClasses = weeklyClasses * 10 * elapsedBimesters;
+            const allAbsences = ([
+                absencesB1, absencesB2, absencesB3, absencesB4
+            ].slice(0, elapsedBimesters) as (number | null)[]).reduce((sum: number, abs: number | null) => sum + (abs || 0), 0);
 
-            const annualExpectedClasses = weeklyClasses * 40;
-            const allAbsences = absencesB1 + absencesB2 + absencesB3 + absencesB4;
-
-            const totalFrequency = (annualExpectedClasses > 0 && allAbsences > 0)
+            const totalFrequency = (annualExpectedClasses > 0)
                 ? (((annualExpectedClasses - allAbsences) / annualExpectedClasses) * 100).toFixed(1) + '%'
                 : '-';
 
@@ -246,32 +231,32 @@ export const generateSchoolHistory = (
                 <td>${totalCH}${totalCH !== '-' ? 'h' : ''}</td>
                 
                 <!-- 1B -->
-                <td style="color: #666; font-size: 9px;">${fG(g.bimesters.bimester1.nota)}</td>
-                <td style="color: #666; font-size: 9px;">${fG(g.bimesters.bimester1.recuperacao)}</td>
-                <td style="background: #fdfdfd;">${fG(g.bimesters.bimester1.media)}</td>
-                <td style="color: #666;">${hasAnyRecords(1) && absencesB1 > 0 ? absencesB1 : '-'}</td>
-                <td style="font-size: 9px; font-weight: bold;">${calculateSubjectFrequency(student, g, g.subject, 1, attendanceRecords)}</td>
+                <td style="color: #666; font-size: 9px; width: 25px;">${fG(g.bimesters.bimester1.nota)}</td>
+                <td style="color: #666; font-size: 9px; width: 25px;">${fG(g.bimesters.bimester1.recuperacao)}</td>
+                <td style="background: #fdfdfd; width: 25px;">${fG(g.bimesters.bimester1.media)}</td>
+                <td style="color: #666; width: 25px;">${absencesB1 !== null ? absencesB1 : '-'}</td>
+                <td style="font-size: 9px; font-weight: bold; width: 35px;">${calculateSubjectFrequency(student, g, g.subject, 1, attendanceRecords)}</td>
                 
                 <!-- 2B -->
-                <td style="color: #666; font-size: 9px;">${fG(g.bimesters.bimester2.nota)}</td>
-                <td style="color: #666; font-size: 9px;">${fG(g.bimesters.bimester2.recuperacao)}</td>
-                <td style="background: #fdfdfd;">${fG(g.bimesters.bimester2.media)}</td>
-                <td style="color: #666;">${hasAnyRecords(2) && absencesB2 > 0 ? absencesB2 : '-'}</td>
-                <td style="font-size: 9px; font-weight: bold;">${calculateSubjectFrequency(student, g, g.subject, 2, attendanceRecords)}</td>
+                <td style="color: #666; font-size: 9px; width: 25px;">${fG(g.bimesters.bimester2.nota)}</td>
+                <td style="color: #666; font-size: 9px; width: 25px;">${fG(g.bimesters.bimester2.recuperacao)}</td>
+                <td style="background: #fdfdfd; width: 25px;">${fG(g.bimesters.bimester2.media)}</td>
+                <td style="color: #666; width: 25px;">${absencesB2 !== null ? absencesB2 : '-'}</td>
+                <td style="font-size: 9px; font-weight: bold; width: 35px;">${calculateSubjectFrequency(student, g, g.subject, 2, attendanceRecords)}</td>
 
                 <!-- 3B -->
-                <td style="color: #666; font-size: 9px;">${fG(g.bimesters.bimester3.nota)}</td>
-                <td style="color: #666; font-size: 9px;">${fG(g.bimesters.bimester3.recuperacao)}</td>
-                <td style="background: #fdfdfd;">${fG(g.bimesters.bimester3.media)}</td>
-                <td style="color: #666;">${hasAnyRecords(3) && absencesB3 > 0 ? absencesB3 : '-'}</td>
-                <td style="font-size: 9px; font-weight: bold;">${calculateSubjectFrequency(student, g, g.subject, 3, attendanceRecords)}</td>
+                <td style="color: #666; font-size: 9px; width: 25px;">${fG(g.bimesters.bimester3.nota)}</td>
+                <td style="color: #666; font-size: 9px; width: 25px;">${fG(g.bimesters.bimester3.recuperacao)}</td>
+                <td style="background: #fdfdfd; width: 25px;">${fG(g.bimesters.bimester3.media)}</td>
+                <td style="color: #666; width: 25px;">${absencesB3 !== null ? absencesB3 : '-'}</td>
+                <td style="font-size: 9px; font-weight: bold; width: 35px;">${calculateSubjectFrequency(student, g, g.subject, 3, attendanceRecords)}</td>
 
                 <!-- 4B -->
-                <td style="color: #666; font-size: 9px;">${fG(g.bimesters.bimester4.nota)}</td>
-                <td style="color: #666; font-size: 9px;">${fG(g.bimesters.bimester4.recuperacao)}</td>
-                <td style="background: #fdfdfd;">${fG(g.bimesters.bimester4.media)}</td>
-                <td style="color: #666;">${hasAnyRecords(4) && absencesB4 > 0 ? absencesB4 : '-'}</td>
-                <td style="font-size: 9px; font-weight: bold;">${calculateSubjectFrequency(student, g, g.subject, 4, attendanceRecords)}</td>
+                <td style="color: #666; font-size: 9px; width: 25px;">${fG(g.bimesters.bimester4.nota)}</td>
+                <td style="color: #666; font-size: 9px; width: 25px;">${fG(g.bimesters.bimester4.recuperacao)}</td>
+                <td style="background: #fdfdfd; width: 25px;">${fG(g.bimesters.bimester4.media)}</td>
+                <td style="color: #666; width: 25px;">${absencesB4 !== null ? absencesB4 : '-'}</td>
+                <td style="font-size: 9px; font-weight: bold; width: 35px;">${calculateSubjectFrequency(student, g, g.subject, 4, attendanceRecords)}</td>
 
                 <td style="background: #f0f4f8; font-weight: bold;">${totalFrequency}</td>
                 <td style="font-weight: bold; background: #f5f5f5;">${fG(g.mediaFinal)}</td>
@@ -283,45 +268,37 @@ export const generateSchoolHistory = (
 
     // Calculate General Average Frequency (Across all subjects)
     const calculateGeneralFrequency = () => {
-        if (!currentGrades || currentGrades.length === 0) return '-';
+        let levelKey = 'Fundamental I';
+        if (student.gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
+        else if (student.gradeLevel.includes('Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ens. Médio';
 
+        const matrix = CURRICULUM_MATRIX[levelKey];
+        if (!matrix) return '-';
+
+        // 1. Calculate Total Expected (Full Grade x weeks x elapsed)
         let totalExpected = 0;
-        let totalAbsences = 0;
-        const currentYear = getCurrentSchoolYear();
-
-        currentGrades.forEach(g => {
-            let levelKey = 'Fundamental I';
-            if (student.gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-            else if (student.gradeLevel.includes('Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ens. Médio';
-
-            const weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[g.subject] || 0;
-            if (weeklyClasses > 0) {
-                // Contar bimestres ativos para esta matéria
-                let activeBimesters = 0;
-                [1, 2, 3, 4].forEach(bim => {
-                    const hasRecords = attendanceRecords.some(record => {
-                        const recordYear = parseInt(record.date.split('-')[0], 10);
-                        return recordYear === currentYear && record.discipline === g.subject && getBimesterFromDate(record.date) === bim;
-                    });
-                    if (hasRecords) activeBimesters++;
-                });
-
-                totalExpected += (weeklyClasses * 10 * activeBimesters);
-
-                // Sum real absences for this subject
-                totalAbsences += attendanceRecords.filter(record => {
-                    const recordYear = parseInt(record.date.split('-')[0], 10);
-                    return recordYear === currentYear &&
-                        record.discipline === g.subject &&
-                        record.studentStatus &&
-                        record.studentStatus[g.studentId] === AttendanceStatus.ABSENT;
-                }).length;
+        Object.values(matrix).forEach(ch => {
+            if (typeof ch === 'number' && ch > 0) {
+                totalExpected += (ch * 10 * elapsedBimesters);
             }
         });
 
-        if (totalExpected === 0 || totalAbsences === 0) return '-';
+        // 2. Sum ALL absences for this year
+        const currentYear = getCurrentSchoolYear();
+        const totalAbsences = attendanceRecords.filter(record => {
+            const rYear = parseInt(record.date.split('-')[0], 10);
+            return rYear === currentYear &&
+                record.unit === student.unit &&
+                record.gradeLevel === student.gradeLevel &&
+                record.schoolClass === student.schoolClass &&
+                record.studentStatus &&
+                record.studentStatus[student.id] === AttendanceStatus.ABSENT;
+        }).length;
+
+        if (totalExpected === 0) return '-';
+
         const freq = ((totalExpected - totalAbsences) / totalExpected) * 100;
-        return freq.toFixed(1) + '%';
+        return Math.max(0, Math.min(100, freq)).toFixed(1) + '%';
     };
 
     const content = `
@@ -429,17 +406,17 @@ export const generateSchoolHistory = (
                                 <th rowspan="2" style="width: 60px;">Resultado</th>
                             </tr>
                             <tr>
-                                <th title="Nota" style="width: 20px;">N</th><th title="Recuperação" style="width: 20px;">R</th><th title="Média">M</th><th title="Faltas">F</th><th title="Frequência">%</th>
-                                <th title="Nota" style="width: 20px;">N</th><th title="Recuperação" style="width: 20px;">R</th><th title="Média">M</th><th title="Faltas">F</th><th title="Frequência">%</th>
-                                <th title="Nota" style="width: 20px;">N</th><th title="Recuperação" style="width: 20px;">R</th><th title="Média">M</th><th title="Faltas">F</th><th title="Frequência">%</th>
-                                <th title="Nota" style="width: 20px;">N</th><th title="Recuperação" style="width: 20px;">R</th><th title="Média">M</th><th title="Faltas">F</th><th title="Frequência">%</th>
+                                <th title="Nota" style="width: 25px;">N</th><th title="Recuperação" style="width: 25px;">R</th><th title="Média" style="width: 25px;">M</th><th title="Faltas" style="width: 25px;">F</th><th title="Frequência" style="width: 35px;">%</th>
+                                <th title="Nota" style="width: 25px;">N</th><th title="Recuperação" style="width: 25px;">R</th><th title="Média" style="width: 25px;">M</th><th title="Faltas" style="width: 25px;">F</th><th title="Frequência" style="width: 35px;">%</th>
+                                <th title="Nota" style="width: 25px;">N</th><th title="Recuperação" style="width: 25px;">R</th><th title="Média" style="width: 25px;">M</th><th title="Faltas" style="width: 25px;">F</th><th title="Frequência" style="width: 35px;">%</th>
+                                <th title="Nota" style="width: 25px;">N</th><th title="Recuperação" style="width: 25px;">R</th><th title="Média" style="width: 25px;">M</th><th title="Faltas" style="width: 25px;">F</th><th title="Frequência" style="width: 35px;">%</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${renderCurrentGradesRows()}
                             <tr style="background: #f8f9fa; font-weight: bold;">
-                                <td colspan="22" style="text-align: right; padding-right: 15px;">FREQUÊNCIA GERAL NO ANO LETIVO:</td>
-                                <td colspan="3" style="text-align: center; font-size: 11px; color: #1a426f;">${calculateGeneralFrequency()}</td>
+                                <td colspan="24" style="text-align: right; padding-right: 15px;">FREQUÊNCIA GERAL NO ANO LETIVO:</td>
+                                <td colspan="1" style="text-align: center; font-size: 11px; color: #1a426f;">${calculateGeneralFrequency()}</td>
                             </tr>
                         </tbody>
                     </table>

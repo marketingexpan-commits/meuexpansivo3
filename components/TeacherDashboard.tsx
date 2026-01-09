@@ -1265,11 +1265,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                 <tr className="bg-blue-50 text-[10px]">
                                                                     {[1, 2, 3, 4].map(num => (
                                                                         <React.Fragment key={num}>
-                                                                            <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300" title={`Nota ${num}º Bimestre`}>N{num}</th>
-                                                                            <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300" title={`Recuperação ${num}º Bimestre`}>R{num}</th>
-                                                                            <th className="px-1 py-1 text-center font-bold text-blue-950 bg-blue-50 border-r border-gray-300" title={`Média ${num}º Bimestre`}>M{num}</th>
-                                                                            <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300" title={`Faltas ${num}º Bimestre`}>F{num}</th>
-                                                                            <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300" title={`Frequência ${num}º Bimestre`}>%</th>
+                                                                            <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300 w-8 md:w-10" title={`Nota ${num}º Bimestre`}>N{num}</th>
+                                                                            <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300 w-8 md:w-10" title={`Recuperação ${num}º Bimestre`}>R{num}</th>
+                                                                            <th className="px-1 py-1 text-center font-bold text-blue-950 bg-blue-50 border-r border-gray-300 w-8 md:w-10" title={`Média ${num}º Bimestre`}>M{num}</th>
+                                                                            <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300 w-8 md:w-10" title={`Faltas ${num}º Bimestre`}>F{num}</th>
+                                                                            <th className="px-1 py-1 text-center font-semibold text-gray-600 border-r border-gray-300 w-10 md:w-12" title={`Frequência ${num}º Bimestre`}>%</th>
                                                                         </React.Fragment>
                                                                     ))}
                                                                 </tr>
@@ -1356,10 +1356,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
 
                                                                                         return (
                                                                                             <React.Fragment key={key}>
-                                                                                                <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-300">{formatGrade(bData.nota)}</td>
-                                                                                                <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-300">{formatGrade(bData.recuperacao)}</td>
-                                                                                                <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs">{formatGrade(bData.media)}</td>
-                                                                                                <td className="px-1 py-2 text-center text-gray-500 text-xs border-r border-gray-300">
+                                                                                                <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-300 w-8 md:w-10">{formatGrade(bData.nota)}</td>
+                                                                                                <td className="px-1 py-2 text-center text-gray-600 text-xs border-r border-gray-300 w-8 md:w-10">{formatGrade(bData.recuperacao)}</td>
+                                                                                                <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs w-8 md:w-10">{formatGrade(bData.media)}</td>
+                                                                                                <td className="px-1 py-2 text-center text-gray-500 text-xs border-r border-gray-300 w-8 md:w-10">
                                                                                                     {currentStudentAbsences || 0}
                                                                                                 </td>
                                                                                                 {(() => {
@@ -1371,7 +1371,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                                                     const isLowFreq = hasAbsence && freqPercent !== null && freqPercent < 75;
 
                                                                                                     return (
-                                                                                                        <td className={`px-1 py-2 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs ${isLowFreq ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência">
+                                                                                                        <td className={`px-1 py-2 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs w-10 md:w-12 ${isLowFreq ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência">
                                                                                                             {hasAbsence && freqPercent !== null ? `${freqPercent}%` : '-'}
                                                                                                         </td>
                                                                                                     );
@@ -1426,13 +1426,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                             ))}
                                                                             {/* Summary Row */}
                                                                             <tr className="bg-gray-100/80 font-bold border-t-2 border-gray-400">
-                                                                                <td colSpan={24} className="px-4 py-2 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[11px]">
+                                                                                <td colSpan={26} className="px-4 py-2 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[11px]">
                                                                                     FREQUÊNCIA GERAL NO ANO LETIVO:
                                                                                 </td>
                                                                                 <td className="px-1 py-1 text-center text-blue-900 font-extrabold text-[11px] md:text-sm bg-blue-50/50 border-r border-gray-300">
                                                                                     {generalFreq}
                                                                                 </td>
-                                                                                <td className="bg-gray-100/50"></td>
+
                                                                             </tr>
                                                                         </>
                                                                     );

@@ -1,5 +1,6 @@
 import { CURRICULUM_MATRIX } from "../constants";
 import { AttendanceStatus } from "../types";
+import type { GradeEntry, AttendanceRecord } from "../types";
 import { getBimesterFromDate, getCurrentSchoolYear } from "../src/utils/academicUtils";
 
 /**
@@ -17,7 +18,7 @@ export const calculateAttendancePercentage = (
     absences: number,
     gradeLevel: string
 ): number | null => {
-    // 1. Determine Level from Grade String
+    // Determine Level from Grade String
     let levelKey = '';
     if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
     else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
@@ -25,34 +26,31 @@ export const calculateAttendancePercentage = (
 
     if (!levelKey) return null;
 
-    // 2. Get Weekly Classes for the Subject
     const levelMatrix = CURRICULUM_MATRIX[levelKey];
     if (!levelMatrix) return null;
 
     const weeklyClasses = levelMatrix[subject];
-
-    // If subject not found or has no workload, return null
     if (weeklyClasses === undefined || weeklyClasses === 0) return null;
 
-    // 3. Calculate Total Expected Classes (10 weeks per bimester assumption)
+    // RULE: Divisor is always fixed (weeklyClasses * 10 weeks)
     const totalExpectedClasses = weeklyClasses * 10;
 
-    if (totalExpectedClasses === 0) return 100; // Avoid division by zero
+    // UI RULE: If 0 absences, we keep returning null to show '-' in the specific bimester cell
+    if (absences === 0) return null;
 
-    // 4. Calculate Percentage
     const percentage = ((totalExpectedClasses - absences) / totalExpectedClasses) * 100;
-
-    // Clamp between 0 and 100
     return Math.max(0, Math.min(100, parseFloat(percentage.toFixed(1))));
 };
 
 /**
- * Calculates the annual attendance percentage (40 weeks).
+ * Calculates the annual attendance percentage.
+ * @param activeBimesters Optional. Number of bimesters to consider (1-4). Defaults to 4.
  */
 export const calculateAnnualAttendancePercentage = (
     subject: string,
     totalAbsences: number,
-    gradeLevel: string
+    gradeLevel: string,
+    elapsedBimesters: number = 4
 ): number | null => {
     let levelKey = '';
     if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
@@ -67,7 +65,8 @@ export const calculateAnnualAttendancePercentage = (
     const weeklyClasses = levelMatrix[subject];
     if (weeklyClasses === undefined || weeklyClasses === 0) return null;
 
-    const totalExpectedClasses = weeklyClasses * 40;
+    // Market Standard: Divisor is sum of expected classes for elapsed bimesters
+    const totalExpectedClasses = weeklyClasses * 10 * elapsedBimesters;
     if (totalExpectedClasses === 0) return 100;
 
     const percentage = ((totalExpectedClasses - totalAbsences) / totalExpectedClasses) * 100;
@@ -76,18 +75,29 @@ export const calculateAnnualAttendancePercentage = (
 
 /**
  * Calculates the general attendance percentage across all subjects.
+ * Following market standard: Sum(Expected for ALL subjects in grade) vs Total Absences.
  */
 export const calculateGeneralFrequency = (
-    grades: any[],
-    attendanceRecords: any[],
+    _grades: GradeEntry[],
+    attendanceRecords: AttendanceRecord[],
     studentId: string,
     gradeLevel: string
 ): string => {
-    if (!grades || grades.length === 0) return '-';
-
-    let totalExpected = 0;
-    let totalAbsences = 0;
     const currentYear = getCurrentSchoolYear();
+    const today = new Date().toISOString().split('T')[0];
+    const calendarBim = getBimesterFromDate(today);
+
+    // Find the furthest bimester that has any registered data (absences) for this student
+    const maxDataBim = (attendanceRecords || []).reduce((max, record) => {
+        const rYear = parseInt(record.date.split('-')[0], 10);
+        if (rYear !== currentYear) return max;
+        if (!record.studentStatus || !record.studentStatus[studentId]) return max;
+
+        const b = getBimesterFromDate(record.date);
+        return b > max ? b : max;
+    }, 1);
+
+    const elapsedBimesters = Math.max(calendarBim, maxDataBim);
 
     let levelKey = '';
     if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
@@ -96,31 +106,29 @@ export const calculateGeneralFrequency = (
 
     if (!levelKey) return '-';
 
-    grades.forEach(g => {
-        const weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[g.subject] || 0;
-        if (weeklyClasses > 0) {
-            let activeBimesters = 0;
-            [1, 2, 3, 4].forEach(bim => {
-                const hasRecords = attendanceRecords.some(record => {
-                    const rYear = parseInt(record.date.split('-')[0], 10);
-                    return rYear === currentYear && record.discipline === g.subject && getBimesterFromDate(record.date) === bim;
-                });
-                if (hasRecords) activeBimesters++;
-            });
+    const levelMatrix = CURRICULUM_MATRIX[levelKey];
+    if (!levelMatrix) return '-';
 
-            totalExpected += (weeklyClasses * 10 * activeBimesters);
-
-            totalAbsences += attendanceRecords.filter(record => {
-                const rYear = parseInt(record.date.split('-')[0], 10);
-                return rYear === currentYear &&
-                    record.discipline === g.subject &&
-                    record.studentStatus &&
-                    record.studentStatus[studentId] === AttendanceStatus.ABSENT;
-            }).length;
+    // 1. Calculate Total Expected (Sum of all subjects in Matrix * 10 * elapsedBimesters)
+    let totalExpected = 0;
+    Object.values(levelMatrix).forEach(weeklyClasses => {
+        if (typeof weeklyClasses === 'number' && weeklyClasses > 0) {
+            totalExpected += (weeklyClasses * 10 * elapsedBimesters);
         }
     });
 
-    if (totalExpected === 0) return '100%';
+    // 2. Calculate Total Absences (Sum of all logs for this student up to the active bimesters)
+    const totalAbsences = (attendanceRecords || []).filter(record => {
+        const rYear = parseInt(record.date.split('-')[0], 10);
+        const rBim = getBimesterFromDate(record.date);
+        return rYear === currentYear &&
+            rBim <= elapsedBimesters &&
+            record.studentStatus &&
+            record.studentStatus[studentId] === AttendanceStatus.ABSENT;
+    }).length;
+
+    if (totalExpected === 0) return '-';
+
     const freq = ((totalExpected - totalAbsences) / totalExpected) * 100;
-    return freq.toFixed(1) + '%';
+    return Math.max(0, Math.min(100, freq)).toFixed(1) + '%';
 };
