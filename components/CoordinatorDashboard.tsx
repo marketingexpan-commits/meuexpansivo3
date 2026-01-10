@@ -10,6 +10,7 @@ import {
     X,
     Search,
     Plus,
+    Clock,
     ChevronRight,
     ClipboardList,
     User,
@@ -19,6 +20,8 @@ import {
     Calendar as CalendarIcon
 } from 'lucide-react';
 import { CalendarManagement } from './CalendarManagement';
+import { ScheduleManagement } from './ScheduleManagement';
+
 
 // Types for Grade coordination (copied/adapted from AdminDashboard)
 interface GradeEntry {
@@ -132,6 +135,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
 
     // --- CALENDAR MANAGEMENT STATE ---
     const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
+    const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+
 
     // --- HELPER ---
     const formatGrade = (val: number | null | undefined) => (val !== null && val !== undefined && val !== -1) ? val.toFixed(1) : '-';
@@ -514,6 +519,16 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                     Gerenciar Calendário
                                 </Button>
                                 <Button
+                                    variant="primary"
+                                    onClick={() => setIsScheduleModalOpen(true)}
+                                    className="text-sm font-semibold py-1.5 px-4 flex items-center gap-2 shadow-sm hover:opacity-90 transition-opacity"
+                                    style={{ backgroundColor: '#020617', color: '#FFFFFF' }}
+                                >
+                                    <Clock className="w-4 h-4" />
+                                    Grade Horária
+                                </Button>
+                                <Button
+
                                     variant="primary"
                                     onClick={() => setIsOccModalOpen(true)}
                                     className="text-sm font-semibold py-1.5 px-4 !bg-blue-950 hover:!bg-blue-900 flex items-center gap-2"
@@ -1261,6 +1276,31 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                 onClose={() => setIsCalendarModalOpen(false)}
                 unit={coordinator.unit}
             />
+
+            {/* SCHEDULE MANAGEMENT MODAL */}
+            {isScheduleModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-blue-50/30">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-blue-950 text-white rounded-xl">
+                                    <Clock className="w-6 h-6" />
+                                </div>
+                                <h2 className="text-xl font-black text-gray-900 leading-tight">Gerenciar Grade Horária</h2>
+                            </div>
+                            <button
+                                onClick={() => setIsScheduleModalOpen(false)}
+                                className="p-2 hover:bg-white rounded-full transition-colors text-gray-400 hover:text-gray-600 shadow-sm"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+                            <ScheduleManagement unit={coordinator.unit as SchoolUnit} />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -5,6 +5,8 @@ import { Dashboard } from './pages/Dashboard';
 import { Matriculas } from './pages/Matriculas';
 import { Financeiro } from './pages/Financeiro';
 import { FinanceiroConfig } from './pages/FinanceiroConfig';
+import GradeHoraria from './pages/GradeHoraria';
+
 
 function App() {
   return (
@@ -20,6 +22,8 @@ function App() {
           <Route path="/financeiro/pagamentos" element={<Financeiro />} />
           <Route path="/financeiro/fluxo" element={<Financeiro />} />
           <Route path="/financeiro/config" element={<FinanceiroConfig />} />
+          <Route path="/grade-horaria" element={<GradeHoraria />} />
+
         </Route>
 
         <Route path="/" element={<Navigate to="/login" replace />} />

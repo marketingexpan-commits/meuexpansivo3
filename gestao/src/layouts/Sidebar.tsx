@@ -15,6 +15,7 @@ import {
     Layers,
     UserCog,
     History,
+    Calendar,
     FileBarChart // Import for Boletim icon
 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -124,6 +125,8 @@ export function Sidebar() {
                 </div>
 
                 <SidebarItem icon={School} label="Escola" path="/dashboard" collapsed={collapsed} />
+                <SidebarItem icon={Calendar} label="Grade Horária" path="/grade-horaria" collapsed={collapsed} />
+
 
                 <div className="space-y-0.5">
                     <div className="relative group">

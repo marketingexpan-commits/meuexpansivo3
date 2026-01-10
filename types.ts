@@ -450,3 +450,21 @@ export interface CalendarEvent {
   type: EventType;
 }
 
+// --- SISTEMA DE GRADE HORÁRIA ---
+
+export interface ScheduleItem {
+  startTime: string; // HH:mm
+  endTime: string;   // HH:mm
+  subject: string;
+}
+
+export interface ClassSchedule {
+  id?: string;
+  schoolId: string; // Unidade
+  grade: string;    // Série
+  class: string;    // Turma
+  shift: string;    // Turno
+  dayOfWeek: number; // 1-5 (Seg-Sex)
+  items: ScheduleItem[];
+  lastUpdated: string;
+}

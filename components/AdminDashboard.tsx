@@ -50,6 +50,8 @@ import { calculateFinancials } from '../utils/financialUtils';
 import ManualPaymentModal from './Admin/ManualPaymentModal';
 import StudentFinancialModal from './Admin/StudentFinancialModal';
 import { CalendarManagement } from './CalendarManagement';
+import { ScheduleManagement } from './ScheduleManagement';
+
 
 
 interface AdminDashboardProps {
@@ -114,7 +116,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     mensalidades = [],
     onLogout
 }) => {
-    const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'admins' | 'messages' | 'attendance' | 'contacts' | 'rematricula' | 'financial' | 'tickets' | 'coordination'>('students');
+    const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'admins' | 'messages' | 'attendance' | 'contacts' | 'rematricula' | 'financial' | 'tickets' | 'coordination' | 'schedule'>('students');
+
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     // --- ESTADOS DE SIMULAÇÃO (Para Admin Geral testar visões específicas) ---
@@ -1094,6 +1097,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             isActive={activeTab === 'attendance'}
                             onClick={() => { setActiveTab('attendance'); setIsSidebarOpen(false); }}
                         />
+                        <SidebarItem
+                            icon={<Clock size={18} />}
+                            label="Grade Horária"
+                            isActive={activeTab === 'schedule'}
+                            onClick={() => { setActiveTab('schedule'); setIsSidebarOpen(false); }}
+                        />
+
                         {isGeneralAdmin && (
                             <SidebarItem
                                 icon={<HelpCircle size={18} />}
@@ -1554,6 +1564,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 </div>
                             </div>
                         )}
+
+                        {activeTab === 'schedule' && (
+                            <div className="animate-fade-in-up">
+                                <div className="mb-6">
+                                    <h2 className="text-xl font-bold text-gray-800">Gerenciar Grade Horária</h2>
+                                    <p className="text-sm text-gray-500">Defina os horários de aulas por série e turma.</p>
+                                </div>
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                                    <ScheduleManagement unit={(isGeneralAdmin ? undefined : adminUnit) as any} />
+                                </div>
+                            </div>
+                        )}
+
 
                         {/* MODAL FINANCEIRO INDIVIDUAL */}
                         <StudentFinancialModal

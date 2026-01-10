@@ -15,12 +15,16 @@ import { useNavigate } from 'react-router-dom';
 import { Skeleton, TableSkeleton, GridSkeleton } from './Skeleton';
 import { ErrorState } from './ErrorState';
 import { useFinancialSettings } from '../hooks/useFinancialSettings';
+import { ScheduleTimeline } from './ScheduleTimeline';
+
 import {
     Bot,
     Calendar as CalendarIcon, // Alias Calendar to CalendarIcon
     CalendarDays,
     CircleHelp,
+    Clock,
     CreditCard,
+
     Download,
     FileText,
     LifeBuoy,
@@ -106,7 +110,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState({ title: '', tip: '' });
     const [isLoadingAI, setIsLoadingAI] = useState(false);
-    const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro' | 'tickets' | 'materials' | 'occurrences' | 'calendar'>('menu');
+    const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro' | 'tickets' | 'materials' | 'occurrences' | 'calendar' | 'schedule'>('menu');
+
     const [showNotifications, setShowNotifications] = useState(false);
 
     // Estado para o sistema de Dúvidas (Tickets)
@@ -818,6 +823,17 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     </button>
 
                                     <button
+                                        onClick={() => setCurrentView('schedule')}
+                                        className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                                    >
+                                        <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
+                                            <Clock className="w-6 h-6 text-blue-950" />
+                                        </div>
+                                        <h3 className="font-bold text-gray-800 text-sm text-center">Grade Horária</h3>
+                                    </button>
+
+
+                                    <button
                                         onClick={() => setCurrentView('support')}
                                         className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
                                     >
@@ -1038,6 +1054,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             </div>
                         </div>
                     )}
+
+                    {currentView === 'schedule' && <ScheduleTimeline student={student} />}
+
 
                     {currentView === 'materials' && (
                         <div className="mb-8 print:hidden">
