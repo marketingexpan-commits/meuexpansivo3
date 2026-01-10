@@ -4,7 +4,7 @@ import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, School
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
 import { getBimesterFromDate } from '../src/utils/academicUtils';
 import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects, MOCK_CALENDAR_EVENTS } from '../constants'; // Import Sync Fix
-import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency } from '../utils/frequency';
+import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency, calculateBimesterGeneralFrequency } from '../utils/frequency';
 import { getStudyTips } from '../services/geminiService';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
@@ -900,7 +900,61 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 Registro de frequência
                             </h3>
                             <div className="bg-white p-6 rounded-lg shadow-md border border-gray-100">
-                                <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex flex-col justify-center">
+                                        <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider mb-1">Frequência Geral Anual</span>
+                                        <div className="flex items-baseline gap-2">
+                                            {(() => {
+                                                const freqStr = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel);
+                                                const freqNum = parseFloat(freqStr.replace('%', ''));
+                                                const isLow = !isNaN(freqNum) && freqNum < 75;
+                                                return (
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-baseline gap-2">
+                                                            <span className={`text-2xl font-black ${isLow ? 'text-red-600' : 'text-blue-900'}`}>{freqStr}</span>
+                                                            <span className="text-xs text-blue-600 font-medium whitespace-nowrap">no ano letivo</span>
+                                                        </div>
+                                                        <span className={`text-[10px] font-bold mt-1 ${isLow ? 'text-red-500' : 'text-green-600'}`}>
+                                                            {isLow ? '⚠️ Abaixo do limite (75%)' : '✅ Dentro do limite permitido'}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 flex flex-col justify-center">
+                                        <span className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider mb-1">Frequência {selectedBimester}º Bimestre</span>
+                                        <div className="flex items-baseline gap-2">
+                                            {(() => {
+                                                const freqStr = calculateBimesterGeneralFrequency(attendanceRecords, student.id, student.gradeLevel, selectedBimester);
+                                                const freqNum = parseFloat(freqStr.replace('%', ''));
+                                                const isLow = !isNaN(freqNum) && freqNum < 75;
+                                                return (
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-baseline gap-2">
+                                                            <span className={`text-2xl font-black ${isLow ? 'text-red-600' : 'text-indigo-900'}`}>{freqStr}</span>
+                                                            <span className="text-xs text-indigo-600 font-medium">no período</span>
+                                                        </div>
+                                                        <span className={`text-[10px] font-bold mt-1 ${isLow ? 'text-red-500' : 'text-green-600'}`}>
+                                                            {isLow ? '⚠️ Atenção: Faltas elevadas' : '✅ Frequência regular'}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-red-50 p-4 rounded-xl border border-red-100 flex flex-col justify-center">
+                                        <span className="text-[10px] text-red-600 font-bold uppercase tracking-wider mb-1">Total de Faltas</span>
+                                        <div className="flex items-baseline gap-2">
+                                            <span className="text-2xl font-black text-red-900">{absencesThisYear}</span>
+                                            <span className="text-xs text-red-600 font-medium">falta(s) registrada(s)</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 border-t border-gray-100 pt-6">
                                     <p className="text-gray-600 text-sm">
                                         {(() => {
                                             const breakdown = getAttendanceBreakdown(studentAttendance, student.id, undefined, currentYear);
@@ -909,16 +963,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                 .map(([bim, data]) => `${bim}º Bim: ${data.count}`)
                                                 .join(" | ");
 
-                                            return (
-                                                <>
-                                                    {bimesterSummary ? (
-                                                        <span className="font-bold text-gray-800">{bimesterSummary}</span>
-                                                    ) : (
-                                                        <span className="font-bold text-gray-800">Sem faltas registradas</span>
-                                                    )}
-                                                    <span className="mx-2 text-gray-400">|</span>
-                                                    <span>Total: <span className="font-bold text-gray-800">{absencesThisYear} falta(s)</span></span>
-                                                </>
+                                            return bimesterSummary ? (
+                                                <span className="font-bold text-gray-800">{bimesterSummary}</span>
+                                            ) : (
+                                                <span className="font-bold text-gray-800 italic text-gray-400">Detalhamento por bimestre</span>
                                             );
                                         })()}
                                     </p>
