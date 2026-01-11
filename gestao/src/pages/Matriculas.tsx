@@ -238,9 +238,19 @@ export function Matriculas() {
                 }
             };
 
-            const cleanAmount = typeof inst.value === 'string'
-                ? parseFloat(inst.value.replace(/[^\d,.]/g, '').replace(',', '.'))
-                : inst.value;
+            const parseCurrency = (val: any) => {
+                if (typeof val === 'number') return val;
+                if (!val) return 0;
+                const clean = String(val).replace(/[^\d,.]/g, '');
+                if (clean.includes(',') && clean.includes('.')) {
+                    return parseFloat(clean.replace(/\./g, '').replace(',', '.'));
+                } else if (clean.includes(',')) {
+                    return parseFloat(clean.replace(',', '.'));
+                }
+                return parseFloat(clean) || 0;
+            };
+
+            const cleanAmount = parseCurrency(inst.value);
 
             const boletoData = await financialService.generateBoleto({
                 studentId: student.id,
@@ -309,9 +319,19 @@ export function Matriculas() {
                                 }
                             };
 
-                            const cleanAmount = typeof inst.value === 'string'
-                                ? parseFloat(inst.value.replace(/[^\d,.]/g, '').replace(',', '.'))
-                                : inst.value;
+                            const parseCurrency = (val: any) => {
+                                if (typeof val === 'number') return val;
+                                if (!val) return 0;
+                                const clean = String(val).replace(/[^\d,.]/g, '');
+                                if (clean.includes(',') && clean.includes('.')) {
+                                    return parseFloat(clean.replace(/\./g, '').replace(',', '.'));
+                                } else if (clean.includes(',')) {
+                                    return parseFloat(clean.replace(',', '.'));
+                                }
+                                return parseFloat(clean) || 0;
+                            };
+
+                            const cleanAmount = parseCurrency(inst.value);
 
                             const boletoData = await financialService.generateBoleto({
                                 studentId: student.id,

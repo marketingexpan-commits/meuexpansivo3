@@ -484,9 +484,19 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                 }
             };
 
-            const cleanAmount = typeof inst.value === 'string'
-                ? parseFloat(inst.value.replace(/[^\d,.]/g, '').replace(',', '.'))
-                : inst.value;
+            const parseCurrency = (val: any) => {
+                if (typeof val === 'number') return val;
+                if (!val) return 0;
+                const clean = String(val).replace(/[^\d,.]/g, '');
+                if (clean.includes(',') && clean.includes('.')) {
+                    return parseFloat(clean.replace(/\./g, '').replace(',', '.'));
+                } else if (clean.includes(',')) {
+                    return parseFloat(clean.replace(',', '.'));
+                }
+                return parseFloat(clean) || 0;
+            };
+
+            const cleanAmount = parseCurrency(inst.value);
 
             const boletoData = await financialService.generateBoleto({
                 studentId: student.id,
@@ -528,12 +538,23 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                 return alert(`O código ${formData.code} já está em uso por outro aluno na rede. Por favor, utilize um código diferente.`);
             }
 
+            // Robust Currency Parser
+            const parseCurrency = (val: any) => {
+                if (typeof val === 'number') return val;
+                if (!val) return 0;
+
+                const clean = String(val).replace(/[^\d,.]/g, '');
+                // Se tem vírgula e ponto, ou só vírgula, assume que a vírgula é o decimal (BR)
+                if (clean.includes(',') && clean.includes('.')) {
+                    return parseFloat(clean.replace(/\./g, '').replace(',', '.'));
+                } else if (clean.includes(',')) {
+                    return parseFloat(clean.replace(',', '.'));
+                }
+                return parseFloat(clean) || 0;
+            };
+
             // Synchronize phone fields & Sanitize Financials
-            let cleanTuition = formData.valor_mensalidade;
-            if (typeof cleanTuition === 'string') {
-                // Remove non-numeric except comma/dot, then norm decimal
-                cleanTuition = cleanTuition.replace(/[^\d,.]/g, '').replace(/\./g, '').replace(',', '.');
-            }
+            const cleanTuition = parseCurrency(formData.valor_mensalidade);
 
             // Build the complete ficha_saude object
             const fichaSaude = {

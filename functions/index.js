@@ -248,18 +248,28 @@ exports.generateBoleto = functions.https.onRequest((req, res) => {
         try {
             const { studentId, amount, dueDate, description, payer } = req.body;
 
-            console.log(`🎫 Gerando boleto para aluno ${studentId} - Valor: ${amount}`);
+            console.log(`🎫 Gerando boleto para aluno ${studentId} - Valor bruto: ${amount}`);
 
-            const cleanAmount = typeof amount === 'string'
-                ? parseFloat(amount.replace(/[^\d,.]/g, '').replace(',', '.'))
-                : Number(amount);
+            const parseCurrency = (val) => {
+                if (typeof val === 'number') return val;
+                if (!val) return 0;
+                const clean = String(val).replace(/[^\d,.]/g, '');
+                if (clean.includes(',') && clean.includes('.')) {
+                    return parseFloat(clean.replace(/\./g, '').replace(',', '.'));
+                } else if (clean.includes(',')) {
+                    return parseFloat(clean.replace(',', '.'));
+                }
+                return parseFloat(clean) || 0;
+            };
+
+            const cleanAmount = parseCurrency(amount);
 
             // Ensure 2 decimal places and valid number
             const finalAmount = Math.round((cleanAmount + Number.EPSILON) * 100) / 100;
 
-            if (isNaN(finalAmount) || finalAmount <= 0) {
+            if (isNaN(finalAmount) || finalAmount < 5.0) {
                 console.error("❌ Valor inválido detectado:", amount, "->", finalAmount);
-                return res.status(400).json({ error: `Valor inválido: ${amount}` });
+                return res.status(400).json({ error: `Valor inválido ou abaixo do mínimo (R$ 5,00): ${amount}` });
             }
 
             // Ensure expiration is in the future (Mercado Pago requirement)
