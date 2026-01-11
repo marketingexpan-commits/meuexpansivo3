@@ -39,6 +39,7 @@ import {
     Cell
 } from 'recharts';
 import { financialService } from '../services/financialService';
+import { studentService } from '../services/studentService';
 import { generateReceipt } from '../utils/receiptGenerator';
 import { useSchoolUnits } from '../hooks/useSchoolUnits';
 import type { Student, Expense, Mensalidade } from '../types';
@@ -608,13 +609,18 @@ export function Financeiro() {
             alert(`Baixa efetuada com sucesso!\nValor Recebido: R$ ${dischargeDetails.valueTotal.toFixed(2)}`);
 
             // Gerar recibo automaticamente usando o ID fixo retornado do banco
-            generateReceipt({
-                ...foundInstallment,
-                status: 'Pago',
-                paymentDate: new Date(fullPaymentDateIso).toISOString(),
-                value: dischargeDetails.valueTotal,
-                receiptId: receiptId
-            });
+            if (foundInstallment && foundInstallment.studentUnit) {
+                const unitDetail = getUnitById(foundInstallment.studentUnit);
+                if (unitDetail) {
+                    generateReceipt({
+                        ...foundInstallment,
+                        status: 'Pago',
+                        paymentDate: new Date(fullPaymentDateIso).toISOString(),
+                        value: dischargeDetails.valueTotal,
+                        receiptId: receiptId
+                    }, unitDetail);
+                }
+            }
             setIsDischargeModalOpen(false);
             setFoundInstallment(null);
             setDischargeCode('');
