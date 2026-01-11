@@ -39,8 +39,8 @@ import {
     Cell
 } from 'recharts';
 import { financialService } from '../services/financialService';
-import { studentService } from '../services/studentService';
 import { generateReceipt } from '../utils/receiptGenerator';
+import { useSchoolUnits } from '../hooks/useSchoolUnits';
 import type { Student, Expense, Mensalidade } from '../types';
 
 interface EnrichedMensalidade {
@@ -89,6 +89,7 @@ export function Financeiro() {
     const [mensalidades, setMensalidades] = useState<EnrichedMensalidade[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [students, setStudents] = useState<Student[]>([]);
+    const { getUnitById } = useSchoolUnits();
 
     // Filtros
     const [filterStatus, setFilterStatus] = useState('Todos');
@@ -932,7 +933,13 @@ export function Financeiro() {
                                                                 size="icon"
                                                                 variant="ghost"
                                                                 className={`h-9 w-9 rounded-lg transition-all ${m.status === 'Pago' ? 'text-blue-950 hover:bg-blue-50 bg-blue-50/30' : 'text-slate-300 bg-slate-50/50 cursor-not-allowed'}`}
-                                                                onClick={() => m.status === 'Pago' && generateReceipt(m)}
+                                                                onClick={() => {
+                                                                    if (m.status === 'Pago') {
+                                                                        const unitDetail = getUnitById(m.studentUnit);
+                                                                        if (!unitDetail) return alert("Dados da unidade não encontrados.");
+                                                                        generateReceipt(m, unitDetail);
+                                                                    }
+                                                                }}
                                                                 disabled={m.status !== 'Pago'}
                                                                 title={m.status === 'Pago' ? "Gerar Recibo" : "Disponível apenas após o pagamento"}
                                                             >
@@ -1342,13 +1349,23 @@ export function Financeiro() {
                                 if (!newExpense.description || !newExpense.value) return alert("Preencha todos os campos.");
 
                                 const userUnit = localStorage.getItem('userUnit');
-                                const unitMapping: Record<string, string> = {
-                                    'unit_zn': 'Zona Norte',
-                                    'unit_ext': 'Extremoz',
-                                    'unit_qui': 'Quintas',
-                                    'unit_bs': 'Boa Sorte'
-                                };
-                                const unit = (userUnit && unitMapping[userUnit]) ? unitMapping[userUnit] : 'Geral';
+                                // We don't need the hardcoded mapping here anymore if we can just use the userUnit or the unit name
+                                // But expenses need a unit name. If user is admin_geral, they might choose a unit or it might be 'Geral'.
+
+                                let unit = 'Geral';
+                                if (userUnit && userUnit !== 'admin_geral') {
+                                    const unitDetail = getUnitById(userUnit); // Wait, userUnit might be 'unit_zn'
+                                    // I need to be careful with IDs vs enums.
+                                    // In Unidades.tsx, IDs are names.
+
+                                    const unitMapping: Record<string, string> = {
+                                        'unit_zn': 'Zona Norte',
+                                        'unit_ext': 'Extremoz',
+                                        'unit_qui': 'Quintas',
+                                        'unit_bs': 'Boa Sorte'
+                                    };
+                                    unit = unitMapping[userUnit] || 'Geral';
+                                }
 
                                 await financialService.addExpense({
                                     ...newExpense as Expense,

@@ -1,28 +1,28 @@
 
-import { UNIT_DETAILS } from './academicDefaults';
-import type { Student } from '../types';
+import type { Student, SchoolUnitDetail } from '../types';
 
 
 export type DeclarationType = 'MATRICULA_FREQUENCIA' | 'BOLSA_FAMILIA' | 'TRANSFERENCIA' | 'CONCLUSAO' | 'QUITACAO';
 
 interface DeclarationData {
     student: Student;
+    unitDetail: SchoolUnitDetail;
     frequency?: number;
     hasDebts?: boolean;
     year?: number;
 }
 
 export function generateSchoolDeclaration(type: DeclarationType, data: DeclarationData) {
-    const { student, frequency, hasDebts } = data;
-    const unitInfo = UNIT_DETAILS[student.unit || 'Zona Norte'] || UNIT_DETAILS['Zona Norte'];
-    const logoUrl = 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png';
+    const { student, unitDetail, frequency, hasDebts } = data;
+    const unitInfo = unitDetail;
+    const logoUrl = unitDetail.logoUrl || 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png';
     const today = new Date();
     const formattedDate = today.toLocaleDateString('pt-BR', {
         day: '2-digit',
         month: 'long',
         year: 'numeric'
     });
-    const city = student.unit === 'Extremoz' ? 'Extremoz' : 'Natal';
+    const city = unitDetail.city || (student.unit === 'Extremoz' ? 'Extremoz' : 'Natal');
     const currentYear = data.year || new Date().getFullYear();
 
     let title = '';
@@ -191,9 +191,15 @@ export function generateSchoolDeclaration(type: DeclarationType, data: Declarati
                     </div>
                     <div class="school-text">
                         <h1>Expansivo Rede de Ensino</h1>
-                        <p style="color: #1e3a8a; font-weight: 700;">Unidade ${student.unit}</p>
-                        <p>${unitInfo.address}</p>
-                        <p>CNPJ: ${unitInfo.cnpj} | Tel: ${unitInfo.phone}</p>
+                        ${(unitInfo as any).professionalTitle ? `<p style="margin:0; font-size: 8px; font-weight: 700; color: #475569; text-transform: uppercase;">${(unitInfo as any).professionalTitle}</p>` : ''}
+                        <p style="color: #1e3a8a; font-weight: 700; text-transform: uppercase;">Unidade: ${unitInfo.fullName.replace('Expansivo - ', '')}</p>
+                        <p>
+                            ${unitInfo.address}${unitInfo.district ? ` - ${unitInfo.district}` : ''}${unitInfo.city ? `, ${unitInfo.city}` : ''}${unitInfo.uf ? ` - ${unitInfo.uf}` : ''}${unitInfo.cep ? ` - CEP: ${unitInfo.cep}` : ''}
+                        </p>
+                        <p>
+                            CNPJ: ${unitInfo.cnpj} | Tel: ${unitInfo.phone}${unitInfo.whatsapp ? ` | WhatsApp: ${unitInfo.whatsapp}` : ''}${unitInfo.email ? ` | E-mail: ${unitInfo.email}` : ''}
+                        </p>
+                        ${unitInfo.authorization ? `<p style="margin:0; font-size: 8px; font-style: italic; color: #64748b;">${unitInfo.authorization}</p>` : ''}
                     </div>
                 </div>
 
@@ -213,8 +219,8 @@ export function generateSchoolDeclaration(type: DeclarationType, data: Declarati
 
                 <div class="signature-section">
                     <div class="signature-line"></div>
-                    <p>Secretaria Escolar</p>
-                    <span>Expansivo Rede de Ensino</span>
+                    <p>${unitDetail.secretaryName || 'Secretaria Escolar'}</p>
+                    <span>${unitDetail.secretaryName ? 'Secretaria Escolar - ' : ''}Expansivo Rede de Ensino</span>
                 </div>
             </div>
             <script>

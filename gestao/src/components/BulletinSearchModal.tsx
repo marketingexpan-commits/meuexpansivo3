@@ -8,6 +8,7 @@ import { pedagogicalService } from '../services/pedagogicalService';
 import { generateSchoolBulletin, generateBatchSchoolBulletin } from '../utils/bulletinGenerator';
 import type { Student } from '../types';
 import { SCHOOL_SHIFTS, SCHOOL_CLASSES_OPTIONS } from '../utils/academicDefaults';
+import { useSchoolUnits } from '../hooks/useSchoolUnits';
 
 interface BulletinSearchModalProps {
     onClose: () => void;
@@ -18,6 +19,7 @@ type SearchType = 'INDIVIDUAL' | 'CLASS';
 
 export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
     const { grades: academicGrades, subjects: academicSubjects, loading: loadingAcademic } = useAcademicData();
+    const { getUnitById } = useSchoolUnits();
     const [step, setStep] = useState<ModalStep>('SEARCH');
     const [searchType, setSearchType] = useState<SearchType>('INDIVIDUAL');
 
@@ -93,13 +95,24 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
 
     const handleGenerate = () => {
         if (preparedData.length === 0) return;
+
+        // Use student's unit to find detail
+        const studentUnit = preparedData[0].student.unit;
+        const unitDetail = getUnitById(studentUnit);
+
+        if (!unitDetail) {
+            alert("Dados da unidade não encontrados. Verifique a gestão de unidades.");
+            return;
+        }
+
         try {
             if (preparedData.length === 1) {
-                generateSchoolBulletin(preparedData[0].student, preparedData[0].grades, preparedData[0].attendance, academicSubjects);
+                generateSchoolBulletin(preparedData[0].student, preparedData[0].grades, preparedData[0].attendance, unitDetail, academicSubjects);
             } else {
-                generateBatchSchoolBulletin(preparedData, academicSubjects);
+                generateBatchSchoolBulletin(preparedData, unitDetail, academicSubjects);
             }
-        } catch (e) {
+        }
+        catch (e) {
             console.error("Error generating bulletin:", e);
             alert("Erro ao gerar. Verifique se o bloqueador de pop-ups está ativo.");
         }

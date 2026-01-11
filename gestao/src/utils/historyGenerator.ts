@@ -1,7 +1,6 @@
-// Utility for generating School History PDF
-import { CURRICULUM_MATRIX, UNIT_DETAILS } from './academicDefaults';
+import { CURRICULUM_MATRIX } from './academicDefaults';
 import { getBimesterFromDate, getCurrentSchoolYear } from './academicUtils';
-import type { Student, AcademicHistoryRecord, GradeEntry, AttendanceRecord, AcademicSubject } from '../types';
+import type { Student, AcademicHistoryRecord, GradeEntry, AttendanceRecord, AcademicSubject, SchoolUnitDetail } from '../types';
 import { AttendanceStatus } from '../types';
 import { calculateGeneralFrequency as calculateUnifiedFrequency } from './frequency';
 
@@ -75,6 +74,7 @@ export const generateSchoolHistory = (
     historyRecords: AcademicHistoryRecord[] = [],
     currentGrades: GradeEntry[] = [],
     attendanceRecords: AttendanceRecord[] = [],
+    unitDetail: SchoolUnitDetail,
     academicSubjects?: AcademicSubject[]
 ) => {
     const printWindow = window.open('', '_blank');
@@ -83,7 +83,7 @@ export const generateSchoolHistory = (
         return;
     }
 
-    const unitInfo = UNIT_DETAILS[student.unit] || UNIT_DETAILS['Zona Norte'];
+    const unitInfo = unitDetail;
     const currentDate = new Date().toLocaleDateString('pt-BR');
     const today = new Date().toISOString().split('T')[0];
     const calendarBim = getBimesterFromDate(today);
@@ -382,12 +382,18 @@ export const generateSchoolHistory = (
         <body>
             <div class="page">
                 <div class="header">
-                     <img src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png" alt="Logo" class="logo" style="filter: grayscale(100%);">
+                     <img src="${unitDetail.logoUrl || 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png'}" alt="Logo" class="logo" style="filter: grayscale(100%);">
                      <div class="school-info">
-                        <h2 style="margin:0; font-size: 16px; font-weight: 900;">EXPANSIVO REDE DE ENSINO</h2>
-                        <p style="margin:2px 0; font-weight: bold;">Unidade ${student.unit}</p>
-                        <p style="margin:2px 0; font-size: 10px;">${unitInfo.address}</p>
-                        <p style="margin:2px 0; font-size: 10px;">CNPJ: ${unitInfo.cnpj} | Telefone: ${unitInfo.phone}</p>
+                        <h2 style="margin:0; font-size: 16px; font-weight: 900; color: #1a426f;">EXPANSIVO REDE DE ENSINO</h2>
+                        ${(unitInfo as any).professionalTitle ? `<p style="margin:0; font-size: 8px; font-weight: 700; color: #475569; text-transform: uppercase;">${(unitInfo as any).professionalTitle}</p>` : ''}
+                        <p style="margin:2px 0; font-weight: bold; text-transform: uppercase; color: #1e293b; font-size: 11px;">UNIDADE: ${unitInfo.fullName.replace('Expansivo - ', '').toUpperCase()}</p>
+                        <p style="margin:2px 0; font-size: 10px; color: #334155;">
+                            ${unitInfo.address}${unitInfo.district ? ` - ${unitInfo.district}` : ''}${unitInfo.city ? `, ${unitInfo.city}` : ''}${unitInfo.uf ? ` - ${unitInfo.uf}` : ''}${unitInfo.cep ? ` - CEP: ${unitInfo.cep}` : ''}
+                        </p>
+                        <p style="margin:2px 0; font-size: 10px; color: #334155;">
+                            CNPJ: ${unitInfo.cnpj} | Tel: ${unitInfo.phone}${unitInfo.whatsapp ? ` | WhatsApp: ${unitInfo.whatsapp}` : ''}${unitInfo.email ? ` | E-mail: ${unitInfo.email}` : ''}
+                        </p>
+                        ${unitInfo.authorization ? `<p style="margin:2px 0; font-size: 9px; font-style: italic; color: #64748b;">${unitInfo.authorization}</p>` : ''}
                      </div>
                 </div>
 
@@ -453,8 +459,14 @@ export const generateSchoolHistory = (
                 <div class="footer">
                     <p>Natal/RN, ${currentDate}</p>
                     <div class="signatures">
-                        <div class="sig-line">Direção</div>
-                        <div class="sig-line">Coordenação Pedagógica</div>
+                        <div class="sig-line">
+                            ${unitDetail.directorName || 'Direção'}
+                            <div style="font-size: 8px; font-weight: normal;">Direção</div>
+                        </div>
+                        <div class="sig-line">
+                            ${unitDetail.secretaryName || 'Secretaria'}
+                            <div style="font-size: 8px; font-weight: normal;">Secretária Escolar</div>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -12,6 +12,7 @@ import { studentService } from '../services/studentService';
 import type { Student } from '../types';
 import { SCHOOL_SHIFTS, SCHOOL_CLASSES_OPTIONS } from '../utils/academicDefaults';
 import { useAcademicData } from '../hooks/useAcademicData';
+import { useSchoolUnits } from '../hooks/useSchoolUnits';
 
 const STUDENT_STATUS_OPTIONS = [
     { label: 'CURSANDO', value: 'CURSANDO' },
@@ -57,6 +58,7 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
     const [activeTab, setActiveTab] = useState<'personal' | 'academic' | 'family' | 'filiation' | 'address' | 'health' | 'documents' | 'observations'>('personal');
     const [isLoading, setIsLoading] = useState(false);
     const { segments, grades, loading: loadingAcademic } = useAcademicData();
+    const { getUnitById } = useSchoolUnits();
     const [printBlank, setPrintBlank] = useState(false);
     const [isCameraOpen, setIsCameraOpen] = useState(false);
     const [isCropperOpen, setIsCropperOpen] = useState(false);
@@ -1218,6 +1220,7 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                         // Ensure we use the saved ficha_saude if it exists in the original student object
                         ficha_saude: student?.ficha_saude || formData.ficha_saude
                     }}
+                    unitDetail={getUnitById(formData.unit || '')}
                     isBlank={printBlank}
                 />
             </div>

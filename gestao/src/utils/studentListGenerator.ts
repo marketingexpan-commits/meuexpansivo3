@@ -1,14 +1,12 @@
+import type { Student, SchoolUnitDetail } from '../types';
 
-import type { Student } from '../types';
-import { UNIT_DETAILS } from '../constants';
-
-export const generateStudentList = (students: Student[], groupTitle: string, type: 'simple' | 'complete') => {
+export const generateStudentList = (students: Student[], groupTitle: string, type: 'simple' | 'complete', unitDetail: SchoolUnitDetail) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    // Use the first student's unit to determine school details, or default to Zona Norte
-    const unitName = students.length > 0 ? students[0].unit : 'Zona Norte';
-    const unitInfo = UNIT_DETAILS[unitName] || UNIT_DETAILS['Zona Norte'];
+    // Use the unit detail provided
+    const unitName = students.length > 0 ? students[0].unit : unitDetail.fullName;
+    const unitInfo = unitDetail;
 
     // Assets from receiptGenerator
     const logoUrl = 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png';

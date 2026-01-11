@@ -3,23 +3,61 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/Card';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
 import { Select } from '../components/Select';
-import { LockKeyhole, Eye, EyeOff } from 'lucide-react';
+import { LockKeyhole, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
+import type { SchoolUnitDetail } from '../types';
 
 const SCHOOL_LOGO_URL = 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png';
 
 export function Login() {
     const [loading, setLoading] = useState(false);
+    const [loadingUnits, setLoadingUnits] = useState(true);
+    const [units, setUnits] = useState<{ label: string, value: string }[]>([]);
     const [selectedUnit, setSelectedUnit] = useState('');
     const [showPassword, setShowPassword] = useState(false);
 
-    // Unidades Mockadas (Pode vir de constants depois)
-    const units = [
-        { label: 'Unidade Zona Norte', value: 'unit_zn' },
-        { label: 'Unidade Extremoz', value: 'unit_ext' },
-        { label: 'Unidade Quintas', value: 'unit_qui' },
-        { label: 'Unidade Boa Sorte', value: 'unit_bs' },
-        { label: 'Administração Geral', value: 'admin_geral' },
-    ];
+    React.useEffect(() => {
+        const fetchUnits = async () => {
+            try {
+                const q = query(collection(db, 'school_units'), orderBy('fullName'));
+                const snap = await getDocs(q);
+                const fetchedUnits = snap.docs.map(doc => {
+                    const data = doc.data() as SchoolUnitDetail;
+                    // Mapeamento inverso para manter compatibilidade com chaves legado se necessário
+                    // Ou apenas usar o ID/Nome do Firestore
+                    const legacyMapping: Record<string, string> = {
+                        'Zona Norte': 'unit_zn',
+                        'Extremoz': 'unit_ext',
+                        'Quintas': 'unit_qui',
+                        'Boa Sorte': 'unit_bs'
+                    };
+                    return {
+                        label: `Unidade ${data.fullName.replace('Expansivo - ', '')}`,
+                        value: legacyMapping[data.fullName.replace('Expansivo - ', '')] || data.id
+                    };
+                });
+
+                setUnits([
+                    ...fetchedUnits,
+                    { label: 'Administração Geral', value: 'admin_geral' }
+                ]);
+            } catch (error) {
+                console.error("Error fetching units:", error);
+                // Fallback legado em caso de erro
+                setUnits([
+                    { label: 'Unidade Zona Norte', value: 'unit_zn' },
+                    { label: 'Unidade Extremoz', value: 'unit_ext' },
+                    { label: 'Unidade Quintas', value: 'unit_qui' },
+                    { label: 'Unidade Boa Sorte', value: 'unit_bs' },
+                    { label: 'Administração Geral', value: 'admin_geral' },
+                ]);
+            } finally {
+                setLoadingUnits(false);
+            }
+        };
+        fetchUnits();
+    }, []);
 
     const getPlaceholder = () => {
         switch (selectedUnit) {
@@ -75,13 +113,20 @@ export function Login() {
                     <CardContent>
                         <form onSubmit={handleLogin} className="space-y-4">
                             <div className="space-y-4">
-                                <Select
-                                    label="Unidade Escolar"
-                                    options={units}
-                                    required
-                                    value={selectedUnit}
-                                    onChange={(e) => setSelectedUnit(e.target.value)}
-                                />
+                                {loadingUnits ? (
+                                    <div className="flex items-center gap-2 text-xs text-slate-400 p-2">
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                        Carregando unidades...
+                                    </div>
+                                ) : (
+                                    <Select
+                                        label="Unidade Escolar"
+                                        options={units}
+                                        required
+                                        value={selectedUnit}
+                                        onChange={(e) => setSelectedUnit(e.target.value)}
+                                    />
+                                )}
                                 <Input
                                     label="Usuário"
                                     placeholder={getPlaceholder()}

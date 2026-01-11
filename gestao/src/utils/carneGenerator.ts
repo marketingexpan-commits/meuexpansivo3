@@ -1,6 +1,5 @@
-import type { Student } from '../types';
+import type { Student, SchoolUnitDetail } from '../types';
 import { generatePixPayload } from './pixUtils';
-import { UNIT_DETAILS } from '../constants';
 
 interface Installment {
     month: string;
@@ -15,12 +14,12 @@ interface Installment {
     documentNumber?: string;
 }
 
-export const generateCarne = (student: Student, installments: Installment[]) => {
+export const generateCarne = (student: Student, installments: Installment[], unitDetail: SchoolUnitDetail) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    const PIX_KEY = 'expansivo.unidadeboasorte@gmail.com';
-    const unitInfo = UNIT_DETAILS[student.unit] || UNIT_DETAILS['Zona Norte'];
+    const PIX_KEY = unitDetail.pixKey || 'expansivo.unidadeboasorte@gmail.com';
+    const unitInfo = unitDetail;
 
     const sortedInstallments = installments.sort((a, b) => {
         const months = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -147,7 +146,7 @@ export const generateCarne = (student: Student, installments: Installment[]) => 
                                     <div style="display: flex; flex-direction: column; align-items: flex-start;">
                                         <div style="font-weight:900; font-size: 10px; text-transform:uppercase; line-height: 1; letter-spacing: -0.5px;">EXPANSIVO</div>
                                         <div style="font-weight:700; font-size: 6px; text-transform:uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">REDE DE ENSINO</div>
-                                        <div style="font-size: 7px; color: #444;">Unidade ${student.unit}</div>
+                                        <div style="font-size: 7px; color: #444; text-transform: uppercase;">UNIDADE: ${unitDetail.fullName.replace('Expansivo - ', '')}</div>
                                     </div>
                                 </div>
                                 <div class="field" style="margin-top: 5px;"><span class="label">Vencimento</span><span class="value">${formatDate(inst.dueDate)}</span></div>
@@ -165,9 +164,11 @@ export const generateCarne = (student: Student, installments: Installment[]) => 
                                     </div>
                                     <div style="flex:1; margin-left: 8px; display: flex; flex-direction: column; justify-content: center;">
                                         <div style="font-weight:800; font-size:12px; text-transform:uppercase; line-height: 1.1;">Expansivo Rede de Ensino</div>
-                                        <div style="font-weight:700; font-size:9px; margin-bottom:1px;">Unidade ${student.unit}</div>
-                                        <div style="font-size:7px; color:#444; line-height: 1.1;">${unitInfo.address}</div>
-                                        <div style="font-size:7px; color:#444; line-height: 1.1;">CNPJ: ${unitInfo.cnpj} | Tel: ${unitInfo.phone}</div>
+                                        <div style="font-weight:700; font-size:9px; margin-bottom:1px; text-transform: uppercase;">Unidade: ${unitDetail.fullName.replace('Expansivo - ', '')}</div>
+                                        <div style="font-size:7px; color:#444; line-height: 1.1;">
+                                            ${unitInfo.address}${unitInfo.district ? ` - ${unitInfo.district}` : ''}${unitInfo.city ? `, ${unitInfo.city}` : ''}${unitInfo.uf ? ` - ${unitInfo.uf}` : ''}${unitInfo.cep ? ` - CEP: ${unitInfo.cep}` : ''}
+                                        </div>
+                                        <div style="font-size:7px; color:#444; line-height: 1.1;">CNPJ: ${unitInfo.cnpj} | Tel: ${unitInfo.phone}${unitInfo.whatsapp ? ` | WhatsApp: ${unitInfo.whatsapp}` : ''}${unitInfo.email ? ` | E-mail: ${unitInfo.email}` : ''}</div>
                                     </div>
                                     <div style="text-align:right; display: flex; flex-direction: column; justify-content: center;">
                                         <div style="font-size:14px; font-weight:bold;">R$ ${inst.value.toFixed(2)}</div>

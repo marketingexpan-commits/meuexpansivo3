@@ -407,13 +407,13 @@ export default function Disciplinas() {
             {/* Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-blue-950/40 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-6 border-b border-slate-100">
                             <h2 className="text-xl font-bold text-blue-950">
                                 {editingSubject ? 'Editar Disciplina' : 'Nova Disciplina'}
                             </h2>
                         </div>
-                        <form onSubmit={handleSave} className="p-6 space-y-4">
+                        <form onSubmit={handleSave} className="p-6 space-y-4 overflow-y-auto flex-grow custom-scrollbar">
                             <div>
                                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Nome da Disciplina</label>
                                 <Input

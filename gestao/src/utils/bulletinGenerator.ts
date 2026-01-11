@@ -1,6 +1,6 @@
-import { CURRICULUM_MATRIX, UNIT_DETAILS } from './academicDefaults';
+import { CURRICULUM_MATRIX } from './academicDefaults';
 import { getBimesterFromDate, getCurrentSchoolYear } from './academicUtils';
-import type { Student, GradeEntry, AttendanceRecord, AcademicSubject } from '../types';
+import type { Student, GradeEntry, AttendanceRecord, AcademicSubject, SchoolUnitDetail } from '../types';
 import { AttendanceStatus } from '../types';
 import { calculateGeneralFrequency as calculateUnifiedFrequency } from './frequency';
 
@@ -63,10 +63,11 @@ const generateBulletinHtml = (
     student: Student,
     currentGrades: GradeEntry[],
     attendanceRecords: AttendanceRecord[],
+    unitDetail: SchoolUnitDetail,
     pageBreak: boolean = false,
     academicSubjects?: AcademicSubject[]
 ) => {
-    const unitInfo = UNIT_DETAILS[student.unit] || UNIT_DETAILS['Zona Norte'];
+    const unitInfo = unitDetail;
     const currentDate = new Date().toLocaleDateString('pt-BR');
     const currentYear = getCurrentSchoolYear();
     const today = new Date().toISOString().split('T')[0];
@@ -213,24 +214,32 @@ const generateBulletinHtml = (
 
     return `
             <div class="page" style="${pageBreak ? 'page-break-after: always;' : ''}">
-                <div class="header">
-                     <img src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png" alt="Logo" class="logo" style="filter: grayscale(100%);">
-                     <div class="school-info">
-                        <h2 style="margin:0; font-size: 16px; font-weight: 900;">EXPANSIVO REDE DE ENSINO</h2>
-                        <p style="margin:2px 0; font-weight: bold;">Unidade ${student.unit}</p>
-                        <p style="margin:2px 0; font-size: 10px;">${unitInfo.address}</p>
-                        <p style="margin:2px 0; font-size: 10px;">CNPJ: ${unitInfo.cnpj} | Telefone: ${unitInfo.phone}</p>
-                     </div>
+                <div class="header" style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #1a426f; padding-bottom: 10px; margin-bottom: 15px;">
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <img src="${unitDetail.logoUrl || 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png'}" alt="Logo" class="logo" style="max-height: 60px; filter: grayscale(100%);">
+                        <div class="school-info" style="text-align: left;">
+                            <h2 style="margin:0; font-size: 16px; font-weight: 900; color: #1a426f; letter-spacing: -0.5px;">EXPANSIVO REDE DE ENSINO</h2>
+                            ${unitInfo.professionalTitle ? `<p style="margin:0; font-size: 8px; font-weight: 700; color: #475569; text-transform: uppercase;">${unitInfo.professionalTitle}</p>` : ''}
+                            <p style="margin:2px 0; font-weight: bold; text-transform: uppercase; color: #1e293b; font-size: 11px;">UNIDADE: ${unitInfo.fullName.replace('Expansivo - ', '').toUpperCase()}</p>
+                            <p style="margin:2px 0; font-size: 9px; color: #334155; line-height: 1.2;">
+                                ${unitInfo.address}${unitInfo.district ? ` - ${unitInfo.district}` : ''}, ${unitInfo.city || ''} - ${unitInfo.uf || ''}${unitInfo.cep ? ` - CEP: ${unitInfo.cep}` : ''}<br>
+                                CNPJ: ${unitInfo.cnpj} | Tel: ${unitInfo.phone}${unitInfo.whatsapp ? ` | WhatsApp: ${unitInfo.whatsapp}` : ''}${unitInfo.email ? ` | E-mail: ${unitInfo.email}` : ''}
+                            </p>
+                            ${unitInfo.authorization ? `<p style="margin:2px 0; font-size: 8px; font-style: italic; color: #64748b;">${unitInfo.authorization}</p>` : ''}
+                        </div>
+                    </div>
+                    <div style="text-align: right; color: #1a426f;">
+                        <h2 style="margin: 0; font-size: 16px; font-weight: 900; text-transform: uppercase;">Boletim Escolar ${currentYear}.1</h2>
+                        <p style="margin: 0; font-size: 10px; color: #64748b; font-weight: bold;">Emissão: ${currentDate}</p>
+                    </div>
                 </div>
-
-                <div class="title">Boletim Escolar</div>
 
                 <div class="section">
                     <div class="section-title">Dados de Identificação</div>
                     <div class="info-grid">
                         <div class="info-item"><span class="label">Aluno:</span> ${student.name}</div>
                         <div class="info-item"><span class="label">Matrícula:</span> ${student.code}</div>
-                        <div class="info-item"><span class="label">Série/Turma:</span> ${student.gradeLevel} - ${student.schoolClass}</div>
+                        <div class="info-item"><span class="label">Série / Turma:</span> ${student.gradeLevel} - ${student.schoolClass}</div>
                         <div class="info-item"><span class="label">Turno:</span> ${student.shift}</div>
                         <div class="info-item"><span class="label">Data de Nascimento:</span> ${student.data_nascimento ? new Date(student.data_nascimento).toLocaleDateString('pt-BR') : '-'}</div>
                         <div class="info-item"><span class="label">Responsável:</span> ${student.nome_responsavel || student.nome_mae || student.nome_pai || '-'}</div>
@@ -268,7 +277,7 @@ const generateBulletinHtml = (
                         </tbody>
                     </table>
                     <p style="font-size: 8px; margin-top: 5px; font-style: italic;">
-                        Legenda: CH: Carga Horária Anual | N: Nota Bim. | R: Recup. Bim. | M: Média Bim. | F: Faltas | %: Frequência Mensal Estimada.<br/>
+                        Legenda: CH: Carga Horária Anual | N: Nota Bim. | R: Recup. Bim. | M: Média Bim. | F: Faltas | %: Frequência Mensal Estimada.<br />
                         * O boletim reflete o desempenho parcial até o momento da emissão.
                     </p>
                 </div>
@@ -279,20 +288,26 @@ const generateBulletinHtml = (
                 </div>
 
                 <div class="footer">
-                    <p>Natal/RN, ${currentDate}</p>
+                    <p>Natal / RN, ${currentDate}</p>
                     <div class="signatures">
-                        <div class="sig-line">Direção</div>
-                        <div class="sig-line">Coordenação Pedagógica</div>
+                        <div class="sig-line">
+                            ${unitDetail.directorName || 'Direção'}
+                            <div style="font-size: 8px; font-weight: normal;">Direção</div>
+                        </div>
+                        <div class="sig-line">
+                            ${unitDetail.secretaryName || 'Secretaria'}
+                            <div style="font-size: 8px; font-weight: normal;">Secretária Escolar</div>
+                        </div>
                     </div>
                 </div>
             </div>
-    `;
+        `;
 };
 
 const getBulletinStyle = () => `
     @page { size: A4 landscape; margin: 10mm; }
-                
-    body { 
+    
+    body {
         background-color: #525659;
         margin: 0;
         padding: 0;
@@ -300,8 +315,8 @@ const getBulletinStyle = () => `
         flex-direction: column;
         align-items: center;
         min-height: 100vh;
-        font-family: 'Times New Roman', Times, serif; 
-        color: #000; 
+        font-family: 'Times New Roman', Times, serif;
+        color: #000;
     }
 
     .page {
@@ -310,7 +325,7 @@ const getBulletinStyle = () => `
         min-height: 210mm;
         padding: 15mm;
         margin: 20px auto;
-        box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
         box-sizing: border-box;
         position: relative;
     }
@@ -327,12 +342,12 @@ const getBulletinStyle = () => `
     .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size: 11px; }
     .info-item { margin-bottom: 2px; }
     .label { font-weight: bold; margin-right: 5px; }
-    
+
     /* Table adjustments for Landscape */
     .grades-table { border-collapse: collapse; width: 100%; margin-top: 5px; font-size: 10px; }
     .grades-table th, .grades-table td { border: 1px solid #000; padding: 3px 1px; text-align: center; }
     .grades-table th { background-color: #f2f2f2; font-weight: bold; font-size: 9px; }
-    .subject-col { text-align: left !important; padding-left: 5px !important; width: 140px; }
+    .subject-col { text-align: left!important; padding-left: 5px!important; width: 140px; }
 
     .footer { margin-top: 40px; text-align: center; font-size: 11px; }
     .signatures { display: flex; justify-content: space-around; margin-top: 60px; }
@@ -350,13 +365,15 @@ export const generateSchoolBulletin = (
     student: Student,
     currentGrades: GradeEntry[] = [],
     attendanceRecords: AttendanceRecord[] = [],
+    unitDetail: SchoolUnitDetail,
     academicSubjects?: AcademicSubject[]
 ) => {
-    generateBatchSchoolBulletin([{ student, grades: currentGrades, attendance: attendanceRecords }], academicSubjects);
+    generateBatchSchoolBulletin([{ student, grades: currentGrades, attendance: attendanceRecords }], unitDetail, academicSubjects);
 };
 
 export const generateBatchSchoolBulletin = (
     data: { student: Student, grades: GradeEntry[], attendance: AttendanceRecord[] }[],
+    unitDetail: SchoolUnitDetail,
     academicSubjects?: AcademicSubject[]
 ) => {
     const printWindow = window.open('', '_blank');
@@ -366,7 +383,7 @@ export const generateBatchSchoolBulletin = (
     }
 
     const pagesHtml = data.map((item, index) =>
-        generateBulletinHtml(item.student, item.grades, item.attendance, index < data.length - 1, academicSubjects)
+        generateBulletinHtml(item.student, item.grades, item.attendance, unitDetail, index < data.length - 1, academicSubjects)
     ).join('');
 
     const content = `
@@ -381,7 +398,6 @@ export const generateBatchSchoolBulletin = (
         </head>
         <body>
             ${pagesHtml}
-            
             <script>
                 window.onload = function() { setTimeout(() => { window.print(); }, 1000); }
             </script>

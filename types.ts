@@ -16,6 +16,17 @@ export enum SchoolUnit {
   UNIT_4 = 'Quintas'
 }
 
+export interface SchoolUnitDetail {
+  id: string; // O ID ou o valor do enum (ex: 'Zona Norte')
+  fullName: string; // Expansivo - Zona Norte
+  cnpj: string;
+  address: string;
+  phone: string;
+  whatsapp: string;
+  logoUrl?: string;
+  isActive: boolean;
+}
+
 export enum SchoolShift {
   MORNING = 'Matutino',
   AFTERNOON = 'Vespertino'

@@ -47,30 +47,70 @@ export const CURRICULUM_MATRIX: Record<string, Record<string, number>> = {
     }
 };
 
-export const UNIT_DETAILS: Record<string, { name: string, cnpj: string, address: string, phone: string }> = {
+export const UNIT_DETAILS: Record<string, {
+    name: string,
+    cnpj: string,
+    address: string,
+    phone: string,
+    email?: string,
+    district?: string,
+    city?: string,
+    uf?: string,
+    cep?: string,
+    professionalTitle?: string,
+    authorization?: string
+}> = {
     'Zona Norte': {
         name: 'Expansivo - Zona Norte',
         cnpj: '08.693.673/0001-95',
-        address: 'Rua Desportista José Augusto de Freitas, 50 - Pajuçara, Natal - RN',
-        phone: '(84) 99836-2024'
+        address: 'Rua Desportista José Augusto de Freitas, 50',
+        district: 'Pajuçara',
+        city: 'Natal',
+        uf: 'RN',
+        cep: '59133-310',
+        phone: '(84) 99836-2024',
+        email: 'diretoria.ZN@expansivo.com.br', // Placeholder/Generic if not found
+        professionalTitle: 'Educação Infantil, Ensino Fundamental e Médio',
+        authorization: 'Portaria SEEC/RN'
     },
     'Boa Sorte': {
         name: 'Expansivo - Boa Sorte',
         cnpj: '08.693.673/0002-76',
-        address: 'Av. Boa Sorte, 265 - Nossa Senhora da Apresentação, Natal - RN',
-        phone: '(84) 98827-7188'
+        address: 'Av. Boa Sorte, 265',
+        district: 'Nossa Senhora da Apresentação',
+        city: 'Natal',
+        uf: 'RN',
+        cep: '59114-150',
+        phone: '(84) 98827-7188',
+        email: 'contato.bs@expansivo.com.br',
+        professionalTitle: 'Educação Infantil, Ensino Fundamental e Médio',
+        authorization: 'Portaria SEEC/RN'
     },
     'Extremoz': {
         name: 'Expansivo - Extremoz',
         cnpj: '08.693.673/0003-57',
-        address: 'Rua do Futebol, 32 - Estivas, Extremoz - RN',
-        phone: '(84) 98186-3522'
+        address: 'Rua do Futebol, 32',
+        district: 'Estivas',
+        city: 'Extremoz',
+        uf: 'RN',
+        cep: '59575-000',
+        phone: '(84) 98186-3522',
+        email: 'expansivoextremoz@gmail.com',
+        professionalTitle: 'Educação Infantil, Ensino Fundamental e Médio',
+        authorization: 'Portaria SEEC/RN'
     },
     'Quintas': {
         name: 'Expansivo - Quintas',
         cnpj: '08.693.673/0004-38',
-        address: 'Rua Coemaçu, 1045 - Quintas, Natal - RN',
-        phone: '(84) 99954-0167'
+        address: 'Rua Coemaçu, 1045',
+        district: 'Quintas',
+        city: 'Natal',
+        uf: 'RN',
+        cep: '59035-130',
+        phone: '(84) 99954-0167',
+        email: 'expansivo.quintas@gmail.com',
+        professionalTitle: 'Educação Infantil, Ensino Fundamental e Médio',
+        authorization: 'Portaria SEEC/RN'
     }
 };
 

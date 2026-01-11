@@ -8,6 +8,7 @@ import { studentService } from '../services/studentService';
 import { pedagogicalService } from '../services/pedagogicalService';
 import { generateSchoolHistory } from '../utils/historyGenerator';
 import type { Student, AcademicHistoryRecord, AttendanceRecord } from '../types';
+import { useSchoolUnits } from '../hooks/useSchoolUnits';
 import { HistoryEditor } from './HistoryEditor';
 
 interface HistorySearchModalProps {
@@ -18,6 +19,7 @@ type ModalStep = 'SEARCH' | 'EDITOR';
 
 export function HistorySearchModal({ onClose }: HistorySearchModalProps) {
     const { subjects: academicSubjects } = useAcademicData();
+    const { getUnitById } = useSchoolUnits();
     const [step, setStep] = useState<ModalStep>('SEARCH');
     const [code, setCode] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -67,8 +69,15 @@ export function HistorySearchModal({ onClose }: HistorySearchModalProps) {
 
     const handleGenerate = (enteredRecords: AcademicHistoryRecord[]) => {
         if (!foundStudentInfo) return;
+
+        const unitDetail = getUnitById(foundStudentInfo.unit);
+        if (!unitDetail) {
+            alert("Dados da unidade não encontrados.");
+            return;
+        }
+
         try {
-            generateSchoolHistory(foundStudentInfo, enteredRecords, currentGrades, attendanceRecords, academicSubjects);
+            generateSchoolHistory(foundStudentInfo, enteredRecords, currentGrades, attendanceRecords, unitDetail, academicSubjects);
         } catch (e) {
             console.error("Error generating history:", e);
             alert("Erro ao gerar o PDF. Verifique se o bloqueador de pop-ups está ativo.");

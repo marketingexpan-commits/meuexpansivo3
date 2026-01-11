@@ -1,15 +1,27 @@
-import type { Student } from '../types';
-import { UNIT_DETAILS } from '../constants';
+import type { Student, SchoolUnitDetail } from '../types';
 
 interface StudentEnrollmentPrintProps {
     student: Partial<Student>;
+    unitDetail?: SchoolUnitDetail; // Optional because it might not be loaded yet
     isBlank?: boolean;
 }
 
-export function StudentEnrollmentPrint({ student, isBlank = false }: StudentEnrollmentPrintProps) {
+export function StudentEnrollmentPrint({ student, unitDetail, isBlank = false }: StudentEnrollmentPrintProps) {
     const today = new Date().toLocaleDateString('pt-BR');
-    const unitInfo = UNIT_DETAILS[student.unit as string] || UNIT_DETAILS['Zona Norte'];
-    const logoUrl = 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png';
+    const unitInfo = unitDetail || {
+        address: '...',
+        cnpj: '...',
+        phone: '...',
+        cep: '',
+        email: '',
+        district: '',
+        city: '',
+        uf: '',
+        whatsapp: '',
+        authorization: '',
+        professionalTitle: ''
+    };
+    const logoUrl = unitDetail?.logoUrl || 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png';
     const watermarkUrl = 'https://i.postimg.cc/hjLxrMdc/brasao-da-republica-do-brasil-seeklogo.png';
 
     // Helper to render value on a line, ensuring identical layout for blank and filled forms
@@ -50,9 +62,15 @@ export function StudentEnrollmentPrint({ student, isBlank = false }: StudentEnro
                         </div>
                         <div>
                             <h1 className="text-lg font-black uppercase text-black leading-tight">Expansivo Rede de Ensino</h1>
-                            <p className="text-[9px] font-bold text-black/70 uppercase tracking-wider">Unidade {student.unit || 'Zona Norte'}</p>
-                            <p className="text-[8px] text-gray-700 leading-tight max-w-xs">{unitInfo.address}</p>
-                            <p className="text-[8px] text-gray-700 font-semibold italic">CNPJ: {unitInfo.cnpj} | Tel: {unitInfo.phone}</p>
+                            {(unitInfo as any).professionalTitle && <p className="text-[7px] font-bold text-gray-500 uppercase tracking-widest -mt-1">{(unitInfo as any).professionalTitle}</p>}
+                            <p className="text-[9px] font-bold text-black/70 uppercase tracking-wider">Unidade: {unitDetail?.fullName?.replace('Expansivo - ', '') || student.unit || '...'}</p>
+                            <p className="text-[8px] text-gray-700 leading-tight max-w-sm">
+                                {unitInfo.address}{unitInfo.district ? ` - ${unitInfo.district}` : ''}{unitInfo.city ? `, ${unitInfo.city}` : ''}{unitInfo.uf ? ` - ${unitInfo.uf}` : ''}{unitInfo.cep ? ` - CEP: ${unitInfo.cep}` : ''}
+                            </p>
+                            <p className="text-[8px] text-gray-700 font-semibold italic">
+                                CNPJ: {unitInfo.cnpj} | Tel: {unitInfo.phone}{unitInfo.whatsapp ? ` | WhatsApp: ${unitInfo.whatsapp}` : ''}{unitInfo.email ? ` | E-mail: ${unitInfo.email}` : ''}
+                            </p>
+                            {unitInfo.authorization && <p className="text-[7px] text-gray-400 italic">Autorização: {unitInfo.authorization}</p>}
                         </div>
                     </div>
                     <div className="text-right">
@@ -285,8 +303,8 @@ export function StudentEnrollmentPrint({ student, isBlank = false }: StudentEnro
                         <div className="text-[7px] text-gray-600 font-bold italic">Assinatura por Extenso</div>
                     </div>
                     <div className="text-center">
-                        <div className="border-t-[0.5px] border-black pt-1 text-[9px] font-black uppercase">Secretaria Escolar</div>
-                        <div className="text-[7px] text-gray-600 font-bold italic">Unidade {student.unit || 'Zona Norte'}</div>
+                        <div className="border-t-[0.5px] border-black pt-1 text-[9px] font-black uppercase">{unitDetail?.secretaryName || 'Secretaria Escolar'}</div>
+                        <div className="text-[7px] text-gray-600 font-bold italic">{unitDetail?.secretaryName ? 'Secretaria Escolar - ' : ''}Unidade {unitDetail?.fullName?.replace('Expansivo - ', '') || student.unit}</div>
                     </div>
                 </div>
 

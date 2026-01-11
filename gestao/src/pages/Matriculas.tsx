@@ -14,6 +14,7 @@ import { useAcademicData } from '../hooks/useAcademicData';
 import { financialService } from '../services/financialService';
 import { generateCarne } from '../utils/carneGenerator';
 import { generateStudentList } from '../utils/studentListGenerator';
+import { useSchoolUnits } from '../hooks/useSchoolUnits';
 import { FileText, Pencil } from 'lucide-react';
 
 export function Matriculas() {
@@ -23,6 +24,7 @@ export function Matriculas() {
 
     const [searchTerm, setSearchTerm] = useState('');
     const { segments, grades, loading: loadingAcademic } = useAcademicData();
+    const { getUnitById } = useSchoolUnits();
 
     // Estados dos filtros
     const [filterGrade, setFilterGrade] = useState('');
@@ -163,7 +165,12 @@ export function Matriculas() {
             }
 
             // Gerar PDF/Janela
-            generateCarne(student, installments);
+            const unitDetail = getUnitById(student.unit);
+            if (!unitDetail) {
+                alert("Dados da unidade não encontrados.");
+                return;
+            }
+            generateCarne(student, installments, unitDetail);
 
         } catch (error) {
             console.error(error);
@@ -376,7 +383,11 @@ export function Matriculas() {
                                                 variant="ghost"
                                                 size="sm"
                                                 className="h-7 px-2 text-xs text-slate-500 hover:text-blue-950 hover:bg-blue-50"
-                                                onClick={() => generateStudentList(studentsInGroup, groupName, 'simple')}
+                                                onClick={() => {
+                                                    const unitDetail = getUnitById(studentsInGroup[0].unit);
+                                                    if (!unitDetail) return alert("Dados da unidade não encontrados.");
+                                                    generateStudentList(studentsInGroup, groupName, 'simple', unitDetail);
+                                                }}
                                                 title="Lista Simples (A4 Retrato)"
                                             >
                                                 <FileText className="w-3 h-3 mr-1" />
@@ -386,7 +397,11 @@ export function Matriculas() {
                                                 variant="ghost"
                                                 size="sm"
                                                 className="h-7 px-2 text-xs text-slate-500 hover:text-blue-950 hover:bg-blue-50"
-                                                onClick={() => generateStudentList(studentsInGroup, groupName, 'complete')}
+                                                onClick={() => {
+                                                    const unitDetail = getUnitById(studentsInGroup[0].unit);
+                                                    if (!unitDetail) return alert("Dados da unidade não encontrados.");
+                                                    generateStudentList(studentsInGroup, groupName, 'complete', unitDetail);
+                                                }}
                                                 title="Lista Completa (A4 Paisagem)"
                                             >
                                                 <Printer className="w-3 h-3 mr-1" />

@@ -16,6 +16,29 @@ export enum SchoolUnit {
   UNIT_4 = 'Quintas'
 }
 
+export interface SchoolUnitDetail {
+  id: string; // O ID ou o valor do enum (ex: 'Zona Norte')
+  fullName: string; // Expansivo - Zona Norte
+  professionalTitle?: string; // NOVO: "Educação Infantil, Ensino Fundamental e Médio"
+  cnpj: string;
+  address: string;
+  district?: string; // NOVO: Bairro
+  phone: string;
+  whatsapp: string;
+  email?: string;
+  instagram?: string;
+  inepCode?: string;
+  city?: string;
+  uf?: string;
+  cep?: string;
+  authorization?: string; // NOVO: Portaria ou Ato de Autorização
+  directorName?: string;
+  secretaryName?: string;
+  pixKey?: string;
+  logoUrl?: string;
+  isActive: boolean;
+}
+
 export enum SchoolShift {
   MORNING = 'Matutino',
   AFTERNOON = 'Vespertino'

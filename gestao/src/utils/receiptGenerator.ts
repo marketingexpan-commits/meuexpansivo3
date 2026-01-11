@@ -1,10 +1,7 @@
+import type { SchoolUnitDetail } from '../types';
 
-// src/utils/receiptGenerator.ts
-
-import { UNIT_DETAILS } from '../constants';
-
-export function generateReceipt(m: any) {
-    const unitInfo = UNIT_DETAILS[m.studentUnit] || UNIT_DETAILS['Zona Norte'];
+export function generateReceipt(m: any, unitDetail: SchoolUnitDetail) {
+    const unitInfo = unitDetail;
 
     // Fallback determinístico para registros antigos sem receiptId
     const getDeterministicPortion = (id: string) => {
@@ -18,7 +15,7 @@ export function generateReceipt(m: any) {
 
     const receiptId = m.receiptId || `REC-${new Date().getFullYear()}-${getDeterministicPortion(m.id || 'fallback')}`;
     const paymentDate = m.paymentDate ? new Date(m.paymentDate).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR');
-    const logoUrl = 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png';
+    const logoUrl = unitDetail.logoUrl || 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png';
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
@@ -35,9 +32,15 @@ export function generateReceipt(m: any) {
                     </div>
                     <div class="school-text">
                         <h1>Expansivo Rede de Ensino</h1>
-                        <p style="font-weight: 700; color: #0f172a; margin-bottom: 2px;">Unidade ${m.studentUnit}</p>
-                        <p style="font-size: 10px; line-height: 1.2;">${unitInfo.address}</p>
-                        <p style="font-size: 10px; line-height: 1.2;">CNPJ: ${unitInfo.cnpj} | Telefone: ${unitInfo.phone}</p>
+                        ${(unitInfo as any).professionalTitle ? `<p style="margin:0; font-size: 8px; font-weight: 700; color: #475569; text-transform: uppercase;">${(unitInfo as any).professionalTitle}</p>` : ''}
+                        <p style="font-weight: 700; color: #0f172a; margin-bottom: 2px; text-transform: uppercase;">UNIDADE: ${unitInfo.fullName.replace('Expansivo - ', '')}</p>
+                        <p style="font-size: 10px; line-height: 1.2;">
+                            ${unitInfo.address}${unitInfo.district ? ` - ${unitInfo.district}` : ''}${unitInfo.city ? `, ${unitInfo.city}` : ''}${unitInfo.uf ? ` - ${unitInfo.uf}` : ''}${unitInfo.cep ? ` - CEP: ${unitInfo.cep}` : ''}
+                        </p>
+                        <p style="font-size: 10px; line-height: 1.2;">
+                            CNPJ: ${unitInfo.cnpj} | Tel: ${unitInfo.phone}${unitInfo.whatsapp ? ` | WhatsApp: ${unitInfo.whatsapp}` : ''}${unitInfo.email ? ` | E-mail: ${unitInfo.email}` : ''}
+                        </p>
+                        ${unitInfo.authorization ? `<p style="margin:0; font-size: 8px; font-style: italic; color: #64748b;">${unitInfo.authorization}</p>` : ''}
                     </div>
                 </div>
                 <div class="document-type">

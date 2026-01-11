@@ -10,6 +10,7 @@ import { pedagogicalService } from '../services/pedagogicalService';
 import { financialService } from '../services/financialService';
 import { generateSchoolDeclaration, type DeclarationType } from '../utils/schoolDeclarationGenerator';
 import type { Student } from '../types';
+import { useSchoolUnits } from '../hooks/useSchoolUnits';
 
 interface DeclarationSearchModalProps {
     onClose: () => void;
@@ -19,6 +20,7 @@ type ModalStep = 'SEARCH' | 'SELECTION';
 
 export function DeclarationSearchModal({ onClose }: DeclarationSearchModalProps) {
     const { subjects: academicSubjects } = useAcademicData();
+    const { getUnitById } = useSchoolUnits();
     const [step, setStep] = useState<ModalStep>('SEARCH');
     const [code, setCode] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -71,8 +73,15 @@ export function DeclarationSearchModal({ onClose }: DeclarationSearchModalProps)
     const handlePrint = (type: DeclarationType) => {
         if (!foundStudent) return;
 
+        const unitDetail = getUnitById(foundStudent.unit);
+        if (!unitDetail) {
+            alert("Dados da unidade não encontrados.");
+            return;
+        }
+
         generateSchoolDeclaration(type, {
             student: foundStudent,
+            unitDetail,
             frequency: studentFrequency,
             hasDebts: hasPendingDebts
         });

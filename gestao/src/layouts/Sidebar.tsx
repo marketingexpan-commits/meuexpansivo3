@@ -17,7 +17,8 @@ import {
     History,
     Calendar,
     Settings,
-    FileBarChart // Import for Boletim icon
+    FileBarChart,
+    Building2
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -68,6 +69,7 @@ function SidebarItem({ icon: Icon, label, path, collapsed }: SidebarItemProps) {
 
 export function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
+    const isGeneralAdmin = localStorage.getItem('userUnit') === 'admin_geral';
     const [showDeclarationModal, setShowDeclarationModal] = useState(false);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [showBulletinModal, setShowBulletinModal] = useState(false); // New State for Boletim
@@ -284,6 +286,9 @@ export function Sidebar() {
                         <div className="ml-4 pl-4 border-l border-slate-100 space-y-0.5 animate-in slide-in-from-top-2 duration-200">
                             <SidebarItem icon={Database} label="Disciplinas" path="/config/disciplinas" collapsed={collapsed} />
                             <SidebarItem icon={Layers} label="Séries e Segmentos" path="/config/series" collapsed={collapsed} />
+                            {isGeneralAdmin && (
+                                <SidebarItem icon={Building2} label="Unidades" path="/config/unidades" collapsed={collapsed} />
+                            )}
                         </div>
                     )}
                 </div>
