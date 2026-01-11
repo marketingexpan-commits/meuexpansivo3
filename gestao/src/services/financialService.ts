@@ -414,6 +414,7 @@ export const financialService = {
     // GERAR BOLETO (Backend Function)
     async generateBoleto(data: any) {
         try {
+            console.log("🚀 Enviando para Cloud Function:", data);
             const response = await fetch('https://us-central1-meu-expansivo-app.cloudfunctions.net/generateBoleto', {
                 method: 'POST',
                 headers: {
