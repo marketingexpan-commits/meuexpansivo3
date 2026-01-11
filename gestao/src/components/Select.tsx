@@ -5,10 +5,11 @@ import { twMerge } from 'tailwind-merge';
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
     label?: string;
     error?: string;
+    startIcon?: React.ReactNode;
     options: { label: string; value: string }[];
 }
 
-export function Select({ label, error, className, id, options, ...props }: SelectProps) {
+export function Select({ label, error, startIcon, className, id, options, ...props }: SelectProps) {
     const inputId = id || React.useId();
 
     return (
@@ -19,12 +20,18 @@ export function Select({ label, error, className, id, options, ...props }: Selec
                 </label>
             )}
             <div className="relative">
+                {startIcon && (
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none z-10">
+                        {startIcon}
+                    </div>
+                )}
                 <select
                     id={inputId}
                     className={twMerge(
                         clsx(
                             "flex h-10 w-full appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-950 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200",
                             error && "border-red-500 focus:ring-red-500",
+                            startIcon ? "pl-9" : "",
                             className
                         )
                     )}

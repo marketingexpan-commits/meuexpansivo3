@@ -439,9 +439,14 @@ export interface Teacher {
   cpf: string;
   password: string;
   name: string;
-  subjects: Subject[];
+  subjects: string[]; // Changed to string[] to match dynamic subjects names
+  gradeLevels: string[]; // NEW: List of grades/series the teacher is responsible for
+  email?: string; // NEW
   phoneNumber?: string;
-  unit: SchoolUnit; // Singular: define a unidade deste registro específico
+  unit: SchoolUnit;
+  isBlocked: boolean; // NEW: Access control
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Admin {
