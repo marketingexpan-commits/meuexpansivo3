@@ -10,6 +10,7 @@ import Disciplinas from './pages/Disciplinas';
 import AcademicConfig from './pages/AcademicConfig';
 import Unidades from './pages/Unidades';
 import { Professores } from './pages/Professores';
+import { Coordenadores } from './pages/Coordenadores';
 
 
 
@@ -30,6 +31,7 @@ function App() {
           <Route path="/grade-horaria" element={<GradeHoraria />} />
           <Route path="/config/disciplinas" element={<Disciplinas />} />
           <Route path="/config/series" element={<AcademicConfig />} />
+          <Route path="/config/coordenadores" element={<Coordenadores />} />
           <Route path="/config/professores" element={<Professores />} />
           <Route path="/config/unidades" element={<Unidades />} />
 
