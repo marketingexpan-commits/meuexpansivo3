@@ -1442,7 +1442,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             {/* Modal de Seleção de Método */}
             {isMethodSelectorOpen && (
                 <div className="fixed inset-0 z-[105] bg-black/60 flex items-center justify-center p-4 animate-fade-in">
-                    <div className="bg-white rounded-3xl p-8 max-w-lg w-full text-center space-y-6 shadow-2xl animate-scale-in">
+                    <div className="bg-white rounded-3xl p-8 max-w-lg w-full text-center space-y-6 shadow-2xl animate-scale-in max-h-[90vh] overflow-y-auto">
                         <h3 className="text-xl font-bold text-gray-800">Escolha a Forma de Pagamento</h3>
 
                         <div className="grid grid-cols-3 gap-3">
