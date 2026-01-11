@@ -5,7 +5,7 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Select } from '../components/Select';
 import { StudentForm } from '../components/StudentForm';
-import { Search, Filter, Loader2, Printer } from 'lucide-react';
+import { Search, Filter, Loader2, Printer, Barcode } from 'lucide-react';
 import { studentService } from '../services/studentService';
 import type { Student } from '../types';
 import { SCHOOL_SHIFTS, SCHOOL_CLASSES_OPTIONS } from '../utils/academicDefaults';
@@ -15,7 +15,7 @@ import { financialService } from '../services/financialService';
 import { generateCarne } from '../utils/carneGenerator';
 import { generateStudentList } from '../utils/studentListGenerator';
 import { useSchoolUnits } from '../hooks/useSchoolUnits';
-import { FileText, Pencil } from 'lucide-react';
+import { FileText, Pencil, Trash2 } from 'lucide-react';
 
 export function Matriculas() {
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -36,6 +36,7 @@ export function Matriculas() {
 
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isGenerating, setIsGenerating] = useState(false);
 
 
     // Effect to handle URL actions
@@ -150,6 +151,21 @@ export function Matriculas() {
         setIsFormOpen(true);
     };
 
+    const handleDelete = async (student: Student) => {
+        if (!confirm(`TEM CERTEZA que deseja excluir permanentemente o aluno ${student.name}?\n\nEsta ação excluirá todos os dados do aluno e NÃO pode ser desfeita.`)) {
+            return;
+        }
+
+        try {
+            await studentService.deleteStudent(student.id);
+            alert("Aluno excluído com sucesso.");
+            loadStudents(); // Recarregar lista
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao excluir aluno.");
+        }
+    };
+
     const handlePrintCarne = async (student: Student) => {
         const year = new Date().getFullYear(); // Ou permitir escolher, por padrão ano atual
         const confirmPrint = confirm(`Deseja imprimir o carnê de ${year} para ${student.name}?`);
@@ -175,6 +191,131 @@ export function Matriculas() {
         } catch (error) {
             console.error(error);
             alert("Erro ao buscar dados para o carnê.");
+        }
+    };
+
+    const handleGenerateBoletosForStudent = async (student: Student) => {
+        const year = new Date().getFullYear();
+        try {
+            const installments = await financialService.getInstallmentsForPrint(student.id, year) as any[];
+            const pending = installments.filter(inst => inst.status !== 'Pago' && !inst.barcode);
+
+            if (pending.length === 0) {
+                alert("Este aluno não possui mensalidades pendentes sem boleto para este ano.");
+                return;
+            }
+
+            if (!confirm(`Deseja gerar boletos para ${pending.length} mensalidades pendentes de ${student.name}?`)) return;
+
+            setIsGenerating(true);
+            let generatedCount = 0;
+
+            for (const inst of pending) {
+                const payerName = student.nome_responsavel || student.name;
+                const payer = {
+                    email: student.email_responsavel || 'email@padrao.com',
+                    firstName: payerName.split(' ')[0],
+                    lastName: payerName.split(' ').slice(1).join(' ') || 'Responsável',
+                    cpf: student.cpf_responsavel || '00000000000',
+                    address: {
+                        zipCode: (student.cep || '').replace(/\D/g, '') || '59000000',
+                        streetName: student.endereco_logradouro || 'Endereço não informado',
+                        streetNumber: student.endereco_numero || 'S/N',
+                        neighborhood: student.endereco_bairro || 'Bairro',
+                        city: student.endereco_cidade || 'Natal',
+                        state: student.endereco_uf || 'RN'
+                    }
+                };
+
+                const boletoData = await financialService.generateBoleto({
+                    studentId: student.id,
+                    amount: inst.value,
+                    dueDate: new Date(inst.dueDate).toISOString(),
+                    description: `Mensalidade ${inst.month} - ${student.name}`,
+                    payer: payer
+                });
+
+                await financialService.updateInstallment(inst.id, {
+                    barcode: boletoData.barcode,
+                    ticketUrl: boletoData.ticketUrl,
+                    qrCode: boletoData.qrCode,
+                    qrCodeBase64: boletoData.qrCodeBase64
+                });
+
+                generatedCount++;
+            }
+
+            alert(`${generatedCount} boletos gerados com sucesso para ${student.name}!`);
+        } catch (error) {
+            console.error("Erro ao gerar boletos:", error);
+            alert("Erro ao gerar boletos. Verifique o cadastro do aluno (CPF, Endereço, etc).");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleGenerateBoletosForGroup = async (studentsList: Student[], groupName: string) => {
+        if (!confirm(`Deseja tentar gerar boletos pendentes para TODOS os ${studentsList.length} alunos do grupo "${groupName}"? Isso pode levar algum tempo.`)) return;
+
+        setIsGenerating(true);
+        let totalGenerated = 0;
+        let studentsWithNewBoletos = 0;
+
+        try {
+            for (const student of studentsList) {
+                const year = new Date().getFullYear();
+                const installments = await financialService.getInstallmentsForPrint(student.id, year) as any[];
+                const pending = installments.filter(inst => inst.status !== 'Pago' && !inst.barcode);
+
+                if (pending.length > 0) {
+                    let studentGenerated = 0;
+                    for (const inst of pending) {
+                        try {
+                            const payerName = student.nome_responsavel || student.name;
+                            const payer = {
+                                email: student.email_responsavel || 'email@padrao.com',
+                                firstName: payerName.split(' ')[0],
+                                lastName: payerName.split(' ').slice(1).join(' ') || 'Responsável',
+                                cpf: student.cpf_responsavel || '00000000000',
+                                address: {
+                                    zipCode: (student.cep || '').replace(/\D/g, '') || '59000000',
+                                    streetName: student.endereco_logradouro || 'Endereço não informado',
+                                    streetNumber: student.endereco_numero || 'S/N',
+                                    neighborhood: student.endereco_bairro || 'Bairro',
+                                    city: student.endereco_cidade || 'Natal',
+                                    state: student.endereco_uf || 'RN'
+                                }
+                            };
+
+                            const boletoData = await financialService.generateBoleto({
+                                studentId: student.id,
+                                amount: inst.value,
+                                dueDate: new Date(inst.dueDate).toISOString(),
+                                description: `Mensalidade ${inst.month} - ${student.name}`,
+                                payer: payer
+                            });
+
+                            await financialService.updateInstallment(inst.id, {
+                                barcode: boletoData.barcode,
+                                ticketUrl: boletoData.ticketUrl,
+                                qrCode: boletoData.qrCode,
+                                qrCodeBase64: boletoData.qrCodeBase64
+                            });
+                            studentGenerated++;
+                            totalGenerated++;
+                        } catch (err) {
+                            console.error(`Erro ao gerar boleto para ${student.name} (${inst.month}):`, err);
+                        }
+                    }
+                    if (studentGenerated > 0) studentsWithNewBoletos++;
+                }
+            }
+            alert(`Processo concluído! \n\n${totalGenerated} boletos gerados para ${studentsWithNewBoletos} alunos.`);
+        } catch (error) {
+            console.error("Erro geral no processamento do grupo:", error);
+            alert("Ocorreu um erro durante o processamento do grupo.");
+        } finally {
+            setIsGenerating(false);
         }
     };
 
@@ -206,7 +347,13 @@ export function Matriculas() {
             </div>
 
 
-            {isFormOpen && <StudentForm onClose={handleFormClose} student={selectedStudent} />}
+            {isFormOpen && (
+                <StudentForm
+                    onClose={handleFormClose}
+                    onSaveSuccess={loadStudents}
+                    student={selectedStudent}
+                />
+            )}
 
             {/* Filters & Search */}
             <div className="space-y-4">
@@ -232,8 +379,10 @@ export function Matriculas() {
                                 value={filterGrade}
                                 onChange={(e) => setFilterGrade(e.target.value)}
                                 options={loadingAcademic ? [{ label: 'Carregando...', value: '' }] : [
-                                    ...segments.map(s => ({ label: `--- ${s.name.toUpperCase()} ---`, value: s.name })),
-                                    ...grades.map(g => ({ label: g.name, value: g.name }))
+                                    ...segments.flatMap(s => [
+                                        { label: `--- ${s.name.toUpperCase()} ---`, value: s.name },
+                                        ...grades.filter(g => g.segmentId === s.id).map(g => ({ label: g.name, value: g.name }))
+                                    ])
                                 ]}
                             />
                             <Select
@@ -407,6 +556,19 @@ export function Matriculas() {
                                                 <Printer className="w-3 h-3 mr-1" />
                                                 Completa
                                             </Button>
+
+                                            <div className="flex items-center gap-1 border-l border-slate-200 pl-2 ml-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-7 px-2 text-[10px] text-blue-900 font-bold hover:bg-blue-50"
+                                                    onClick={() => handleGenerateBoletosForGroup(studentsInGroup, groupName)}
+                                                    disabled={isGenerating}
+                                                >
+                                                    {isGenerating ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Barcode className="w-3 h-3 mr-1" />}
+                                                    Gerar Boletos da Turma
+                                                </Button>
+                                            </div>
                                         </div>
                                     </CardHeader>
                                     <CardContent className="p-0">
@@ -457,6 +619,25 @@ export function Matriculas() {
                                                                 </Button>
                                                                 <Button variant="ghost" size="sm" onClick={() => handlePrintCarne(student)} className="h-8 w-8 p-0 rounded-full hover:bg-blue-50 hover:text-blue-950" title="Imprimir Carnê">
                                                                     <Printer className="w-4 h-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => handleGenerateBoletosForStudent(student)}
+                                                                    className="h-8 w-8 p-0 rounded-full hover:bg-blue-50 text-slate-400 hover:text-blue-950"
+                                                                    title="Gerar Boletos Pendentes"
+                                                                    disabled={isGenerating}
+                                                                >
+                                                                    {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Barcode className="w-4 h-4" />}
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => handleDelete(student)}
+                                                                    className="h-8 w-8 p-0 rounded-full hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors"
+                                                                    title="Excluir Aluno"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
                                                                 </Button>
                                                             </td>
                                                         </tr>

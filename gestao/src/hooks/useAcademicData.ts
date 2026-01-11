@@ -55,7 +55,14 @@ export function useAcademicData() {
                 } else {
                     gradesData = gradeSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AcademicGrade));
                 }
-                gradesData.sort((a, b) => (a.order || 0) - (b.order || 0));
+                // Sort grades by segment order first, then by grade order
+                gradesData.sort((a, b) => {
+                    const segA = segmentsData.find(s => s.id === a.segmentId);
+                    const segB = segmentsData.find(s => s.id === b.segmentId);
+                    const segOrderDiff = (segA?.order || 0) - (segB?.order || 0);
+                    if (segOrderDiff !== 0) return segOrderDiff;
+                    return (a.order || 0) - (b.order || 0);
+                });
                 setGrades(gradesData);
 
                 // Fetch Subjects

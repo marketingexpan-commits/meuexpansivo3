@@ -3,7 +3,7 @@ import { Input } from './Input';
 import { Select } from './Select';
 import { Checkbox } from './Checkbox';
 import { Button } from './Button';
-import { User, MapPin, Users, GraduationCap, X, Loader2, Camera, Upload, MessagesSquare, Heart, FileText, Printer } from 'lucide-react';
+import { User, MapPin, Users, GraduationCap, X, Loader2, Camera, Upload, MessagesSquare, Heart, FileText, Printer, Barcode, Trash2, Eye, EyeOff } from 'lucide-react';
 import { StudentEnrollmentPrint } from './StudentEnrollmentPrint';
 import { PhotoCaptureModal } from './PhotoCaptureModal';
 import { clsx } from 'clsx';
@@ -13,6 +13,7 @@ import type { Student } from '../types';
 import { SCHOOL_SHIFTS, SCHOOL_CLASSES_OPTIONS } from '../utils/academicDefaults';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { useSchoolUnits } from '../hooks/useSchoolUnits';
+import { financialService } from '../services/financialService';
 
 const STUDENT_STATUS_OPTIONS = [
     { label: 'CURSANDO', value: 'CURSANDO' },
@@ -49,20 +50,23 @@ const STUDENT_DOCUMENTS_CHECKLIST = [
 
 interface StudentFormProps {
     onClose: (shouldRefresh?: boolean) => void;
+    onSaveSuccess?: () => void;
     student?: Student | null;
 }
 // Helper to find level from grade
 import { parseGradeLevel, normalizeClass } from '../utils/academicUtils';
 
-export function StudentForm({ onClose, student }: StudentFormProps) {
+export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProps) {
     const [activeTab, setActiveTab] = useState<'personal' | 'academic' | 'family' | 'filiation' | 'address' | 'health' | 'documents' | 'observations'>('personal');
     const [isLoading, setIsLoading] = useState(false);
+    const [isGeneratingBoleto, setIsGeneratingBoleto] = useState(false);
     const { segments, grades, loading: loadingAcademic } = useAcademicData();
     const { getUnitById } = useSchoolUnits();
     const [printBlank, setPrintBlank] = useState(false);
     const [isCameraOpen, setIsCameraOpen] = useState(false);
     const [isCropperOpen, setIsCropperOpen] = useState(false);
     const [rawPhoto, setRawPhoto] = useState<string | null>(null);
+    const [showPassword, setShowPassword] = useState(false);
 
     // Initial state setup
     const [formData, setFormData] = useState<Partial<Student> & any>(() => {
@@ -432,6 +436,71 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
         return cleaned;
     };
 
+    const handleGenerateBoletos = async () => {
+        if (!student?.id) {
+            alert("A matrícula precisa estar salva antes de gerar boletos.");
+            return;
+        }
+
+        const year = new Date().getFullYear();
+        try {
+            const installments = await financialService.getInstallmentsForPrint(student.id, year) as any[];
+            const pending = installments.filter(inst => inst.status !== 'Pago' && !inst.barcode);
+
+            if (pending.length === 0) {
+                alert("Este aluno não possui mensalidades pendentes sem boleto para este ano.");
+                return;
+            }
+
+            if (!confirm(`Deseja gerar boletos para ${pending.length} mensalidades pendentes de ${formData.name}?`)) return;
+
+            setIsGeneratingBoleto(true);
+            let generatedCount = 0;
+
+            for (const inst of pending) {
+                const payerName = formData.nome_responsavel || formData.name;
+                const payer = {
+                    email: formData.email_responsavel || 'email@padrao.com',
+                    firstName: payerName.split(' ')[0],
+                    lastName: payerName.split(' ').slice(1).join(' ') || 'Responsável',
+                    cpf: formData.cpf_responsavel || '00000000000',
+                    address: {
+                        zipCode: (formData.cep || '').replace(/\D/g, '') || '59000000',
+                        streetName: formData.endereco_logradouro || 'Endereço não informado',
+                        streetNumber: formData.endereco_numero || 'S/N',
+                        neighborhood: formData.endereco_bairro || 'Bairro',
+                        city: formData.endereco_cidade || 'Natal',
+                        state: formData.endereco_uf || 'RN'
+                    }
+                };
+
+                const boletoData = await financialService.generateBoleto({
+                    studentId: student.id,
+                    amount: inst.value,
+                    dueDate: new Date(inst.dueDate).toISOString(),
+                    description: `Mensalidade ${inst.month} - ${formData.name}`,
+                    payer: payer
+                });
+
+                await financialService.updateInstallment(inst.id, {
+                    barcode: boletoData.barcode,
+                    ticketUrl: boletoData.ticketUrl,
+                    qrCode: boletoData.qrCode,
+                    qrCodeBase64: boletoData.qrCodeBase64
+                });
+
+                generatedCount++;
+            }
+
+            alert(`${generatedCount} boletos gerados com sucesso para ${formData.name}!`);
+        } catch (error) {
+            console.error("Erro ao gerar boletos:", error);
+            alert("Erro ao gerar boletos. Verifique o cadastro do aluno (CPF, Endereço, etc).");
+        } finally {
+            setIsGeneratingBoleto(false);
+        }
+    };
+
     const handleSubmit = async () => {
         try {
             setIsLoading(true);
@@ -480,6 +549,10 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
 
             const dataToSave = {
                 ...formData,
+                // Recompose full gradeLevel string if needed
+                gradeLevel: (formData.gradeLevel && selectedLevel && !formData.gradeLevel.includes(selectedLevel))
+                    ? `${formData.gradeLevel} - ${selectedLevel}`
+                    : formData.gradeLevel,
                 valor_mensalidade: cleanTuition, // Save as dot-decimal string or number
                 phoneNumber: formData.telefone_responsavel, // Ensure root project field is updated
                 ficha_saude: fichaSaude
@@ -510,13 +583,43 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                 ficha_saude: fichaSaude
             }));
 
-            onClose(true);
+            if (onSaveSuccess) {
+                onSaveSuccess();
+            }
         } catch (error) {
             console.error(error);
             alert("Erro ao salvar dados.");
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleDelete = async () => {
+        if (!student?.id) return;
+
+        if (!confirm(`TEM CERTEZA que deseja excluir permanentemente o aluno ${formData.name}?\n\nEsta ação excluirá todos os dados do aluno e NÃO pode ser desfeita.`)) {
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            await studentService.deleteStudent(student.id);
+            alert("Aluno excluído com sucesso.");
+            onClose(true); // Fechar modal e atualizar lista
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao excluir aluno.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleGeneratePassword = () => {
+        const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        let password = "A" + "a" + "1" + Array(5).fill(0).map(() => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
+        const generated = password.split('').sort(() => 0.5 - Math.random()).join('');
+        setFormData((prev: any) => ({ ...prev, password: generated }));
+        setShowPassword(true);
     };
 
     const handlePrint = () => {
@@ -796,6 +899,40 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                                 placeholder={student ? "Matrícula do aluno" : "Gerando sugestão..."}
                                 className="bg-blue-50/30 border-blue-900/10 font-bold"
                             />
+
+                            <div className="relative">
+                                <label className="text-sm font-medium text-gray-700 mb-1 block">Senha de Acesso (App)</label>
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                        <Input
+                                            name="password"
+                                            type={showPassword ? "text" : "password"}
+                                            value={formData.password || ''}
+                                            onChange={handleChange}
+                                            placeholder="Sugerida: 8 caracteres"
+                                            className="pr-10"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                                        >
+                                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handleGeneratePassword}
+                                        className="whitespace-nowrap bg-blue-50 text-blue-950 border-blue-950/20 hover:bg-blue-100"
+                                    >
+                                        Gerar
+                                    </Button>
+                                </div>
+                                <p className="text-[10px] text-gray-500 mt-1 italic">
+                                    Acesso do aluno ao Portal da Família / Mobile
+                                </p>
+                            </div>
 
                             <div className="col-span-2 pt-2">
                                 <label className={`flex items-start gap-3 p-4 rounded-xl border transition-colors cursor-pointer ${formData.isScholarship ? 'border-orange-200 bg-orange-50' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
@@ -1179,67 +1316,94 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                     )}
                 </div>
                 {/* Footer */}
-                <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
-                    <Button variant="outline" onClick={() => onClose()} className="cursor-pointer">
-                        Cancelar
-                    </Button>
-                    <Button
-                        variant="outline"
-                        onClick={handlePrint}
-                        className="cursor-pointer flex items-center gap-2 border-blue-950/20 text-blue-950 hover:bg-blue-950/5"
-                        title="Imprimir Ficha com Dados"
-                    >
-                        <Printer className="w-4 h-4" />
-                        Imprimir Ficha
-                    </Button>
-                    <Button
-                        variant="outline"
-                        onClick={handlePrintBlank}
-                        className="cursor-pointer flex items-center gap-2 border-slate-200 text-slate-700 hover:bg-slate-50"
-                        title="Imprimir Ficha para Preenchimento Manual"
-                    >
-                        <Printer className="w-4 h-4" />
-                        Ficha em Branco
-                    </Button>
-                    <Button
-                        onClick={handleSubmit}
-                        disabled={isLoading}
-                        className="cursor-pointer flex items-center gap-2"
-                    >
-                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                        {student ? 'Salvar Matrícula' : 'Confirmar Matrícula'}
-                    </Button>
-                </div>
-            </div>
+                <div className="p-6 border-t border-gray-100 flex justify-between items-center gap-3">
+                    <div className="flex gap-3">
+                        {student && (
+                            <Button
+                                variant="outline"
+                                onClick={handleDelete}
+                                disabled={isLoading}
+                                className="cursor-pointer flex items-center gap-2 border-red-100 text-red-500 hover:bg-red-50 hover:border-red-200 transition-colors"
+                                title="Excluir Matrícula Permanentemente"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                <span className="hidden sm:inline">Excluir Aluno</span>
+                            </Button>
+                        )}
+                    </div>
 
-            {/* Hidden Print Template */}
-            <div className="hidden print:block fixed inset-0 z-[100] bg-white">
-                <StudentEnrollmentPrint
-                    student={{
-                        ...formData,
-                        // Ensure we use the saved ficha_saude if it exists in the original student object
-                        ficha_saude: student?.ficha_saude || formData.ficha_saude
+                    <div className="flex gap-3">
+                        <Button variant="outline" onClick={() => onClose()} className="cursor-pointer">
+                            Cancelar
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={handlePrint}
+                            className="cursor-pointer flex items-center gap-2 border-blue-950/20 text-blue-950 hover:bg-blue-950/5"
+                            title="Imprimir Ficha com Dados"
+                        >
+                            <Printer className="w-4 h-4" />
+                            Imprimir Ficha
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={handlePrintBlank}
+                            className="cursor-pointer flex items-center gap-2 border-slate-200 text-slate-700 hover:bg-slate-50"
+                            title="Imprimir Ficha para Preenchimento Manual"
+                        >
+                            <Printer className="w-4 h-4" />
+                            Ficha em Branco
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={handleGenerateBoletos}
+                            disabled={isGeneratingBoleto || !student?.id || isLoading}
+                            className="cursor-pointer flex items-center gap-2 border-blue-900/30 text-blue-900 font-bold hover:bg-blue-50"
+                            title="Gerar Boletos Pendentes para este aluno"
+                        >
+                            {isGeneratingBoleto ? <Loader2 className="w-4 h-4 animate-spin" /> : <Barcode className="w-4 h-4" />}
+                            Gerar Boletos
+                        </Button>
+                        <Button
+                            onClick={handleSubmit}
+                            disabled={isLoading}
+                            className="cursor-pointer flex items-center gap-2"
+                        >
+                            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                            {student ? 'Salvar Matrícula' : 'Confirmar Matrícula'}
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Hidden Print Template */}
+                <div className="hidden print:block fixed inset-0 z-[100] bg-white">
+                    <StudentEnrollmentPrint
+                        student={{
+                            ...formData,
+                            // Ensure we use the saved ficha_saude if it exists in the original student object
+                            ficha_saude: student?.ficha_saude || formData.ficha_saude
+                        }}
+                        unitDetail={getUnitById(formData.unit || '')}
+                        isBlank={printBlank}
+                    />
+                </div>
+                <PhotoCaptureModal
+                    isOpen={isCameraOpen}
+                    onClose={() => setIsCameraOpen(false)}
+                    onCapture={(base64) => setFormData((prev: any) => ({ ...prev, photoUrl: base64 }))}
+                />
+
+                {/* Image Cropper Modal */}
+                <ImageCropperModal
+                    isOpen={isCropperOpen}
+                    imageSrc={rawPhoto}
+                    onClose={() => {
+                        setIsCropperOpen(false);
+                        setRawPhoto(null);
                     }}
-                    unitDetail={getUnitById(formData.unit || '')}
-                    isBlank={printBlank}
+                    onCropComplete={handleCropComplete}
                 />
             </div>
-            <PhotoCaptureModal
-                isOpen={isCameraOpen}
-                onClose={() => setIsCameraOpen(false)}
-                onCapture={(base64) => setFormData((prev: any) => ({ ...prev, photoUrl: base64 }))}
-            />
-
-            {/* Image Cropper Modal */}
-            <ImageCropperModal
-                isOpen={isCropperOpen}
-                imageSrc={rawPhoto}
-                onClose={() => {
-                    setIsCropperOpen(false);
-                    setRawPhoto(null);
-                }}
-                onCropComplete={handleCropComplete}
-            />
         </div>
     );
 }

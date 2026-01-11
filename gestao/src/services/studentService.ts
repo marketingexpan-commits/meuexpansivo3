@@ -59,6 +59,18 @@ export const studentService = {
         }
     },
 
+    // Deletar aluno
+    async deleteStudent(id: string) {
+        try {
+            const docRef = doc(db, STUDENTS_COLLECTION, id);
+            const { deleteDoc } = await import('firebase/firestore');
+            await deleteDoc(docRef);
+        } catch (error) {
+            console.error("Erro ao deletar aluno:", error);
+            throw error;
+        }
+    },
+
     // Batch update to fix numeric classes
     async batchUpdateClassesNumericalToLetter() {
         try {

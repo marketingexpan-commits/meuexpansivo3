@@ -58,11 +58,12 @@ export const normalizeClass = (schoolClass: any): string => {
  * Example: "1º Ano - Fundamental I" -> { grade: "1º Ano", level: "Fundamental I" }
  */
 export const parseGradeLevel = (gradeLevel: string) => {
-    if (!gradeLevel) return { grade: '', level: 'Fundamental I' };
+    if (!gradeLevel) return { grade: '', level: 'Educação Infantil' };
 
-    let level = 'Fundamental I';
-    if (gradeLevel.includes('Fundamental II')) level = 'Fundamental II';
-    else if (gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) level = 'Ens. Médio';
+    let level = 'Educação Infantil';
+    if (gradeLevel.includes('Fundamental I')) level = 'Fundamental I';
+    else if (gradeLevel.includes('Fundamental II')) level = 'Fundamental II';
+    else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) level = 'Ensino Médio';
 
     const grade = gradeLevel.split(' - ')[0] || gradeLevel;
 

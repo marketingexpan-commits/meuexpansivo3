@@ -259,7 +259,7 @@ export const financialService = {
             );
 
             const snap = await getDocs(q);
-            const allInstallments = snap.docs.map(d => d.data());
+            const allInstallments = snap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
 
             // Filtrar pelo ano
             return allInstallments.filter(i => i.month.endsWith(`/${year}`));
