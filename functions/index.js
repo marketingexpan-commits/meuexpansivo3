@@ -250,36 +250,58 @@ exports.generateBoleto = functions.https.onRequest((req, res) => {
 
             console.log(`🎫 Gerando boleto para aluno ${studentId} - Valor: ${amount}`);
 
-            const payment = new Payment(client);
-
             const cleanAmount = typeof amount === 'string'
                 ? parseFloat(amount.replace(/[^\d,.]/g, '').replace(',', '.'))
                 : Number(amount);
 
+            // Ensure 2 decimal places and valid number
+            const finalAmount = Math.round((cleanAmount + Number.EPSILON) * 100) / 100;
+
+            if (isNaN(finalAmount) || finalAmount <= 0) {
+                console.error("❌ Valor inválido detectado:", amount, "->", finalAmount);
+                return res.status(400).json({ error: `Valor inválido: ${amount}` });
+            }
+
+            // Ensure expiration is in the future (Mercado Pago requirement)
+            let finalDueDate = dueDate;
+            const now = new Date();
+            const expirationDate = new Date(dueDate);
+            if (expirationDate <= now) {
+                // If past or today, set to 3 days from now
+                const newExp = new Date();
+                newExp.setDate(now.getDate() + 3);
+                finalDueDate = newExp.toISOString();
+                console.log(`⚠️ Data de vencimento corrigida de ${dueDate} para ${finalDueDate} (estava no passado)`);
+            }
+
+            const payment = new Payment(client);
+
             const paymentData = {
-                transaction_amount: cleanAmount,
+                transaction_amount: finalAmount,
                 description: description,
-                payment_method_id: 'bolbradesco', // Boleto Bradesco (comumente usado no MP)
+                payment_method_id: 'bolbradesco',
                 payer: {
                     email: payer.email,
-                    first_name: payer.firstName,
-                    last_name: payer.lastName,
+                    first_name: (payer.firstName || 'Responsável').substring(0, 40),
+                    last_name: (payer.lastName || studentId).substring(0, 40),
                     identification: {
                         type: 'CPF',
-                        number: payer.cpf.replace(/\D/g, '')
+                        number: (payer.cpf || '00000000000').replace(/\D/g, '')
                     },
                     address: {
-                        zip_code: payer.address.zipCode.replace(/\D/g, ''),
-                        street_name: payer.address.streetName,
-                        street_number: payer.address.streetNumber,
-                        neighborhood: payer.address.neighborhood,
-                        city: payer.address.city,
-                        federal_unit: payer.address.state
+                        zip_code: (payer.address.zipCode || '59000000').replace(/\D/g, ''),
+                        street_name: (payer.address.streetName || 'Endereço não informado').substring(0, 60),
+                        street_number: (payer.address.streetNumber || 'S/N').substring(0, 10),
+                        neighborhood: (payer.address.neighborhood || 'Bairro').substring(0, 60),
+                        city: (payer.address.city || 'Natal').substring(0, 60),
+                        federal_unit: (payer.address.state || 'RN').substring(0, 2)
                     }
                 },
-                date_of_expiration: dueDate, // Data de vencimento ISO
+                date_of_expiration: finalDueDate,
                 external_reference: `boleto_${studentId}_${Date.now()}`
             };
+
+            console.log("🚀 Payload Final p/ Mercado Pago:", JSON.stringify(paymentData, null, 2));
 
             const result = await payment.create({ body: paymentData });
 
@@ -294,15 +316,26 @@ exports.generateBoleto = functions.https.onRequest((req, res) => {
             res.json({
                 id: result.id,
                 status: result.status,
-                barcode: barcode, // Linha digitável
-                ticketUrl: ticketUrl, // Link do PDF
+                barcode: barcode,
+                ticketUrl: ticketUrl,
                 qrCode: qrCode,
                 qrCodeBase64: qrCodeBase64
             });
 
         } catch (error) {
             console.error("❌ Erro ao gerar boleto:", error);
-            res.status(500).json({ error: error.message });
+            // Extrair mensagem de erro detalhada do Mercado Pago se disponível
+            let errorMessage = error.message;
+            if (error.cause && error.cause.length > 0) {
+                errorMessage = error.cause.map(c => `${c.code}: ${c.description}`).join(' | ');
+            } else if (error.errors && error.errors.length > 0) {
+                errorMessage = error.errors.map(e => e.message).join(' | ');
+            }
+
+            res.status(500).json({
+                error: errorMessage,
+                details: error.cause || error
+            });
         }
     });
 });

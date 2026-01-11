@@ -426,7 +426,8 @@ export const financialService = {
             const result = await response.json();
 
             if (!response.ok) {
-                throw new Error(result.error || 'Erro ao gerar boleto');
+                const errorDetail = result.details ? JSON.stringify(result.details) : '';
+                throw new Error(`${result.error} ${errorDetail}`);
             }
 
             return result;

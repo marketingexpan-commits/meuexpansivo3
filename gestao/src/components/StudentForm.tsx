@@ -504,9 +504,9 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
             });
 
             alert(`Boleto de ${inst.month} gerado com sucesso para ${formData.name}!`);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Erro ao gerar boleto:", error);
-            alert("Erro ao gerar boleto. Verifique o cadastro do aluno (CPF, Endereço, etc) ou se a parcela está dentro do prazo de 29 dias.");
+            alert(`Erro ao gerar boleto: ${error.message}\n\nVerifique o cadastro do aluno (CPF, Endereço, etc) ou se a parcela está dentro do prazo de 29 dias.`);
         } finally {
             setIsGeneratingBoleto(false);
         }
