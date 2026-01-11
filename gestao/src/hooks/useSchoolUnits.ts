@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebaseConfig';
-import { collection, query, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import type { SchoolUnitDetail } from '../types';
 
 export function useSchoolUnits() {

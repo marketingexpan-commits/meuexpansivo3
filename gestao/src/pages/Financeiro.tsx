@@ -1354,7 +1354,7 @@ export function Financeiro() {
 
                                 let unit = 'Geral';
                                 if (userUnit && userUnit !== 'admin_geral') {
-                                    const unitDetail = getUnitById(userUnit); // Wait, userUnit might be 'unit_zn'
+
                                     // I need to be careful with IDs vs enums.
                                     // In Unidades.tsx, IDs are names.
 
