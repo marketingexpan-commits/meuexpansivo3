@@ -238,9 +238,13 @@ export function Matriculas() {
                 }
             };
 
+            const cleanAmount = typeof inst.value === 'string'
+                ? parseFloat(inst.value.replace(/[^\d,.]/g, '').replace(',', '.'))
+                : inst.value;
+
             const boletoData = await financialService.generateBoleto({
                 studentId: student.id,
-                amount: inst.value,
+                amount: cleanAmount,
                 dueDate: new Date(inst.dueDate).toISOString(),
                 description: `Mensalidade ${inst.month} - ${student.name}`,
                 payer: payer
@@ -305,9 +309,13 @@ export function Matriculas() {
                                 }
                             };
 
+                            const cleanAmount = typeof inst.value === 'string'
+                                ? parseFloat(inst.value.replace(/[^\d,.]/g, '').replace(',', '.'))
+                                : inst.value;
+
                             const boletoData = await financialService.generateBoleto({
                                 studentId: student.id,
-                                amount: inst.value,
+                                amount: cleanAmount,
                                 dueDate: new Date(inst.dueDate).toISOString(),
                                 description: `Mensalidade ${inst.month} - ${student.name}`,
                                 payer: payer

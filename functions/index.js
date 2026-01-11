@@ -252,8 +252,12 @@ exports.generateBoleto = functions.https.onRequest((req, res) => {
 
             const payment = new Payment(client);
 
+            const cleanAmount = typeof amount === 'string'
+                ? parseFloat(amount.replace(/[^\d,.]/g, '').replace(',', '.'))
+                : Number(amount);
+
             const paymentData = {
-                transaction_amount: Number(amount),
+                transaction_amount: cleanAmount,
                 description: description,
                 payment_method_id: 'bolbradesco', // Boleto Bradesco (comumente usado no MP)
                 payer: {
