@@ -49,6 +49,10 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
         if (teacher) {
             setFormData({
                 ...teacher,
+                email: teacher.email || '',
+                password: teacher.password || '',
+                phoneNumber: teacher.phoneNumber || '55',
+                cpf: teacher.cpf || '',
                 subjects: teacher.subjects || [],
                 gradeLevels: teacher.gradeLevels || []
             });

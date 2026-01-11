@@ -36,6 +36,7 @@ export function Select({ label, error, startIcon, className, id, options, ...pro
                         )
                     )}
                     {...props}
+                    value={props.value ?? ''}
                 >
                     <option value="" disabled>Selecione uma opção...</option>
                     {options.map((opt) => (

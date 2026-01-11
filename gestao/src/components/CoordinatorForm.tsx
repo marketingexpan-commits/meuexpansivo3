@@ -43,6 +43,9 @@ export function CoordinatorForm({ onClose, coordinator }: CoordinatorFormProps) 
         if (coordinator) {
             setFormData({
                 ...coordinator,
+                email: coordinator.email || '',
+                password: coordinator.password || '',
+                phoneNumber: coordinator.phoneNumber || '55',
                 segment: coordinator.segment || CoordinationSegment.GERAL
             });
         }

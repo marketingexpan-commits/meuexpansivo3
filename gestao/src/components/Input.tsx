@@ -9,7 +9,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
     endIcon?: React.ReactNode;
 }
 
-export function Input({ label, error, helperText, className, id, ...props }: InputProps) {
+export function Input({ label, error, helperText, startIcon, endIcon, className, id, ...props }: InputProps) {
     const inputId = id || React.useId();
 
     return (
@@ -20,9 +20,9 @@ export function Input({ label, error, helperText, className, id, ...props }: Inp
                 </label>
             )}
             <div className="relative">
-                {props.startIcon && (
+                {startIcon && (
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none z-10">
-                        {props.startIcon}
+                        {startIcon}
                     </div>
                 )}
                 <input
@@ -30,14 +30,15 @@ export function Input({ label, error, helperText, className, id, ...props }: Inp
                     className={twMerge(
                         "flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-950 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200",
                         error && "border-red-500 focus:ring-red-500",
-                        props.startIcon ? "pl-9" : "",
-                        props.endIcon ? "pr-10" : ""
+                        startIcon ? "pl-9" : "",
+                        endIcon ? "pr-10" : ""
                     )}
                     {...props}
+                    value={props.value ?? ''}
                 />
-                {props.endIcon && (
+                {endIcon && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
-                        {props.endIcon}
+                        {endIcon}
                     </div>
                 )}
             </div>

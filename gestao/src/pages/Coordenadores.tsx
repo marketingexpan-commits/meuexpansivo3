@@ -4,7 +4,7 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Select } from '../components/Select';
 import { CoordinatorForm } from '../components/CoordinatorForm';
-import { Search, Loader2, UserPlus, Pencil, Trash2, MessagesSquare, GraduationCap, Layers } from 'lucide-react';
+import { Search, Loader2, UserPlus, User, Pencil, Trash2, MessagesSquare, GraduationCap, Layers } from 'lucide-react';
 import { coordinatorService } from '../services/coordinatorService';
 import { type UnitContact, CoordinationSegment } from '../types';
 import { useSchoolUnits } from '../hooks/useSchoolUnits';

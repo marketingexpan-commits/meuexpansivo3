@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebaseConfig';
 import { ClassSchedule, ScheduleItem, Student } from '../types';
-import { Clock, Calendar, ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import { Clock, Calendar, ChevronLeft, ChevronRight, Info, Printer } from 'lucide-react';
 
 interface ScheduleTimelineProps {
     student: Student;
@@ -25,6 +25,7 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({ student }) =
     });
     const [schedule, setSchedule] = useState<ClassSchedule | null>(null);
     const [loading, setLoading] = useState(false);
+    const [fullScheduleForPrint, setFullScheduleForPrint] = useState<ClassSchedule[] | null>(null);
 
     useEffect(() => {
         fetchSchedule();
@@ -54,6 +55,38 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({ student }) =
         }
     };
 
+    const handlePrintAll = async () => {
+        setLoading(true);
+        try {
+            const snapshot = await db.collection('class_schedules')
+                .where('schoolId', '==', student.unit)
+                .where('grade', '==', student.gradeLevel)
+                .where('class', '==', student.schoolClass)
+                .where('shift', '==', student.shift)
+                .get();
+
+            if (snapshot.empty) {
+                alert("Não há horários cadastrados para imprimir.");
+                return;
+            }
+
+            const allDays = snapshot.docs.map(doc => doc.data() as ClassSchedule);
+            allDays.sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+
+            setFullScheduleForPrint(allDays);
+
+            setTimeout(() => {
+                window.print();
+                setFullScheduleForPrint(null);
+            }, 500);
+        } catch (error) {
+            console.error("Error fetching full schedule:", error);
+            alert("Erro ao carregar horários para impressão.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="animate-fade-in text-left">
             <div className="flex items-center justify-between mb-6">
@@ -61,6 +94,15 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({ student }) =
                     <Clock className="w-6 h-6" />
                     Grade Horária
                 </h3>
+                <button
+                    onClick={handlePrintAll}
+                    disabled={loading}
+                    className="p-2 bg-blue-50 text-blue-950 rounded-xl hover:bg-blue-100 transition-colors shadow-sm flex items-center gap-2 text-xs font-bold"
+                    title="Imprimir Grade Completa"
+                >
+                    <Printer className="w-5 h-5" />
+                    <span className="hidden sm:inline">Imprimir</span>
+                </button>
             </div>
 
             {/* Day Selector */}
@@ -124,11 +166,71 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({ student }) =
             </div>
 
             <div className="mt-8 p-4 bg-orange-50 rounded-2xl border border-orange-100 flex gap-3">
-                <Info className="w-5 h-5 text-orange-400 shrink-0" />
+                <span className="w-5 h-5 text-orange-400 shrink-0">
+                    <Info className="w-5 h-5" />
+                </span>
                 <p className="text-xs text-orange-800 leading-relaxed font-medium">
                     Lembre-se de chegar com 10 minutos de antecedência para organizar seus materiais.
                 </p>
             </div>
+
+            {/* Print-only View */}
+            {fullScheduleForPrint && (
+                <div className="hidden print:block fixed inset-0 bg-white z-[200] p-8 text-left">
+                    <div className="flex justify-between items-center mb-8 border-b-2 border-blue-950 pb-6">
+                        <div>
+                            <h1 className="text-3xl font-black text-blue-950 uppercase tracking-tighter mb-1">Grade Horária</h1>
+                            <p className="text-lg font-bold text-gray-700">
+                                {student.name}
+                            </p>
+                            <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                                {student.gradeLevel} - Turma {student.schoolClass} ({student.shift})
+                            </p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-xs font-black text-blue-950 uppercase tracking-widest mb-1">Unidade {student.unit}</p>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Ano Letivo 2026</p>
+                            <div className="mt-2 h-1 w-full bg-blue-950/10 rounded-full"></div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-6 gap-4">
+                        {DAYS_OF_WEEK.map(day => {
+                            const daySchedule = fullScheduleForPrint.find(s => s.dayOfWeek === day.id);
+                            return (
+                                <div key={day.id} className="flex flex-col">
+                                    <div className="bg-blue-950 text-white py-2 px-3 rounded-t-xl text-center text-xs font-black uppercase mb-3 shadow-md">
+                                        {day.name}
+                                    </div>
+                                    <div className="space-y-3">
+                                        {daySchedule?.items && daySchedule.items.length > 0 ? (
+                                            daySchedule.items.map((item, idx) => (
+                                                <div key={idx} className="bg-gray-50/50 border border-gray-100 p-3 rounded-xl">
+                                                    <div className="font-black text-blue-950 text-[10px] mb-1">{item.startTime} - {item.endTime}</div>
+                                                    <div className="font-bold text-gray-800 leading-tight uppercase text-xs">{item.subject}</div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="text-center py-8 text-gray-300 italic text-[10px] bg-gray-50/30 rounded-xl border border-dashed border-gray-100">
+                                                N/A
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <div className="mt-12 pt-6 border-t border-gray-100 flex justify-between items-center">
+                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest italic">
+                            Rede de Ensino Expansivo - Meu Expansivo App
+                        </div>
+                        <div className="text-[10px] text-gray-400 font-medium">
+                            Gerado em {new Date().toLocaleDateString()} às {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -26,7 +26,9 @@ import {
     Clock,
     AlertCircle,
     X,
-    Loader2
+    Loader2,
+    Printer,
+    FileText
 } from 'lucide-react';
 
 const SCHOOL_CLASSES_LIST = SCHOOL_CLASSES_OPTIONS.map((opt: { value: string }) => opt.value);
@@ -57,6 +59,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
+    const [fullScheduleForPrint, setFullScheduleForPrint] = useState<ClassSchedule[] | null>(null);
 
     // Copy feature state
     const [copySourceGrade, setCopySourceGrade] = useState('');
@@ -206,6 +209,42 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
         }
     };
 
+    const handlePrintAllDays = async () => {
+        setLoading(true);
+        try {
+            const schedulesRef = collection(db, 'class_schedules');
+            const q = query(
+                schedulesRef,
+                where('schoolId', '==', unit),
+                where('grade', '==', selectedGrade),
+                where('class', '==', selectedClass),
+                where('shift', '==', selectedShift)
+            );
+
+            const snap = await getDocs(q);
+            if (snap.empty) {
+                alert("Não há horários cadastrados para imprimir.");
+                return;
+            }
+
+            const allDays = snap.docs.map(d => d.data() as ClassSchedule);
+            allDays.sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+
+            setFullScheduleForPrint(allDays);
+
+            // Wait for render
+            setTimeout(() => {
+                window.print();
+                setFullScheduleForPrint(null);
+            }, 500);
+        } catch (error) {
+            console.error("Error fetching full schedule for print:", error);
+            alert("Erro ao carregar horários para impressão.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             {/* Selection Header */}
@@ -240,14 +279,30 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                         {SCHOOL_SHIFTS_LIST.map((s: string) => <option key={s} value={s}>{s}</option>)}
                     </select>
                 </div>
-                <div className="flex items-end">
+                <div className="flex items-end gap-2">
                     <button
                         onClick={() => setIsCopyModalOpen(true)}
                         disabled={isReadOnly || loading || saving}
-                        className="w-full flex items-center justify-center gap-2 p-2.5 bg-orange-50 text-orange-600 border border-orange-100 rounded-lg text-sm font-bold hover:bg-orange-100 transition-colors disabled:opacity-50"
+                        className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-orange-50 text-orange-600 border border-orange-100 rounded-lg text-sm font-bold hover:bg-orange-100 transition-colors disabled:opacity-50"
                     >
                         <Copy className="w-4 h-4" />
-                        Copiar de outra Turma
+                        Copiar
+                    </button>
+                    <button
+                        onClick={handlePrintAllDays}
+                        disabled={loading || saving}
+                        className="flex items-center justify-center p-2.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors disabled:opacity-50"
+                        title="Imprimir Grade Completa"
+                    >
+                        <Printer className="w-5 h-5" />
+                    </button>
+                    <button
+                        onClick={handlePrintAllDays}
+                        disabled={loading || saving}
+                        className="flex items-center justify-center p-2.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-sm font-bold hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                        title="Baixar PDF (via Impressora)"
+                    >
+                        <FileText className="w-5 h-5" />
                     </button>
                 </div>
             </div>
@@ -436,6 +491,58 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                                 Confirmar Cópia
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Print-only View */}
+            {fullScheduleForPrint && (
+                <div className="hidden print:block fixed inset-0 bg-white z-[200] p-4 text-left">
+                    <div className="flex justify-between items-center mb-6 border-b-2 border-blue-900 pb-4">
+                        <div>
+                            <h1 className="text-2xl font-black text-blue-900 uppercase tracking-tighter">Grade Horária</h1>
+                            <p className="text-sm font-bold text-gray-600">
+                                {selectedGrade} - Turma {selectedClass} ({selectedShift})
+                            </p>
+                            <p className="text-xs text-gray-400 font-medium">Unidade: {unit}</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Documento Oficial</p>
+                            <p className="text-xs font-bold text-gray-900">{new Date().toLocaleDateString()} {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-6 gap-2">
+                        {DAYS_OF_WEEK.map(day => {
+                            const daySchedule = fullScheduleForPrint.find(s => s.dayOfWeek === day.id);
+                            return (
+                                <div key={day.id} className="flex flex-col border border-gray-100 rounded-lg overflow-hidden">
+                                    <div className="bg-blue-900 text-white py-1 px-2 text-center text-[10px] font-black uppercase">
+                                        {day.label}
+                                    </div>
+                                    <div className="p-1 space-y-1 bg-white flex-grow">
+                                        {daySchedule?.items && daySchedule.items.length > 0 ? (
+                                            daySchedule.items.map((item, idx) => (
+                                                <div key={idx} className="bg-gray-50/50 border border-gray-100 p-1.5 rounded-md">
+                                                    <div className="font-black text-blue-900 text-[8px] mb-0.5">{item.startTime} - {item.endTime}</div>
+                                                    <div className="font-bold text-gray-800 leading-tight uppercase text-[9px] break-words">{item.subject}</div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="text-center py-4 text-gray-300 italic text-[8px]">S/A</div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <div className="mt-8 pt-4 border-t border-gray-100 flex justify-between items-end">
+                        <div className="text-[8px] text-gray-400 italic font-medium">
+                            Rede de Ensino Expansivo - Excelência em Educação<br />
+                            Este documento é para fins informativos e pode sofrer alterações.
+                        </div>
+                        <div className="w-32 h-1 bg-blue-900/10 rounded-full"></div>
                     </div>
                 </div>
             )}
