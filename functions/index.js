@@ -14,7 +14,14 @@ const MP_PUBLIC_KEY = 'APP_USR-e0a54aff-c482-451f-882c-e41a50bcde7d';
 const client = new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN });
 console.log('Mercado Pago Access Token presente:', !!MP_ACCESS_TOKEN);
 
-const cors = require('cors')({ origin: true });
+const cors = require('cors')({
+    origin: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+    credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204
+});
 
 // --------------------------------------------------------
 // 1. CREATE PREFERENCE (Para gerar o pagamento)
