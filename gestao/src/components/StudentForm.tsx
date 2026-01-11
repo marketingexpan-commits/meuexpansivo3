@@ -443,59 +443,66 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
         }
 
         const year = new Date().getFullYear();
+        const now = new Date();
+        const limitDate = new Date();
+        limitDate.setDate(now.getDate() + 28);
+
         try {
             const installments = await financialService.getInstallmentsForPrint(student.id, year) as any[];
             const pending = installments.filter(inst => inst.status !== 'Pago' && !inst.barcode);
 
-            if (pending.length === 0) {
-                alert("Este aluno não possui mensalidades pendentes sem boleto para este ano.");
+            // Filter for installments eligible for Mercado Pago (limit 29 days)
+            const eligible = pending.filter(inst => {
+                const dueDate = new Date(inst.dueDate);
+                return dueDate <= limitDate;
+            });
+
+            if (eligible.length === 0) {
+                alert("Não há mensalidades pendentes com vencimento nos próximos 28 dias. O Mercado Pago não permite gerar boletos para datas muito distantes.");
                 return;
             }
 
-            if (!confirm(`Deseja gerar boletos para ${pending.length} mensalidades pendentes de ${formData.name}?`)) return;
+            // For the test, we take only the first one (avulso)
+            const inst = eligible[0];
+
+            if (!confirm(`Gerar boleto AVULSO para a mensalidade de ${inst.month}?`)) return;
 
             setIsGeneratingBoleto(true);
-            let generatedCount = 0;
+            const payerName = formData.nome_responsavel || formData.name;
+            const payer = {
+                email: formData.email_responsavel || 'email@padrao.com',
+                firstName: payerName.split(' ')[0],
+                lastName: payerName.split(' ').slice(1).join(' ') || 'Responsável',
+                cpf: formData.cpf_responsavel || '00000000000',
+                address: {
+                    zipCode: (formData.cep || '').replace(/\D/g, '') || '59000000',
+                    streetName: formData.endereco_logradouro || 'Endereço não informado',
+                    streetNumber: formData.endereco_numero || 'S/N',
+                    neighborhood: formData.endereco_bairro || 'Bairro',
+                    city: formData.endereco_cidade || 'Natal',
+                    state: formData.endereco_uf || 'RN'
+                }
+            };
 
-            for (const inst of pending) {
-                const payerName = formData.nome_responsavel || formData.name;
-                const payer = {
-                    email: formData.email_responsavel || 'email@padrao.com',
-                    firstName: payerName.split(' ')[0],
-                    lastName: payerName.split(' ').slice(1).join(' ') || 'Responsável',
-                    cpf: formData.cpf_responsavel || '00000000000',
-                    address: {
-                        zipCode: (formData.cep || '').replace(/\D/g, '') || '59000000',
-                        streetName: formData.endereco_logradouro || 'Endereço não informado',
-                        streetNumber: formData.endereco_numero || 'S/N',
-                        neighborhood: formData.endereco_bairro || 'Bairro',
-                        city: formData.endereco_cidade || 'Natal',
-                        state: formData.endereco_uf || 'RN'
-                    }
-                };
+            const boletoData = await financialService.generateBoleto({
+                studentId: student.id,
+                amount: inst.value,
+                dueDate: new Date(inst.dueDate).toISOString(),
+                description: `Mensalidade ${inst.month} - ${formData.name}`,
+                payer: payer
+            });
 
-                const boletoData = await financialService.generateBoleto({
-                    studentId: student.id,
-                    amount: inst.value,
-                    dueDate: new Date(inst.dueDate).toISOString(),
-                    description: `Mensalidade ${inst.month} - ${formData.name}`,
-                    payer: payer
-                });
+            await financialService.updateInstallment(inst.id, {
+                barcode: boletoData.barcode,
+                ticketUrl: boletoData.ticketUrl,
+                qrCode: boletoData.qrCode,
+                qrCodeBase64: boletoData.qrCodeBase64
+            });
 
-                await financialService.updateInstallment(inst.id, {
-                    barcode: boletoData.barcode,
-                    ticketUrl: boletoData.ticketUrl,
-                    qrCode: boletoData.qrCode,
-                    qrCodeBase64: boletoData.qrCodeBase64
-                });
-
-                generatedCount++;
-            }
-
-            alert(`${generatedCount} boletos gerados com sucesso para ${formData.name}!`);
+            alert(`Boleto de ${inst.month} gerado com sucesso para ${formData.name}!`);
         } catch (error) {
-            console.error("Erro ao gerar boletos:", error);
-            alert("Erro ao gerar boletos. Verifique o cadastro do aluno (CPF, Endereço, etc).");
+            console.error("Erro ao gerar boleto:", error);
+            alert("Erro ao gerar boleto. Verifique o cadastro do aluno (CPF, Endereço, etc) ou se a parcela está dentro do prazo de 29 dias.");
         } finally {
             setIsGeneratingBoleto(false);
         }
