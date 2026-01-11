@@ -5,7 +5,7 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Select } from '../components/Select';
 import { StudentForm } from '../components/StudentForm';
-import { Search, Filter, Loader2, Printer, Barcode } from 'lucide-react';
+import { Search, Filter, Loader2, Printer, Barcode, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { studentService } from '../services/studentService';
 import type { Student } from '../types';
 import { SCHOOL_SHIFTS, SCHOOL_CLASSES_OPTIONS } from '../utils/academicDefaults';
@@ -195,6 +195,19 @@ export function Matriculas() {
         } catch (error) {
             console.error(error);
             alert("Erro ao buscar dados para o carnê.");
+        }
+    };
+
+    const handleToggleBlock = async (student: Student) => {
+        const newStatus = !student.isBlocked;
+        if (!confirm(`Deseja ${newStatus ? 'BLOQUEAR' : 'DESBLOQUEAR'} o acesso do aluno ${student.name} ao aplicativo?`)) return;
+
+        try {
+            await studentService.updateStudent(student.id, { isBlocked: newStatus });
+            setStudents(prev => prev.map(s => s.id === student.id ? { ...s, isBlocked: newStatus } : s));
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao atualizar status de acesso.");
         }
     };
 
@@ -697,6 +710,15 @@ export function Matriculas() {
                                                                     disabled={isGenerating}
                                                                 >
                                                                     {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Barcode className="w-4 h-4" />}
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => handleToggleBlock(student)}
+                                                                    className={`h-8 w-8 p-0 rounded-full transition-colors ${student.isBlocked ? 'text-orange-600 hover:bg-orange-50' : 'text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}
+                                                                    title={student.isBlocked ? "Desbloquear Aluno" : "Bloquear Aluno"}
+                                                                >
+                                                                    {student.isBlocked ? <ShieldAlert className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
                                                                 </Button>
                                                                 <Button
                                                                     variant="ghost"

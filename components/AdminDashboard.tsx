@@ -1837,7 +1837,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 >
                                                     <option value="all">Todas as Matérias</option>
                                                     {sortedSubjects.map(subject => (
-                                                        <option key={subject} value={subject}>{subject}</option>
+                                                        <option key={subject.id} value={subject.name}>{subject.name}</option>
                                                     ))}
                                                 </select>
                                             </div>

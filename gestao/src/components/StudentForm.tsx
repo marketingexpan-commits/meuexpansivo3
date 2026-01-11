@@ -3,7 +3,7 @@ import { Input } from './Input';
 import { Select } from './Select';
 import { Checkbox } from './Checkbox';
 import { Button } from './Button';
-import { User, MapPin, Users, GraduationCap, X, Loader2, Camera, Upload, MessagesSquare, Heart, FileText, Printer, Barcode, Trash2, Eye, EyeOff } from 'lucide-react';
+import { User, MapPin, Users, GraduationCap, X, Loader2, Camera, Upload, MessagesSquare, Heart, FileText, Printer, Barcode, Trash2, Eye, EyeOff, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { StudentEnrollmentPrint } from './StudentEnrollmentPrint';
 import { PhotoCaptureModal } from './PhotoCaptureModal';
 import { clsx } from 'clsx';
@@ -979,6 +979,30 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                 <p className="text-[10px] text-gray-500 mt-1 italic">
                                     Acesso do aluno ao Portal da Família / Mobile
                                 </p>
+                            </div>
+
+                            <div>
+                                <label className="text-sm font-medium text-gray-700 mb-1 block">Status de Acesso</label>
+                                <label className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer h-[42px] ${formData.isBlocked ? 'border-red-200 bg-red-50' : 'border-emerald-100 bg-emerald-50 hover:bg-emerald-100'}`}>
+                                    <div className="flex items-center h-5">
+                                        <input
+                                            type="checkbox"
+                                            name="isBlocked"
+                                            checked={formData.isBlocked || false}
+                                            onChange={handleChange}
+                                            className="w-4 h-4 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className={`text-xs font-bold flex items-center gap-1.5 ${formData.isBlocked ? 'text-red-700' : 'text-emerald-700'}`}>
+                                            {formData.isBlocked ? (
+                                                <><ShieldAlert className="w-3.5 h-3.5" /> Acesso Bloqueado</>
+                                            ) : (
+                                                <><ShieldCheck className="w-3.5 h-3.5" /> Acesso Liberado</>
+                                            )}
+                                        </span>
+                                    </div>
+                                </label>
                             </div>
 
                             <div className="col-span-2 pt-2">
