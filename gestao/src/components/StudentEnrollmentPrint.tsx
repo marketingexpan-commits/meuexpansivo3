@@ -140,9 +140,9 @@ export function StudentEnrollmentPrint({ student, unitDetail, isBlank = false }:
                     </div>
                 </section>
 
-                {/* II. Filiação e Responsáveis */}
+                {/* II. Filiação e Resp. Financeiro */}
                 <section className="mb-3">
-                    <h3 className="text-[9px] font-black uppercase text-black border-l-[3px] border-black pl-2 mb-1 tracking-widest bg-gray-50 py-1">II. Filiação e Responsáveis</h3>
+                    <h3 className="text-[9px] font-black uppercase text-black border-l-[3px] border-black pl-2 mb-1 tracking-widest bg-gray-50 py-1">II. Filiação e Resp. Financeiro</h3>
                     <div className="grid grid-cols-2 gap-3 text-[9px]">
                         <div className="p-3 border-[0.5px] border-black rounded-lg space-y-2">
                             <span className="text-gray-500 uppercase font-black text-[7px] block border-b-[0.5px] border-black/10 pb-0.5 mb-1">Mãe / Progenitora</span>

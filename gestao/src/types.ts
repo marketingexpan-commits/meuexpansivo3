@@ -178,6 +178,7 @@ export interface Mensalidade {
   qrCode?: string; // Payload do PIX (Copia e Cola)
   qrCodeBase64?: string; // Imagem do QR Code Base64
   receiptId?: string; // Novo: ID do Recibo sincronizado
+  mpPaymentId?: string; // Novo: ID do Pagamento no Mercado Pago
 }
 
 export interface EventoFinanceiro {

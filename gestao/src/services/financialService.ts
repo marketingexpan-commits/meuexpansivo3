@@ -89,8 +89,15 @@ export const financialService = {
     async updateInstallment(id: string, data: any) {
         try {
             const docRef = doc(db, MENSALIDADES_COLLECTION, id);
+
+            // Filtrar campos undefined (Firestore não aceita)
+            const cleanData = Object.keys(data).reduce((acc: any, key) => {
+                if (data[key] !== undefined) acc[key] = data[key];
+                return acc;
+            }, {});
+
             await updateDoc(docRef, {
-                ...data,
+                ...cleanData,
                 lastUpdated: new Date().toISOString()
             });
         } catch (error) {
@@ -129,6 +136,7 @@ export const financialService = {
                         value: student.valor_mensalidade || defaultValue,
                         status: 'Pendente',
                         dueDate: `${year}-${this._getMonthNumber(month)}-05`,
+                        documentNumber: this._generateDocumentNumber(),
                         lastUpdated: new Date().toISOString()
                     });
                     createdCount++;
@@ -150,6 +158,7 @@ export const financialService = {
         try {
             const batch = writeBatch(db);
             const months = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            const sequentialBase = Math.floor(100000 + Math.random() * 800000);
             let createdCount = 0;
 
             // Buscar dados do aluno para valor padrão e para gerar boleto
@@ -228,7 +237,7 @@ export const financialService = {
                         status: 'Pendente',
                         dueDate: dueDate,
                         lastUpdated: new Date().toISOString(),
-                        documentNumber: Math.floor(100000 + Math.random() * 900000).toString(), // Gerar Cód Baixa
+                        documentNumber: (sequentialBase + (i + 1)).toString(), // Gerar Cód Baixa Sequencial (Jan=1)
                         ...boletoData
                     });
                     createdCount++;
@@ -288,7 +297,58 @@ export const financialService = {
         }
     },
 
-    // Auxiliar para pegar número do mês
+    // Gerar Código de Baixa (6 dígitos aleatórios)
+    _generateDocumentNumber(monthIndex?: number, base?: number): string {
+        const randomBase = base !== undefined ? base : Math.floor(100000 + Math.random() * 800000);
+        // monthIndex é 1-based (Jan=1, Fev=2...)
+        const offset = monthIndex !== undefined ? monthIndex : Math.floor(Math.random() * 12) + 1;
+        return (randomBase + offset).toString();
+    },
+
+    // Garantir que a parcela tem um Código de Baixa (gera e salva se faltar)
+    async ensureDocumentNumber(installment: any) {
+        if (!installment.documentNumber) {
+            const monthLabel = installment.month.split('/')[0];
+            const monthIdx = parseInt(this._getMonthNumber(monthLabel));
+            const newCode = this._generateDocumentNumber(monthIdx);
+            await this.updateInstallment(installment.id, { documentNumber: newCode });
+            return { ...installment, documentNumber: newCode };
+        }
+        return installment;
+    },
+
+    // Garantir sequência cronológica Jan < Fev < Mar
+    async ensureSequentialDocumentNumbers(installments: any[]) {
+        if (installments.length === 0) return installments;
+
+        // Tentar encontrar uma base comum entre as parcelas que já possuem código
+        const neighbor = installments.find(i => i.documentNumber);
+        let base: number;
+
+        if (neighbor) {
+            const neighborCode = parseInt(neighbor.documentNumber);
+            const neighborMonth = neighbor.month.split('/')[0];
+            const neighborIdx = parseInt(this._getMonthNumber(neighborMonth));
+            base = neighborCode - neighborIdx;
+        } else {
+            // Nenhum tem código, gera uma base aleatória
+            base = Math.floor(100000 + Math.random() * 800000);
+        }
+
+        const updatedInstallments = [...installments];
+        for (let i = 0; i < updatedInstallments.length; i++) {
+            if (!updatedInstallments[i].documentNumber) {
+                const monthLabel = updatedInstallments[i].month.split('/')[0];
+                const monthIdx = parseInt(this._getMonthNumber(monthLabel));
+                const newCode = (base + monthIdx).toString();
+
+                await this.updateInstallment(updatedInstallments[i].id, { documentNumber: newCode });
+                updatedInstallments[i] = { ...updatedInstallments[i], documentNumber: newCode };
+            }
+        }
+        return updatedInstallments;
+    },
+
     // Auxiliar para pegar número do mês
     _getMonthNumber(monthLabel: string): string {
         const mapping: Record<string, string> = {
@@ -395,7 +455,9 @@ export const financialService = {
             snap.docs.forEach(doc => {
                 const data = doc.data();
                 if (!data.documentNumber) {
-                    const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+                    const monthLabel = data.month?.split('/')[0] || "Janeiro";
+                    const monthIdx = parseInt(this._getMonthNumber(monthLabel));
+                    const newCode = this._generateDocumentNumber(monthIdx);
                     batch.update(doc.ref, { documentNumber: newCode });
                     updateCount++;
                 }

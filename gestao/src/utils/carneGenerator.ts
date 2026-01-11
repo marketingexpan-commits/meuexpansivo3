@@ -1,5 +1,5 @@
 import type { Student, SchoolUnitDetail } from '../types';
-import { generatePixPayload } from './pixUtils';
+
 
 interface Installment {
     month: string;
@@ -10,6 +10,7 @@ interface Installment {
     studentCode: string;
     studentGrade: string;
     barcode?: string;
+    digitableLine?: string;
     qrCodeBase64?: string;
     documentNumber?: string;
 }
@@ -18,7 +19,7 @@ export const generateCarne = (student: Student, installments: Installment[], uni
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    const PIX_KEY = unitDetail.pixKey || 'expansivo.unidadeboasorte@gmail.com';
+
     const unitInfo = unitDetail;
 
     const sortedInstallments = installments.sort((a, b) => {
@@ -64,7 +65,7 @@ export const generateCarne = (student: Student, installments: Installment[], uni
                     display: flex;
                     flex-direction: row;
                     border-bottom: 1px dashed #000;
-                    padding: 4mm 5mm 8mm 15mm; /* Topo reduzido para caber conteúdo, mantendo área de corte abaixo. Margem esquerda de 15mm para grampeamento */
+                    padding: 4mm 5mm 8mm 15mm; 
                     position: relative;
                 }
 
@@ -88,32 +89,19 @@ export const generateCarne = (student: Student, installments: Installment[], uni
                 /* --- CONTEÚDO --- */
                 .header { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #000; padding-bottom: 5px; }
                 .logo-img { width: 35px; height: 35px; object-fit: contain; }
-                .row { display: flex; gap: 10px; margin-top: 5px; } /* Margin reduzida */
+                .row { display: flex; gap: 10px; margin-top: 5px; }
                 .field { flex: 1; display: flex; flex-direction: column; }
                 .label { font-size: 7px; color: #666; font-weight: bold; text-transform: uppercase; }
                 .value { font-size: 10px; font-weight: bold; border-bottom: 1px solid #e0e0e0; padding: 2px 0; }
                 
-                .qr-section { display: flex; gap: 10px; align-items: center; margin-top: 5px; } /* Margin reduzida */
-                .qr-box { text-align: center; width: 70px; }
-                .baixa-box { text-align: center; width: 100px; }
-
                 .watermark { 
                     position: absolute; top: 50%; left: 55%; transform: translate(-50%, -50%);
                     width: 40%; opacity: 0.07; z-index: 0; pointer-events: none;
                     filter: grayscale(100%);
                 }       
 
-                .barcode-section { margin-top: 3px; text-align: center; }
-                .barcode-strip { 
-                    height: 24px; 
-                    background: repeating-linear-gradient(90deg, #000 0px, #000 1px, #fff 1px, #fff 3px); 
-                    width: 90%; 
-                    margin: 0 auto; 
-                    opacity: 0.8;
-                    -webkit-print-color-adjust: exact; 
-                    print-color-adjust: exact; 
-                }
-                .barcode-text { font-family: 'Courier New', monospace; font-size: 8px; margin-top: 1px; letter-spacing: 2px; }
+                .barcode-section { margin-top: 5px; text-align: center; border-top: 1px solid #000; padding-top: 5px; }
+                .barcode-text { font-family: 'Courier New', monospace; font-size: 10px; font-weight: bold; margin-top: 2px; letter-spacing: 1px; }
 
                 @media print {
                     body { background: none; padding: 0; }
@@ -126,15 +114,14 @@ export const generateCarne = (student: Student, installments: Installment[], uni
             ${chunkArray(sortedInstallments, 4).map(pageInstallments => `
                 <div class="page">
                     ${pageInstallments.map(inst => {
-        let qrUrl = inst.qrCodeBase64
-            ? `data:image/png;base64,${inst.qrCodeBase64}`
-            : `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(generatePixPayload({
-                key: PIX_KEY,
-                name: 'EXPANSIVO',
-                city: 'Natal',
-                amount: inst.value,
-                txid: inst.documentNumber || '***'
-            }))}`;
+
+        let displayCode = inst.digitableLine || inst.barcode || '---';
+        if (displayCode.length === 47 && !displayCode.includes('.')) {
+            displayCode = `${displayCode.substring(0, 5)}.${displayCode.substring(5, 10)} ${displayCode.substring(10, 15)}.${displayCode.substring(15, 21)} ${displayCode.substring(21, 26)}.${displayCode.substring(26, 32)} ${displayCode.substring(32, 33)} ${displayCode.substring(33)}`;
+        }
+
+        // Código numérico limpo para o desenho das barras (precisa ser EXATAMENTE 44 dígitos)
+        const cleanBarcode = (inst.barcode || '237933812860083013528560000633077890000001000').replace(/\\D/g, '').substring(0, 44);
 
         return `
                         <div class="ticket">
@@ -163,45 +150,57 @@ export const generateCarne = (student: Student, installments: Installment[], uni
                                          <img src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png" class="logo-img" style="width: 100%; height: auto; object-fit: contain;">
                                     </div>
                                     <div style="flex:1; margin-left: 8px; display: flex; flex-direction: column; justify-content: center;">
-                                        <div style="font-weight:800; font-size:12px; text-transform:uppercase; line-height: 1.1;">Expansivo Rede de Ensino</div>
-                                        <div style="font-weight:700; font-size:9px; margin-bottom:1px; text-transform: uppercase;">Unidade: ${unitDetail.fullName.replace('Expansivo - ', '')}</div>
-                                        <div style="font-size:7px; color:#444; line-height: 1.1;">
+                                        <div style="font-weight:800; font-size:11px; text-transform:uppercase; line-height: 1.1;">Expansivo Rede de Ensino</div>
+                                        <div style="font-weight:700; font-size:8px; margin-bottom:1px; text-transform: uppercase;">Unidade: ${unitDetail.fullName.replace('Expansivo - ', '')}</div>
+                                        <div style="font-size:6px; color:#444; line-height: 1.1;">
                                             ${unitInfo.address}${unitInfo.district ? ` - ${unitInfo.district}` : ''}${unitInfo.city ? `, ${unitInfo.city}` : ''}${unitInfo.uf ? ` - ${unitInfo.uf}` : ''}${unitInfo.cep ? ` - CEP: ${unitInfo.cep}` : ''}
                                         </div>
-                                        <div style="font-size:7px; color:#444; line-height: 1.1;">CNPJ: ${unitInfo.cnpj} | Tel: ${unitInfo.phone}${unitInfo.whatsapp ? ` | WhatsApp: ${unitInfo.whatsapp}` : ''}${unitInfo.email ? ` | E-mail: ${unitInfo.email}` : ''}</div>
+                                        <div style="font-size:6.5px; color:#444; line-height: 1.1; font-weight: 500;">CNPJ: ${unitInfo.cnpj} | Tel: ${unitInfo.phone}${unitInfo.whatsapp ? ` | WhatsApp: ${unitInfo.whatsapp}` : ''}</div>
                                     </div>
                                     <div style="text-align:right; display: flex; flex-direction: column; justify-content: center;">
-                                        <div style="font-size:14px; font-weight:bold;">R$ ${inst.value.toFixed(2)}</div>
-                                        <div style="font-size:9px;">Vencimento: ${formatDate(inst.dueDate)}</div>
+                                        <div style="font-size:14px; font-weight:900; color: #000;">R$ ${inst.value.toFixed(2)}</div>
+                                        <div style="font-size:9px; font-weight: 600;">Vencimento: ${formatDate(inst.dueDate)}</div>
                                     </div>
                                 </div>
 
                                 <div class="row">
-                                    <div class="field" style="flex:2"><span class="label">Aluno (a)</span><span class="value">${student.name}</span></div>
+                                    <div class="field" style="flex:2.5"><span class="label">Aluno (a)</span><span class="value">${student.name}</span></div>
                                     <div class="field"><span class="label">Código/Matrícula</span><span class="value">${student.code}</span></div>
                                 </div>
 
-                                <div class="row">
-                                    <div class="field"><span class="label">Série/Turma/Turno</span><span class="value">${student.gradeLevel} - ${student.schoolClass} / ${student.shift}</span></div>
+                                <div class="row" style="margin-top: 2px;">
+                                    <div class="field" style="flex:1.5"><span class="label">Série/Turma/Turno</span><span class="value">${student.gradeLevel} - ${student.schoolClass} / ${student.shift}</span></div>
                                     <div class="field"><span class="label">Mensal./Mês</span><span class="value">${inst.month.toUpperCase()}</span></div>
                                     <div class="field"><span class="label">Data Doc.</span><span class="value">${new Date().toLocaleDateString('pt-BR')}</span></div>
                                 </div>
 
-                                <div class="row" style="margin-top: 10px;">
-                                    <div class="field"><span class="label">Instruções</span><div style="font-size:7px;">Multa de 2% após o vencimento.<br>Juros de 1% ao mês.<br>Pagamento preferencial via PIX.</div></div>
+                                <div class="row" style="margin-top: 6px;">
+                                    <div class="field" style="flex:1.5"><span class="label">Instruções</span><div style="font-size:7px; font-weight: 500;">Multa de 2% após o vencimento.<br>Juros de 1% ao mês.<br>Pagamento preferencial via PIX.</div></div>
                                     <div class="field">
                                         <span class="label">CÓDIGO BAIXA</span>
-                                        <div style="font-size:14px; font-weight:bold; margin-top:2px;">${inst.documentNumber || '---'}</div>
+                                        <div style="font-size:13px; font-weight:800; margin-top:2px; color: #000;">${inst.documentNumber || '---'}</div>
                                     </div>
-                                    <div class="field" style="align-items: flex-end; margin-top: -15px; margin-right: 5px;">
-                                        <span class="label" style="display:block; font-size:6px; text-align: center; width: 66px;">PAGUE PIX</span>
-                                        <img src="${qrUrl}" style="width:66px; height:66px;">
+                                    <div class="field" style="flex: 1.2; border-left: 1px solid #eee; padding-left: 10px; min-height: 55px; display: flex; flex-direction: column; justify-content: flex-end;">
+                                        <div style="margin-bottom: 12px;">
+                                            <div style="border-bottom: 1px solid #000; width: 100%; height: 12px;"></div>
+                                            <span class="label" style="font-size: 5.5px; display: block; text-align: center; margin-top: 1px;">Assinatura / Recebido por</span>
+                                        </div>
+                                        <div>
+                                            <div style="display: flex; align-items: flex-end; gap: 2px; justify-content: center;">
+                                                <div style="border-bottom: 1px solid #000; width: 22px; height: 12px;"></div>
+                                                <span style="font-size: 8px;">/</span>
+                                                <div style="border-bottom: 1px solid #000; width: 22px; height: 12px;"></div>
+                                                <span style="font-size: 8px;">/</span>
+                                                <div style="border-bottom: 1px solid #000; width: 35px; height: 12px;"></div>
+                                            </div>
+                                            <span class="label" style="font-size: 5.5px; display: block; text-align: center; margin-top: 1px;">Data Recebimento</span>
+                                        </div>
                                     </div>
                                 </div>
                                 
                                 <div class="barcode-section">
-                                    <img src="https://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(inst.barcode || '237933812860083013528560000633077890000001000')}&scale=1&height=10&incltext=false" style="width: 85%; height: 32px; object-fit: fill;">
-                                    <div class="barcode-text">${inst.barcode || '23793.38128 60083.01352 85600.00633 0 77890000001000'}</div>
+                                    <div class="barcode-text" style="font-size: 9px; margin-bottom: 4px; border-bottom: 1px solid #000;">${displayCode}</div>
+                                    <img src="https://bwipjs-api.metafloor.com/?bcid=interleaved2of5&text=${encodeURIComponent(cleanBarcode)}&scale=2&height=10&incltext=false" style="width: 96%; height: 35px; object-fit: fill;">
                                 </div>
                             </div>
                         </div>`;

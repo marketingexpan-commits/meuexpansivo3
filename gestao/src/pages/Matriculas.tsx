@@ -173,12 +173,16 @@ export function Matriculas() {
 
         try {
             // Busca parcelas do ano
-            const installments = await financialService.getInstallmentsForPrint(student.id, year) as any[];
+            // Busca parcelas do ano
+            const rawInstallments = await financialService.getInstallmentsForPrint(student.id, year) as any[];
 
-            if (installments.length === 0) {
+            if (rawInstallments.length === 0) {
                 alert("Nenhuma parcela pendente encontrada para este aluno neste ano.");
                 return;
             }
+
+            // Garantir que todas as parcelas têm Código de Baixa Sequencial (self-healing)
+            const installments = await financialService.ensureSequentialDocumentNumbers(rawInstallments);
 
             // Gerar PDF/Janela
             const unitDetail = getUnitById(student.unit);
@@ -260,12 +264,21 @@ export function Matriculas() {
                 payer: payer
             });
 
-            await financialService.updateInstallment(inst.id, {
+            const updates: any = {
                 barcode: boletoData.barcode,
+                digitableLine: boletoData.digitableLine,
+                mpPaymentId: boletoData.id,
                 ticketUrl: boletoData.ticketUrl,
                 qrCode: boletoData.qrCode,
                 qrCodeBase64: boletoData.qrCodeBase64
-            });
+            };
+
+            if (!inst.documentNumber) {
+                const monthIdx = parseInt(financialService._getMonthNumber(inst.month));
+                updates.documentNumber = financialService._generateDocumentNumber(monthIdx);
+            }
+
+            await financialService.updateInstallment(inst.id, updates);
 
             alert(`Boleto de ${inst.month} gerado com sucesso para ${student.name}!`);
         } catch (error: any) {
@@ -341,12 +354,21 @@ export function Matriculas() {
                                 payer: payer
                             });
 
-                            await financialService.updateInstallment(inst.id, {
+                            const updates: any = {
                                 barcode: boletoData.barcode,
+                                digitableLine: boletoData.digitableLine,
+                                mpPaymentId: boletoData.id,
                                 ticketUrl: boletoData.ticketUrl,
                                 qrCode: boletoData.qrCode,
                                 qrCodeBase64: boletoData.qrCodeBase64
-                            });
+                            };
+
+                            if (!inst.documentNumber) {
+                                const monthIdx = parseInt(financialService._getMonthNumber(inst.month));
+                                updates.documentNumber = financialService._generateDocumentNumber(monthIdx);
+                            }
+
+                            await financialService.updateInstallment(inst.id, updates);
                             studentGenerated++;
                             totalGenerated++;
                         } catch (err: any) {

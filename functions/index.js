@@ -318,15 +318,16 @@ exports.generateBoleto = functions.https.onRequest((req, res) => {
             console.log(`✅ Boleto gerado: ${result.id}`);
 
             const barcode = result.barcode ? result.barcode.content : (result.transaction_details ? result.transaction_details.barcode.content : null);
+            const digitableLine = result.transaction_details ? result.transaction_details.digitable_line : null;
             const ticketUrl = result.transaction_details ? result.transaction_details.external_resource_url : null;
-            const qrCode = result.point_of_interaction?.transaction_data?.qr_code;
-            const qrCodeBase64 = result.point_of_interaction?.transaction_data?.qr_code_base64;
-
+            const qrCode = result.point_of_interaction?.transaction_data?.qr_code || null;
+            const qrCodeBase64 = result.point_of_interaction?.transaction_data?.qr_code_base64 || null;
 
             res.json({
                 id: result.id,
                 status: result.status,
                 barcode: barcode,
+                digitableLine: digitableLine,
                 ticketUrl: ticketUrl,
                 qrCode: qrCode,
                 qrCodeBase64: qrCodeBase64

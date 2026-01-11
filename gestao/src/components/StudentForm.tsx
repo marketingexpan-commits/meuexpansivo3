@@ -28,6 +28,11 @@ const STUDENT_STATUS_OPTIONS = [
     { label: 'CONCLUÍDO', value: 'CONCLUÍDO' },
 ];
 
+const PAYMENT_METHOD_OPTIONS = [
+    { label: 'Sistema Interno', value: 'Interno' },
+    { label: 'Parceiro Isaac', value: 'Isaac' }
+];
+
 const HEALTH_CHRONIC_OPTIONS = ['Asma', 'Bronquite', 'Diabetes', 'Epilepsia', 'Hipertensão', 'Reumatismo'];
 const HEALTH_DEFICIENCY_OPTIONS = ['Física', 'Fala', 'Visual', 'Auditiva'];
 const HEALTH_PAST_ILLNESS_OPTIONS = ['Catapora', 'Caxumba', 'Coqueluche', 'Escarlatina', 'Rubeola', 'Sarampo'];
@@ -133,6 +138,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
             endereco_uf: '',
             localizacao_tipo: '',
             isScholarship: false,
+            metodo_pagamento: 'Interno',
 
             // New Fields
             alias: '',
@@ -506,12 +512,21 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                 payer: payer
             });
 
-            await financialService.updateInstallment(inst.id, {
+            const updates: any = {
                 barcode: boletoData.barcode,
+                digitableLine: boletoData.digitableLine,
+                mpPaymentId: boletoData.id,
                 ticketUrl: boletoData.ticketUrl,
                 qrCode: boletoData.qrCode,
                 qrCodeBase64: boletoData.qrCodeBase64
-            });
+            };
+
+            if (!inst.documentNumber) {
+                const monthIdx = parseInt(financialService._getMonthNumber(inst.month));
+                updates.documentNumber = financialService._generateDocumentNumber(monthIdx);
+            }
+
+            await financialService.updateInstallment(inst.id, updates);
 
             alert(`Boleto de ${inst.month} gerado com sucesso para ${formData.name}!`);
         } catch (error: any) {
@@ -667,7 +682,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
     const tabs = [
         { id: 'personal', label: 'Dados Pessoais', icon: User },
         { id: 'academic', label: 'Acadêmico', icon: GraduationCap },
-        { id: 'family', label: 'Responsáveis', icon: Users },
+        { id: 'family', label: 'Resp. Financeiro', icon: Users },
         { id: 'filiation', label: 'Filiação', icon: Users },
         { id: 'address', label: 'Endereço', icon: MapPin },
         { id: 'health', label: 'Saúde', icon: Heart },
@@ -1002,7 +1017,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
 
 
                             {/* Financial Calculation Section */}
-                            <div className={`col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-gray-100 pt-4 mt-2 transition-opacity ${formData.isScholarship ? 'opacity-50 pointer-events-none grayscale' : 'opacity-100'}`}>
+                            <div className={`col-span-2 grid grid-cols-1 md:grid-cols-4 gap-4 border-t border-gray-100 pt-4 mt-2 transition-opacity ${formData.isScholarship ? 'opacity-50 pointer-events-none grayscale' : 'opacity-100'}`}>
                                 <Input
                                     label="Valor da Mensalidade (Integral)"
                                     value={baseTuition}
@@ -1031,6 +1046,13 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                     onBlur={handleFinalValueBlur}
                                     placeholder="0,00"
                                     startIcon={<span className="text-slate-500 font-semibold">R$</span>}
+                                    disabled={formData.isScholarship}
+                                />
+                                <Select
+                                    label="Método de Pagamento"
+                                    value={formData.metodo_pagamento || 'Interno'}
+                                    onChange={(e) => handleSelectChange('metodo_pagamento', e.target.value)}
+                                    options={PAYMENT_METHOD_OPTIONS}
                                     disabled={formData.isScholarship}
                                 />
                             </div>
