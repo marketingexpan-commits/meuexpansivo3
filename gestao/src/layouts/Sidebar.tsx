@@ -16,6 +16,7 @@ import {
     UserCog,
     History,
     Calendar,
+    Settings,
     FileBarChart // Import for Boletim icon
 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -73,6 +74,7 @@ export function Sidebar() {
     const [isMatriculasOpen, setIsMatriculasOpen] = useState(true);
     const [isArquivosOpen, setIsArquivosOpen] = useState(true);
     const [isFinanceiroOpen, setIsFinanceiroOpen] = useState(true);
+    const [isConfigOpen, setIsConfigOpen] = useState(true);
 
     const handleLogout = () => {
         // Clear auth data
@@ -251,6 +253,40 @@ export function Sidebar() {
                 <SidebarItem icon={Database} label="Tabelas" collapsed={collapsed} />
                 <SidebarItem icon={Briefcase} label="Utilitários" collapsed={collapsed} />
                 <SidebarItem icon={Layers} label="Extras" collapsed={collapsed} />
+
+                <div className="my-6 border-t border-slate-100 mx-2"></div>
+
+                <div className={clsx("text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-3", collapsed && "text-center")}>
+                    {!collapsed ? "Sistema" : "..."}
+                </div>
+
+                <div className="space-y-0.5">
+                    <div className="relative group">
+                        <SidebarItem
+                            icon={Settings}
+                            label="Configurações"
+                            collapsed={collapsed}
+                        />
+                        {!collapsed && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsConfigOpen(!isConfigOpen);
+                                }}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded text-slate-400 cursor-pointer"
+                            >
+                                <ChevronRight className={clsx("w-3.5 h-3.5 transition-transform", isConfigOpen && "rotate-90")} />
+                            </button>
+                        )}
+                    </div>
+
+                    {isConfigOpen && !collapsed && (
+                        <div className="ml-4 pl-4 border-l border-slate-100 space-y-0.5 animate-in slide-in-from-top-2 duration-200">
+                            <SidebarItem icon={Database} label="Disciplinas" path="/config/disciplinas" collapsed={collapsed} />
+                            <SidebarItem icon={Layers} label="Séries e Segmentos" path="/config/series" collapsed={collapsed} />
+                        </div>
+                    )}
+                </div>
             </nav>
 
             {/* Footer */}

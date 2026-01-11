@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useAcademicData } from '../hooks/useAcademicData';
 import { db } from '../firebaseConfig';
 import { ClassSchedule, SchoolUnit, ScheduleItem, SchoolClass, SchoolShift } from '../types';
-import { SCHOOL_CLASSES_LIST, SUBJECT_LIST, SCHOOL_GRADES_LIST, SCHOOL_SHIFTS_LIST } from '../constants';
+import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST } from '../constants';
 import { Button } from './Button';
 import {
     Clock,
@@ -28,7 +29,9 @@ const DAYS_OF_WEEK = [
 ];
 
 export const ScheduleManagement: React.FC<ScheduleManagementProps> = ({ unit, isReadOnly = false }) => {
-    const [selectedGrade, setSelectedGrade] = useState(SCHOOL_GRADES_LIST[0]);
+    const { grades: academicGrades, subjects: academicSubjects, loading: loadingAcademic } = useAcademicData();
+
+    const [selectedGrade, setSelectedGrade] = useState('');
     const [selectedClass, setSelectedClass] = useState<SchoolClass>(SchoolClass.A);
     const [selectedShift, setSelectedShift] = useState<SchoolShift>(SchoolShift.MORNING);
     const [selectedDay, setSelectedDay] = useState(1);
@@ -36,9 +39,17 @@ export const ScheduleManagement: React.FC<ScheduleManagementProps> = ({ unit, is
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
 
+    // Initial values once academic data is loaded
+    useEffect(() => {
+        if (!loadingAcademic && academicGrades.length > 0 && !selectedGrade) {
+            setSelectedGrade(academicGrades[0].name);
+            setCopySourceGrade(academicGrades[0].name);
+        }
+    }, [loadingAcademic, academicGrades]);
+
     // Copy Feature State
     const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
-    const [copySourceGrade, setCopySourceGrade] = useState(SCHOOL_GRADES_LIST[0]);
+    const [copySourceGrade, setCopySourceGrade] = useState('');
     const [copySourceClass, setCopySourceClass] = useState<SchoolClass>(SchoolClass.A);
     const [copySourceShift, setCopySourceShift] = useState<SchoolShift>(SchoolShift.MORNING);
 
@@ -72,7 +83,8 @@ export const ScheduleManagement: React.FC<ScheduleManagementProps> = ({ unit, is
     };
 
     const handleAddItem = () => {
-        setItems([...items, { startTime: '', endTime: '', subject: SUBJECT_LIST[0] }]);
+        const defaultSubject = academicSubjects.length > 0 ? academicSubjects[0].name : '';
+        setItems([...items, { startTime: '', endTime: '', subject: defaultSubject }]);
     };
 
     const handleRemoveItem = (index: number) => {
@@ -200,9 +212,13 @@ export const ScheduleManagement: React.FC<ScheduleManagementProps> = ({ unit, is
                             onChange={(e) => setSelectedGrade(e.target.value)}
                             className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950 shadow-sm"
                         >
-                            {SCHOOL_GRADES_LIST.map(grade => (
-                                <option key={grade} value={grade}>{grade}</option>
-                            ))}
+                            {loadingAcademic ? (
+                                <option>Carregando...</option>
+                            ) : (
+                                academicGrades.map(grade => (
+                                    <option key={grade.id} value={grade.name}>{grade.name}</option>
+                                ))
+                            )}
                         </select>
                     </div>
                     <div>
@@ -296,9 +312,13 @@ export const ScheduleManagement: React.FC<ScheduleManagementProps> = ({ unit, is
                                                 onChange={(e) => handleUpdateItem(index, 'subject', e.target.value)}
                                                 className="w-full p-2 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 bg-white"
                                             >
-                                                {SUBJECT_LIST.map(sub => (
-                                                    <option key={sub} value={sub}>{sub}</option>
-                                                ))}
+                                                {loadingAcademic ? (
+                                                    <option>Carregando...</option>
+                                                ) : (
+                                                    academicSubjects.map(sub => (
+                                                        <option key={sub.id} value={sub.name}>{sub.name}</option>
+                                                    ))
+                                                )}
                                             </select>
                                         </div>
                                         {!isReadOnly && (
@@ -339,67 +359,73 @@ export const ScheduleManagement: React.FC<ScheduleManagementProps> = ({ unit, is
             </div>
 
             {/* Copy Modal */}
-            {isCopyModalOpen && (
-                <div className="fixed inset-0 bg-blue-950/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-in">
-                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white">
-                            <h3 className="text-lg font-bold text-blue-950 flex items-center gap-2">
-                                <Copy className="w-5 h-5" /> Copiar Grade Horária
-                            </h3>
-                            <button onClick={() => setIsCopyModalOpen(false)} className="text-gray-400 hover:text-gray-600 font-bold p-2">X</button>
-                        </div>
-                        <div className="p-6 space-y-4 bg-white text-left">
-                            <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 mb-4 flex gap-3 text-left">
-                                <AlertCircle className="w-5 h-5 text-blue-600 shrink-0" />
-                                <p className="text-xs text-blue-800 font-medium leading-relaxed">
-                                    Isso irá substituir **todos os horários** da turma atual (de segunda a sexta) pelos horários da turma de origem selecionada.
-                                </p>
+            {
+                isCopyModalOpen && (
+                    <div className="fixed inset-0 bg-blue-950/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-in">
+                            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white">
+                                <h3 className="text-lg font-bold text-blue-950 flex items-center gap-2">
+                                    <Copy className="w-5 h-5" /> Copiar Grade Horária
+                                </h3>
+                                <button onClick={() => setIsCopyModalOpen(false)} className="text-gray-400 hover:text-gray-600 font-bold p-2">X</button>
                             </div>
+                            <div className="p-6 space-y-4 bg-white text-left">
+                                <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 mb-4 flex gap-3 text-left">
+                                    <AlertCircle className="w-5 h-5 text-blue-600 shrink-0" />
+                                    <p className="text-xs text-blue-800 font-medium leading-relaxed">
+                                        Isso irá substituir **todos os horários** da turma atual (de segunda a sexta) pelos horários da turma de origem selecionada.
+                                    </p>
+                                </div>
 
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turma de Origem (Série)</label>
-                                <select
-                                    value={copySourceGrade}
-                                    onChange={(e) => setCopySourceGrade(e.target.value)}
-                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950"
-                                >
-                                    {SCHOOL_GRADES_LIST.map(grade => (
-                                        <option key={grade} value={grade}>{grade}</option>
-                                    ))}
-                                </select>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turma de Origem (Série)</label>
+                                    <select
+                                        value={copySourceGrade}
+                                        onChange={(e) => setCopySourceGrade(e.target.value)}
+                                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950"
+                                    >
+                                        {loadingAcademic ? (
+                                            <option>Carregando...</option>
+                                        ) : (
+                                            academicGrades.map(grade => (
+                                                <option key={grade.id} value={grade.name}>{grade.name}</option>
+                                            ))
+                                        )}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turma de Origem (Letra)</label>
+                                    <select
+                                        value={copySourceClass}
+                                        onChange={(e) => setCopySourceClass(e.target.value as SchoolClass)}
+                                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950"
+                                    >
+                                        {SCHOOL_CLASSES_LIST.map(cls => (
+                                            <option key={cls} value={cls}>{cls}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turma de Origem (Turno)</label>
+                                    <select
+                                        value={copySourceShift}
+                                        onChange={(e) => setCopySourceShift(e.target.value as SchoolShift)}
+                                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950"
+                                    >
+                                        {SCHOOL_SHIFTS_LIST.map(sh => (
+                                            <option key={sh} value={sh}>{sh}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turma de Origem (Letra)</label>
-                                <select
-                                    value={copySourceClass}
-                                    onChange={(e) => setCopySourceClass(e.target.value as SchoolClass)}
-                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950"
-                                >
-                                    {SCHOOL_CLASSES_LIST.map(cls => (
-                                        <option key={cls} value={cls}>{cls}</option>
-                                    ))}
-                                </select>
+                            <div className="p-6 bg-gray-50 flex gap-3">
+                                <Button variant="outline" className="flex-1" onClick={() => setIsCopyModalOpen(false)}>Cancelar</Button>
+                                <Button className="flex-1 gap-2" onClick={handleCopySchedule}>Confirmar Cópia</Button>
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turma de Origem (Turno)</label>
-                                <select
-                                    value={copySourceShift}
-                                    onChange={(e) => setCopySourceShift(e.target.value as SchoolShift)}
-                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950"
-                                >
-                                    {SCHOOL_SHIFTS_LIST.map(sh => (
-                                        <option key={sh} value={sh}>{sh}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-                        <div className="p-6 bg-gray-50 flex gap-3">
-                            <Button variant="outline" className="flex-1" onClick={() => setIsCopyModalOpen(false)}>Cancelar</Button>
-                            <Button className="flex-1 gap-2" onClick={handleCopySchedule}>Confirmar Cópia</Button>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
         </div>
     );
 };

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useAcademicData } from '../hooks/useAcademicData';
 import { db } from '../firebaseConfig';
 import { UnitContact, SchoolUnit, CoordinationSegment, Subject, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES } from '../types';
-import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, SUBJECT_LIST, CURRICULUM_MATRIX, getCurriculumSubjects, calculateBimesterMedia, calculateFinalData, GRADES_BY_LEVEL, SCHOOL_CLASSES_OPTIONS, SCHOOL_SHIFTS } from '../constants';
+import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, CURRICULUM_MATRIX, getCurriculumSubjects, calculateBimesterMedia, calculateFinalData, SCHOOL_CLASSES_OPTIONS, SCHOOL_SHIFTS } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency } from '../utils/frequency';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
@@ -47,6 +48,9 @@ interface CoordinatorDashboardProps {
 }
 
 export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coordinator, onLogout, onCreateNotification }) => {
+    // --- ACADEMIC DATA ---
+    const { segments: academicSegments, grades: academicGrades, subjects: academicSubjects, loading: loadingAcademic } = useAcademicData();
+
     // --- STATE ---
 
     const [quickClassFilter, setQuickClassFilter] = useState<string>('all'); // NEW: Quick Filter
@@ -902,7 +906,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                                 {(() => {
                                                                     // Use ALL grades for this student to calculate general frequency correctly
                                                                     const allStudentGrades = allStudentGradesMap[student.id] || [];
-                                                                    const generalFreq = calculateGeneralFrequency(allStudentGrades, attendanceRecords, student.id, student.gradeLevel || "");
+                                                                    const generalFreq = calculateGeneralFrequency(allStudentGrades, attendanceRecords, student.id, student.gradeLevel || "", academicSubjects);
                                                                     return (
                                                                         <tr className="bg-gray-100/80 font-bold border-t-2 border-gray-400">
                                                                             <td colSpan={26} className="px-4 py-2 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[10px]">
@@ -990,8 +994,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                 onChange={(e) => setOccFilters({ ...occFilters, level: e.target.value, grade: '' })}
                                             >
                                                 <option value="">Selecione o nível</option>
-                                                {Object.keys(GRADES_BY_LEVEL).map(level => (
-                                                    <option key={level} value={level}>{level}</option>
+                                                {academicSegments.map(s => (
+                                                    <option key={s.id} value={s.name}>{s.name}</option>
                                                 ))}
                                             </select>
                                         </div>
@@ -1004,8 +1008,11 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                 onChange={(e) => setOccFilters({ ...occFilters, grade: e.target.value })}
                                             >
                                                 <option value="">Selecione a série</option>
-                                                {occFilters.level && GRADES_BY_LEVEL[occFilters.level]?.map(grade => (
-                                                    <option key={grade} value={grade}>{grade}</option>
+                                                {occFilters.level && academicGrades.filter(g => {
+                                                    const segment = academicSegments.find(s => s.name === occFilters.level);
+                                                    return segment && g.segmentId === segment.id;
+                                                }).map(grade => (
+                                                    <option key={grade.id} value={grade.name}>{grade.name}</option>
                                                 ))}
                                             </select>
                                         </div>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { X, Search, FileText, Loader2, AlertCircle, School, GraduationCap, Percent, ArrowLeftRight, CheckCircle2, ChevronRight } from 'lucide-react';
+import { useAcademicData } from '../hooks/useAcademicData';
 import { Button } from './Button';
 import { Input } from './Input';
 import { studentService } from '../services/studentService';
@@ -17,6 +18,7 @@ interface DeclarationSearchModalProps {
 type ModalStep = 'SEARCH' | 'SELECTION';
 
 export function DeclarationSearchModal({ onClose }: DeclarationSearchModalProps) {
+    const { subjects: academicSubjects } = useAcademicData();
     const [step, setStep] = useState<ModalStep>('SEARCH');
     const [code, setCode] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -47,7 +49,7 @@ export function DeclarationSearchModal({ onClose }: DeclarationSearchModalProps)
             // 2. Fetch Pedagogical Data (Frequency)
             const grades = await pedagogicalService.getGrades(student.id);
             const attendance = await pedagogicalService.getAttendance(student.id);
-            const freq = pedagogicalService.calculateFrequencyFromGrades(grades, student.gradeLevel, attendance);
+            const freq = pedagogicalService.calculateFrequencyFromGrades(grades, student.gradeLevel, attendance, academicSubjects);
             setStudentFrequency(freq);
 
             // 3. Fetch Financial Data (Debts)

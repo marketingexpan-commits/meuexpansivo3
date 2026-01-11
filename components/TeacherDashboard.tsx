@@ -1,5 +1,6 @@
 // src/components/TeacherDashboard.tsx
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { useAcademicData } from '../hooks/useAcademicData';
 import {
     Teacher, Student, GradeEntry, BimesterData, SchoolUnit, Subject, SchoolClass, AttendanceRecord, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, Ticket,
     TicketStatus,
@@ -13,7 +14,7 @@ import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/
 
 import { getAttendanceBreakdown, AttendanceBreakdown } from '../src/utils/attendanceUtils';
 import { getBimesterFromDate, getCurrentSchoolYear } from '../src/utils/academicUtils';
-import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects, SCHOOL_GRADES_LIST, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST, EARLY_CHILDHOOD_REPORT_TEMPLATE } from '../constants';
+import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST, EARLY_CHILDHOOD_REPORT_TEMPLATE } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency } from '../utils/frequency';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
@@ -38,6 +39,8 @@ const formatGrade = (value: number | undefined | null) => {
 };
 
 export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, students, grades, attendanceRecords, earlyChildhoodReports, onSaveGrade, onSaveAttendance, onSaveEarlyChildhoodReport, onLogout, notifications = [], onMarkNotificationAsRead }) => {
+    const { grades: academicGrades, subjects: academicSubjects, loading: loadingAcademic } = useAcademicData();
+
     const [activeTab, setActiveTab] = useState<'menu' | 'grades' | 'attendance' | 'tickets' | 'materials'>('menu');
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -1020,7 +1023,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Série</label>
                                         <select value={materialGrade} onChange={(e) => setMaterialGrade(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
                                             <option value="">Selecione...</option>
-                                            {SCHOOL_GRADES_LIST.map((grade) => (<option key={grade} value={grade}>{grade}</option>))}
+                                            {loadingAcademic ? (
+                                                <option>Carregando...</option>
+                                            ) : (
+                                                academicGrades.map((grade) => (<option key={grade.id} value={grade.name}>{grade.name}</option>))
+                                            )}
                                         </select>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
@@ -1146,7 +1153,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                             <label className="block text-sm font-bold text-gray-700 mb-1">Série</label>
                                             <select value={agendaGrade} onChange={e => setAgendaGrade(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
                                                 <option value="">Selecione...</option>
-                                                {SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
+                                                {loadingAcademic ? (
+                                                    <option>Carregando...</option>
+                                                ) : (
+                                                    academicGrades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)
+                                                )}
                                             </select>
                                         </div>
                                         <div>
@@ -1206,7 +1217,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                             <label className="block text-sm font-bold text-gray-700 mb-1">Série</label>
                                             <select value={examGrade} onChange={e => setExamGrade(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
                                                 <option value="">Selecione...</option>
-                                                {SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
+                                                {loadingAcademic ? (
+                                                    <option>Carregando...</option>
+                                                ) : (
+                                                    academicGrades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)
+                                                )}
                                             </select>
                                         </div>
                                         <div>
@@ -1244,7 +1259,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                     </div>
                                     <select value={filterGrade} onChange={e => setFilterGrade(e.target.value)} className="w-full text-sm p-2 border border-gray-300 rounded focus:ring-blue-950 focus:border-blue-950">
                                         <option value="">Todas as Séries</option>
-                                        {SCHOOL_GRADES_LIST.map((grade) => (<option key={grade} value={grade}>{grade}</option>))}
+                                        {loadingAcademic ? (
+                                            <option>Carregando...</option>
+                                        ) : (
+                                            academicGrades.map((grade) => (<option key={grade.id} value={grade.name}>{grade.name}</option>))
+                                        )}
                                     </select>
                                     <select value={filterShift} onChange={e => setFilterShift(e.target.value)} className="w-full text-sm p-2 border border-gray-300 rounded focus:ring-blue-950 focus:border-blue-950">
                                         <option value="">Todos os Turnos</option>
@@ -1514,7 +1533,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                             </thead>
                                                             <tbody className="bg-white divide-y divide-gray-200">
                                                                 {(() => {
-                                                                    const subjectsInCurriculum = getCurriculumSubjects(selectedStudent.gradeLevel || "");
+                                                                    const subjectsInCurriculum = getCurriculumSubjects(selectedStudent.gradeLevel || "", academicSubjects);
                                                                     const studentId = selectedStudent.id;
 
                                                                     // 1. Matérias que já possuem registros
@@ -1558,7 +1577,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                         finalGrades.sort((a, b) => subjectsInCurriculum.indexOf(a.subject) - subjectsInCurriculum.indexOf(b.subject));
                                                                     }
 
-                                                                    const generalFreq = calculateGeneralFrequency(finalGrades, attendanceRecords, selectedStudent.id, selectedStudent.gradeLevel || "");
+                                                                    const generalFreq = calculateGeneralFrequency(finalGrades, attendanceRecords, selectedStudent.id, selectedStudent.gradeLevel || "", academicSubjects);
 
                                                                     return (
                                                                         <>
@@ -1602,7 +1621,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                                                 </td>
                                                                                                 {(() => {
                                                                                                     const absences = currentStudentAbsences;
-                                                                                                    const freqPercent = calculateAttendancePercentage(grade.subject, absences, selectedStudent?.gradeLevel || "");
+                                                                                                    const freqPercent = calculateAttendancePercentage(grade.subject, absences, selectedStudent?.gradeLevel || "", academicSubjects);
 
                                                                                                     // Só exibe a porcentagem se houver pelo menos uma falta
                                                                                                     const hasAbsence = absences > 0;
@@ -1641,7 +1660,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                                             return sum + studentAbsSnapshot;
                                                                                         }, 0);
 
-                                                                                        const annualFreq = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, selectedStudent.gradeLevel || "");
+                                                                                        const annualFreq = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, selectedStudent.gradeLevel || "", 4, academicSubjects);
                                                                                         const isCritical = annualFreq !== null && annualFreq < 75;
                                                                                         const hasAbsenceTotal = totalAbsences > 0;
 
@@ -1700,7 +1719,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         <label className="text-sm font-bold text-gray-700 mb-1 block">Série/Ano</label>
                                         <select value={attendanceGrade} onChange={e => setAttendanceGrade(e.target.value)} className="w-full p-2 border rounded">
                                             <option value="">Selecione...</option>
-                                            {SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
+                                            {loadingAcademic ? (
+                                                <option>Carregando...</option>
+                                            ) : (
+                                                academicGrades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)
+                                            )}
                                         </select>
                                     </div>
                                     <div>

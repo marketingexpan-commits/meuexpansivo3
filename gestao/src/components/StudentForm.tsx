@@ -10,7 +10,8 @@ import { clsx } from 'clsx';
 import { ImageCropperModal } from './ImageCropperModal';
 import { studentService } from '../services/studentService';
 import type { Student } from '../types';
-import { EDUCATION_LEVELS, GRADES_BY_LEVEL, SCHOOL_SHIFTS, SCHOOL_CLASSES_OPTIONS } from '../types';
+import { SCHOOL_SHIFTS, SCHOOL_CLASSES_OPTIONS } from '../utils/academicDefaults';
+import { useAcademicData } from '../hooks/useAcademicData';
 
 const STUDENT_STATUS_OPTIONS = [
     { label: 'CURSANDO', value: 'CURSANDO' },
@@ -55,6 +56,7 @@ import { parseGradeLevel, normalizeClass } from '../utils/academicUtils';
 export function StudentForm({ onClose, student }: StudentFormProps) {
     const [activeTab, setActiveTab] = useState<'personal' | 'academic' | 'family' | 'filiation' | 'address' | 'health' | 'documents' | 'observations'>('personal');
     const [isLoading, setIsLoading] = useState(false);
+    const { segments, grades, loading: loadingAcademic } = useAcademicData();
     const [printBlank, setPrintBlank] = useState(false);
     const [isCameraOpen, setIsCameraOpen] = useState(false);
     const [isCropperOpen, setIsCropperOpen] = useState(false);
@@ -731,14 +733,21 @@ export function StudentForm({ onClose, student }: StudentFormProps) {
                                 label="Nível de Ensino"
                                 value={selectedLevel}
                                 onChange={(e) => handleLevelChange(e.target.value)}
-                                options={EDUCATION_LEVELS}
+                                options={segments.map(s => ({ label: s.name, value: s.name }))}
+                                disabled={loadingAcademic}
                             />
                             <Select
                                 label="Série / Ano"
                                 value={formData.gradeLevel}
                                 onChange={(e) => handleSelectChange('gradeLevel', e.target.value)}
-                                options={selectedLevel ? GRADES_BY_LEVEL[selectedLevel]?.map(g => ({ label: g, value: g })) || [] : []}
-                                disabled={!selectedLevel}
+                                options={(() => {
+                                    const segment = segments.find(s => s.name === selectedLevel);
+                                    if (!segment) return [];
+                                    return grades
+                                        .filter(g => g.segmentId === segment.id && g.isActive)
+                                        .map(g => ({ label: g.name, value: g.name }));
+                                })()}
+                                disabled={!selectedLevel || loadingAcademic}
                             />
                             <Select
                                 label="Turno"

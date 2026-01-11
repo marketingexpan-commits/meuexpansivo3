@@ -15,11 +15,8 @@ import type {
     ClassSchedule,
     ScheduleItem
 } from '../types';
-import {
-    GRADES_BY_LEVEL,
-    SCHOOL_CLASSES_OPTIONS,
-    SCHOOL_SHIFTS
-} from '../types';
+import { SCHOOL_CLASSES_OPTIONS, SCHOOL_SHIFTS } from '../utils/academicDefaults';
+import { useAcademicData } from '../hooks/useAcademicData';
 import {
     Calendar,
     Copy,
@@ -32,9 +29,8 @@ import {
     Loader2
 } from 'lucide-react';
 
-const SCHOOL_GRADES_LIST = Object.values(GRADES_BY_LEVEL).flat();
-const SCHOOL_CLASSES_LIST = SCHOOL_CLASSES_OPTIONS.map(opt => opt.value);
-const SCHOOL_SHIFTS_LIST = SCHOOL_SHIFTS.map(opt => opt.value);
+const SCHOOL_CLASSES_LIST = SCHOOL_CLASSES_OPTIONS.map((opt: { value: string }) => opt.value);
+const SCHOOL_SHIFTS_LIST = SCHOOL_SHIFTS.map((opt: { value: string }) => opt.value);
 
 
 interface ScheduleManagementProps {
@@ -52,7 +48,8 @@ const DAYS_OF_WEEK = [
 ];
 
 export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps) {
-    const [selectedGrade, setSelectedGrade] = useState(SCHOOL_GRADES_LIST[0]);
+    const { grades, subjects, loading: loadingAcademic } = useAcademicData();
+    const [selectedGrade, setSelectedGrade] = useState('');
     const [selectedClass, setSelectedClass] = useState(SCHOOL_CLASSES_LIST[0] as SchoolClass);
     const [selectedShift, setSelectedShift] = useState(SCHOOL_SHIFTS_LIST[0]);
     const [selectedDay, setSelectedDay] = useState(1);
@@ -62,9 +59,16 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
     const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
 
     // Copy feature state
-    const [copySourceGrade, setCopySourceGrade] = useState(SCHOOL_GRADES_LIST[0]);
+    const [copySourceGrade, setCopySourceGrade] = useState('');
     const [copySourceClass, setCopySourceClass] = useState(SCHOOL_CLASSES_LIST[0] as SchoolClass);
     const [copySourceShift, setCopySourceShift] = useState(SCHOOL_SHIFTS_LIST[0]);
+
+    useEffect(() => {
+        if (!loadingAcademic && grades.length > 0 && !selectedGrade) {
+            setSelectedGrade(grades[0].name);
+            setCopySourceGrade(grades[0].name);
+        }
+    }, [loadingAcademic, grades]);
 
     useEffect(() => {
         if (unit && selectedGrade && selectedClass && selectedShift && selectedDay) {
@@ -213,7 +217,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                         onChange={(e) => setSelectedGrade(e.target.value)}
                         className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950/20 outline-none"
                     >
-                        {SCHOOL_GRADES_LIST.map((g: string) => <option key={g} value={g}>{g}</option>)}
+                        {grades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
                     </select>
                 </div>
                 <div>
@@ -326,14 +330,21 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                                         <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase mb-1">
                                             Disciplina
                                         </div>
-                                        <input
-                                            type="text"
-                                            placeholder="Ex: Matemática"
+                                        <select
                                             value={item.subject}
                                             onChange={(e) => handleItemChange(index, 'subject', e.target.value)}
-                                            readOnly={isReadOnly}
+                                            disabled={isReadOnly}
                                             className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950/10 outline-none"
-                                        />
+                                        >
+                                            <option value="">Selecione...</option>
+                                            {subjects.filter(s => s.isActive).map(s => (
+                                                <option key={s.id} value={s.name}>{s.name}</option>
+                                            ))}
+                                            {/* Legacy support - if item.subject is not in subjects list */}
+                                            {item.subject && !subjects.some(s => s.name === item.subject) && (
+                                                <option value={item.subject}>{item.subject} (Antigo)</option>
+                                            )}
+                                        </select>
                                     </div>
                                     {!isReadOnly && (
                                         <div className="flex items-end self-end md:self-center">
@@ -392,7 +403,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                                     onChange={(e) => setCopySourceGrade(e.target.value)}
                                     className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700"
                                 >
-                                    {SCHOOL_GRADES_LIST.map((g: string) => <option key={g} value={g}>{g}</option>)}
+                                    {grades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
                                 </select>
                             </div>
                             <div>

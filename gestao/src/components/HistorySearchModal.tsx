@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
 import { X, Search, Loader2, AlertCircle, Clock } from 'lucide-react';
+import { useAcademicData } from '../hooks/useAcademicData';
 import { Button } from './Button';
 import { Input } from './Input';
 import { studentService } from '../services/studentService';
@@ -16,6 +17,7 @@ interface HistorySearchModalProps {
 type ModalStep = 'SEARCH' | 'EDITOR';
 
 export function HistorySearchModal({ onClose }: HistorySearchModalProps) {
+    const { subjects: academicSubjects } = useAcademicData();
     const [step, setStep] = useState<ModalStep>('SEARCH');
     const [code, setCode] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -66,7 +68,7 @@ export function HistorySearchModal({ onClose }: HistorySearchModalProps) {
     const handleGenerate = (enteredRecords: AcademicHistoryRecord[]) => {
         if (!foundStudentInfo) return;
         try {
-            generateSchoolHistory(foundStudentInfo, enteredRecords, currentGrades, attendanceRecords);
+            generateSchoolHistory(foundStudentInfo, enteredRecords, currentGrades, attendanceRecords, academicSubjects);
         } catch (e) {
             console.error("Error generating history:", e);
             alert("Erro ao gerar o PDF. Verifique se o bloqueador de pop-ups está ativo.");

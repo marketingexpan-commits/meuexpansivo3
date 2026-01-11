@@ -6,6 +6,8 @@ import { Matriculas } from './pages/Matriculas';
 import { Financeiro } from './pages/Financeiro';
 import { FinanceiroConfig } from './pages/FinanceiroConfig';
 import GradeHoraria from './pages/GradeHoraria';
+import Disciplinas from './pages/Disciplinas';
+import AcademicConfig from './pages/AcademicConfig';
 
 
 function App() {
@@ -23,6 +25,8 @@ function App() {
           <Route path="/financeiro/fluxo" element={<Financeiro />} />
           <Route path="/financeiro/config" element={<FinanceiroConfig />} />
           <Route path="/grade-horaria" element={<GradeHoraria />} />
+          <Route path="/config/disciplinas" element={<Disciplinas />} />
+          <Route path="/config/series" element={<AcademicConfig />} />
 
         </Route>
 

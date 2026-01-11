@@ -1,6 +1,6 @@
-import { CURRICULUM_MATRIX } from "../constants";
+import { CURRICULUM_MATRIX } from "../src/utils/academicDefaults";
 import { AttendanceStatus } from "../types";
-import type { GradeEntry, AttendanceRecord } from "../types";
+import type { GradeEntry, AttendanceRecord, AcademicSubject } from "../types";
 import { getBimesterFromDate, getCurrentSchoolYear } from "../src/utils/academicUtils";
 
 /**
@@ -16,8 +16,28 @@ import { getBimesterFromDate, getCurrentSchoolYear } from "../src/utils/academic
 export const calculateAttendancePercentage = (
     subject: string,
     absences: number,
-    gradeLevel: string
+    gradeLevel: string,
+    academicSubjects?: AcademicSubject[]
 ): number | null => {
+    // 1. Try Dynamic Lookup first
+    if (academicSubjects && academicSubjects.length > 0) {
+        const dynamicSubject = academicSubjects.find(s => s.name === subject);
+        if (dynamicSubject && dynamicSubject.weeklyHours) {
+            // Find exact match or partial match in gradeLevel
+            const gradeKey = Object.keys(dynamicSubject.weeklyHours).find(key => gradeLevel.includes(key));
+            if (gradeKey) {
+                const weeklyClasses = dynamicSubject.weeklyHours[gradeKey];
+                if (weeklyClasses > 0) {
+                    const totalExpectedClasses = weeklyClasses * 10;
+                    if (absences === 0) return null;
+                    const percentage = ((totalExpectedClasses - absences) / totalExpectedClasses) * 100;
+                    return Math.max(0, Math.min(100, parseFloat(percentage.toFixed(1))));
+                }
+            }
+        }
+    }
+
+    // 2. Fallback to Legacy Matrix
     // Determine Level from Grade String
     let levelKey = '';
     if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
@@ -50,8 +70,27 @@ export const calculateAnnualAttendancePercentage = (
     subject: string,
     totalAbsences: number,
     gradeLevel: string,
-    elapsedBimesters: number = 4
+    elapsedBimesters: number = 4,
+    academicSubjects?: AcademicSubject[]
 ): number | null => {
+    // 1. Try Dynamic Lookup
+    if (academicSubjects && academicSubjects.length > 0) {
+        const dynamicSubject = academicSubjects.find(s => s.name === subject);
+        if (dynamicSubject && dynamicSubject.weeklyHours) {
+            const gradeKey = Object.keys(dynamicSubject.weeklyHours).find(key => gradeLevel.includes(key));
+            if (gradeKey) {
+                const weeklyClasses = dynamicSubject.weeklyHours[gradeKey];
+                if (weeklyClasses > 0) {
+                    const totalExpectedClasses = weeklyClasses * 10 * elapsedBimesters;
+                    if (totalExpectedClasses === 0) return 100;
+                    const percentage = ((totalExpectedClasses - totalAbsences) / totalExpectedClasses) * 100;
+                    return Math.max(0, Math.min(100, parseFloat(percentage.toFixed(1))));
+                }
+            }
+        }
+    }
+
+    // 2. Fallback to Legacy
     let levelKey = '';
     if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
     else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
@@ -81,7 +120,8 @@ export const calculateGeneralFrequency = (
     _grades: GradeEntry[],
     attendanceRecords: AttendanceRecord[],
     studentId: string,
-    gradeLevel: string
+    gradeLevel: string,
+    academicSubjects?: AcademicSubject[]
 ): string => {
     const currentYear = getCurrentSchoolYear();
     const today = new Date().toISOString().split('T')[0];
@@ -109,13 +149,30 @@ export const calculateGeneralFrequency = (
     const levelMatrix = CURRICULUM_MATRIX[levelKey];
     if (!levelMatrix) return '-';
 
-    // 1. Calculate Total Expected (Sum of all subjects in Matrix * 10 * elapsedBimesters)
+    // 1. Try Dynamic Total Expected
     let totalExpected = 0;
-    Object.values(levelMatrix).forEach(weeklyClasses => {
-        if (typeof weeklyClasses === 'number' && weeklyClasses > 0) {
-            totalExpected += (weeklyClasses * 10 * elapsedBimesters);
-        }
-    });
+    let foundDynamic = false;
+
+    if (academicSubjects && academicSubjects.length > 0) {
+        academicSubjects.forEach(s => {
+            if (s.isActive && s.weeklyHours) {
+                const gradeKey = Object.keys(s.weeklyHours).find(key => gradeLevel.includes(key));
+                if (gradeKey && s.weeklyHours[gradeKey] > 0) {
+                    totalExpected += (s.weeklyHours[gradeKey] * 10 * elapsedBimesters);
+                    foundDynamic = true;
+                }
+            }
+        });
+    }
+
+    // 2. Fallback to Matrix if no dynamic data found for this grade
+    if (!foundDynamic) {
+        Object.values(levelMatrix).forEach(weeklyClasses => {
+            if (typeof weeklyClasses === 'number' && weeklyClasses > 0) {
+                totalExpected += (weeklyClasses * 10 * elapsedBimesters);
+            }
+        });
+    }
 
     // 2. Calculate Total Absences (Sum of all logs for this student up to the active bimesters)
     const totalAbsences = (attendanceRecords || []).filter(record => {
@@ -140,7 +197,8 @@ export const calculateBimesterGeneralFrequency = (
     attendanceRecords: AttendanceRecord[],
     studentId: string,
     gradeLevel: string,
-    bimester: number
+    bimester: number,
+    academicSubjects?: AcademicSubject[]
 ): string => {
     const currentYear = getCurrentSchoolYear();
 
@@ -154,13 +212,30 @@ export const calculateBimesterGeneralFrequency = (
     const levelMatrix = CURRICULUM_MATRIX[levelKey];
     if (!levelMatrix) return '-';
 
-    // 1. Calculate Total Expected for 1 Bimester (10 weeks)
+    // 1. Try Dynamic Total Expected
     let totalExpected = 0;
-    Object.values(levelMatrix).forEach(weeklyClasses => {
-        if (typeof weeklyClasses === 'number' && weeklyClasses > 0) {
-            totalExpected += (weeklyClasses * 10);
-        }
-    });
+    let foundDynamic = false;
+
+    if (academicSubjects && academicSubjects.length > 0) {
+        academicSubjects.forEach(s => {
+            if (s.isActive && s.weeklyHours) {
+                const gradeKey = Object.keys(s.weeklyHours).find(key => gradeLevel.includes(key));
+                if (gradeKey && s.weeklyHours[gradeKey] > 0) {
+                    totalExpected += (s.weeklyHours[gradeKey] * 10);
+                    foundDynamic = true;
+                }
+            }
+        });
+    }
+
+    if (!foundDynamic) {
+        // Calculate Total Expected for 1 Bimester (10 weeks) Legacy
+        Object.values(levelMatrix).forEach(weeklyClasses => {
+            if (typeof weeklyClasses === 'number' && weeklyClasses > 0) {
+                totalExpected += (weeklyClasses * 10);
+            }
+        });
+    }
 
     // 2. Calculate Total Absences for this bimester
     const totalAbsences = (attendanceRecords || []).filter(record => {

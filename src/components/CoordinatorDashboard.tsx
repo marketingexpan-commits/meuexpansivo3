@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useAcademicData } from '../../hooks/useAcademicData';
 import { db } from '../../firebaseConfig';
 import { UnitContact, SchoolUnit, CoordinationSegment, Subject, SchoolClass, SchoolShift } from '../types';
-import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, SUBJECT_LIST } from '../constants';
+import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST } from '../constants';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 
@@ -28,6 +29,7 @@ interface CoordinatorDashboardProps {
 }
 
 export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coordinator, onLogout }) => {
+    const { subjects, loading: loadingAcademic } = useAcademicData();
     // --- STATE ---
     const [selectedClass, setSelectedClass] = useState<SchoolClass | ''>('');
     const [selectedSubject, setSelectedSubject] = useState<Subject | ''>('');
@@ -262,7 +264,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                 className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all outline-none"
                             >
                                 <option value="">Todas</option>
-                                {SUBJECT_LIST.map(s => <option key={s} value={s}>{s}</option>)}
+                                {loadingAcademic ? <option>Carregando...</option> : subjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                             </select>
                         </div>
                         <div>

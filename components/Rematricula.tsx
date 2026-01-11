@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { db } from '../firebaseConfig';
+import { useAcademicData } from '../hooks/useAcademicData';
 import { Student, GradeEntry, SchoolUnit, SchoolClass, SchoolShift } from '../types';
-import { SCHOOL_GRADES_LIST, SCHOOL_UNITS_LIST, SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST } from '../src/constants';
+import { SCHOOL_UNITS_LIST, SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST } from '../src/constants';
 import { Button } from './Button';
 
 interface RematriculaProps {
@@ -12,6 +13,8 @@ interface RematriculaProps {
 }
 
 export const Rematricula: React.FC<RematriculaProps> = ({ students, grades, onRefresh, currentAdminUnit }) => {
+    const { grades: academicGrades, subjects: academicSubjects, loading: loadingAcademic } = useAcademicData();
+
     // Se houver currentAdminUnit, usamos ela como estado inicial e imutável
     const [selectedUnit, setSelectedUnit] = useState<SchoolUnit | ''>(currentAdminUnit || '');
     const [selectedGrade, setSelectedGrade] = useState<string>('');
@@ -22,17 +25,21 @@ export const Rematricula: React.FC<RematriculaProps> = ({ students, grades, onRe
     // Estado para armazenar as seleções de série destino (2026) editadas pelo usuário
     const [destinationGrades, setDestinationGrades] = useState<Record<string, string>>({});
 
-    const SUBJECTS = [
-        'Artes', 'Biologia', 'Ciências', 'Educação Física', 'Empreendedorismo',
-        'Ensino Religioso', 'Espanhol', 'Filosofia', 'Física', 'Geografia',
-        'História', 'Inglês', 'Literatura', 'Matemática', 'Musicalização',
-        'Português', 'Projeto de Vida', 'Química', 'Redação', 'Sociologia'
-    ];
+    const SUBJECTS = useMemo(() => {
+        if (academicSubjects.length > 0) return academicSubjects.map(s => s.name);
+        return [
+            'Artes', 'Biologia', 'Ciências', 'Educação Física', 'Empreendedorismo',
+            'Ensino Religioso', 'Espanhol', 'Filosofia', 'Física', 'Geografia',
+            'História', 'Inglês', 'Literatura', 'Matemática', 'Musicalização',
+            'Português', 'Projeto de Vida', 'Química', 'Redação', 'Sociologia'
+        ];
+    }, [academicSubjects]);
 
     const getNextGrade = (currentGrade: string) => {
-        const index = SCHOOL_GRADES_LIST.indexOf(currentGrade);
-        if (index === -1 || index === SCHOOL_GRADES_LIST.length - 1) return currentGrade;
-        return SCHOOL_GRADES_LIST[index + 1];
+        const gradeNames = academicGrades.length > 0 ? academicGrades.map(g => g.name) : [];
+        const index = gradeNames.indexOf(currentGrade);
+        if (index === -1 || index === gradeNames.length - 1) return currentGrade;
+        return gradeNames[index + 1];
     };
 
     const getBimesterStatus = (student: Student) => {
@@ -181,7 +188,11 @@ export const Rematricula: React.FC<RematriculaProps> = ({ students, grades, onRe
                         className="w-full p-2 rounded-lg border border-blue-200 text-sm focus:ring-2 focus:ring-blue-500"
                     >
                         <option value="">Todas as Séries</option>
-                        {SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
+                        {loadingAcademic ? (
+                            <option>Carregando...</option>
+                        ) : (
+                            academicGrades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)
+                        )}
                     </select>
                 </div>
                 <div>
@@ -240,9 +251,13 @@ export const Rematricula: React.FC<RematriculaProps> = ({ students, grades, onRe
                                                     onChange={e => handleGradeChange(student.id, e.target.value)}
                                                     className={`w-full p-2 rounded border text-sm font-bold ${currentSelection === student.gradeLevel ? 'border-red-200 bg-red-50 text-red-900' : 'border-blue-200 bg-blue-50 text-blue-900'}`}
                                                 >
-                                                    {SCHOOL_GRADES_LIST.map(g => (
-                                                        <option key={g} value={g}>{g}</option>
-                                                    ))}
+                                                    {loadingAcademic ? (
+                                                        <option>Carregando...</option>
+                                                    ) : (
+                                                        academicGrades.map(g => (
+                                                            <option key={g.id} value={g.name}>{g.name}</option>
+                                                        ))
+                                                    )}
                                                 </select>
                                             </td>
                                         </tr>

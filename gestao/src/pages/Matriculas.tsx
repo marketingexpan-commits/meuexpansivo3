@@ -8,7 +8,8 @@ import { StudentForm } from '../components/StudentForm';
 import { Search, Filter, Loader2, Printer } from 'lucide-react';
 import { studentService } from '../services/studentService';
 import type { Student } from '../types';
-import { EDUCATION_LEVELS, GRADES_BY_LEVEL, SCHOOL_SHIFTS, SCHOOL_CLASSES_OPTIONS } from '../types';
+import { SCHOOL_SHIFTS, SCHOOL_CLASSES_OPTIONS } from '../utils/academicDefaults';
+import { useAcademicData } from '../hooks/useAcademicData';
 
 import { financialService } from '../services/financialService';
 import { generateCarne } from '../utils/carneGenerator';
@@ -21,6 +22,7 @@ export function Matriculas() {
     const [searchParams, setSearchParams] = useSearchParams();
 
     const [searchTerm, setSearchTerm] = useState('');
+    const { segments, grades, loading: loadingAcademic } = useAcademicData();
 
     // Estados dos filtros
     const [filterGrade, setFilterGrade] = useState('');
@@ -87,11 +89,13 @@ export function Matriculas() {
         );
 
         const matchesGrade = !filterGrade || (() => {
-            // Case 1: Filter is a broad Level (e.g. "Ensino Médio") - check if student grade allows any of the level's grades
-            if (GRADES_BY_LEVEL[filterGrade]) {
-                return GRADES_BY_LEVEL[filterGrade].some(g => student.gradeLevel && student.gradeLevel.includes(g));
+            // Check if filterGrade is a Segment Name
+            const segment = segments.find(s => s.name === filterGrade);
+            if (segment) {
+                const segmentGrades = grades.filter(g => g.segmentId === segment.id).map(g => g.name);
+                return segmentGrades.some(g => student.gradeLevel && student.gradeLevel.includes(g));
             }
-            // Case 2: Filter is a specific Grade (e.g. "1ª Série") - check if student grade string contains the filter
+            // Otherwise it's a specific Grade Name
             return student.gradeLevel && student.gradeLevel.includes(filterGrade);
         })();
         const matchesClass = !filterClass || student.schoolClass === filterClass;
@@ -220,14 +224,9 @@ export function Matriculas() {
                                 label="Nível/Série"
                                 value={filterGrade}
                                 onChange={(e) => setFilterGrade(e.target.value)}
-                                options={[
-                                    ...EDUCATION_LEVELS, // Allow filtering by Level broadly? Or just Grades? 
-                                    // The original had mixed level and grades.
-                                    // Let's offer all grades flattened + levels if needed. 
-                                    // Actually, user wants "levels, grades... according to app".
-                                    // Usually filters are specific.
-                                    // Let's flattening all grades:
-                                    ...Object.values(GRADES_BY_LEVEL).flat().map(g => ({ label: g, value: g }))
+                                options={loadingAcademic ? [{ label: 'Carregando...', value: '' }] : [
+                                    ...segments.map(s => ({ label: `--- ${s.name.toUpperCase()} ---`, value: s.name })),
+                                    ...grades.map(g => ({ label: g.name, value: g.name }))
                                 ]}
                             />
                             <Select

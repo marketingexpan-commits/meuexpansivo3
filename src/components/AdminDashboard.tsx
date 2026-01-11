@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useAcademicData } from '../../hooks/useAcademicData';
 import * as XLSX from 'xlsx';
 import { db } from '../../firebaseConfig';
 import { Admin, Student, Teacher, SchoolUnit, Subject, SchoolShift, SchoolClass, UnitContact, CoordinationSegment } from '../types';
-import { SCHOOL_UNITS_LIST, SUBJECT_LIST, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST, SCHOOL_GRADES_LIST } from '../constants';
+import { SCHOOL_UNITS_LIST, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST } from '../constants';
 import { Button } from './Button';
 import { Card, CardContent, CardHeader, CardTitle } from './Card';
 import { Input } from './Input';
@@ -56,6 +57,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     onDeleteUnitContact,
     onLogout
 }) => {
+    const { grades, subjects, loading: loadingAcademic } = useAcademicData();
     const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'admins' | 'contacts'>('students');
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -67,7 +69,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
     const [sName, setSName] = useState('');
     const [sCode, setSCode] = useState('');
-    const [sGrade, setSGrade] = useState(SCHOOL_GRADES_LIST[0]);
+    const [sGrade, setSGrade] = useState('');
+
+    useEffect(() => {
+        if (!loadingAcademic && grades.length > 0 && !sGrade) {
+            setSGrade(grades[0].name);
+        }
+    }, [loadingAcademic, grades, sGrade]);
     const [sUnit, setSUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_1);
     const [sShift, setSShift] = useState<SchoolShift>(SchoolShift.MORNING);
     const [sClass, setSClass] = useState<SchoolClass>(SchoolClass.A);
@@ -86,7 +94,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [tPass, setTPass] = useState('');
     const [showTeacherPassword, setShowTeacherPassword] = useState(false);
     const [tSubjects, setTSubjects] = useState<Subject[]>([]);
-    const [tempSubject, setTempSubject] = useState<Subject>(Subject.MATH);
+    const [tempSubject, setTempSubject] = useState('');
+
+    useEffect(() => {
+        if (!loadingAcademic && subjects.length > 0 && !tempSubject) {
+            setTempSubject(subjects[0].name);
+        }
+    }, [loadingAcademic, subjects, tempSubject]);
     const [teacherToDelete, setTeacherToDelete] = useState<string | null>(null);
 
     // Admin (Gestão de Admins)
@@ -165,7 +179,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     });
 
     // Ordenação de Matérias
-    const sortedSubjects = [...SUBJECT_LIST].sort((a, b) => a.localeCompare(b));
+    const sortedSubjects = useMemo(() => {
+        return [...subjects].sort((a, b) => (a.order || 0) - (b.order || 0));
+    }, [subjects]);
 
 
     // --- HANDLERS (Estudante & Professor omitidos para brevidade, mantidos do anterior) ---
@@ -334,7 +350,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             setTName(''); setTCpf(''); setTPass('');
         }
     };
-    const handleAddSubject = () => { if (!tSubjects.includes(tempSubject)) setTSubjects([...tSubjects, tempSubject]); };
+    const handleAddSubject = () => {
+        if (tempSubject && !tSubjects.includes(tempSubject as Subject)) {
+            setTSubjects([...tSubjects, tempSubject as Subject]);
+        }
+    };
     const handleRemoveSubject = (s: Subject) => setTSubjects(tSubjects.filter(sub => sub !== s));
 
     // Função para telefone
@@ -452,7 +472,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         <div><label className="text-sm font-medium">Código</label><input type="text" value={sCode} onChange={e => setSCode(e.target.value)} required className="w-full p-2 border rounded" /></div>
                                         <div>
                                             <label className="text-sm font-medium">Série</label>
-                                            <select value={sGrade} onChange={e => setSGrade(e.target.value)} className="w-full p-2 border rounded">{SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}</select>
+                                            <select value={sGrade} onChange={e => setSGrade(e.target.value)} className="w-full p-2 border rounded">
+                                                {loadingAcademic ? <option>Carregando...</option> : grades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
+                                            </select>
                                         </div>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
@@ -554,8 +576,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         <div>
                                             <label className="text-sm font-medium">Matérias</label>
                                             <div className="flex gap-2">
-                                                <select value={tempSubject} onChange={e => setTempSubject(e.target.value as Subject)} className="flex-1 p-2 border rounded">
-                                                    {sortedSubjects.map(s => <option key={s} value={s}>{s}</option>)}
+                                                <select value={tempSubject} onChange={e => setTempSubject(e.target.value)} className="flex-1 p-2 border rounded">
+                                                    {loadingAcademic ? <option>Carregando...</option> : sortedSubjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                                                 </select>
                                                 <button type="button" onClick={handleAddSubject} className="bg-blue-100 text-blue-800 px-3 rounded">Add</button>
                                             </div>

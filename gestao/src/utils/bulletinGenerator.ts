@@ -1,6 +1,6 @@
-import { CURRICULUM_MATRIX, UNIT_DETAILS } from '../constants';
+import { CURRICULUM_MATRIX, UNIT_DETAILS } from './academicDefaults';
 import { getBimesterFromDate, getCurrentSchoolYear } from './academicUtils';
-import type { Student, GradeEntry, AttendanceRecord } from '../types';
+import type { Student, GradeEntry, AttendanceRecord, AcademicSubject } from '../types';
 import { AttendanceStatus } from '../types';
 import { calculateGeneralFrequency as calculateUnifiedFrequency } from './frequency';
 
@@ -10,7 +10,8 @@ const calculateSubjectFrequency = (
     student: Student,
     attendanceRecords: AttendanceRecord[],
     bimester: number,
-    currentYear: number
+    currentYear: number,
+    academicSubjects?: AcademicSubject[]
 ): string => {
     // Count absences strictly from logs
     const absences = attendanceRecords.filter(record => {
@@ -28,6 +29,23 @@ const calculateSubjectFrequency = (
     // RULE: If 0 absences, return '-' for both absence count and frequency
     if (absences === 0) return '-';
 
+    // 1. Try Dynamic Lookup
+    if (academicSubjects && academicSubjects.length > 0) {
+        const dynamicSubject = academicSubjects.find(s => s.name === subject);
+        if (dynamicSubject && dynamicSubject.weeklyHours) {
+            const gradeKey = Object.keys(dynamicSubject.weeklyHours).find(key => student.gradeLevel.includes(key));
+            if (gradeKey) {
+                const weeklyClasses = dynamicSubject.weeklyHours[gradeKey];
+                if (weeklyClasses > 0) {
+                    const expectedClasses = weeklyClasses * 10;
+                    const frequency = ((expectedClasses - absences) / expectedClasses) * 100;
+                    return Math.max(0, Math.min(100, frequency)).toFixed(1) + '%';
+                }
+            }
+        }
+    }
+
+    // 2. Fallback to Legacy Matrix
     // Determine level for Matrix (Fixed 10 weeks basis)
     let levelKey = 'Fundamental I';
     if (student.gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
@@ -45,7 +63,8 @@ const generateBulletinHtml = (
     student: Student,
     currentGrades: GradeEntry[],
     attendanceRecords: AttendanceRecord[],
-    pageBreak: boolean = false
+    pageBreak: boolean = false,
+    academicSubjects?: AcademicSubject[]
 ) => {
     const unitInfo = UNIT_DETAILS[student.unit] || UNIT_DETAILS['Zona Norte'];
     const currentDate = new Date().toLocaleDateString('pt-BR');
@@ -77,7 +96,8 @@ const generateBulletinHtml = (
             student.id,
             student.gradeLevel,
             student.unit,
-            student.schoolClass
+            student.schoolClass,
+            academicSubjects
         );
     };
 
@@ -114,7 +134,23 @@ const generateBulletinHtml = (
             const absencesB3 = getBimesterAbsences(3);
             const absencesB4 = getBimesterAbsences(4);
 
-            const weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[g.subject] || 0;
+            let weeklyClasses = 0;
+            let foundDynamic = false;
+
+            if (academicSubjects && academicSubjects.length > 0) {
+                const dynamicSubject = academicSubjects.find(s => s.name === g.subject);
+                if (dynamicSubject && dynamicSubject.weeklyHours) {
+                    const gradeKey = Object.keys(dynamicSubject.weeklyHours).find(key => student.gradeLevel.includes(key));
+                    if (gradeKey) {
+                        weeklyClasses = dynamicSubject.weeklyHours[gradeKey];
+                        foundDynamic = true;
+                    }
+                }
+            }
+
+            if (!foundDynamic) {
+                weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[g.subject] || 0;
+            }
 
             const totalExpectedSubject = weeklyClasses * 10 * elapsedBimesters;
             const totalAbsencesSubject = ([
@@ -127,10 +163,10 @@ const generateBulletinHtml = (
 
             const totalCH = weeklyClasses > 0 ? (weeklyClasses * 40) : '-';
 
-            const bfreq1 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 1, currentYear);
-            const bfreq2 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 2, currentYear);
-            const bfreq3 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 3, currentYear);
-            const bfreq4 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 4, currentYear);
+            const bfreq1 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 1, currentYear, academicSubjects);
+            const bfreq2 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 2, currentYear, academicSubjects);
+            const bfreq3 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 3, currentYear, academicSubjects);
+            const bfreq4 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 4, currentYear, academicSubjects);
 
             return `
             <tr>
@@ -313,13 +349,15 @@ const getBulletinStyle = () => `
 export const generateSchoolBulletin = (
     student: Student,
     currentGrades: GradeEntry[] = [],
-    attendanceRecords: AttendanceRecord[] = []
+    attendanceRecords: AttendanceRecord[] = [],
+    academicSubjects?: AcademicSubject[]
 ) => {
-    generateBatchSchoolBulletin([{ student, grades: currentGrades, attendance: attendanceRecords }]);
+    generateBatchSchoolBulletin([{ student, grades: currentGrades, attendance: attendanceRecords }], academicSubjects);
 };
 
 export const generateBatchSchoolBulletin = (
-    data: { student: Student, grades: GradeEntry[], attendance: AttendanceRecord[] }[]
+    data: { student: Student, grades: GradeEntry[], attendance: AttendanceRecord[] }[],
+    academicSubjects?: AcademicSubject[]
 ) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -328,7 +366,7 @@ export const generateBatchSchoolBulletin = (
     }
 
     const pagesHtml = data.map((item, index) =>
-        generateBulletinHtml(item.student, item.grades, item.attendance, index < data.length - 1)
+        generateBulletinHtml(item.student, item.grades, item.attendance, index < data.length - 1, academicSubjects)
     ).join('');
 
     const content = `

@@ -1,7 +1,8 @@
 ﻿import React, { useState, useEffect, useMemo } from 'react';
+import { useAcademicData } from '../hooks/useAcademicData';
 import * as XLSX from 'xlsx';
 import { Admin, Student, Teacher, SchoolUnit, Subject, SchoolShift, SchoolClass, SchoolMessage, MessageType, MessageRecipient, AttendanceRecord, AttendanceStatus, UnitContact, ContactRole, GradeEntry, Mensalidade, Ticket, TicketStatus } from '../types';
-import { SCHOOL_UNITS_LIST, SUBJECT_LIST, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST, SCHOOL_GRADES_LIST, SCHOOL_LOGO_URL } from '../constants';
+import { SCHOOL_UNITS_LIST, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST, SCHOOL_LOGO_URL } from '../constants';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 import { ReceiptModal } from './ReceiptModal';
@@ -116,6 +117,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     mensalidades = [],
     onLogout
 }) => {
+    const { grades: academicGrades, subjects: academicSubjects, loading: loadingAcademic } = useAcademicData();
     const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'admins' | 'messages' | 'attendance' | 'contacts' | 'rematricula' | 'financial' | 'tickets' | 'coordination' | 'schedule'>('students');
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -168,7 +170,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [sEmail, setSEmail] = useState('');
     const [sPhone, setSPhone] = useState('55');
     const [sCode, setSCode] = useState('');
-    const [sGrade, setSGrade] = useState(SCHOOL_GRADES_LIST[0]);
+    const [sGrade, setSGrade] = useState('');
     const [sUnit, setSUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_1);
     const [sShift, setSShift] = useState<SchoolShift>(SchoolShift.MORNING);
     const [sClass, setSClass] = useState<SchoolClass>(SchoolClass.A);
@@ -182,10 +184,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [studentFilterShift, setStudentFilterShift] = useState(''); // Novo estado para filtro de turno
     const [studentFilterUnit, setStudentFilterUnit] = useState(''); // Novo estado para filtro de unidade
 
-
-
-    // --- FINANCIAL STATES --- (Removed, handled in FinancialTab)
-
+    // --- TEACHER STATES ---
     const [editingTeacherId, setEditingTeacherId] = useState<string | null>(null);
     const [tName, setTName] = useState('');
     const [tCpf, setTCpf] = useState('');
@@ -194,12 +193,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [tPass, setTPass] = useState('');
     const [showTeacherPassword, setShowTeacherPassword] = useState(false);
     const [tSubjects, setTSubjects] = useState<Subject[]>([]);
-    const [tempSubject, setTempSubject] = useState<Subject>(Subject.MATH);
+    const [tempSubject, setTempSubject] = useState<Subject | ''>('');
     const [teacherToDelete, setTeacherToDelete] = useState<string | null>(null);
     const [teacherSearchTerm, setTeacherSearchTerm] = useState(''); // Novo filtro nome
     const [teacherFilterUnit, setTeacherFilterUnit] = useState(''); // Novo filtro unidade
     const [teacherFilterSubject, setTeacherFilterSubject] = useState('');
 
+    // --- ADMIN STATES ---
     const [editingAdminId, setEditingAdminId] = useState<string | null>(null);
     const [aName, setAName] = useState('');
     const [aUser, setAUser] = useState('');
@@ -218,13 +218,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [pendingGradesStudents, setPendingGradesStudents] = useState<Student[]>([]);
     const [pendingGradesMap, setPendingGradesMap] = useState<Record<string, GradeEntry[]>>({});
     const [isLoadingCoordination, setIsLoadingCoordination] = useState(false);
-
-    // Enforcement of Unit Filter for Non-Admins
-    useEffect(() => {
-        if (!isGeneralAdmin && adminUnit) {
-            setCoordinationFilterUnit(adminUnit);
-        }
-    }, [isGeneralAdmin, adminUnit]);
 
     // Estados para Frequência
     const [attendanceFilterUnit, setAttendanceFilterUnit] = useState<SchoolUnit | ''>(adminUnit || '');
@@ -253,9 +246,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [coordLoginId, setCoordLoginId] = useState('');
     const [coordLoginPass, setCoordLoginPass] = useState('');
 
-    // Estados para Cobrança em Massa
-    // --- BULK SENDING STATES --- (Removed, handled in FinancialTab)
-
     // --- ESTADOS DE LOGS/STATS ---
     const [dailyLoginsCount, setDailyLoginsCount] = useState<number | null>(null);
     const [loginPageViews, setLoginPageViews] = useState<number | null>(null);
@@ -264,6 +254,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [logFilter, setLogFilter] = useState<'today' | 'week' | 'month'>('today');
     const [logProfileFilter, setLogProfileFilter] = useState<'all' | 'admin' | 'teacher' | 'student'>('all');
 
+    // Effects to set initial values once academic data is loaded
+    useEffect(() => {
+        if (!loadingAcademic && academicGrades.length > 0 && !sGrade && !editingStudentId) {
+            setSGrade(academicGrades[0].name);
+        }
+    }, [loadingAcademic, academicGrades, sGrade, editingStudentId]);
+
+    useEffect(() => {
+        if (!loadingAcademic && academicSubjects.length > 0 && !tempSubject && !editingTeacherId) {
+            setTempSubject(academicSubjects[0].name as Subject);
+        }
+    }, [loadingAcademic, academicSubjects, tempSubject, editingTeacherId]);
+
+
+
+
+    // Enforcement of Unit Filter for Non-Admins
+    useEffect(() => {
+        if (!isGeneralAdmin && adminUnit) {
+            setCoordinationFilterUnit(adminUnit);
+        }
+    }, [isGeneralAdmin, adminUnit]);
     // --- FINANCIAL FETCH --- (Removed, handled in FinancialTab)
 
     // Fetch Tickets
@@ -730,7 +742,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         return matchesUnit && matchesSearch && matchesSubject;
     });
     const filteredAdmins = admins.filter(a => a.id !== 'a0' && a.unit);
-    const sortedSubjects = [...SUBJECT_LIST].sort((a, b) => a.localeCompare(b));
+    const sortedSubjects = [...academicSubjects].sort((a, b) => a.name.localeCompare(b.name));
 
     const filteredMessages = schoolMessages.filter(message => (isGeneralAdmin || message.unit === adminUnit) && (messageFilter === 'all' || message.status === 'new'));
     const newMessagesCount = schoolMessages.filter(m => (isGeneralAdmin || m.unit === adminUnit) && m.status === 'new').length;
@@ -816,7 +828,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setSEmail('');
         setSPhone('55');
         setSCode('');
-        setSGrade(SCHOOL_GRADES_LIST[0]);
+        setSGrade('');
         setSClass(SchoolClass.A);
         setSShift(SchoolShift.MORNING);
         setSPass('');
@@ -1251,7 +1263,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <main className="flex-1 overflow-y-auto p-4 lg:p-8 custom-scrollbar">
 
                         {activeTab === 'students' && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-1"><div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"><h2 className="text-lg font-bold text-gray-800 mb-4">{editingStudentId ? 'Editar Aluno' : 'Cadastrar Novo Aluno'}</h2><form onSubmit={fullHandleStudentSubmit} className="space-y-4"><div><label className="text-sm font-medium">Nome</label><input type="text" value={sName} onChange={e => setSName(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Código</label><input type="text" value={sCode} onChange={e => setSCode(e.target.value)} required className="w-full p-2 border rounded" /></div>
-                            <div><label className="text-sm font-medium">Série</label><select value={sGrade} onChange={e => setSGrade(e.target.value)} className="w-full p-2 border rounded">{SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}</select></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">Turma</label><select value={sClass} onChange={e => setSClass(e.target.value as SchoolClass)} className="w-full p-2 border rounded">{SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}</select></div><div><label className="text-sm font-medium">Turno</label><select value={sShift} onChange={e => setSShift(e.target.value as SchoolShift)} className="w-full p-2 border rounded">{SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{s}</option>)}</select></div></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">Unidade</label>{isGeneralAdmin ? (<select value={sUnit} onChange={e => setSUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}</div><div><label className="text-sm font-medium font-bold text-gray-700">Método Pagamento</label><select value={sMetodoPagamento} onChange={e => setSMetodoPagamento(e.target.value as 'Isaac' | 'Interno')} className="w-full p-2 border-2 border-slate-200 rounded font-semibold text-slate-700 focus:border-slate-500"><option value="Interno">Sistema Interno</option><option value="Isaac">Parceiro Isaac</option></select></div></div>
+                            <div><label className="text-sm font-medium">Série</label><select value={sGrade} onChange={e => setSGrade(e.target.value)} className="w-full p-2 border rounded">{loadingAcademic ? <option>Carregando...</option> : academicGrades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}</select></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">Turma</label><select value={sClass} onChange={e => setSClass(e.target.value as SchoolClass)} className="w-full p-2 border rounded">{SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}</select></div><div><label className="text-sm font-medium">Turno</label><select value={sShift} onChange={e => setSShift(e.target.value as SchoolShift)} className="w-full p-2 border rounded">{SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{s}</option>)}</select></div></div><div className="grid grid-cols-2 gap-2"><div><label className="text-sm font-medium">Unidade</label>{isGeneralAdmin ? (<select value={sUnit} onChange={e => setSUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}</div><div><label className="text-sm font-medium font-bold text-gray-700">Método Pagamento</label><select value={sMetodoPagamento} onChange={e => setSMetodoPagamento(e.target.value as 'Isaac' | 'Interno')} className="w-full p-2 border-2 border-slate-200 rounded font-semibold text-slate-700 focus:border-slate-500"><option value="Interno">Sistema Interno</option><option value="Isaac">Parceiro Isaac</option></select></div></div>
 
                             <div><label className="text-sm font-medium">Responsável Financeiro</label><input type="text" value={sResponsavel} onChange={e => setSResponsavel(e.target.value)} className="w-full p-2 border rounded" placeholder="Nome do responsável financeiro" /></div>
 
@@ -1376,8 +1388,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 className="p-2 border rounded text-sm bg-white text-gray-700 focus:ring-blue-950 focus:border-blue-950 flex-grow md:flex-grow-0 md:w-auto w-full"
                                             >
                                                 <option value="">Todas as Séries</option>
-                                                {SCHOOL_GRADES_LIST.map(g => (
-                                                    <option key={g} value={g}>{g}</option>
+                                                {academicGrades.map(g => (
+                                                    <option key={g.id} value={g.name}>{g.name}</option>
                                                 ))}
                                             </select>
                                             <select
@@ -1491,7 +1503,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             <label className="text-sm font-medium text-gray-700">Série/Ano</label>
                                             <select value={attendanceFilterGrade} onChange={e => setAttendanceFilterGrade(e.target.value)} className="w-full p-2 border rounded mt-1">
                                                 <option value="">Todas</option>
-                                                {SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
+                                                {academicGrades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
                                             </select>
                                         </div>
                                         <div>
@@ -1759,7 +1771,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 <label className="text-sm font-medium">Matérias</label>
                                                 <div className="flex gap-2">
                                                     <select value={tempSubject} onChange={e => setTempSubject(e.target.value as Subject)} className="flex-1 p-2 border rounded">
-                                                        {sortedSubjects.map(s => <option key={s} value={s}>{s}</option>)}
+                                                        {loadingAcademic ? <option>Carregando...</option> : sortedSubjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                                                     </select>
                                                     <button type="button" onClick={handleAddSubject} className="bg-slate-100 text-slate-900 border border-slate-200 px-3 rounded hover:bg-slate-200 transaction-colors">Add</button>
                                                 </div>

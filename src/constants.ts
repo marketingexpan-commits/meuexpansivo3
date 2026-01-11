@@ -62,33 +62,10 @@ export const MOCK_ADMINS: Admin[] = [
 
 export const DEFAULT_ADMIN_INIT = MOCK_ADMINS[0];
 
-export const SCHOOL_GRADES_LIST = [
-  'Nível I - Edu. Infantil', 'Nível II - Edu. Infantil', 'Nível III - Edu. Infantil', 'Nível IV - Edu. Infantil', 'Nível V - Edu. Infantil',
-  '1º Ano - Fundamental I', '2º Ano - Fundamental I', '3º Ano - Fundamental I', '4º Ano - Fundamental I', '5º Ano - Fundamental I',
-  '6º Ano - Fundamental II', '7º Ano - Fundamental II', '8º Ano - Fundamental II', '9º Ano - Fundamental II',
-  '1ª Série - Ens. Médio', '2ª Série - Ens. Médio', '3ª Série - Ens. Médio'
-];
 
 // --- CURRÍCULOS CENTRALIZADOS ---
 // Garantir que os nomes batam EXATAMENTE com o Subject enum em types.ts
 
-export const HS_SUBJECTS_2025 = [
-  "Português", "Matemática", "Inglês", "História", "Geografia",
-  "Literatura", "Biologia", "Física", "Química", "Redação",
-  "Espanhol", "Filosofia", "Sociologia", "Projeto de Vida", "Empreendedorismo"
-];
-
-export const HS_SUBJECTS_2026 = [
-  "Português", "Matemática", "Inglês", "História", "Geografia",
-  "Literatura", "Biologia", "Física", "Química", "Redação",
-  "Espanhol", "Filosofia", "Sociologia", "Projeto de Vida", "Empreendedorismo"
-];
-
-export const EF_SUBJECTS = [
-  "Português", "Matemática", "História", "Geografia", "Ciências",
-  "Inglês", "Ens. Artes", "Ed. Física", "Ensino Religioso", "Redação",
-  "Literatura", "Projeto de Vida", "Empreendedorismo"
-];
 
 export const MOCK_STUDENTS: Student[] = [
   {
@@ -155,7 +132,6 @@ export const MOCK_TEACHERS: Teacher[] = [
   }
 ];
 
-export const SUBJECT_LIST = Object.values(Subject);
 export const SCHOOL_UNITS_LIST = Object.values(SchoolUnit);
 export const SCHOOL_SHIFTS_LIST = Object.values(SchoolShift);
 export const SCHOOL_CLASSES_LIST = Object.values(SchoolClass);

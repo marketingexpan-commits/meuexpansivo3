@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useAcademicData } from '../../hooks/useAcademicData';
 import {
     SchoolUnit,
     GradeEntry,
@@ -13,9 +14,7 @@ import {
 } from 'lucide-react';
 import {
     SCHOOL_UNITS_LIST,
-    SCHOOL_GRADES_LIST,
-    SCHOOL_CLASSES_LIST,
-    SUBJECT_LIST
+    SCHOOL_CLASSES_LIST
 } from '../../constants';
 import { sanitizePhone } from '../../utils/formattingUtils';
 import { Button } from '../Button'; // Assuming Button is in components/Button or similar
@@ -55,6 +54,8 @@ export const CoordinationTab: React.FC<CoordinationTabProps> = ({
     handleApproveGrade,
     coordinatorSession
 }) => {
+    const { grades: academicGrades, loading: loadingAcademic } = useAcademicData();
+
     const formatGrade = (val: number | null | undefined) => (val !== null && val !== undefined) ? val.toFixed(1) : '-';
 
     // Filter students based on coordinator segment
@@ -125,7 +126,11 @@ export const CoordinationTab: React.FC<CoordinationTabProps> = ({
                             className="w-full p-2 border rounded-lg text-sm"
                         >
                             <option value="">Todas</option>
-                            {SCHOOL_GRADES_LIST.map(g => <option key={g} value={g}>{g}</option>)}
+                            {loadingAcademic ? (
+                                <option>Carregando...</option>
+                            ) : (
+                                academicGrades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)
+                            )}
                         </select>
                     </div>
                     <div>

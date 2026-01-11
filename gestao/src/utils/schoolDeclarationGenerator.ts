@@ -1,5 +1,5 @@
 
-import { UNIT_DETAILS } from '../constants';
+import { UNIT_DETAILS } from './academicDefaults';
 import type { Student } from '../types';
 
 

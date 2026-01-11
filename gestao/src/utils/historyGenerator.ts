@@ -1,7 +1,7 @@
 // Utility for generating School History PDF
-import { CURRICULUM_MATRIX, UNIT_DETAILS } from '../constants';
+import { CURRICULUM_MATRIX, UNIT_DETAILS } from './academicDefaults';
 import { getBimesterFromDate, getCurrentSchoolYear } from './academicUtils';
-import type { Student, AcademicHistoryRecord, GradeEntry, AttendanceRecord } from '../types';
+import type { Student, AcademicHistoryRecord, GradeEntry, AttendanceRecord, AcademicSubject } from '../types';
 import { AttendanceStatus } from '../types';
 import { calculateGeneralFrequency as calculateUnifiedFrequency } from './frequency';
 
@@ -10,10 +10,40 @@ const calculateSubjectFrequency = (
     student: Student,
     gradeEntry: GradeEntry,
     subject: string,
-    bimesterIndex: number, // 1 to 4
-    attendanceRecords: AttendanceRecord[] = []
+    bimesterIndex: number, // 1 to 4,
+    attendanceRecords: AttendanceRecord[] = [],
+    academicSubjects?: AcademicSubject[]
 ) => {
     const currentYear = getCurrentSchoolYear();
+
+    // 1. Try Dynamic Lookup for Expected Classes
+    let weeklyClasses = 0;
+    let foundDynamic = false;
+
+    if (academicSubjects && academicSubjects.length > 0) {
+        const dynamicSubject = academicSubjects.find(s => s.name === subject);
+        if (dynamicSubject && dynamicSubject.weeklyHours) {
+            const gradeKey = Object.keys(dynamicSubject.weeklyHours).find(key => student.gradeLevel.includes(key));
+            if (gradeKey) {
+                weeklyClasses = dynamicSubject.weeklyHours[gradeKey];
+                foundDynamic = true;
+            }
+        }
+    }
+
+    // 2. Fallback to Matrix
+    if (!foundDynamic) {
+        // Determine level for Matrix
+        let levelKey = 'Fundamental I';
+        if (student.gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
+        else if (student.gradeLevel.includes('Ens. Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ens. Médio';
+
+        weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[subject] || 0;
+    }
+
+    if (weeklyClasses === 0) return '-';
+
+    const expectedClasses = weeklyClasses * 10;
 
     // RULE: Strict Log-Based counting
     const absences = attendanceRecords.filter(record => {
@@ -31,15 +61,6 @@ const calculateSubjectFrequency = (
     // RULE: If 0 absences, return '-' for both count and %
     if (absences === 0) return '-';
 
-    // Determine level for Matrix
-    let levelKey = 'Fundamental I';
-    if (student.gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-    else if (student.gradeLevel.includes('Ens. Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ens. Médio';
-
-    const weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[subject] || 0;
-    if (weeklyClasses === 0) return '-';
-
-    const expectedClasses = weeklyClasses * 10;
     const finalAbsences = absences || 0;
 
     // UI RULE: keep '-' if 0 absences for visual clarity in bimester columns
@@ -53,7 +74,8 @@ export const generateSchoolHistory = (
     student: Student,
     historyRecords: AcademicHistoryRecord[] = [],
     currentGrades: GradeEntry[] = [],
-    attendanceRecords: AttendanceRecord[] = []
+    attendanceRecords: AttendanceRecord[] = [],
+    academicSubjects?: AcademicSubject[]
 ) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -183,10 +205,30 @@ export const generateSchoolHistory = (
         }
 
         return currentGrades.map(g => {
-            // Get level logic
-            let levelKey = 'Fundamental I';
-            if (student.gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-            else if (student.gradeLevel.includes('Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ens. Médio';
+            // 1. Try Dynamic Lookup for weeklyClasses
+            let weeklyClasses = 0;
+            let foundDynamic = false;
+
+            if (academicSubjects && academicSubjects.length > 0) {
+                const dynamicSubject = academicSubjects.find(s => s.name === g.subject);
+                if (dynamicSubject && dynamicSubject.weeklyHours) {
+                    const gradeKey = Object.keys(dynamicSubject.weeklyHours).find(key => student.gradeLevel.includes(key));
+                    if (gradeKey) {
+                        weeklyClasses = dynamicSubject.weeklyHours[gradeKey];
+                        foundDynamic = true;
+                    }
+                }
+            }
+
+            // 2. Fallback to Matrix
+            if (!foundDynamic) {
+                // Get level logic
+                let levelKey = 'Fundamental I';
+                if (student.gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
+                else if (student.gradeLevel.includes('Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ens. Médio';
+
+                weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[g.subject] || 0;
+            }
 
             const currentYear = getCurrentSchoolYear();
 
@@ -211,8 +253,6 @@ export const generateSchoolHistory = (
             const absencesB3 = getBimesterAbsences(3);
             const absencesB4 = getBimesterAbsences(4);
 
-            const weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[g.subject] || 0;
-
             const annualExpectedClasses = weeklyClasses * 10 * elapsedBimesters;
             const allAbsences = ([
                 absencesB1, absencesB2, absencesB3, absencesB4
@@ -236,28 +276,28 @@ export const generateSchoolHistory = (
                 <td style="color: #666; font-size: 9px; width: 25px;">${fG(g.bimesters.bimester1.recuperacao)}</td>
                 <td style="background: #fdfdfd; width: 25px;">${fG(g.bimesters.bimester1.media)}</td>
                 <td style="color: #666; width: 25px;">${absencesB1 !== null ? absencesB1 : '-'}</td>
-                <td style="font-size: 9px; font-weight: bold; width: 35px;">${calculateSubjectFrequency(student, g, g.subject, 1, attendanceRecords)}</td>
+                <td style="font-size: 9px; font-weight: bold; width: 35px;">${calculateSubjectFrequency(student, g, g.subject, 1, attendanceRecords, academicSubjects)}</td>
                 
                 <!-- 2B -->
                 <td style="color: #666; font-size: 9px; width: 25px;">${fG(g.bimesters.bimester2.nota)}</td>
                 <td style="color: #666; font-size: 9px; width: 25px;">${fG(g.bimesters.bimester2.recuperacao)}</td>
                 <td style="background: #fdfdfd; width: 25px;">${fG(g.bimesters.bimester2.media)}</td>
                 <td style="color: #666; width: 25px;">${absencesB2 !== null ? absencesB2 : '-'}</td>
-                <td style="font-size: 9px; font-weight: bold; width: 35px;">${calculateSubjectFrequency(student, g, g.subject, 2, attendanceRecords)}</td>
-
+                <td style="font-size: 9px; font-weight: bold; width: 35px;">${calculateSubjectFrequency(student, g, g.subject, 2, attendanceRecords, academicSubjects)}</td>
+ 
                 <!-- 3B -->
                 <td style="color: #666; font-size: 9px; width: 25px;">${fG(g.bimesters.bimester3.nota)}</td>
                 <td style="color: #666; font-size: 9px; width: 25px;">${fG(g.bimesters.bimester3.recuperacao)}</td>
                 <td style="background: #fdfdfd; width: 25px;">${fG(g.bimesters.bimester3.media)}</td>
                 <td style="color: #666; width: 25px;">${absencesB3 !== null ? absencesB3 : '-'}</td>
-                <td style="font-size: 9px; font-weight: bold; width: 35px;">${calculateSubjectFrequency(student, g, g.subject, 3, attendanceRecords)}</td>
-
+                <td style="font-size: 9px; font-weight: bold; width: 35px;">${calculateSubjectFrequency(student, g, g.subject, 3, attendanceRecords, academicSubjects)}</td>
+ 
                 <!-- 4B -->
                 <td style="color: #666; font-size: 9px; width: 25px;">${fG(g.bimesters.bimester4.nota)}</td>
                 <td style="color: #666; font-size: 9px; width: 25px;">${fG(g.bimesters.bimester4.recuperacao)}</td>
                 <td style="background: #fdfdfd; width: 25px;">${fG(g.bimesters.bimester4.media)}</td>
                 <td style="color: #666; width: 25px;">${absencesB4 !== null ? absencesB4 : '-'}</td>
-                <td style="font-size: 9px; font-weight: bold; width: 35px;">${calculateSubjectFrequency(student, g, g.subject, 4, attendanceRecords)}</td>
+                <td style="font-size: 9px; font-weight: bold; width: 35px;">${calculateSubjectFrequency(student, g, g.subject, 4, attendanceRecords, academicSubjects)}</td>
 
                 <td style="background: #f0f4f8; font-weight: bold;">${totalFrequency}</td>
                 <td style="font-weight: bold; background: #f5f5f5;">${fG(g.mediaFinal)}</td>
@@ -268,14 +308,15 @@ export const generateSchoolHistory = (
     };
 
     // Calculate General Average Frequency (Across all subjects)
-    const calculateGeneralFrequency = () => {
+    const calculateGeneralFrequencyInternal = () => {
         return calculateUnifiedFrequency(
             currentGrades,
             attendanceRecords,
             student.id,
             student.gradeLevel,
             student.unit,
-            student.schoolClass
+            student.schoolClass,
+            academicSubjects
         );
     };
 
@@ -394,7 +435,7 @@ export const generateSchoolHistory = (
                             ${renderCurrentGradesRows()}
                             <tr style="background: #f8f9fa; font-weight: bold;">
                                 <td colspan="24" style="text-align: right; padding-right: 15px;">FREQUÊNCIA GERAL NO ANO LETIVO:</td>
-                                <td colspan="1" style="text-align: center; font-size: 11px; color: #1a426f;">${calculateGeneralFrequency()}</td>
+                                <td colspan="1" style="text-align: center; font-size: 11px; color: #1a426f;">${calculateGeneralFrequencyInternal()}</td>
                             </tr>
                         </tbody>
                     </table>

@@ -60,6 +60,30 @@ export enum MessageRecipient {
   DIRECTION = 'Diretoria',
 }
 
+export interface AcademicSubject {
+  id: string;      // Firestore ID
+  name: string;    // Display name (e.g., "Matemática")
+  shortName?: string; // Abbreviation (e.g., "MAT")
+  isActive: boolean;
+  order?: number;   // For sorting in reports/logs
+  weeklyHours?: Record<string, number>; // Mapping: gradeName -> hoursPerWeek
+}
+
+export interface AcademicSegment {
+  id: string;
+  name: string; // e.g., "Ensino Médio"
+  isActive: boolean;
+  order: number;
+}
+
+export interface AcademicGrade {
+  id: string;
+  segmentId: string; // Foreign key to AcademicSegment
+  name: string;      // e.g., "1ª Série"
+  isActive: boolean;
+  order: number;
+}
+
 export enum MessageType {
   COMPLIMENT = 'Elogio',
   SUGGESTION = 'Sugestão',

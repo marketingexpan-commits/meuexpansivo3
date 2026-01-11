@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useAcademicData } from '../hooks/useAcademicData';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
-import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial, Occurrence, DailyAgenda, ExamGuide, CalendarEvent } from '../types';
+import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial, Occurrence, DailyAgenda, ExamGuide, CalendarEvent, AcademicSubject } from '../types';
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
 import { getBimesterFromDate } from '../src/utils/academicUtils';
 import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects, MOCK_CALENDAR_EVENTS } from '../constants'; // Import Sync Fix
@@ -107,6 +108,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     mensalidades = [],
     eventos = []
 }) => {
+    const { subjects: academicSubjects } = useAcademicData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState({ title: '', tip: '' });
     const [isLoadingAI, setIsLoadingAI] = useState(false);
@@ -921,7 +923,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider mb-1">Frequência Geral Anual</span>
                                         <div className="flex items-baseline gap-2">
                                             {(() => {
-                                                const freqStr = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel);
+                                                const freqStr = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects);
                                                 const freqNum = parseFloat(freqStr.replace('%', ''));
                                                 const isLow = !isNaN(freqNum) && freqNum < 75;
                                                 return (
@@ -1417,12 +1419,29 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                         </td>
                                                         {/* Workload Calculation */}
                                                         {(() => {
-                                                            let levelKey = '';
-                                                            if (student.gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
-                                                            else if (student.gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-                                                            else if (student.gradeLevel.includes('Ens. Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ens. Médio';
+                                                            let weeklyClasses = 0;
+                                                            let foundDynamic = false;
 
-                                                            const weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[grade.subject] || 0;
+                                                            if (academicSubjects && academicSubjects.length > 0) {
+                                                                const dynamicSubject = academicSubjects.find(s => s.name === grade.subject);
+                                                                if (dynamicSubject && dynamicSubject.weeklyHours) {
+                                                                    const gradeKey = Object.keys(dynamicSubject.weeklyHours).find(key => student.gradeLevel.includes(key));
+                                                                    if (gradeKey) {
+                                                                        weeklyClasses = dynamicSubject.weeklyHours[gradeKey];
+                                                                        foundDynamic = true;
+                                                                    }
+                                                                }
+                                                            }
+
+                                                            if (!foundDynamic) {
+                                                                let levelKey = '';
+                                                                if (student.gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
+                                                                else if (student.gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
+                                                                else if (student.gradeLevel.includes('Ens. Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ens. Médio';
+
+                                                                weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[grade.subject] || 0;
+                                                            }
+
                                                             const annualWorkload = weeklyClasses * 40; // 40 weeks standard
 
                                                             return (
@@ -1466,7 +1485,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                         {isActive ? currentAbsences : '-'}
                                                                     </td>
                                                                     {(() => {
-                                                                        const freqPercent = calculateAttendancePercentage(grade.subject, currentAbsences, student.gradeLevel);
+                                                                        const freqPercent = calculateAttendancePercentage(grade.subject, currentAbsences, student.gradeLevel, academicSubjects);
                                                                         const isLowFreq = freqPercent !== null && freqPercent < 75;
 
                                                                         return (
@@ -1499,7 +1518,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 }, 0);
                                                             }, 0);
 
-                                                            const annualFreq = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel, elapsedBimesters);
+                                                            const annualFreq = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel, elapsedBimesters, academicSubjects);
                                                             const isCritical = annualFreq !== null && annualFreq < 75;
 
                                                             return (
@@ -1520,7 +1539,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                     </tr>
                                                 ))}
                                                 {studentGrades.length > 0 && (() => {
-                                                    const generalFreq = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel);
+                                                    const generalFreq = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects);
                                                     return (
                                                         <tr className="bg-gray-100/80 font-bold border-t-2 border-gray-400">
                                                             <td colSpan={25} className="px-4 py-1 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[11px]">

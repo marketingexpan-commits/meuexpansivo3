@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useAcademicData } from '../hooks/useAcademicData';
 import { Student, SchoolMessage, MessageRecipient, MessageType, UnitContact, ContactRole, Teacher } from '../types';
 import { Button } from './Button';
 
@@ -17,12 +18,27 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
 
   // Determine relevant segment for the student
-  const studentSegment = React.useMemo(() => {
+  const { segments, grades: academicGrades, loading: loadingAcademic } = useAcademicData();
+
+  // Determine relevant segment for the student
+  const studentSegment = useMemo(() => {
+    // 1. Try dynamic lookup
+    const grade = academicGrades.find(g => g.name === student.gradeLevel);
+    if (grade) {
+      const segment = segments.find(s => s.id === grade.segmentId);
+      if (segment) {
+        const name = segment.name.toLowerCase();
+        if (name.includes('infantil') || name.includes('fundamental i')) return 'infantil_fund1';
+        if (name.includes('fundamental ii') || name.includes('médio')) return 'fund2_medio';
+      }
+    }
+
+    // 2. Fallback to string matching
     const gl = student.gradeLevel.toLowerCase();
     if (gl.includes('infantil') || gl.includes('fundamental i') || gl.includes('nível')) return 'infantil_fund1';
     if (gl.includes('fundamental ii') || gl.includes('médio') || gl.includes('medio')) return 'fund2_medio';
     return 'geral';
-  }, [student.gradeLevel]);
+  }, [student.gradeLevel, academicGrades, segments]);
 
   const coordinators = unitContacts.filter(c =>
     c.unit === student.unit &&

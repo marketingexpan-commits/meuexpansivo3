@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { X, Search, Loader2, AlertCircle, FileBarChart, Users, User } from 'lucide-react';
+import { useAcademicData } from '../hooks/useAcademicData';
 import { Button } from './Button';
 import { Input } from './Input';
 import { studentService } from '../services/studentService';
 import { pedagogicalService } from '../services/pedagogicalService';
 import { generateSchoolBulletin, generateBatchSchoolBulletin } from '../utils/bulletinGenerator';
 import type { Student } from '../types';
-import { GRADES_BY_LEVEL, SCHOOL_SHIFTS, SCHOOL_CLASSES_OPTIONS } from '../types';
+import { SCHOOL_SHIFTS, SCHOOL_CLASSES_OPTIONS } from '../utils/academicDefaults';
 
 interface BulletinSearchModalProps {
     onClose: () => void;
@@ -16,6 +17,7 @@ type ModalStep = 'SEARCH' | 'CONFIRM';
 type SearchType = 'INDIVIDUAL' | 'CLASS';
 
 export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
+    const { grades: academicGrades, subjects: academicSubjects, loading: loadingAcademic } = useAcademicData();
     const [step, setStep] = useState<ModalStep>('SEARCH');
     const [searchType, setSearchType] = useState<SearchType>('INDIVIDUAL');
 
@@ -93,9 +95,9 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
         if (preparedData.length === 0) return;
         try {
             if (preparedData.length === 1) {
-                generateSchoolBulletin(preparedData[0].student, preparedData[0].grades, preparedData[0].attendance);
+                generateSchoolBulletin(preparedData[0].student, preparedData[0].grades, preparedData[0].attendance, academicSubjects);
             } else {
-                generateBatchSchoolBulletin(preparedData);
+                generateBatchSchoolBulletin(preparedData, academicSubjects);
             }
         } catch (e) {
             console.error("Error generating bulletin:", e);
@@ -103,12 +105,6 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
         }
     };
 
-    const allGradesOptions = [
-        ...GRADES_BY_LEVEL['Educação Infantil'],
-        ...GRADES_BY_LEVEL['Fundamental I'],
-        ...GRADES_BY_LEVEL['Fundamental II'],
-        ...GRADES_BY_LEVEL['Ensino Médio']
-    ];
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -182,9 +178,13 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
                                             className="w-full h-12 rounded-xl border-slate-200 focus:border-blue-950 focus:ring-blue-950"
                                         >
                                             <option value="">Selecione a Série</option>
-                                            {allGradesOptions.map(g => (
-                                                <option key={g} value={g}>{g}</option>
-                                            ))}
+                                            {loadingAcademic ? (
+                                                <option>Carregando...</option>
+                                            ) : (
+                                                academicGrades.map(g => (
+                                                    <option key={g.id} value={g.name}>{g.name}</option>
+                                                ))
+                                            )}
                                         </select>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">

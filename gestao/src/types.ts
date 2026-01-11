@@ -60,6 +60,30 @@ export enum MessageRecipient {
   DIRECTION = 'Diretoria',
 }
 
+export interface AcademicSubject {
+  id: string;      // Firestore ID
+  name: string;    // Display name (e.g., "Matemática")
+  shortName?: string; // Abbreviation (e.g., "MAT")
+  isActive: boolean;
+  order?: number;   // For sorting in reports/logs
+  weeklyHours?: Record<string, number>; // Mapping: gradeName -> hoursPerWeek
+}
+
+export interface AcademicSegment {
+  id: string;
+  name: string; // e.g., "Ensino Médio"
+  isActive: boolean;
+  order: number;
+}
+
+export interface AcademicGrade {
+  id: string;
+  segmentId: string; // Foreign key to AcademicSegment
+  name: string;      // e.g., "1ª Série"
+  isActive: boolean;
+  order: number;
+}
+
 export enum MessageType {
   COMPLIMENT = 'Elogio',
   SUGGESTION = 'Sugestão',
@@ -449,35 +473,7 @@ export interface Ticket {
   responderName?: string; // Nome do professor que respondeu
 }
 
-// --- CONSTANTES DO SISTEMA DE ENSINO ---
 
-export const EDUCATION_LEVELS = [
-  { label: 'Educação Infantil', value: 'Educação Infantil' },
-  { label: 'Fundamental I', value: 'Fundamental I' },
-  { label: 'Fundamental II', value: 'Fundamental II' },
-  { label: 'Ensino Médio', value: 'Ensino Médio' }
-];
-
-export const GRADES_BY_LEVEL: Record<string, string[]> = {
-  'Educação Infantil': ['Nível I', 'Nível II', 'Nível III', 'Nível IV', 'Nível V'],
-  'Fundamental I': ['1º Ano', '2º Ano', '3º Ano', '4º Ano', '5º Ano'],
-  'Fundamental II': ['6º Ano', '7º Ano', '8º Ano', '9º Ano'],
-  'Ensino Médio': ['1ª Série', '2ª Série', '3ª Série']
-};
-
-export const SCHOOL_SHIFTS = [
-  { label: 'Matutino', value: 'Matutino' },
-  { label: 'Vespertino', value: 'Vespertino' }
-];
-
-export const SCHOOL_CLASSES_OPTIONS = [
-  { label: 'A', value: 'A' },
-  { label: 'B', value: 'B' },
-  { label: 'C', value: 'C' },
-  { label: 'D', value: 'D' },
-  { label: 'E', value: 'E' }
-];
-// ... existing types
 
 export interface AcademicHistoryRecord {
   id: string;

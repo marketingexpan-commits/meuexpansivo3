@@ -1,6 +1,8 @@
 // src/constants.ts
 
-import { Student, Teacher, GradeEntry, BimesterData, Admin, SchoolUnit, SchoolShift, SchoolClass, Subject, ExperienceField } from './types';
+import { Student, Teacher, GradeEntry, BimesterData, Admin, SchoolUnit, SchoolShift, SchoolClass, Subject, ExperienceField, AcademicSubject } from './types';
+import { CURRICULUM_MATRIX } from './src/utils/academicDefaults';
+export { CURRICULUM_MATRIX };
 
 export const SCHOOL_LOGO_URL = 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png';
 export const SCHOOL_LOGO_WHITE_URL = 'https://i.postimg.cc/GtV2FsBC/expan-logo-branca-04.png';
@@ -96,12 +98,6 @@ export const MOCK_ADMINS: Admin[] = ALLOW_MOCK_LOGIN ? PRIVATE_MOCK_ADMINS : [];
 
 export const DEFAULT_ADMIN_INIT = PRIVATE_MOCK_ADMINS[0];
 
-export const SCHOOL_GRADES_LIST = [
-  'Nível I - Edu. Infantil', 'Nível II - Edu. Infantil', 'Nível III - Edu. Infantil', 'Nível IV - Edu. Infantil', 'Nível V - Edu. Infantil',
-  '1º Ano - Fundamental I', '2º Ano - Fundamental I', '3º Ano - Fundamental I', '4º Ano - Fundamental I', '5º Ano - Fundamental I',
-  '6º Ano - Fundamental II', '7º Ano - Fundamental II', '8º Ano - Fundamental II', '9º Ano - Fundamental II',
-  '1ª Série - Ens. Médio', '2ª Série - Ens. Médio', '3ª Série - Ens. Médio'
-];
 
 export const MOCK_STUDENTS: Student[] = ALLOW_MOCK_LOGIN ? [
   {
@@ -168,7 +164,6 @@ export const MOCK_TEACHERS: Teacher[] = ALLOW_MOCK_LOGIN ? [
   }
 ] : [];
 
-export const SUBJECT_LIST = Object.values(Subject);
 export const SCHOOL_UNITS_LIST = Object.values(SchoolUnit);
 export const SCHOOL_SHIFTS_LIST = Object.values(SchoolShift);
 export const SCHOOL_CLASSES_LIST = Object.values(SchoolClass);
@@ -284,8 +279,24 @@ export const FINAL_GRADES_CALCULATED: GradeEntry[] = ALLOW_MOCK_LOGIN ? INITIAL_
 }) : [];
 
 // --- HELPER PARA OBTER MATÉRIAS DA MATRIZ ---
-export const getCurriculumSubjects = (gradeLevel: string): string[] => {
+export const getCurriculumSubjects = (gradeLevel: string, academicSubjects?: AcademicSubject[]): string[] => {
   if (!gradeLevel) return [];
+
+  // 1. Try Dynamic Lookup
+  if (academicSubjects && academicSubjects.length > 0) {
+    const matchingSubjects = academicSubjects.filter(s => {
+      if (!s.isActive || !s.weeklyHours) return false;
+      return Object.keys(s.weeklyHours).some(key => gradeLevel.includes(key));
+    });
+    if (matchingSubjects.length > 0) {
+      // Sort by order or name
+      return matchingSubjects
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
+        .map(s => s.name);
+    }
+  }
+
+  // 2. Fallback to Matrix
   // Ordena as chaves por comprimento descrescente para evitar que "Fundamental II" bata no "Fundamental I"
   const sortedMatrixKeys = Object.keys(CURRICULUM_MATRIX).sort((a, b) => b.length - a.length);
   const levelKey = sortedMatrixKeys.find(key =>
@@ -295,61 +306,7 @@ export const getCurriculumSubjects = (gradeLevel: string): string[] => {
   return levelKey ? Object.keys(CURRICULUM_MATRIX[levelKey]) : [];
 };
 
-// --- MATRIZ CURRICULAR (AULAS POR SEMANA) ---
-export const CURRICULUM_MATRIX: Record<string, Record<string, number>> = {
-  'Fundamental I': {
-    [Subject.PORTUGUESE]: 4,
-    [Subject.MATH]: 4,
-    [Subject.SCIENCE]: 2,
-    [Subject.GEOGRAPHY]: 2,
-    [Subject.HISTORY]: 2,
-    [Subject.ENGLISH]: 2,
-    [Subject.ARTS]: 2, // Ens. Artes
-    [Subject.SPANISH]: 1,
-    [Subject.PHILOSOPHY]: 1,
-    [Subject.LIFE_PROJECT]: 1,
-    [Subject.MUSIC]: 1
-  },
-  'Fundamental II': {
-    [Subject.MATH]: 4,
-    [Subject.PORTUGUESE]: 4,
-    [Subject.HISTORY]: 2,
-    [Subject.GEOGRAPHY]: 2,
-    [Subject.SCIENCE]: 2,
-    [Subject.ENGLISH]: 1,
-    [Subject.SPANISH]: 1,
-    [Subject.FRENCH]: 1,
-    [Subject.ARTS]: 1, // Ens. Artes
-    [Subject.WRITING]: 1,
-    [Subject.PHYSICAL_ED]: 1,
-    [Subject.LIFE_PROJECT]: 1
-  },
-  'Ens. Médio': {
-    [Subject.PORTUGUESE]: 2,
-    [Subject.MATH]: 4,
-    [Subject.PHYSICS]: 4,
-    [Subject.BIOLOGY]: 2,
-    [Subject.HISTORY]: 2,
-    [Subject.GEOGRAPHY]: 2,
-    [Subject.SOCIOLOGY]: 1,
-    [Subject.PHILOSOPHY]: 2,
-    [Subject.CHEMISTRY]: 2,
-    [Subject.LITERATURE]: 2,
-    [Subject.WRITING]: 2,
-    [Subject.ENGLISH]: 1,
-    [Subject.SPANISH]: 1,
-    [Subject.LIFE_PROJECT]: 0,
-    [Subject.ENTREPRENEURSHIP]: 0
-  }
-};
 
-// --- CONSTANTES PARA FILTROS (Ocorrências) ---
-export const GRADES_BY_LEVEL: Record<string, string[]> = {
-  'Educação Infantil': ['Nível I', 'Nível II', 'Nível III', 'Nível IV', 'Nível V'],
-  'Fundamental I': ['1º Ano', '2º Ano', '3º Ano', '4º Ano', '5º Ano'],
-  'Fundamental II': ['6º Ano', '7º Ano', '8º Ano', '9º Ano'],
-  'Ensino Médio': ['1ª Série', '2ª Série', '3ª Série']
-};
 
 export const SCHOOL_CLASSES_OPTIONS = [
   { label: 'A', value: 'A' },

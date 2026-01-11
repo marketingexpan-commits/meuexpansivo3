@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useAcademicData } from '../../hooks/useAcademicData';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
 import { Student, GradeEntry, Teacher, Subject, SchoolMessage, MessageRecipient, MessageType, AttendanceRecord, AttendanceStatus, BimesterData, UnitContact, CoordinationSegment } from '../types';
 import { getStudyTips } from '../services/geminiService';
@@ -58,6 +59,7 @@ interface StudentDashboardProps {
 }
 
 export const StudentDashboard: React.FC<StudentDashboardProps> = ({ student, grades, teachers = [], attendanceRecords, unitContacts = [], onLogout, onSendMessage }) => {
+    const { segments, grades: academicGrades, loading: loadingAcademic } = useAcademicData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState({ title: '', tip: '' });
     const [isLoadingAI, setIsLoadingAI] = useState(false);
@@ -322,8 +324,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ student, gra
                                     <td className="px-1 py-2 text-center font-extrabold text-blue-950 border-r border-gray-300 bg-blue-50 text-sm">{formatGrade(grade.mediaFinal)}</td>
                                     <td className="px-1 py-2 text-center align-middle">
                                         <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
-                                                grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                                    'bg-red-50 text-red-700 border-red-200'
+                                            grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                                'bg-red-50 text-red-700 border-red-200'
                                             }`}>
                                             {grade.situacaoFinal}
                                         </span>
@@ -438,7 +440,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ student, gra
                     </div>
                 )}
 
-                <MessageBox student={student} onSendMessage={onSendMessage} unitContacts={unitContacts} />
+                <MessageBox
+                    student={student}
+                    onSendMessage={onSendMessage}
+                    unitContacts={unitContacts}
+                    academicGrades={academicGrades}
+                    academicSegments={segments}
+                />
 
                 {isModalOpen && (
                     <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 print:hidden p-4">
@@ -480,7 +488,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ student, gra
     );
 };
 
-const MessageBox: React.FC<{ student: Student; onSendMessage: (message: Omit<SchoolMessage, 'id'>) => Promise<void>; unitContacts: UnitContact[] }> = ({ student, onSendMessage, unitContacts }) => {
+const MessageBox: React.FC<{
+    student: Student;
+    onSendMessage: (message: Omit<SchoolMessage, 'id'>) => Promise<void>;
+    unitContacts: UnitContact[];
+    academicGrades: any[];
+    academicSegments: any[];
+}> = ({ student, onSendMessage, unitContacts, academicGrades, academicSegments }) => {
     const [recipient, setRecipient] = useState<MessageRecipient>(MessageRecipient.COORDINATION);
     const [messageType, setMessageType] = useState<MessageType>(MessageType.SUGGESTION);
     const [content, setContent] = useState('');
@@ -489,8 +503,20 @@ const MessageBox: React.FC<{ student: Student; onSendMessage: (message: Omit<Sch
     const [isSent, setIsSent] = useState(false);
 
     // Helper Segment
-    const getStudentSegment = (grade: string): CoordinationSegment => {
-        if (grade.includes('Infantil') || grade.includes('1º Ano') || grade.includes('2º Ano') || grade.includes('3º Ano') || grade.includes('4º Ano') || grade.includes('5º Ano')) {
+    const getStudentSegment = (gradeName: string): CoordinationSegment => {
+        // First try dynamic lookup
+        const grade = academicGrades.find(g => g.name === gradeName);
+        if (grade) {
+            const segment = academicSegments.find(s => s.id === grade.segmentId);
+            if (segment) {
+                const name = segment.name.toLowerCase();
+                if (name.includes('infantil') || name.includes('fundamental i')) return CoordinationSegment.INFANTIL_FUND1;
+                if (name.includes('fundamental ii') || name.includes('médio')) return CoordinationSegment.FUND2_MEDIO;
+            }
+        }
+
+        // Fallback to string matching if dynamic data is loading or missing
+        if (gradeName.includes('Infantil') || gradeName.includes('1º Ano') || gradeName.includes('2º Ano') || gradeName.includes('3º Ano') || gradeName.includes('4º Ano') || gradeName.includes('5º Ano')) {
             return CoordinationSegment.INFANTIL_FUND1;
         }
         return CoordinationSegment.FUND2_MEDIO;
