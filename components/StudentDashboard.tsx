@@ -581,78 +581,77 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             </button>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                            <div className="relative">
-                                <button
-                                    onClick={() => setShowNotifications(!showNotifications)}
-                                    className="p-2 text-gray-600 hover:text-gray-800 transition-colors relative hover:bg-gray-100 rounded-full"
-                                >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-                                    {unreadNotifications > 0 && (
-                                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-[20px] h-[20px] px-1 flex items-center justify-center rounded-full border-2 border-white shadow-sm transform scale-100">
-                                            {unreadNotifications}
-                                        </span>
-                                    )}
-                                </button>
-                                {showNotifications && (
-                                    <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden ring-1 ring-black ring-opacity-5 text-left">
-                                        <div className="p-3 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
-                                            <h4 className="font-bold text-blue-900 text-sm">Notificações</h4>
-                                            <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-gray-600">
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                            </button>
-                                        </div>
-                                        <div className="max-h-60 overflow-y-auto">
-                                            {notifications.length > 0 ? (
-                                                notifications.map(n => (
-                                                    <div
-                                                        key={n.id}
-                                                        className={`p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer ${!n.read ? 'bg-blue-50/30' : ''}`}
-                                                        onClick={() => {
-                                                            if (!n.read && onMarkNotificationAsRead) onMarkNotificationAsRead(n.id);
-
-                                                            // Normalize strings to ignore accents (e.g. 'ê' -> 'e')
-                                                            const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-                                                            const titleNorm = normalize(n.title);
-                                                            const messageNorm = normalize(n.message);
-
-                                                            // Check for occurrence keywords (accent-insensitive)
-                                                            if (titleNorm.includes('ocorrencia') || titleNorm.includes('advertencia') || messageNorm.includes('ocorrencia')) {
-                                                                console.log("Navigating to occurrences", n); // Debug
-                                                                setCurrentView('occurrences');
-                                                            } else if (titleNorm.includes('boletim') || titleNorm.includes('nota')) {
-                                                                setCurrentView(isEarlyChildhood ? 'early_childhood' : 'grades');
-                                                            } else if (titleNorm.includes('frequencia') || titleNorm.includes('falta')) {
-                                                                setCurrentView('attendance');
-                                                            } else if (titleNorm.includes('financeiro') || titleNorm.includes('mensalidade') || titleNorm.includes('pagamento')) {
-                                                                setCurrentView('financeiro');
-                                                            } else if (titleNorm.includes('material') || titleNorm.includes('conteudo') || titleNorm.includes('aula')) {
-                                                                setCurrentView('materials');
-                                                            } else {
-                                                                // Default fallback
-                                                                setCurrentView('tickets');
-                                                            }
-
-                                                            setShowNotifications(false);
-                                                        }}
-                                                    >
-                                                        <div className="flex justify-between items-start mb-1">
-                                                            <span className="font-bold text-xs text-gray-800">{n.title}</span>
-                                                            <span className="text-[10px] text-gray-400">{new Date(n.timestamp).toLocaleDateString()}</span>
-                                                        </div>
-                                                        <p className="text-xs text-gray-600 line-clamp-2">{n.message}</p>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div className="p-4 text-center text-gray-500 text-xs italic">
-                                                    Nenhuma notificação.
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
+                        <div className="flex items-center gap-2 relative">
+                            <button
+                                onClick={() => setShowNotifications(!showNotifications)}
+                                className="p-2 text-gray-600 hover:text-gray-800 transition-colors relative hover:bg-gray-100 rounded-full"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                                {unreadNotifications > 0 && (
+                                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-[20px] h-[20px] px-1 flex items-center justify-center rounded-full border-2 border-white shadow-sm transform scale-100">
+                                        {unreadNotifications}
+                                    </span>
                                 )}
-                            </div>
+                            </button>
+
+                            {showNotifications && (
+                                <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden ring-1 ring-black ring-opacity-5 text-left">
+                                    <div className="p-3 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
+                                        <h4 className="font-bold text-blue-900 text-sm">Notificações</h4>
+                                        <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-gray-600">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                        </button>
+                                    </div>
+                                    <div className="max-h-60 overflow-y-auto">
+                                        {notifications.length > 0 ? (
+                                            notifications.map(n => (
+                                                <div
+                                                    key={n.id}
+                                                    className={`p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer ${!n.read ? 'bg-blue-50/30' : ''}`}
+                                                    onClick={() => {
+                                                        if (!n.read && onMarkNotificationAsRead) onMarkNotificationAsRead(n.id);
+
+                                                        // Normalize strings to ignore accents (e.g. 'ê' -> 'e')
+                                                        const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+                                                        const titleNorm = normalize(n.title);
+                                                        const messageNorm = normalize(n.message);
+
+                                                        // Check for occurrence keywords (accent-insensitive)
+                                                        if (titleNorm.includes('ocorrencia') || titleNorm.includes('advertencia') || messageNorm.includes('ocorrencia')) {
+                                                            console.log("Navigating to occurrences", n); // Debug
+                                                            setCurrentView('occurrences');
+                                                        } else if (titleNorm.includes('boletim') || titleNorm.includes('nota')) {
+                                                            setCurrentView(isEarlyChildhood ? 'early_childhood' : 'grades');
+                                                        } else if (titleNorm.includes('frequencia') || titleNorm.includes('falta')) {
+                                                            setCurrentView('attendance');
+                                                        } else if (titleNorm.includes('financeiro') || titleNorm.includes('mensalidade') || titleNorm.includes('pagamento')) {
+                                                            setCurrentView('financeiro');
+                                                        } else if (titleNorm.includes('material') || titleNorm.includes('conteudo') || titleNorm.includes('aula')) {
+                                                            setCurrentView('materials');
+                                                        } else {
+                                                            // Default fallback
+                                                            setCurrentView('tickets');
+                                                        }
+
+                                                        setShowNotifications(false);
+                                                    }}
+                                                >
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <span className="font-bold text-xs text-gray-800">{n.title}</span>
+                                                        <span className="text-[10px] text-gray-400">{new Date(n.timestamp).toLocaleDateString()}</span>
+                                                    </div>
+                                                    <p className="text-xs text-gray-600 line-clamp-2">{n.message}</p>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="p-4 text-center text-gray-500 text-xs italic">
+                                                Nenhuma notificação.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                             <Button variant="secondary" onClick={onLogout} className="text-sm font-semibold py-1.5 px-4">Sair</Button>
                         </div>
                     </div>
@@ -693,20 +692,17 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             </span>
                                         </button>
 
-                                        {/* Notification Bell */}
-                                        <div className="relative">
-                                            <button
-                                                onClick={() => setShowNotifications(!showNotifications)}
-                                                className="p-2 text-gray-600 hover:text-gray-800 transition-colors relative hover:bg-gray-100 rounded-full"
-                                            >
-                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-                                                {unreadNotifications > 0 && (
-                                                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-[20px] h-[20px] px-1 flex items-center justify-center rounded-full border-2 border-white shadow-sm transform scale-100">
-                                                        {unreadNotifications}
-                                                    </span>
-                                                )}
-                                            </button>
-                                        </div>
+                                        <button
+                                            onClick={() => setShowNotifications(!showNotifications)}
+                                            className="p-2 text-gray-600 hover:text-gray-800 transition-colors relative hover:bg-gray-100 rounded-full"
+                                        >
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                                            {unreadNotifications > 0 && (
+                                                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-[20px] h-[20px] px-1 flex items-center justify-center rounded-full border-2 border-white shadow-sm transform scale-100">
+                                                    {unreadNotifications}
+                                                </span>
+                                            )}
+                                        </button>
 
                                         {showNotifications && (
                                             <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden ring-1 ring-black ring-opacity-5 text-left">
