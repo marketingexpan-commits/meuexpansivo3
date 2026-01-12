@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { db } from '../firebaseConfig';
 import { collection, query, getDocs, addDoc, updateDoc, doc, writeBatch, deleteDoc, orderBy } from 'firebase/firestore';
 import type { AcademicSubject, AcademicGrade } from '../types';
@@ -179,7 +179,7 @@ export default function Disciplinas() {
         }
     };
 
-    const handleUpdateMatrixHour = async (subjectId: string, gradeName: string, hours: number) => {
+    const handleUpdateMatrixHour = useCallback(async (subjectId: string, gradeName: string, hours: number) => {
         try {
             const subject = subjects.find(s => s.id === subjectId);
             if (!subject) return;
@@ -200,7 +200,55 @@ export default function Disciplinas() {
             alert("Erro ao atualizar carga horária.");
             loadData(); // Rollback
         }
-    };
+    }, [subjects]);
+
+    // Isolated Input Component to handle local state and prevent page-wide re-renders during typing
+    const MatrixInput = memo(({ value, onUpdate }: { value: number, onUpdate: (val: number) => void }) => {
+        const [localValue, setLocalValue] = useState(value);
+
+        useEffect(() => {
+            setLocalValue(value);
+        }, [value]);
+
+        return (
+            <input
+                type="number"
+                min="0"
+                className="w-14 h-9 text-center rounded-lg border-slate-100 bg-slate-50/50 hover:bg-slate-100 focus:border-blue-500 focus:bg-white transition-all font-bold text-blue-600 focus:ring-4 focus:ring-blue-500/10 outline-none border"
+                value={localValue}
+                onChange={(e) => setLocalValue(parseInt(e.target.value) || 0)}
+                onBlur={() => {
+                    if (localValue !== value) {
+                        onUpdate(localValue);
+                    }
+                }}
+            />
+        );
+    });
+
+    // Memoized Row to prevent re-rendering all rows when one changes
+    const MatrixRow = memo(({ subject, grades, onUpdate }: { subject: AcademicSubject, grades: AcademicGrade[], onUpdate: (subjectId: string, gradeName: string, val: number) => void }) => {
+        return (
+            <tr className="hover:bg-blue-50/30 transition-colors group">
+                <td className="sticky left-0 z-10 bg-white group-hover:bg-blue-50/30 py-4 px-6 font-bold text-blue-950 border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                    {subject.name}
+                </td>
+                {grades.map(grade => (
+                    <td key={grade.id} className="p-2 border-r border-slate-50">
+                        <div className="relative flex items-center justify-center">
+                            <MatrixInput
+                                value={subject.weeklyHours?.[grade.name] || 0}
+                                onUpdate={(val) => onUpdate(subject.id, grade.name, val)}
+                            />
+                            <div className="absolute -bottom-1 text-[7px] font-bold text-slate-400 uppercase pointer-events-none tracking-tighter">
+                                {(subject.weeklyHours?.[grade.name] || 0) * 40}h/ano
+                            </div>
+                        </div>
+                    </td>
+                ))}
+            </tr>
+        );
+    });
 
     const filteredSubjects = subjects.filter(s =>
         s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -375,27 +423,12 @@ export default function Disciplinas() {
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {subjects.filter(s => s.isActive).map(subject => (
-                                        <tr key={subject.id} className="hover:bg-blue-50/30 transition-colors group">
-                                            <td className="sticky left-0 z-10 bg-white group-hover:bg-blue-50/30 py-4 px-6 font-bold text-blue-950 border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                                                {subject.name}
-                                            </td>
-                                            {grades.map(grade => (
-                                                <td key={grade.id} className="p-2 border-r border-slate-50">
-                                                    <div className="relative flex items-center justify-center">
-                                                        <input
-                                                            type="number"
-                                                            min="0"
-                                                            className="w-14 h-9 text-center rounded-lg border-slate-100 bg-slate-50/50 hover:bg-slate-100 focus:border-blue-500 focus:bg-white transition-all font-bold text-blue-600 focus:ring-4 focus:ring-blue-500/10 outline-none border"
-                                                            value={subject.weeklyHours?.[grade.name] || 0}
-                                                            onChange={(e) => handleUpdateMatrixHour(subject.id, grade.name, parseInt(e.target.value) || 0)}
-                                                        />
-                                                        <div className="absolute -bottom-1 text-[7px] font-bold text-slate-400 uppercase pointer-events-none tracking-tighter">
-                                                            {(subject.weeklyHours?.[grade.name] || 0) * 40}h/ano
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                            ))}
-                                        </tr>
+                                        <MatrixRow
+                                            key={subject.id}
+                                            subject={subject}
+                                            grades={grades}
+                                            onUpdate={handleUpdateMatrixHour}
+                                        />
                                     ))}
                                 </tbody>
                             </table>
