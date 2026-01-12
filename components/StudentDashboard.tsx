@@ -1071,7 +1071,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             </h3>
 
                             {/* TABS */}
-                            <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+                            <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
                                 <button
                                     onClick={() => setMaterialsTab('files')}
                                     className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${materialsTab === 'files' ? 'bg-blue-950 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}

@@ -106,12 +106,12 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({ student }) =
             </div>
 
             {/* Day Selector */}
-            <div className="flex bg-gray-100 p-1.5 rounded-2xl gap-1.5 mb-8 shadow-inner">
+            <div className="flex bg-gray-100 p-1.5 rounded-2xl gap-1.5 mb-8 shadow-inner overflow-x-auto scrollbar-hide">
                 {DAYS_OF_WEEK.map(day => (
                     <button
                         key={day.id}
                         onClick={() => setSelectedDay(day.id)}
-                        className={`flex-1 py-3 px-2 rounded-xl text-center transition-all duration-300 ${selectedDay === day.id
+                        className={`flex-1 min-w-[75px] shrink-0 py-3 px-2 rounded-xl text-center transition-all duration-300 ${selectedDay === day.id
                             ? 'bg-blue-950 text-white shadow-lg scale-105'
                             : 'text-gray-500 hover:bg-white hover:text-blue-950'
                             }`}
