@@ -139,6 +139,33 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
 
     const teacherSubjects = teacher.subjects;
 
+    const filteredGrades = useMemo(() => {
+        if (!teacher.gradeLevels || teacher.gradeLevels.length === 0) return academicGrades;
+        return academicGrades.filter(g => teacher.gradeLevels.includes(g.name));
+    }, [academicGrades, teacher.gradeLevels]);
+
+
+    // Auto-select subject and grade if teacher has only one
+    useEffect(() => {
+        if (teacherSubjects.length === 1) {
+            const onlySubject = teacherSubjects[0] as string;
+            setAttendanceSubject(onlySubject);
+            setMaterialSubject(onlySubject);
+            setAgendaSubject(onlySubject);
+            setExamSubject(onlySubject);
+            setSelectedSubject(onlySubject);
+        }
+
+        if (teacher.gradeLevels?.length === 1) {
+            const onlyGrade = teacher.gradeLevels[0];
+            setFilterGrade(onlyGrade);
+            setAttendanceGrade(onlyGrade);
+            setMaterialGrade(onlyGrade);
+            setAgendaGrade(onlyGrade);
+            setExamGrade(onlyGrade);
+        }
+    }, [teacherSubjects, teacher.gradeLevels]);
+
     const getFilteredSubjects = useCallback((gradeLevel: string) => {
         if (!teacher.assignments || teacher.assignments.length === 0) return teacher.subjects;
         const assignment = teacher.assignments.find(a => a.gradeLevel === gradeLevel);
@@ -154,13 +181,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     const filteredSubjectsForMaterials = useMemo(() => getFilteredSubjects(materialGrade), [materialGrade, getFilteredSubjects]);
     const filteredSubjectsForAgenda = useMemo(() => getFilteredSubjects(agendaGrade), [agendaGrade, getFilteredSubjects]);
     const filteredSubjectsForExams = useMemo(() => getFilteredSubjects(examGrade), [examGrade, getFilteredSubjects]);
-
-    // Auto-select subject if teacher has only one
-    useEffect(() => {
-        if (teacherSubjects.length === 1) {
-            setAttendanceSubject(teacherSubjects[0] as string);
-        }
-    }, [teacherSubjects]);
 
     const isEarlyChildhoodStudent = useMemo(() => selectedStudent?.gradeLevel.toLowerCase().includes('edu. infantil'), [selectedStudent]);
 
@@ -1043,7 +1063,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                             {loadingAcademic ? (
                                                 <option>Carregando...</option>
                                             ) : (
-                                                academicGrades.map((grade) => (<option key={grade.id} value={grade.name}>{grade.name}</option>))
+                                                filteredGrades.map((grade) => (<option key={grade.id} value={grade.name}>{grade.name}</option>))
                                             )}
                                         </select>
                                     </div>
@@ -1173,7 +1193,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                 {loadingAcademic ? (
                                                     <option>Carregando...</option>
                                                 ) : (
-                                                    academicGrades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)
+                                                    filteredGrades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)
                                                 )}
                                             </select>
                                         </div>
@@ -1237,7 +1257,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                 {loadingAcademic ? (
                                                     <option>Carregando...</option>
                                                 ) : (
-                                                    academicGrades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)
+                                                    filteredGrades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)
                                                 )}
                                             </select>
                                         </div>
@@ -1279,7 +1299,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         {loadingAcademic ? (
                                             <option>Carregando...</option>
                                         ) : (
-                                            academicGrades.map((grade) => (<option key={grade.id} value={grade.name}>{grade.name}</option>))
+                                            filteredGrades.map((grade) => (<option key={grade.id} value={grade.name}>{grade.name}</option>))
                                         )}
                                     </select>
                                     <select value={filterShift} onChange={e => setFilterShift(e.target.value)} className="w-full text-sm p-2 border border-gray-300 rounded focus:ring-blue-950 focus:border-blue-950">
@@ -1746,7 +1766,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                             {loadingAcademic ? (
                                                 <option>Carregando...</option>
                                             ) : (
-                                                academicGrades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)
+                                                filteredGrades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)
                                             )}
                                         </select>
                                     </div>
