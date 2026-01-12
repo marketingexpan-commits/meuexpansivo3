@@ -3,7 +3,7 @@ import { useAcademicData } from '../hooks/useAcademicData';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
 import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial, Occurrence, DailyAgenda, ExamGuide, CalendarEvent, AcademicSubject } from '../types';
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
-import { getBimesterFromDate, getDynamicBimester } from '../src/utils/academicUtils';
+import { getBimesterFromDate, getDynamicBimester, normalizeClass, parseGradeLevel } from '../src/utils/academicUtils';
 import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects, MOCK_CALENDAR_EVENTS } from '../constants'; // Import Sync Fix
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency, calculateBimesterGeneralFrequency } from '../utils/frequency';
 import { getStudyTips } from '../services/geminiService';
@@ -450,6 +450,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     useEffect(() => {
         if (currentView === 'materials') {
             loadClassMaterials();
+            loadAgenda();
+            loadExamGuides();
         }
     }, [currentView]);
 
@@ -471,12 +473,24 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
             const allMats = snapshot.docs.map(doc => doc.data() as ClassMaterial);
 
-            // Filter by Grade, Class, and Shift in memory
-            const mats = allMats.filter(mat =>
-                mat.gradeLevel === student.gradeLevel &&
-                mat.schoolClass === student.schoolClass &&
-                mat.shift === student.shift
-            );
+            // Filter by Grade, Class, and Shift in memory with robust normalization
+            const mats = allMats.filter(mat => {
+                // Normalize Grade (Remove " - Level" suffix if present)
+                const studentGrade = parseGradeLevel(student.gradeLevel).grade.trim();
+                const materialGrade = parseGradeLevel(mat.gradeLevel).grade.trim();
+
+                // Normalize Class (Handle "01" vs "A")
+                const studentClass = normalizeClass(student.schoolClass);
+                const materialClass = normalizeClass(mat.schoolClass);
+
+                // Normalize Shift (Case insensitive and trimmed)
+                const studentShift = (student.shift || '').toString().trim().toLowerCase();
+                const materialShift = (mat.shift || '').toString().trim().toLowerCase();
+
+                return studentGrade === materialGrade &&
+                    studentClass === materialClass &&
+                    studentShift === materialShift;
+            });
 
             // Sort by Timestamp Desc
             mats.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -495,8 +509,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 .where('unit', '==', student.unit)
                 .get();
             const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DailyAgenda));
-            // Filter in memory for safety
-            const filtered = data.filter(a => a.gradeLevel === student.gradeLevel && a.schoolClass === student.schoolClass);
+            // Filter in memory with normalization
+            const filtered = data.filter(a => {
+                const sGrade = parseGradeLevel(student.gradeLevel).grade.trim();
+                const aGrade = parseGradeLevel(a.gradeLevel).grade.trim();
+                const sClass = normalizeClass(student.schoolClass);
+                const aClass = normalizeClass(a.schoolClass);
+                return sGrade === aGrade && sClass === aClass;
+            });
             filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             setAgendas(filtered);
         } catch (error) {
@@ -510,8 +530,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 .where('unit', '==', student.unit)
                 .get();
             const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ExamGuide));
-            // Filter
-            const filtered = data.filter(e => e.gradeLevel === student.gradeLevel && e.schoolClass === student.schoolClass);
+            // Filter with normalization
+            const filtered = data.filter(e => {
+                const sGrade = parseGradeLevel(student.gradeLevel).grade.trim();
+                const eGrade = parseGradeLevel(e.gradeLevel).grade.trim();
+                const sClass = normalizeClass(student.schoolClass);
+                const eClass = normalizeClass(e.schoolClass);
+                return sGrade === eGrade && sClass === eClass;
+            });
             // Sort by examDate ASC (Next exams first)
             filtered.sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime());
             setExamGuides(filtered);
@@ -520,12 +546,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         }
     };
 
-    useEffect(() => {
-        if (currentView === 'materials') {
-            loadAgenda();
-            loadExamGuides();
-        }
-    }, [currentView]);
 
     // --- OCCURRENCES LOADING LOGIC ---
     useEffect(() => {
@@ -1116,7 +1136,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 </div>
                                                                 <h3 className="font-bold text-gray-800 text-lg leading-tight mb-1">{mat.title}</h3>
                                                                 <p className="text-xs text-gray-500">
-                                                                    Prof. {mat.teacherName.split(' ')[0]} • {new Date(mat.timestamp).toLocaleDateString()}
+                                                                    {mat.teacherName} • {new Date(mat.timestamp).toLocaleDateString()}
                                                                 </p>
                                                             </div>
                                                             <div className="bg-white p-2 rounded-full shadow-sm group-hover:scale-110 transition-transform">
@@ -1168,7 +1188,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                                                                     <div className="flex justify-between items-start mb-2">
                                                                         <span className="font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded text-xs uppercase tracking-wide">{item.subject}</span>
-                                                                        <span className="text-[10px] text-gray-400">Prof. {item.teacherName.split(' ')[0]}</span>
+                                                                        <span className="text-[10px] text-gray-400">{item.teacherName}</span>
                                                                     </div>
 
                                                                     <div className="space-y-3">
@@ -1227,7 +1247,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                         )}
                                                                     </div>
                                                                     <h3 className="font-bold text-xl text-gray-800">{guide.title}</h3>
-                                                                    <p className="text-sm text-gray-500">{new Date(guide.examDate).toLocaleDateString()} • Prof. {guide.teacherName}</p>
+                                                                    <p className="text-sm text-gray-500">{new Date(guide.examDate).toLocaleDateString()} • {guide.teacherName}</p>
                                                                 </div>
                                                                 <div className="text-center bg-indigo-50 p-3 rounded-lg min-w-[80px]">
                                                                     <span className="block text-indigo-900 font-bold text-2xl leading-none">{new Date(guide.examDate).getDate()}</span>
@@ -1413,7 +1433,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                         <td className="px-2 py-2 font-bold text-gray-900 border-r border-gray-300 text-[10px] md:text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] align-top">
                                                             <span className="uppercase block leading-tight mb-1">{grade.subject}</span>
                                                             <span className="text-[9px] text-gray-500 font-normal block italic whitespace-normal leading-tight break-words">
-                                                                Prof. {getTeacherName(grade.subject)}
+                                                                {getTeacherName(grade.subject)}
                                                             </span>
                                                         </td>
                                                         {/* Workload Calculation */}

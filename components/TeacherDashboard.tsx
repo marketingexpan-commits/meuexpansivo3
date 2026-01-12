@@ -142,7 +142,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
 
     const filteredGrades = useMemo(() => {
         if (!teacher.gradeLevels || teacher.gradeLevels.length === 0) return [];
-        return academicGrades.filter(g => teacher.gradeLevels.includes(g.name));
+        return academicGrades.filter(g => {
+            // Try exact match first
+            if (teacher.gradeLevels.includes(g.name)) return true;
+
+            // Try normalized match (comparing only the grade part)
+            const gShort = parseGradeLevel(g.name).grade.trim();
+            return teacher.gradeLevels.some(tGrade => {
+                const tShort = parseGradeLevel(tGrade).grade.trim();
+                return gShort === tShort;
+            });
+        });
     }, [academicGrades, teacher.gradeLevels]);
 
 

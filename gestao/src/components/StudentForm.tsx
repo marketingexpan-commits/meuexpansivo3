@@ -210,10 +210,9 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
             initialData.telefone_responsavel = student.telefone_responsavel || student.phoneNumber || '';
         }
 
-        // Normalize gradeLevel for UI if existing
+        // Initialize gradeLevel from student if existing
         if (student && student.gradeLevel) {
-            const { grade } = parseGradeLevel(student.gradeLevel);
-            if (grade) initialData.gradeLevel = grade;
+            initialData.gradeLevel = student.gradeLevel;
         }
 
         // Normalize schoolClass (e.g. "03" -> "C")
@@ -596,10 +595,6 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
 
             const dataToSave = {
                 ...formData,
-                // Recompose full gradeLevel string if needed
-                gradeLevel: (formData.gradeLevel && selectedLevel && !formData.gradeLevel.includes(selectedLevel))
-                    ? `${formData.gradeLevel} - ${selectedLevel}`
-                    : formData.gradeLevel,
                 valor_mensalidade: cleanTuition, // Save as dot-decimal string or number
                 phoneNumber: formData.telefone_responsavel, // Ensure root project field is updated
                 ficha_saude: fichaSaude

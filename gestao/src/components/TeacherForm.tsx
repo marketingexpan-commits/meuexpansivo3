@@ -48,6 +48,23 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
 
     useEffect(() => {
         if (teacher) {
+            // Normalize old short grade levels to complete format
+            const normalizedGradeLevels = (teacher.gradeLevels || []).map(tGrade => {
+                if (tGrade.includes(' - ')) return tGrade;
+                const match = grades.find(g => g.name.startsWith(tGrade + ' - '));
+                return match ? match.name : tGrade;
+            });
+
+            // Also normalize assignments
+            const normalizedAssignments = (teacher.assignments || []).map(a => {
+                let gName = a.gradeLevel;
+                if (!gName.includes(' - ')) {
+                    const match = grades.find(g => g.name.startsWith(gName + ' - '));
+                    if (match) gName = match.name;
+                }
+                return { ...a, gradeLevel: gName };
+            });
+
             setFormData({
                 ...teacher,
                 email: teacher.email || '',
@@ -55,11 +72,11 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                 phoneNumber: teacher.phoneNumber || '55',
                 cpf: teacher.cpf ? maskCPF(teacher.cpf) : '',
                 subjects: teacher.subjects || [],
-                gradeLevels: teacher.gradeLevels || [],
-                assignments: teacher.assignments || []
+                gradeLevels: normalizedGradeLevels,
+                assignments: normalizedAssignments
             });
         }
-    }, [teacher]);
+    }, [teacher, grades]);
 
     const handleToggleAssignment = useCallback((gradeLevel: string, subject: string) => {
         setFormData(prev => {

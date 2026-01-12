@@ -43,10 +43,11 @@ export function useAcademicData() {
                         const levelGrades = levelMatches ? levelMatches.grades : [];
 
                         levelGrades.forEach((gName, gIdx) => {
+                            const fullName = `${gName} - ${levelName}`;
                             gradesData.push({
                                 id: `fallback_grade_${sIdx}_${gIdx}`,
                                 segmentId: segmentId,
-                                name: gName,
+                                name: fullName,
                                 isActive: true,
                                 order: (gIdx + 1) * 10
                             });
@@ -89,7 +90,7 @@ export function useAcademicData() {
                 setGrades(GRADES_BY_LEVEL.flatMap((level, idx) =>
                     level.grades.map((g, gIdx) => ({
                         id: `err-grade-${idx}-${gIdx}`,
-                        name: g,
+                        name: `${g} - ${level.level}`,
                         segmentId: `err-seg-${idx}`,
                         isActive: true,
                         order: gIdx
