@@ -214,10 +214,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
         // Normalize gradeLevel for comparison (e.g., "2ª Série - Ensino Médio" -> "2ª Série")
         const { grade: studentGrade } = parseGradeLevel(student.gradeLevel);
 
-        // Always restrict to teacher's assigned grades if they exist
+        // Always restrict to teacher's assigned grades
         const isAssignedGrade = teacher.gradeLevels && teacher.gradeLevels.length > 0
             ? teacher.gradeLevels.includes(studentGrade)
-            : true;
+            : false;
 
         const matchesGrade = filterGrade ? studentGrade === filterGrade : true;
 
