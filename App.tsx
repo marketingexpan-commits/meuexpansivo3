@@ -460,11 +460,22 @@ const AppContent: React.FC = () => {
 
   const handleTeacherLogin = async (cpf: string, pass: string, unit?: string) => {
     try {
-      const snapshot = await db.collection('teachers')
+      // Tentar com o CPF formatado
+      let snapshot = await db.collection('teachers')
         .where('cpf', '==', cpf)
         .where('password', '==', pass)
         .where('unit', '==', unit)
         .get();
+
+      // Se não encontrar, tentar com o CPF apenas números
+      if (snapshot.empty) {
+        const rawCpf = cpf.replace(/\D/g, '');
+        snapshot = await db.collection('teachers')
+          .where('cpf', '==', rawCpf)
+          .where('password', '==', pass)
+          .where('unit', '==', unit)
+          .get();
+      }
 
       if (!snapshot.empty) {
         const teacher = { ...snapshot.docs[0].data(), id: snapshot.docs[0].id } as Teacher;

@@ -53,7 +53,7 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                 email: teacher.email || '',
                 password: teacher.password || '',
                 phoneNumber: teacher.phoneNumber || '55',
-                cpf: teacher.cpf || '',
+                cpf: teacher.cpf ? maskCPF(teacher.cpf) : '',
                 subjects: teacher.subjects || [],
                 gradeLevels: teacher.gradeLevels || [],
                 assignments: teacher.assignments || []
@@ -136,7 +136,6 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
         try {
             const dataToSave = {
                 ...formData,
-                cpf: formData.cpf?.replace(/\D/g, ''),
                 phoneNumber: sanitizePhone(formData.phoneNumber || '')
             };
 
@@ -373,8 +372,8 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                                                         type="button"
                                                         onClick={() => handleToggleAssignment(grade, subject)}
                                                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isLinked
-                                                                ? 'bg-blue-950 text-white border-blue-950 shadow-md shadow-blue-950/20'
-                                                                : 'bg-slate-50 text-slate-400 border-slate-100 hover:border-slate-300'
+                                                            ? 'bg-blue-950 text-white border-blue-950 shadow-md shadow-blue-950/20'
+                                                            : 'bg-slate-50 text-slate-400 border-slate-100 hover:border-slate-300'
                                                             }`}
                                                     >
                                                         {subject}
