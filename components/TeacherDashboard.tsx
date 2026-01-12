@@ -139,6 +139,22 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
 
     const teacherSubjects = teacher.subjects;
 
+    const getFilteredSubjects = useCallback((gradeLevel: string) => {
+        if (!teacher.assignments || teacher.assignments.length === 0) return teacher.subjects;
+        const assignment = teacher.assignments.find(a => a.gradeLevel === gradeLevel);
+        return assignment ? assignment.subjects : teacher.subjects;
+    }, [teacher.assignments, teacher.subjects]);
+
+    const filteredSubjectsForGrades = useMemo(() => {
+        const grade = selectedStudent?.gradeLevel || filterGrade;
+        return getFilteredSubjects(grade);
+    }, [selectedStudent, filterGrade, getFilteredSubjects]);
+
+    const filteredSubjectsForAttendance = useMemo(() => getFilteredSubjects(attendanceGrade), [attendanceGrade, getFilteredSubjects]);
+    const filteredSubjectsForMaterials = useMemo(() => getFilteredSubjects(materialGrade), [materialGrade, getFilteredSubjects]);
+    const filteredSubjectsForAgenda = useMemo(() => getFilteredSubjects(agendaGrade), [agendaGrade, getFilteredSubjects]);
+    const filteredSubjectsForExams = useMemo(() => getFilteredSubjects(examGrade), [examGrade, getFilteredSubjects]);
+
     // Auto-select subject if teacher has only one
     useEffect(() => {
         if (teacherSubjects.length === 1) {
@@ -1017,7 +1033,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Disciplina</label>
                                         <select value={materialSubject} onChange={(e) => setMaterialSubject(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
                                             <option value="">Selecione...</option>
-                                            {teacherSubjects.map(subject => (<option key={subject} value={subject as string}>{subject as string}</option>))}
+                                            {filteredSubjectsForMaterials.map(subject => (<option key={subject} value={subject as string}>{subject as string}</option>))}
                                         </select>
                                     </div>
                                     <div>
@@ -1146,7 +1162,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Disciplina</label>
                                         <select value={agendaSubject} onChange={e => setAgendaSubject(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
                                             <option value="">Selecione...</option>
-                                            {teacherSubjects.map(s => <option key={s} value={s as string}>{s as string}</option>)}
+                                            {filteredSubjectsForAgenda.map(s => <option key={s} value={s as string}>{s as string}</option>)}
                                         </select>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
@@ -1210,7 +1226,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Disciplina</label>
                                         <select value={examSubject} onChange={e => setExamSubject(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
                                             <option value="">Selecione...</option>
-                                            {teacherSubjects.map(s => <option key={s} value={s as string}>{s as string}</option>)}
+                                            {filteredSubjectsForExams.map(s => <option key={s} value={s as string}>{s as string}</option>)}
                                         </select>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
@@ -1405,10 +1421,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                 </div>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                                                     <div>
-                                                        <label className="block text-sm font-bold text-gray-700 mb-1">Disciplina</label>
-                                                        <select value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)} className="w-full p-2.5 border border-gray-300 rounded-md bg-gray-50" required>
+                                                        <select
+                                                            value={selectedSubject}
+                                                            onChange={(e) => {
+                                                                setSelectedSubject(e.target.value);
+                                                                if (selectedStudent) reloadGradeInputState(selectedStudent, e.target.value, selectedStage, grades);
+                                                            }}
+                                                            className="w-full p-2.5 border border-gray-300 rounded-md bg-gray-50 font-medium text-blue-950"
+                                                            required
+                                                        >
                                                             <option value="">Selecione...</option>
-                                                            {teacherSubjects.map(subject => (<option key={subject} value={subject as string}>{subject as string}</option>))}
+                                                            {filteredSubjectsForGrades.map(subject => (<option key={subject} value={subject as string}>{subject as string}</option>))}
                                                         </select>
                                                     </div>
                                                     <div>
@@ -1746,7 +1769,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         <label className="text-sm font-bold text-gray-700 mb-1 block">Disciplina</label>
                                         <select value={attendanceSubject} onChange={e => setAttendanceSubject(e.target.value)} className="w-full p-2 border rounded">
                                             <option value="">Selecione...</option>
-                                            {teacherSubjects.map(subj => <option key={subj} value={subj as string}>{subj as string}</option>)}
+                                            {filteredSubjectsForAttendance.map(subj => <option key={subj} value={subj as string}>{subj as string}</option>)}
                                         </select>
                                     </div>
                                     <div>

@@ -434,6 +434,11 @@ export interface Student {
 }
 
 
+export interface TeacherAssignment {
+  gradeLevel: string;
+  subjects: string[];
+}
+
 export interface Teacher {
   id: string;
   cpf: string;
@@ -445,6 +450,7 @@ export interface Teacher {
   phoneNumber?: string;
   unit: SchoolUnit;
   isBlocked: boolean; // NEW: Access control
+  assignments?: TeacherAssignment[]; // NEW: Linked grade levels and subjects
   createdAt?: string;
   updatedAt?: string;
 }

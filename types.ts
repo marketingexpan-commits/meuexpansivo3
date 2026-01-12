@@ -332,6 +332,11 @@ export interface Student {
   photoUrl?: string; // Base64 or URL for 3x4 student photo
 }
 
+export interface TeacherAssignment {
+  gradeLevel: string;
+  subjects: string[];
+}
+
 export interface Teacher {
   id: string;
   cpf: string;
@@ -340,6 +345,7 @@ export interface Teacher {
   subjects: Subject[];
   phoneNumber?: string;
   unit: SchoolUnit; // Singular: define a unidade deste registro específico
+  assignments?: TeacherAssignment[]; // NEW: Linked grade levels and subjects
 }
 
 export interface Admin {

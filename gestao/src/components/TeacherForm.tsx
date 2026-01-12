@@ -42,6 +42,7 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
         unit: (isAdminGeral ? '' : mappedUnit) as any,
         subjects: [],
         gradeLevels: [],
+        assignments: [],
         isBlocked: false
     });
 
@@ -54,10 +55,41 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                 phoneNumber: teacher.phoneNumber || '55',
                 cpf: teacher.cpf || '',
                 subjects: teacher.subjects || [],
-                gradeLevels: teacher.gradeLevels || []
+                gradeLevels: teacher.gradeLevels || [],
+                assignments: teacher.assignments || []
             });
         }
     }, [teacher]);
+
+    const handleToggleAssignment = (gradeLevel: string, subject: string) => {
+        setFormData(prev => {
+            const currentAssignments = [...(prev.assignments || [])];
+            const assignmentIndex = currentAssignments.findIndex(a => a.gradeLevel === gradeLevel);
+
+            if (assignmentIndex >= 0) {
+                const updatedAssignment = { ...currentAssignments[assignmentIndex] };
+                const subjects = [...updatedAssignment.subjects];
+                const subjectIndex = subjects.indexOf(subject);
+
+                if (subjectIndex >= 0) {
+                    subjects.splice(subjectIndex, 1);
+                } else {
+                    subjects.push(subject);
+                }
+
+                if (subjects.length === 0) {
+                    currentAssignments.splice(assignmentIndex, 1);
+                } else {
+                    updatedAssignment.subjects = subjects;
+                    currentAssignments[assignmentIndex] = updatedAssignment;
+                }
+            } else {
+                currentAssignments.push({ gradeLevel, subjects: [subject] });
+            }
+
+            return { ...prev, assignments: currentAssignments };
+        });
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
@@ -313,6 +345,48 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                             </div>
                         </section>
                     </div>
+
+                    {/* NEW: Linked Assignments Section */}
+                    {formData.gradeLevels && formData.gradeLevels.length > 0 && formData.subjects && formData.subjects.length > 0 && (
+                        <section className="bg-slate-50 rounded-2xl p-6 border border-slate-100 space-y-4">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Layers className="w-5 h-5 text-blue-950" />
+                                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Vínculos de Aula (Matérias por Série)</h3>
+                            </div>
+                            <p className="text-xs text-slate-500 mb-4 italic">
+                                Marque especificamente quais matérias o professor leciona em cada série selecionada.
+                            </p>
+
+                            <div className="space-y-6">
+                                {formData.gradeLevels.map(grade => (
+                                    <div key={grade} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                        <div className="flex items-center gap-2 mb-3 border-b border-slate-50 pb-2">
+                                            <GraduationCap className="w-4 h-4 text-blue-950" />
+                                            <span className="text-xs font-black text-slate-700 uppercase">{grade}</span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {formData.subjects?.map(subject => {
+                                                const isLinked = formData.assignments?.find(a => a.gradeLevel === grade)?.subjects.includes(subject);
+                                                return (
+                                                    <button
+                                                        key={`${grade}-${subject}`}
+                                                        type="button"
+                                                        onClick={() => handleToggleAssignment(grade, subject)}
+                                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isLinked
+                                                                ? 'bg-blue-950 text-white border-blue-950 shadow-md shadow-blue-950/20'
+                                                                : 'bg-slate-50 text-slate-400 border-slate-100 hover:border-slate-300'
+                                                            }`}
+                                                    >
+                                                        {subject}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    )}
                 </form>
 
                 {/* Footer */}
