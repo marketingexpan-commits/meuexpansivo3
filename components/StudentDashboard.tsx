@@ -555,7 +555,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     useEffect(() => {
         if (!student.unit) return;
         const unsubscribe = db.collection('calendar_events')
-            .where('unit', 'in', [student.unit, 'all'])
+            .where('units', 'array-contains-any', [student.unit, 'all'])
             .onSnapshot((snap) => {
                 const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as CalendarEvent));
                 // Sort in memory to avoid needing a composite index

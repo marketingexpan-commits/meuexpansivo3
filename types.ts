@@ -483,6 +483,7 @@ export interface CalendarEvent {
   startDate: string; // ISO (YYYY-MM-DD)
   endDate?: string;
   type: EventType;
+  units: string[]; // List of school units (e.g., ['Zona Norte', 'all'])
 }
 
 // --- SISTEMA DE GRADE HORÁRIA ---

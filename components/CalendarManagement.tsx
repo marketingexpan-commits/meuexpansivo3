@@ -30,7 +30,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
 
         if (filterUnit !== 'all') {
             // @ts-ignore
-            query = query.where('unit', '==', filterUnit);
+            query = query.where('units', 'array-contains-any', [filterUnit, 'all']);
         }
 
         const unsubscribe = query.onSnapshot((snap) => {
@@ -61,7 +61,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
             MOCK_CALENDAR_EVENTS.forEach(event => {
                 const { id, ...eventData } = event; // Remove mock id
                 const docRef = db.collection('calendar_events').doc();
-                batch.set(docRef, { ...eventData, unit: targetUnit, createdAt: new Date().toISOString() });
+                batch.set(docRef, { ...eventData, units: [targetUnit], createdAt: new Date().toISOString() });
             });
             await batch.commit();
             alert("Eventos importados com sucesso!");
@@ -75,17 +75,25 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!editingEvent?.title || !editingEvent?.startDate || !editingEvent?.type || !editingEvent?.unit) {
+        // Check for units array or unit string for legacy compatibility during save
+        const unitToSave = (editingEvent as any).unit || (editingEvent?.units && editingEvent.units[0]);
+
+        if (!editingEvent?.title || !editingEvent?.startDate || !editingEvent?.type || !unitToSave) {
             alert("Por favor, preencha todos os campos obrigatórios.");
             return;
         }
 
         setIsSaving(true);
         try {
-            const data = {
+            // Standardize to units array
+            const units = (editingEvent as any).unit ? [(editingEvent as any).unit] : (editingEvent?.units || []);
+
+            const data: any = {
                 ...editingEvent,
+                units,
                 updatedAt: new Date().toISOString()
             };
+            delete data.unit; // Remove legacy unit field if present
 
             if (editingEvent.id) {
                 await db.collection('calendar_events').doc(editingEvent.id).update(data);
@@ -177,8 +185,8 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                         setEditingEvent({
                                             type: 'event',
                                             startDate: new Date().toISOString().split('T')[0],
-                                            unit: isAdmin ? (filterUnit === 'all' ? 'all' : filterUnit) : unit
-                                        });
+                                            units: [isAdmin ? (filterUnit === 'all' ? 'all' : filterUnit) : unit]
+                                        } as any);
                                         setIsFormOpen(true);
                                     }}
                                     className="!bg-purple-600 hover:!bg-purple-700 text-xs py-2 px-4 flex items-center gap-2"
@@ -217,8 +225,8 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                                     </span>
                                                     {isAdmin && (
                                                         <span className="text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider bg-purple-100 text-purple-600 flex items-center gap-1">
-                                                            {event.unit === 'all' ? < Globe className="w-2.5 h-2.5" /> : null}
-                                                            {event.unit === 'all' ? 'Toda Rede' : event.unit}
+                                                            {event.units && event.units.includes('all') ? < Globe className="w-2.5 h-2.5" /> : null}
+                                                            {event.units && event.units.includes('all') ? 'Toda Rede' : (event.units ? event.units.join(', ') : 'N/A')}
                                                         </span>
                                                     )}
                                                     {event.endDate && (
@@ -279,8 +287,8 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                         <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Unidade Destino</label>
                                         <select
                                             className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-purple-500 outline-none"
-                                            value={editingEvent?.unit || 'all'}
-                                            onChange={e => setEditingEvent({ ...editingEvent, unit: e.target.value })}
+                                            value={(editingEvent as any)?.unit || (editingEvent?.units && editingEvent.units[0]) || 'all'}
+                                            onChange={e => setEditingEvent({ ...editingEvent, units: [e.target.value] } as any)}
                                             required
                                         >
                                             <option value="all">Todas as Unidades (Geral)</option>
