@@ -141,7 +141,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     const teacherSubjects = teacher.subjects;
 
     const filteredGrades = useMemo(() => {
-        if (!teacher.gradeLevels || teacher.gradeLevels.length === 0) return academicGrades;
+        if (!teacher.gradeLevels || teacher.gradeLevels.length === 0) return [];
         return academicGrades.filter(g => teacher.gradeLevels.includes(g.name));
     }, [academicGrades, teacher.gradeLevels]);
 
@@ -389,6 +389,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
         const studentsInClass = students.filter(s => {
             const { grade: sGrade } = parseGradeLevel(s.gradeLevel);
             const sClass = normalizeClass(s.schoolClass);
+
+            // Security check: restrict to teacher's assigned grades
+            const isAssignedGrade = teacher.gradeLevels && teacher.gradeLevels.length > 0
+                ? teacher.gradeLevels.includes(sGrade)
+                : false;
+
+            if (!isAssignedGrade) return false;
 
             return s.unit === activeUnit &&
                 sGrade === attendanceGrade &&
