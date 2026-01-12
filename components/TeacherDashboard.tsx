@@ -13,7 +13,7 @@ import { db, storage } from '../firebaseConfig';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 import { getAttendanceBreakdown, AttendanceBreakdown } from '../src/utils/attendanceUtils';
-import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester } from '../src/utils/academicUtils';
+import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, parseGradeLevel, normalizeClass } from '../src/utils/academicUtils';
 import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST, EARLY_CHILDHOOD_REPORT_TEMPLATE } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency } from '../utils/frequency';
 import { Button } from './Button';
@@ -48,6 +48,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     const activeUnit = teacher.unit;
     const [filterGrade, setFilterGrade] = useState<string>('');
     const [filterShift, setFilterShift] = useState<string>('');
+    const [filterClass, setFilterClass] = useState<string>('');
     const [searchTerm, setSearchTerm] = useState<string>('');
 
     // Estados para Lançamento de Notas (Fundamental/Médio)
@@ -209,14 +210,29 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
 
     const filteredStudents = useMemo(() => students.filter(student => {
         const matchesUnit = student.unit === activeUnit;
-        const matchesGrade = filterGrade ? student.gradeLevel === filterGrade : true;
+
+        // Normalize gradeLevel for comparison (e.g., "2ª Série - Ensino Médio" -> "2ª Série")
+        const { grade: studentGrade } = parseGradeLevel(student.gradeLevel);
+
+        // Always restrict to teacher's assigned grades if they exist
+        const isAssignedGrade = teacher.gradeLevels && teacher.gradeLevels.length > 0
+            ? teacher.gradeLevels.includes(studentGrade)
+            : true;
+
+        const matchesGrade = filterGrade ? studentGrade === filterGrade : true;
+
         const matchesShift = filterShift ? student.shift === filterShift : true;
+
+        // Normalize schoolClass for comparison (e.g., "01" -> "A")
+        const studentClass = normalizeClass(student.schoolClass);
+        const matchesClass = filterClass ? studentClass === filterClass : true;
+
         const matchesSearch = searchTerm ? (
             student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             student.code.toLowerCase().includes(searchTerm.toLowerCase())
         ) : true;
-        return matchesUnit && matchesGrade && matchesShift && matchesSearch;
-    }), [students, activeUnit, filterGrade, filterShift, searchTerm]);
+        return matchesUnit && isAssignedGrade && matchesGrade && matchesShift && matchesClass && matchesSearch;
+    }), [students, activeUnit, teacher.gradeLevels, filterGrade, filterShift, filterClass, searchTerm]);
 
     const { absenceData, currentBimester } = useMemo(() => {
         if (attendanceStudents.length === 0) return { absenceData: {} as Record<string, StudentAbsenceSummary>, currentBimester: 1 };
@@ -370,12 +386,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
         if (!attendanceGrade) { alert("Por favor, selecione uma série."); return; }
         if (!attendanceSubject) { alert("Por favor, selecione uma disciplina."); return; }
         setIsAttendanceLoading(true);
-        const studentsInClass = students.filter(s =>
-            s.unit === activeUnit &&
-            s.gradeLevel === attendanceGrade &&
-            s.schoolClass === attendanceClass &&
-            (!attendanceShift || s.shift === attendanceShift)
-        );
+        const studentsInClass = students.filter(s => {
+            const { grade: sGrade } = parseGradeLevel(s.gradeLevel);
+            const sClass = normalizeClass(s.schoolClass);
+
+            return s.unit === activeUnit &&
+                sGrade === attendanceGrade &&
+                sClass === attendanceClass &&
+                (!attendanceShift || s.shift === attendanceShift);
+        });
         setAttendanceStudents(studentsInClass);
         // ID Includes Discipline now
         const recordId = `${attendanceDate}_${activeUnit}_${attendanceGrade}_${attendanceClass}_${attendanceSubject}`;
@@ -1305,6 +1324,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                     <select value={filterShift} onChange={e => setFilterShift(e.target.value)} className="w-full text-sm p-2 border border-gray-300 rounded focus:ring-blue-950 focus:border-blue-950">
                                         <option value="">Todos os Turnos</option>
                                         {SCHOOL_SHIFTS_LIST.map((shift) => (<option key={shift} value={shift}>{shift}</option>))}
+                                    </select>
+                                    <select value={filterClass} onChange={e => setFilterClass(e.target.value)} className="w-full text-sm p-2 border border-gray-300 rounded focus:ring-blue-950 focus:border-blue-950">
+                                        <option value="">Todas as Turmas</option>
+                                        {SCHOOL_CLASSES_LIST.map((cls) => (<option key={cls} value={cls}>{cls}</option>))}
                                     </select>
                                     <input
                                         type="text"
