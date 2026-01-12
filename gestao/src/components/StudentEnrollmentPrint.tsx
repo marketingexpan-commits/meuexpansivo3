@@ -46,7 +46,7 @@ export function StudentEnrollmentPrint({ student, unitDetail, isBlank = false }:
     };
 
     return (
-        <div className="print-document bg-white p-6 text-black font-sans leading-relaxed relative flex flex-col justify-between" style={{ width: '210mm', minHeight: '297mm', margin: '0 auto', fontFamily: "'Inter', sans-serif", boxSizing: 'border-box' }}>
+        <div className="print-document bg-white p-6 text-black font-sans leading-relaxed relative flex flex-col justify-between" style={{ width: '100%', maxWidth: '210mm', minHeight: '297mm', margin: '0 auto', fontFamily: "'Inter', sans-serif", boxSizing: 'border-box' }}>
 
             {/* Watermark */}
             <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none z-0">
@@ -85,57 +85,68 @@ export function StudentEnrollmentPrint({ student, unitDetail, isBlank = false }:
                 {/* I. Identificação do Aluno */}
                 <section className="mb-3">
                     <h3 className="text-[9px] font-black uppercase text-black border-l-[3px] border-black pl-2 mb-1 tracking-widest bg-gray-50 py-1">I. Identificação do Aluno</h3>
-                    <div className="grid grid-cols-6 gap-x-4 gap-y-2 text-[9px] p-3 border-[0.5px] border-black rounded-lg">
-                        <div className="col-span-4 flex flex-col">
-                            <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">Nome Completo do Aluno</span>
-                            <div className="uppercase flex items-baseline">{val(student.name, 'full')}</div>
-                        </div>
-                        <div className="col-span-2 flex flex-col">
-                            <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">Código SGA / Matrícula</span>
-                            <div className="flex items-baseline">{val(student.code, 'full')}</div>
-                        </div>
-
-                        <div className="col-span-1.5 flex flex-col">
-                            <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">Data Nasc.</span>
-                            <div className="flex items-baseline">{val(student.data_nascimento, 'full')}</div>
-                        </div>
-                        <div className="col-span-1 flex flex-col">
-                            <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">Sexo</span>
-                            <div className="capitalize flex items-baseline">{val(student.sexo, 'full')}</div>
-                        </div>
-                        <div className="col-span-1.5 flex flex-col">
-                            <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">RG do Aluno</span>
-                            <div className="flex items-baseline">{val(student.identidade_rg, 'full')}</div>
-                        </div>
-                        <div className="col-span-2 flex flex-col">
-                            <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">CPF do Aluno</span>
-                            <div className="flex items-baseline">{val(student.cpf_aluno, 'full')}</div>
+                    <div className="flex gap-3 p-3 border-[0.5px] border-black rounded-lg">
+                        {/* Foto 3x4 */}
+                        <div className="w-[2.6cm] h-[3.4cm] border-[0.5px] border-dashed border-gray-300 rounded flex items-center justify-center bg-gray-50 flex-shrink-0 overflow-hidden relative">
+                            {!isBlank && student.photoUrl ? (
+                                <img src={student.photoUrl} alt="Foto" className="w-full h-full object-cover" />
+                            ) : (
+                                <span className="text-[7px] text-gray-400 font-bold text-center leading-tight">FOTO<br />3x4</span>
+                            )}
                         </div>
 
-                        <div className="col-span-2 flex flex-col">
-                            <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">Nacionalidade</span>
-                            <div className="uppercase flex items-baseline">{val(student.nacionalidade, 'full')}</div>
-                        </div>
-                        <div className="col-span-3 flex flex-col">
-                            <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">Naturalidade (Cidade/UF)</span>
-                            <div className="uppercase flex items-baseline">{val(`${student.naturalidade || ''}${student.uf_naturalidade ? ` - ${student.uf_naturalidade}` : ''}`, 'full')}</div>
-                        </div>
-                        <div className="col-span-1 flex flex-col">
-                            <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">Turno</span>
-                            <div className="uppercase flex items-baseline">{val(student.shift, 'full')}</div>
-                        </div>
+                        <div className="flex-grow grid grid-cols-6 gap-x-4 gap-y-2 text-[9px]">
+                            <div className="col-span-4 flex flex-col">
+                                <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">Nome Completo do Aluno</span>
+                                <div className="uppercase flex items-baseline">{val(student.name, 'full')}</div>
+                            </div>
+                            <div className="col-span-2 flex flex-col">
+                                <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">Código SGA / Matrícula</span>
+                                <div className="flex items-baseline">{val(student.code, 'full')}</div>
+                            </div>
 
-                        <div className="col-span-2 flex flex-col">
-                            <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">Série / Ano</span>
-                            <div className="text-blue-900 uppercase font-bold flex items-baseline">{val(student.gradeLevel, 'full')}</div>
-                        </div>
-                        <div className="col-span-1 flex flex-col">
-                            <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">Turma</span>
-                            <div className="uppercase flex items-baseline">{val(student.schoolClass, 'full')}</div>
-                        </div>
-                        <div className="col-span-3 flex flex-col">
-                            <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">Unidade de Ensino</span>
-                            <div className="uppercase flex items-baseline">{val(student.unit, 'full')}</div>
+                            <div className="col-span-1.5 flex flex-col">
+                                <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">Data Nasc.</span>
+                                <div className="flex items-baseline">{val(student.data_nascimento, 'full')}</div>
+                            </div>
+                            <div className="col-span-1 flex flex-col">
+                                <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">Sexo</span>
+                                <div className="capitalize flex items-baseline">{val(student.sexo, 'full')}</div>
+                            </div>
+                            <div className="col-span-1.5 flex flex-col">
+                                <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">RG do Aluno</span>
+                                <div className="flex items-baseline">{val(student.identidade_rg, 'full')}</div>
+                            </div>
+                            <div className="col-span-2 flex flex-col">
+                                <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">CPF do Aluno</span>
+                                <div className="flex items-baseline">{val(student.cpf_aluno, 'full')}</div>
+                            </div>
+
+                            <div className="col-span-2 flex flex-col">
+                                <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">Nacionalidade</span>
+                                <div className="uppercase flex items-baseline">{val(student.nacionalidade, 'full')}</div>
+                            </div>
+                            <div className="col-span-3 flex flex-col">
+                                <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">Naturalidade (Cidade/UF)</span>
+                                <div className="uppercase flex items-baseline">{val(`${student.naturalidade || ''}${student.uf_naturalidade ? ` - ${student.uf_naturalidade}` : ''}`, 'full')}</div>
+                            </div>
+                            <div className="col-span-1 flex flex-col">
+                                <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">Turno</span>
+                                <div className="uppercase flex items-baseline">{val(student.shift, 'full')}</div>
+                            </div>
+
+                            <div className="col-span-2 flex flex-col">
+                                <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">Série / Ano</span>
+                                <div className="text-blue-900 uppercase font-bold flex items-baseline">{val(student.gradeLevel, 'full')}</div>
+                            </div>
+                            <div className="col-span-1 flex flex-col">
+                                <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">Turma</span>
+                                <div className="uppercase flex items-baseline">{val(student.schoolClass, 'full')}</div>
+                            </div>
+                            <div className="col-span-3 flex flex-col">
+                                <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">Unidade de Ensino</span>
+                                <div className="uppercase flex items-baseline">{val(student.unit, 'full')}</div>
+                            </div>
                         </div>
                     </div>
                 </section>

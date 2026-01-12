@@ -17,7 +17,8 @@ import {
 
 import { MOCK_CALENDAR_EVENTS, SCHOOL_UNITS_LIST } from '../constants';
 import { Button } from './Button';
-import { X, Plus, Trash2, Calendar as CalendarIcon, Clock, Database, Globe, Edit2, Settings, Save, AlertCircle } from 'lucide-react';
+import { X, Plus, Trash2, Calendar as CalendarIcon, Clock, Database, Globe, Edit2, Settings, Save, AlertCircle, Printer } from 'lucide-react';
+import { generateSchoolCalendar } from '../utils/calendarGenerator';
 
 interface CalendarManagementProps {
     isOpen: boolean;
@@ -41,12 +42,12 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
     const [filterUnit, setFilterUnit] = useState<string>(isAdmin ? 'all' : unit);
 
     useEffect(() => {
-        if (!isOpen || !isAdmin) return;
+        if (!isOpen) return;
         const unsubscribe = subscribeToAcademicSettings(2026, filterUnit, (settings) => {
             setAcademicSettings(settings);
         });
         return () => unsubscribe();
-    }, [isOpen, isAdmin, filterUnit]);
+    }, [isOpen, filterUnit]);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -193,22 +194,45 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                             <CalendarIcon className="w-6 h-6" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-black text-gray-900 tracking-tight leading-none">Gerenciar Calendário {isAdmin && '(Painel Admin)'}</h2>
+                            <h2 className="text-xl font-black text-gray-900 tracking-tight leading-none">
+                                Gerenciar Calendário {isAdmin ? '(Painel Admin)' : `- ${unit}`}
+                            </h2>
                             <div className="flex items-center gap-4 mt-2">
                                 <button
                                     onClick={() => setActiveTab('events')}
-                                    className={`text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === 'events' ? 'text-blue-950 border-b-2 border-blue-950' : 'text-gray-400 hover:text-gray-600'}`}
+                                    className={`text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${activeTab === 'events' ? 'text-blue-950 border-b-2 border-blue-950' : 'text-gray-400 hover:text-gray-600'}`}
                                 >
                                     Eventos
                                 </button>
+                                <button
+                                    onClick={() => setActiveTab('settings')}
+                                    className={`text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${activeTab === 'settings' ? 'text-blue-950 border-b-2 border-blue-950' : 'text-gray-400 hover:text-gray-600'}`}
+                                >
+                                    Configurações
+                                </button>
                                 {isAdmin && (
-                                    <button
-                                        onClick={() => setActiveTab('settings')}
-                                        className={`text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === 'settings' ? 'text-blue-950 border-b-2 border-blue-950' : 'text-gray-400 hover:text-gray-600'}`}
-                                    >
-                                        Configurações
-                                    </button>
+                                    <div className="flex items-center gap-2 ml-4 pl-4 border-l border-gray-200">
+                                        <Globe className="w-3.5 h-3.5 text-blue-500" />
+                                        <select
+                                            className="text-[10px] font-black uppercase tracking-widest text-blue-900 bg-blue-50/50 border-none rounded-lg py-1 px-2 outline-none cursor-pointer hover:bg-blue-100 transition-colors"
+                                            value={filterUnit}
+                                            onChange={(e) => setFilterUnit(e.target.value)}
+                                        >
+                                            <option value="all">Rede (Padrão)</option>
+                                            {SCHOOL_UNITS_LIST.map(u => (
+                                                <option key={u} value={u}>{u}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 )}
+                                <button
+                                    onClick={() => generateSchoolCalendar(events, academicSettings, filterUnit)}
+                                    className="flex items-center gap-1.5 ml-4 px-3 py-1 bg-white border border-gray-200 text-gray-500 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-gray-50 hover:text-blue-950 transition-all shadow-sm active:scale-95 cursor-pointer"
+                                    title="Imprimir Calendário Escolar"
+                                >
+                                    <Printer className="w-3 h-3" />
+                                    Imprimir
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -229,18 +253,6 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                             <Clock className="w-4 h-4" />
                                             Próximos Eventos ({events.length})
                                         </h3>
-                                        {isAdmin && (
-                                            <select
-                                                className="text-xs font-bold text-blue-950 bg-blue-50 border-none rounded-lg p-1 outline-none"
-                                                value={filterUnit}
-                                                onChange={(e) => setFilterUnit(e.target.value)}
-                                            >
-                                                <option value="all">Todas as Unidades</option>
-                                                {SCHOOL_UNITS_LIST.map(u => (
-                                                    <option key={u} value={u}>{u}</option>
-                                                ))}
-                                            </select>
-                                        )}
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {(events.length === 0 || isAdmin) && !loading && (

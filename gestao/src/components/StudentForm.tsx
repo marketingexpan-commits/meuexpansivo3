@@ -781,24 +781,6 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                         Tirar Foto
                                     </Button>
 
-                                    <div className="relative group w-full">
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            className="w-full gap-2 text-[10px] h-8"
-                                        >
-                                            <Upload className="w-3 h-3" />
-                                            Anexar Arquivo
-                                        </Button>
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={handleFileChange}
-                                            className="absolute inset-0 opacity-0 cursor-pointer"
-                                            title="Anexar foto 3x4"
-                                        />
-                                    </div>
                                 </div>
                                 <div className="mt-2 text-center md:text-left">
                                     <p className="text-[9px] text-slate-400">Padrão 3x4 (JPEG/PNG)</p>
