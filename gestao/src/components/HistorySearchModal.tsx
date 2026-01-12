@@ -10,6 +10,8 @@ import { generateSchoolHistory } from '../utils/historyGenerator';
 import type { Student, AcademicHistoryRecord, AttendanceRecord } from '../types';
 import { useSchoolUnits } from '../hooks/useSchoolUnits';
 import { HistoryEditor } from './HistoryEditor';
+import { getAcademicSettings } from '../services/academicSettings';
+import type { AcademicSettings } from '../types';
 
 interface HistorySearchModalProps {
     onClose: () => void;
@@ -27,6 +29,7 @@ export function HistorySearchModal({ onClose }: HistorySearchModalProps) {
     const [foundStudentInfo, setFoundStudentInfo] = useState<Student | null>(null);
     const [currentGrades, setCurrentGrades] = useState<any[]>([]);
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+    const [academicSettings, setAcademicSettings] = useState<AcademicSettings | null>(null);
 
     const handleSearch = async () => {
         if (!code.trim()) {
@@ -56,6 +59,10 @@ export function HistorySearchModal({ onClose }: HistorySearchModalProps) {
             setCurrentGrades(grades);
             setAttendanceRecords(attendance);
 
+            // Fetch Settings
+            const settings = await getAcademicSettings(2026, student.unit);
+            setAcademicSettings(settings);
+
             setFoundStudentInfo(student);
             setStep('EDITOR');
 
@@ -77,7 +84,7 @@ export function HistorySearchModal({ onClose }: HistorySearchModalProps) {
         }
 
         try {
-            generateSchoolHistory(foundStudentInfo, enteredRecords, currentGrades, attendanceRecords, unitDetail, academicSubjects);
+            generateSchoolHistory(foundStudentInfo, enteredRecords, currentGrades, attendanceRecords, unitDetail, academicSubjects, academicSettings);
         } catch (e) {
             console.error("Error generating history:", e);
             alert("Erro ao gerar o PDF. Verifique se o bloqueador de pop-ups está ativo.");

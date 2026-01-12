@@ -9,6 +9,8 @@ import { generateSchoolBulletin, generateBatchSchoolBulletin } from '../utils/bu
 import type { Student } from '../types';
 import { SCHOOL_SHIFTS, SCHOOL_CLASSES_OPTIONS } from '../utils/academicDefaults';
 import { useSchoolUnits } from '../hooks/useSchoolUnits';
+import { getAcademicSettings } from '../services/academicSettings';
+import type { AcademicSettings } from '../types';
 
 interface BulletinSearchModalProps {
     onClose: () => void;
@@ -37,6 +39,7 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
     // Results
     const [foundStudents, setFoundStudents] = useState<Student[]>([]); // Array for single or multiple
     const [preparedData, setPreparedData] = useState<any[]>([]); // { student, grades, attendance }
+    const [academicSettings, setAcademicSettings] = useState<AcademicSettings | null>(null);
 
     const handleSearch = async () => {
         setIsLoading(true);
@@ -80,6 +83,12 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
                 });
 
                 const finalData = await Promise.all(dataPromises);
+
+                // Fetch Academic Settings for the unit
+                const unitToFetch = results[0].unit;
+                const settings = await getAcademicSettings(2026, unitToFetch);
+                setAcademicSettings(settings);
+
                 setFoundStudents(results);
                 setPreparedData(finalData);
                 setStep('CONFIRM');
@@ -107,9 +116,9 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
 
         try {
             if (preparedData.length === 1) {
-                generateSchoolBulletin(preparedData[0].student, preparedData[0].grades, preparedData[0].attendance, unitDetail, academicSubjects);
+                generateSchoolBulletin(preparedData[0].student, preparedData[0].grades, preparedData[0].attendance, unitDetail, academicSubjects, academicSettings);
             } else {
-                generateBatchSchoolBulletin(preparedData, unitDetail, academicSubjects);
+                generateBatchSchoolBulletin(preparedData, unitDetail, academicSubjects, academicSettings);
             }
         }
         catch (e) {

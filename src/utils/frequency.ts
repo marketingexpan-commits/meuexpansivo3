@@ -1,6 +1,7 @@
 import { CURRICULUM_MATRIX } from "../constants";
 import { AttendanceStatus } from "../types";
-import { getBimesterFromDate, getCurrentSchoolYear } from "./academicUtils";
+import type { AcademicSettings } from "../types";
+import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester } from "./academicUtils";
 
 /**
  * Calculates the attendance percentage for a given subject and student grade level.
@@ -53,7 +54,8 @@ export const calculateGeneralFrequency = (
     grades: any[],
     attendanceRecords: any[],
     studentId: string,
-    gradeLevel: string
+    gradeLevel: string,
+    settings?: AcademicSettings | null
 ): string => {
     if (!grades || grades.length === 0) return '-';
 
@@ -75,7 +77,8 @@ export const calculateGeneralFrequency = (
             [1, 2, 3, 4].forEach(bim => {
                 const hasRecords = attendanceRecords.some(record => {
                     const rYear = parseInt(record.date.split('-')[0], 10);
-                    return rYear === currentYear && record.discipline === g.subject && getBimesterFromDate(record.date) === bim;
+                    const b = settings ? getDynamicBimester(record.date, settings) : getBimesterFromDate(record.date);
+                    return rYear === currentYear && record.discipline === g.subject && b === bim;
                 });
                 if (hasRecords) activeBimesters++;
             });

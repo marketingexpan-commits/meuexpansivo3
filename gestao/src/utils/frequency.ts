@@ -1,7 +1,7 @@
-import { CURRICULUM_MATRIX } from "./academicDefaults";
 import { AttendanceStatus } from "../types";
-import type { GradeEntry, AttendanceRecord, AcademicSubject } from "../types";
-import { getBimesterFromDate, getCurrentSchoolYear } from "./academicUtils";
+import type { AcademicSettings, GradeEntry, AttendanceRecord, AcademicSubject } from "../types";
+import { CURRICULUM_MATRIX } from "../constants";
+import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester } from "./academicUtils";
 
 /**
  * Calculates the attendance percentage for a given subject and student grade level.
@@ -62,8 +62,13 @@ export const calculateAnnualAttendancePercentage = (
     totalAbsences: number,
     gradeLevel: string,
     elapsedBimesters: number = 4,
-    academicSubjects?: AcademicSubject[]
+    academicSubjects?: AcademicSubject[],
+    settings?: AcademicSettings | null
 ): number | null => {
+    // Determine effective elapsed bimesters if not explicitly provided (other than default 4)
+    const effectiveElapsed = (settings && elapsedBimesters === 4)
+        ? Math.max(1, getDynamicBimester(new Date().toISOString().split('T')[0], settings))
+        : elapsedBimesters;
     // 1. Try Dynamic Lookup
     if (academicSubjects && academicSubjects.length > 0) {
         const dynamicSubject = academicSubjects.find(s => s.name === subject);
@@ -72,7 +77,7 @@ export const calculateAnnualAttendancePercentage = (
             if (gradeKey) {
                 const weeklyClasses = dynamicSubject.weeklyHours[gradeKey];
                 if (weeklyClasses > 0) {
-                    const totalExpectedClasses = weeklyClasses * 10 * elapsedBimesters;
+                    const totalExpectedClasses = weeklyClasses * 10 * effectiveElapsed;
                     if (totalExpectedClasses === 0) return 100;
                     const percentage = ((totalExpectedClasses - totalAbsences) / totalExpectedClasses) * 100;
                     return Math.max(0, Math.min(100, parseFloat(percentage.toFixed(1))));
@@ -95,7 +100,7 @@ export const calculateAnnualAttendancePercentage = (
     const weeklyClasses = levelMatrix[subject];
     if (weeklyClasses === undefined || weeklyClasses === 0) return null;
 
-    const totalExpectedClasses = weeklyClasses * 10 * elapsedBimesters;
+    const totalExpectedClasses = weeklyClasses * 10 * effectiveElapsed;
     if (totalExpectedClasses === 0) return 100;
 
     const percentage = ((totalExpectedClasses - totalAbsences) / totalExpectedClasses) * 100;
@@ -113,18 +118,19 @@ export const calculateGeneralFrequency = (
     gradeLevel: string,
     studentUnit?: string,
     studentClass?: string,
-    academicSubjects?: AcademicSubject[]
+    academicSubjects?: AcademicSubject[],
+    settings?: AcademicSettings | null
 ): string => {
     const currentYear = getCurrentSchoolYear();
     const today = new Date().toISOString().split('T')[0];
-    const calendarBim = getBimesterFromDate(today);
+    const calendarBim = settings ? getDynamicBimester(today, settings) : getBimesterFromDate(today);
 
     // Dynamic detection of elapsed bimesters
     const maxDataBim = (attendanceRecords || []).reduce((max, record) => {
         const rYear = parseInt(record.date.split('-')[0], 10);
         if (rYear !== currentYear) return max;
         if (!record.studentStatus || !record.studentStatus[studentId]) return max;
-        const b = getBimesterFromDate(record.date);
+        const b = settings ? getDynamicBimester(record.date, settings) : getBimesterFromDate(record.date);
         return b > max ? b : max;
     }, 1);
     const elapsedBimesters = Math.max(calendarBim, maxDataBim);

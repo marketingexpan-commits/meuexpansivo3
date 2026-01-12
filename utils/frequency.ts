@@ -1,7 +1,8 @@
 import { CURRICULUM_MATRIX } from "../src/utils/academicDefaults";
 import { AttendanceStatus } from "../types";
 import type { GradeEntry, AttendanceRecord, AcademicSubject } from "../types";
-import { getBimesterFromDate, getCurrentSchoolYear } from "../src/utils/academicUtils";
+import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester } from "../src/utils/academicUtils";
+import type { AcademicSettings } from "../types";
 
 /**
  * Calculates the attendance percentage for a given subject and student grade level.
@@ -71,8 +72,13 @@ export const calculateAnnualAttendancePercentage = (
     totalAbsences: number,
     gradeLevel: string,
     elapsedBimesters: number = 4,
-    academicSubjects?: AcademicSubject[]
+    academicSubjects?: AcademicSubject[],
+    settings?: AcademicSettings | null
 ): number | null => {
+    // Determine effective elapsed bimesters if not explicitly provided (other than default 4)
+    const effectiveElapsed = (settings && elapsedBimesters === 4)
+        ? Math.max(1, getDynamicBimester(new Date().toISOString().split('T')[0], settings))
+        : elapsedBimesters;
     // 1. Try Dynamic Lookup
     if (academicSubjects && academicSubjects.length > 0) {
         const dynamicSubject = academicSubjects.find(s => s.name === subject);
@@ -81,7 +87,7 @@ export const calculateAnnualAttendancePercentage = (
             if (gradeKey) {
                 const weeklyClasses = dynamicSubject.weeklyHours[gradeKey];
                 if (weeklyClasses > 0) {
-                    const totalExpectedClasses = weeklyClasses * 10 * elapsedBimesters;
+                    const totalExpectedClasses = weeklyClasses * 10 * effectiveElapsed;
                     if (totalExpectedClasses === 0) return 100;
                     const percentage = ((totalExpectedClasses - totalAbsences) / totalExpectedClasses) * 100;
                     return Math.max(0, Math.min(100, parseFloat(percentage.toFixed(1))));
@@ -121,11 +127,12 @@ export const calculateGeneralFrequency = (
     attendanceRecords: AttendanceRecord[],
     studentId: string,
     gradeLevel: string,
-    academicSubjects?: AcademicSubject[]
+    academicSubjects?: AcademicSubject[],
+    settings?: AcademicSettings | null
 ): string => {
     const currentYear = getCurrentSchoolYear();
     const today = new Date().toISOString().split('T')[0];
-    const calendarBim = getBimesterFromDate(today);
+    const calendarBim = getDynamicBimester(today, settings as AcademicSettings);
 
     // Find the furthest bimester that has any registered data (absences) for this student
     const maxDataBim = (attendanceRecords || []).reduce((max, record) => {
@@ -133,7 +140,7 @@ export const calculateGeneralFrequency = (
         if (rYear !== currentYear) return max;
         if (!record.studentStatus || !record.studentStatus[studentId]) return max;
 
-        const b = getBimesterFromDate(record.date);
+        const b = getDynamicBimester(record.date, settings as AcademicSettings);
         return b > max ? b : max;
     }, 1);
 
@@ -177,7 +184,7 @@ export const calculateGeneralFrequency = (
     // 2. Calculate Total Absences (Sum of all logs for this student up to the active bimesters)
     const totalAbsences = (attendanceRecords || []).filter(record => {
         const rYear = parseInt(record.date.split('-')[0], 10);
-        const rBim = getBimesterFromDate(record.date);
+        const rBim = getDynamicBimester(record.date, settings);
         return rYear === currentYear &&
             rBim <= elapsedBimesters &&
             record.studentStatus &&
@@ -198,7 +205,8 @@ export const calculateBimesterGeneralFrequency = (
     studentId: string,
     gradeLevel: string,
     bimester: number,
-    academicSubjects?: AcademicSubject[]
+    academicSubjects?: AcademicSubject[],
+    settings?: AcademicSettings | null
 ): string => {
     const currentYear = getCurrentSchoolYear();
 
@@ -240,7 +248,7 @@ export const calculateBimesterGeneralFrequency = (
     // 2. Calculate Total Absences for this bimester
     const totalAbsences = (attendanceRecords || []).filter(record => {
         const rYear = parseInt(record.date.split('-')[0], 10);
-        const rBim = getBimesterFromDate(record.date);
+        const rBim = getDynamicBimester(record.date, settings);
         return rYear === currentYear &&
             rBim === bimester &&
             record.studentStatus &&

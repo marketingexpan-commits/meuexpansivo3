@@ -13,7 +13,7 @@ import { db, storage } from '../firebaseConfig';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 import { getAttendanceBreakdown, AttendanceBreakdown } from '../src/utils/attendanceUtils';
-import { getBimesterFromDate, getCurrentSchoolYear } from '../src/utils/academicUtils';
+import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester } from '../src/utils/academicUtils';
 import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST, EARLY_CHILDHOOD_REPORT_TEMPLATE } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency } from '../utils/frequency';
 import { Button } from './Button';
@@ -32,13 +32,14 @@ interface TeacherDashboardProps {
     onLogout: () => void;
     notifications?: AppNotification[];
     onMarkNotificationAsRead?: (id: string) => Promise<void>;
+    academicSettings?: any;
 }
 
 const formatGrade = (value: number | undefined | null) => {
     return value !== undefined && value !== null && value !== -1 ? value.toFixed(1) : '-';
 };
 
-export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, students, grades, attendanceRecords, earlyChildhoodReports, onSaveGrade, onSaveAttendance, onSaveEarlyChildhoodReport, onLogout, notifications = [], onMarkNotificationAsRead }) => {
+export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, students, grades, attendanceRecords, earlyChildhoodReports, onSaveGrade, onSaveAttendance, onSaveEarlyChildhoodReport, onLogout, notifications = [], onMarkNotificationAsRead, academicSettings }) => {
     const { grades: academicGrades, subjects: academicSubjects, loading: loadingAcademic } = useAcademicData();
 
     const [activeTab, setActiveTab] = useState<'menu' | 'grades' | 'attendance' | 'tickets' | 'materials'>('menu');
@@ -75,7 +76,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     };
 
     // New State for Bimester Filter - Default to current bimester
-    const [selectedFilterBimester, setSelectedFilterBimester] = useState<number>(Math.floor(new Date().getMonth() / 3) + 1);
+    const [selectedFilterBimester, setSelectedFilterBimester] = useState<number>(() => getDynamicBimester(new Date().toISOString().split('T')[0], academicSettings));
 
 
     // Estados para a Chamada
@@ -162,7 +163,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                 const yNum = Number(y);
 
                 if (yNum === currentYear) {
-                    const bimester = getBimesterFromDate(record.date);
+                    const bimester = getDynamicBimester(record.date, academicSettings);
                     absences[bimester]++;
                 }
             }
@@ -379,7 +380,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
             const currentSchoolYear = getCurrentSchoolYear();
 
             // Determine Bimester
-            const targetBimester = getBimesterFromDate(attendanceDate);
+            const targetBimester = getDynamicBimester(attendanceDate, academicSettings);
 
             if (targetBimester && yearNum === currentSchoolYear) {
                 const bimesterKey = `bimester${targetBimester}` as keyof GradeEntry['bimesters'];
@@ -403,7 +404,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                             const yN = Number(y);
                             if (yN !== currentSchoolYear) return;
 
-                            if (getBimesterFromDate(r.date) === targetBimester) {
+                            if (getDynamicBimester(r.date, academicSettings) === targetBimester) {
                                 totalAbsences++;
                             }
                         }
@@ -1577,7 +1578,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                         finalGrades.sort((a, b) => subjectsInCurriculum.indexOf(a.subject) - subjectsInCurriculum.indexOf(b.subject));
                                                                     }
 
-                                                                    const generalFreq = calculateGeneralFrequency(finalGrades, attendanceRecords, selectedStudent.id, selectedStudent.gradeLevel || "", academicSubjects);
+                                                                    const generalFreq = calculateGeneralFrequency(finalGrades, attendanceRecords, selectedStudent.id, selectedStudent.gradeLevel || "", academicSubjects, academicSettings);
 
                                                                     return (
                                                                         <>
@@ -1602,7 +1603,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
 
                                                                                                 if (yNum === getCurrentSchoolYear()) {
                                                                                                     // Explicit check against bimesterNum (1,2,3,4)
-                                                                                                    if (getBimesterFromDate(record.date) === bimesterNum) return acc + 1;
+                                                                                                    if (getDynamicBimester(record.date, academicSettings) === bimesterNum) return acc + 1;
 
 
 
@@ -1650,7 +1651,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                                             ).filter(att => {
                                                                                                 const d = new Date(att.date + 'T00:00:00');
                                                                                                 const m = d.getMonth() + 1;
-                                                                                                if (getBimesterFromDate(att.date) === bNum && parseInt(att.date.split('-')[0], 10) === getCurrentSchoolYear()) return true;
+                                                                                                if (getDynamicBimester(att.date, academicSettings) === bNum && parseInt(att.date.split('-')[0], 10) === getCurrentSchoolYear()) return true;
 
 
 
@@ -1660,7 +1661,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                                                                             return sum + studentAbsSnapshot;
                                                                                         }, 0);
 
-                                                                                        const annualFreq = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, selectedStudent.gradeLevel || "", 4, academicSubjects);
+                                                                                        const annualFreq = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, selectedStudent.gradeLevel || "", 4, academicSubjects, academicSettings);
                                                                                         const isCritical = annualFreq !== null && annualFreq < 75;
                                                                                         const hasAbsenceTotal = totalAbsences > 0;
 

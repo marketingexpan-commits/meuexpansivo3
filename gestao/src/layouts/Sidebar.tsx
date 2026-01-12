@@ -26,6 +26,7 @@ import { twMerge } from 'tailwind-merge';
 import { DeclarationSearchModal } from '../components/DeclarationSearchModal';
 import { HistorySearchModal } from '../components/HistorySearchModal';
 import { BulletinSearchModal } from '../components/BulletinSearchModal'; // Import new modal
+import { CalendarManagement } from '../components/CalendarManagement';
 
 interface SidebarItemProps {
     icon: React.ElementType;
@@ -73,6 +74,7 @@ export function Sidebar() {
     const [showDeclarationModal, setShowDeclarationModal] = useState(false);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [showBulletinModal, setShowBulletinModal] = useState(false); // New State for Boletim
+    const [showCalendarModal, setShowCalendarModal] = useState(false);
     const [isMatriculasOpen, setIsMatriculasOpen] = useState(true);
     const [isArquivosOpen, setIsArquivosOpen] = useState(true);
     const [isFinanceiroOpen, setIsFinanceiroOpen] = useState(true);
@@ -130,6 +132,24 @@ export function Sidebar() {
 
                 <SidebarItem icon={School} label="Escola" path="/dashboard" collapsed={collapsed} />
                 <SidebarItem icon={Calendar} label="Grade Horária" path="/grade-horaria" collapsed={collapsed} />
+
+                <button
+                    onClick={() => setShowCalendarModal(true)}
+                    className={twMerge(
+                        clsx(
+                            "flex items-center w-full p-3 rounded-lg transition-all duration-200 group relative cursor-pointer text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                            collapsed && "justify-center"
+                        )
+                    )}
+                >
+                    <Calendar className={clsx("w-5 h-5 text-slate-500 group-hover:text-slate-700")} />
+                    {!collapsed && <span className="ml-3 text-sm truncate">Gerenciar Calendário</span>}
+                    {collapsed && (
+                        <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 whitespace-nowrap">
+                            Gerenciar Calendário
+                        </div>
+                    )}
+                </button>
 
 
                 <div className="space-y-0.5">
@@ -332,6 +352,27 @@ export function Sidebar() {
             {showBulletinModal && (
                 <BulletinSearchModal onClose={() => setShowBulletinModal(false)} />
             )}
+
+            {showCalendarModal && (() => {
+                const userUnit = localStorage.getItem('userUnit');
+                const isAdmin = userUnit === 'admin_geral';
+                const unitMapping: Record<string, string> = {
+                    'unit_zn': 'Zona Norte',
+                    'unit_ext': 'Extremoz',
+                    'unit_qui': 'Quintas',
+                    'unit_bs': 'Boa Sorte'
+                };
+                const mappedUnit = (userUnit && !isAdmin) ? (unitMapping[userUnit] || userUnit) : 'all';
+
+                return (
+                    <CalendarManagement
+                        isOpen={showCalendarModal}
+                        onClose={() => setShowCalendarModal(false)}
+                        unit={mappedUnit}
+                        isAdmin={isAdmin}
+                    />
+                );
+            })()}
         </aside>
     );
 }

@@ -11,6 +11,7 @@ import { financialService } from '../services/financialService';
 import { generateSchoolDeclaration, type DeclarationType } from '../utils/schoolDeclarationGenerator';
 import type { Student } from '../types';
 import { useSchoolUnits } from '../hooks/useSchoolUnits';
+import { getAcademicSettings } from '../services/academicSettings';
 
 interface DeclarationSearchModalProps {
     onClose: () => void;
@@ -48,10 +49,13 @@ export function DeclarationSearchModal({ onClose }: DeclarationSearchModalProps)
                 return;
             }
 
-            // 2. Fetch Pedagogical Data (Frequency)
+            // 2. Fetch Pedagogical Data (Frequency and Settings)
             const grades = await pedagogicalService.getGrades(student.id);
             const attendance = await pedagogicalService.getAttendance(student.id);
-            const freq = pedagogicalService.calculateFrequencyFromGrades(grades, student.gradeLevel, attendance, academicSubjects);
+
+            const settings = await getAcademicSettings(2026, student.unit);
+
+            const freq = pedagogicalService.calculateFrequencyFromGrades(grades, student.gradeLevel, attendance, academicSubjects, settings);
             setStudentFrequency(freq);
 
             // 3. Fetch Financial Data (Debts)

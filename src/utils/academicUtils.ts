@@ -1,6 +1,7 @@
 /**
  * Centralized Academic Utility for Bimester mapping and Data Normalization.
  */
+import { AcademicSettings } from "../types";
 
 /**
  * Bimester Ranges (Approximate to Academic Calendar):
@@ -19,6 +20,25 @@ export const getBimesterFromDate = (dateStr: string): 1 | 2 | 3 | 4 => {
     if (month >= 5 && month <= 7) return 2;
     if (month >= 8 && month <= 9) return 3;
     return 4; // 10, 11, 12
+};
+
+/**
+ * Returns the bimester for a given date based on dynamic settings.
+ */
+export const getDynamicBimester = (dateStr: string, settings?: AcademicSettings | null): number => {
+    if (!settings || !settings.bimesters) return getBimesterFromDate(dateStr);
+    const date = new Date(dateStr + 'T00:00:00');
+
+    for (const bim of settings.bimesters) {
+        const start = new Date(bim.startDate + 'T00:00:00');
+        const end = new Date(bim.endDate + 'T00:00:00');
+        if (date >= start && date <= end) {
+            return bim.number;
+        }
+    }
+
+    // Fallback to month-based logic if date is outside defined ranges
+    return getBimesterFromDate(dateStr);
 };
 
 /**

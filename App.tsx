@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import firebase from 'firebase/compat/app';
-import { UserRole, UserSession, Student, Teacher, GradeEntry, Admin, SchoolMessage, AttendanceRecord, EarlyChildhoodReport, UnitContact, AppNotification, Mensalidade, EventoFinanceiro } from './types';
+import { UserRole, UserSession, Student, Teacher, GradeEntry, Admin, SchoolMessage, AttendanceRecord, EarlyChildhoodReport, UnitContact, AppNotification, Mensalidade, EventoFinanceiro, AcademicSettings } from './types';
 import { MOCK_STUDENTS, MOCK_TEACHERS, MOCK_ADMINS, FINAL_GRADES_CALCULATED, ALLOW_MOCK_LOGIN } from './constants';
 import { Login } from './components/Login';
 import { StudentDashboard } from './components/StudentDashboard';
@@ -14,6 +14,7 @@ import { db } from './firebaseConfig';
 import { BackToTopButton } from './components/BackToTopButton';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { SchoolLogo } from './components/SchoolLogo';
+import { subscribeToAcademicSettings } from './src/services/academicSettings';
 
 import { ValidateReceipt } from './components/ValidateReceipt';
 import { StudentDashboardSkeleton, TeacherDashboardSkeleton, AdminDashboardSkeleton, CoordinatorDashboardSkeleton } from './components/Skeleton';
@@ -34,6 +35,7 @@ const AppContent: React.FC = () => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [mensalidades, setMensalidades] = useState<Mensalidade[]>([]);
   const [eventosFinanceiros, setEventosFinanceiros] = useState<EventoFinanceiro[]>([]);
+  const [academicSettings, setAcademicSettings] = useState<AcademicSettings | null>(null);
 
 
   const [loginError, setLoginError] = useState<string>('');
@@ -49,7 +51,8 @@ const AppContent: React.FC = () => {
     unitContacts: false,
     notifications: false,
     mensalidades: false,
-    eventosFinanceiros: false
+    eventosFinanceiros: false,
+    academicSettings: false
   });
 
   const [isSeeding, setIsSeeding] = useState(false);
@@ -178,6 +181,12 @@ const AppContent: React.FC = () => {
           setInitialLoad(prev => ({ ...prev, attendance: true }));
         }));
 
+      // Subscribe to Academic Settings
+      unsubs.push(subscribeToAcademicSettings(2026, (settings) => {
+        setAcademicSettings(settings);
+        setInitialLoad(prev => ({ ...prev, academicSettings: true }));
+      }, userUnit));
+
       // Set others to ready for students
       setInitialLoad(prev => ({ ...prev, students: true, admins: true, messages: true }));
 
@@ -228,7 +237,7 @@ const AppContent: React.FC = () => {
         setInitialLoad(prev => ({ ...prev, notifications: true }));
       }));
 
-      setInitialLoad(prev => ({ ...prev, teachers: true, admins: true, messages: true, mensalidades: true }));
+      setInitialLoad(prev => ({ ...prev, teachers: true, admins: true, messages: true, mensalidades: true, academicSettings: true }));
 
     } else if (session.role === UserRole.ADMIN) {
       const isGeneral = !userUnit;
@@ -290,7 +299,7 @@ const AppContent: React.FC = () => {
         setInitialLoad(prev => ({ ...prev, mensalidades: true }));
       }));
 
-      setInitialLoad(prev => ({ ...prev, notifications: true, earlyChildhoodReports: true }));
+      setInitialLoad(prev => ({ ...prev, notifications: true, earlyChildhoodReports: true, academicSettings: true }));
 
     } else if (session.role === UserRole.COORDINATOR) {
       // Coordinator manages their own data fetch in the dashboard or doesn't need global data pre-loaded
@@ -307,7 +316,8 @@ const AppContent: React.FC = () => {
         unitContacts: true,
         notifications: true,
         mensalidades: true,
-        eventosFinanceiros: true
+        eventosFinanceiros: true,
+        academicSettings: true
       }));
     }
 
@@ -330,8 +340,8 @@ const AppContent: React.FC = () => {
       return true; // Skip pre-loader for login screen
     }
     if (session.role === UserRole.STUDENT) {
-      // Essentials for student: Grades and Fees
-      return initialLoad.grades && initialLoad.mensalidades;
+      // Essentials for student: Grades, Fees and Settings
+      return initialLoad.grades && initialLoad.mensalidades && initialLoad.academicSettings;
     }
     // Teachers and Admins still need more full sets
     return Object.values(initialLoad).every(Boolean);
@@ -1101,6 +1111,7 @@ const AppContent: React.FC = () => {
           coordinator={session.user as UnitContact}
           onLogout={handleLogout}
           onCreateNotification={createNotification}
+          academicSettings={academicSettings}
         />
         <BackToTopButton />
       </>
@@ -1117,6 +1128,7 @@ const AppContent: React.FC = () => {
           attendanceRecords={attendanceRecords}
           earlyChildhoodReports={earlyChildhoodReports}
           unitContacts={unitContacts}
+          academicSettings={academicSettings}
           onLogout={handleLogout}
           onSendMessage={handleSendMessage}
           notifications={notifications.filter(n => n.studentId === (session.user as Student).id)}
@@ -1132,7 +1144,7 @@ const AppContent: React.FC = () => {
   if (session.role === UserRole.TEACHER && session.user) {
     return (
       <>
-        <TeacherDashboard teacher={session.user as Teacher} students={students} grades={grades} onSaveGrade={handleSaveGrade} onLogout={handleLogout} attendanceRecords={attendanceRecords} onSaveAttendance={handleSaveAttendance} earlyChildhoodReports={earlyChildhoodReports} onSaveEarlyChildhoodReport={handleSaveEarlyChildhoodReport} notifications={notifications} onMarkNotificationAsRead={handleMarkNotificationAsRead} />
+        <TeacherDashboard teacher={session.user as Teacher} students={students} grades={grades} onSaveGrade={handleSaveGrade} onLogout={handleLogout} attendanceRecords={attendanceRecords} onSaveAttendance={handleSaveAttendance} earlyChildhoodReports={earlyChildhoodReports} onSaveEarlyChildhoodReport={handleSaveEarlyChildhoodReport} notifications={notifications} onMarkNotificationAsRead={handleMarkNotificationAsRead} academicSettings={academicSettings} />
         <BackToTopButton />
       </>
     );
@@ -1148,6 +1160,8 @@ const AppContent: React.FC = () => {
           admins={admins}
           schoolMessages={schoolMessages}
           attendanceRecords={attendanceRecords}
+          initialLoad={initialLoad}
+          academicSettings={academicSettings}
           grades={grades}
           unitContacts={unitContacts}
           onAddStudent={handleAddStudent}

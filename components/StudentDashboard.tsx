@@ -3,7 +3,7 @@ import { useAcademicData } from '../hooks/useAcademicData';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
 import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial, Occurrence, DailyAgenda, ExamGuide, CalendarEvent, AcademicSubject } from '../types';
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
-import { getBimesterFromDate } from '../src/utils/academicUtils';
+import { getBimesterFromDate, getDynamicBimester } from '../src/utils/academicUtils';
 import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects, MOCK_CALENDAR_EVENTS } from '../constants'; // Import Sync Fix
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency, calculateBimesterGeneralFrequency } from '../utils/frequency';
 import { getStudyTips } from '../services/geminiService';
@@ -92,6 +92,8 @@ interface StudentDashboardProps {
     onMarkNotificationAsRead?: (id: string) => Promise<void>;
     mensalidades: Mensalidade[];
     eventos: EventoFinanceiro[];
+    academicSettings?: any;
+    [key: string]: any;
 }
 
 export const StudentDashboard: React.FC<StudentDashboardProps> = ({
@@ -101,6 +103,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     attendanceRecords = [],
     earlyChildhoodReports = [],
     unitContacts = [],
+    academicSettings,
     onLogout,
     onSendMessage,
     notifications = [],
@@ -143,7 +146,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const [selectedReportSemester, setSelectedReportSemester] = useState<1 | 2>(1);
 
     // Estado para controle do mês de frequência
-    const [selectedBimester, setSelectedBimester] = useState<number>(Math.floor(new Date().getMonth() / 3) + 1);
+    const [selectedBimester, setSelectedBimester] = useState<number>(() => getDynamicBimester(new Date().toISOString().split('T')[0], academicSettings));
 
     // State for the Informational Banner visibility
     const [isBannerOpen, setIsBannerOpen] = useState(false);
@@ -161,12 +164,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const semester = currentMonth >= 7 ? 2 : 1;
 
     // Dynamic detection of elapsed bimesters
-    const calendarBim = getBimesterFromDate(new Date().toISOString().split('T')[0]);
+    const calendarBim = getDynamicBimester(new Date().toISOString().split('T')[0], academicSettings);
     const maxDataBim = (attendanceRecords || []).reduce((max, record) => {
         const rYear = parseInt(record.date.split('-')[0], 10);
         if (rYear !== currentYear) return max;
         if (!record.studentStatus || !record.studentStatus[student.id]) return max;
-        const b = getBimesterFromDate(record.date);
+        const b = getDynamicBimester(record.date, academicSettings);
         return b > max ? b : max;
     }, 1);
     const elapsedBimesters = Math.max(calendarBim, maxDataBim);
@@ -1012,7 +1015,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             const mNum = Number(mStr);
                                             if (yNum !== currentYear) return false;
 
-                                            const recordBim = Math.floor((mNum - 1) / 3) + 1;
+                                            const recordBim = getDynamicBimester(record.date, academicSettings);
                                             return recordBim === selectedBimester;
                                         });
 
@@ -1458,7 +1461,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             const currentAbsences = studentAttendance.reduce((acc, att) => {
                                                                 if (att.discipline !== grade.subject) return acc;
                                                                 if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
-                                                                    if (getBimesterFromDate(att.date) === bimesterNum) return acc + 1;
+                                                                    if (getDynamicBimester(att.date, academicSettings) === bimesterNum) return acc + 1;
                                                                 }
                                                                 return acc;
                                                             }, 0);
@@ -1512,13 +1515,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 return sum + studentAttendance.reduce((acc, att) => {
                                                                     if (att.discipline !== grade.subject) return acc;
                                                                     if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
-                                                                        if (getBimesterFromDate(att.date) === bNum) return acc + 1;
+                                                                        if (getDynamicBimester(att.date, academicSettings) === bNum) return acc + 1;
                                                                     }
                                                                     return acc;
                                                                 }, 0);
                                                             }, 0);
 
-                                                            const annualFreq = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel, elapsedBimesters, academicSubjects);
+                                                            const annualFreq = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel, elapsedBimesters, academicSubjects, academicSettings);
                                                             const isCritical = annualFreq !== null && annualFreq < 75;
 
                                                             return (
@@ -1539,7 +1542,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                     </tr>
                                                 ))}
                                                 {studentGrades.length > 0 && (() => {
-                                                    const generalFreq = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects);
+                                                    const generalFreq = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings);
                                                     return (
                                                         <tr className="bg-gray-100/80 font-bold border-t-2 border-gray-400">
                                                             <td colSpan={25} className="px-4 py-1 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[11px]">

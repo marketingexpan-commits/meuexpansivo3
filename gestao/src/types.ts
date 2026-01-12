@@ -597,3 +597,33 @@ export interface ClassSchedule {
   items: ScheduleItem[];
   lastUpdated: string;
 }
+
+export type EventType = 'holiday' | 'exam' | 'meeting' | 'event' | 'vacation';
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  description?: string;
+  startDate: string; // ISO (YYYY-MM-DD)
+  endDate?: string;
+  type: EventType;
+  units: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BimesterConfig {
+  number: 1 | 2 | 3 | 4;
+  startDate: string; // ISO (YYYY-MM-DD)
+  endDate: string; // ISO (YYYY-MM-DD)
+  label: string;
+}
+
+export interface AcademicSettings {
+  id: string;
+  year: number;
+  unit: string; // 'all' for network default, or specific unit name
+  currentBimester: 1 | 2 | 3 | 4;
+  bimesters: BimesterConfig[];
+  updatedAt?: string;
+}

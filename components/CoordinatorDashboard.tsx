@@ -4,6 +4,7 @@ import { db } from '../firebaseConfig';
 import { UnitContact, SchoolUnit, CoordinationSegment, Subject, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES } from '../types';
 import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, CURRICULUM_MATRIX, getCurriculumSubjects, calculateBimesterMedia, calculateFinalData, SCHOOL_CLASSES_OPTIONS, SCHOOL_SHIFTS } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency } from '../utils/frequency';
+import { getDynamicBimester } from '../src/utils/academicUtils';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 import {
@@ -45,9 +46,10 @@ interface CoordinatorDashboardProps {
     coordinator: UnitContact;
     onLogout: () => void;
     onCreateNotification?: (title: string, message: string, studentId?: string, teacherId?: string) => Promise<void>;
+    academicSettings?: any;
 }
 
-export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coordinator, onLogout, onCreateNotification }) => {
+export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coordinator, onLogout, onCreateNotification, academicSettings }) => {
     // --- ACADEMIC DATA ---
     const { segments: academicSegments, grades: academicGrades, subjects: academicSubjects, loading: loadingAcademic } = useAcademicData();
 
@@ -855,13 +857,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                                                         att.studentStatus[student.id] === AttendanceStatus.ABSENT
                                                                                     ).filter(att => {
                                                                                         const d = new Date(att.date + 'T00:00:00');
-                                                                                        const m = d.getMonth();
-                                                                                        let bTarget = 0;
-                                                                                        if (m >= 0 && m <= 2) bTarget = 1;
-                                                                                        else if (m >= 3 && m <= 5) bTarget = 2;
-                                                                                        else if (m >= 6 && m <= 8) bTarget = 3;
-                                                                                        else if (m >= 9 && m <= 11) bTarget = 4;
-
+                                                                                        const bTarget = getDynamicBimester(att.date, academicSettings);
                                                                                         const [y] = att.date.split('-');
                                                                                         if (bTarget === bNum && Number(y) === new Date().getFullYear()) return true;
                                                                                         return false;
@@ -870,7 +866,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                                                     return sum + studentAbsSnapshot;
                                                                                 }, 0);
 
-                                                                                const annualFreq = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel || "");
+                                                                                const annualFreq = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel || "", 4, academicSubjects, academicSettings);
                                                                                 const isCritical = annualFreq !== null && annualFreq < 75;
                                                                                 const hasAbsenceTotal = totalAbsences > 0;
 
@@ -906,7 +902,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                                 {(() => {
                                                                     // Use ALL grades for this student to calculate general frequency correctly
                                                                     const allStudentGrades = allStudentGradesMap[student.id] || [];
-                                                                    const generalFreq = calculateGeneralFrequency(allStudentGrades, attendanceRecords, student.id, student.gradeLevel || "", academicSubjects);
+                                                                    const generalFreq = calculateGeneralFrequency(allStudentGrades, attendanceRecords, student.id, student.gradeLevel || "", academicSubjects, academicSettings);
                                                                     return (
                                                                         <tr className="bg-gray-100/80 font-bold border-t-2 border-gray-400">
                                                                             <td colSpan={26} className="px-4 py-2 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[10px]">

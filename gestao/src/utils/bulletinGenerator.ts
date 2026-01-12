@@ -1,6 +1,6 @@
 import { CURRICULUM_MATRIX } from './academicDefaults';
-import { getBimesterFromDate, getCurrentSchoolYear } from './academicUtils';
-import type { Student, GradeEntry, AttendanceRecord, AcademicSubject, SchoolUnitDetail } from '../types';
+import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester } from './academicUtils';
+import type { Student, GradeEntry, AttendanceRecord, AcademicSubject, SchoolUnitDetail, AcademicSettings } from '../types';
 import { AttendanceStatus } from '../types';
 import { calculateGeneralFrequency as calculateUnifiedFrequency } from './frequency';
 
@@ -11,17 +11,19 @@ const calculateSubjectFrequency = (
     attendanceRecords: AttendanceRecord[],
     bimester: number,
     currentYear: number,
-    academicSubjects?: AcademicSubject[]
+    academicSubjects?: AcademicSubject[],
+    settings?: AcademicSettings | null
 ): string => {
     // Count absences strictly from logs
     const absences = attendanceRecords.filter(record => {
         const rYear = parseInt(record.date.split('-')[0], 10);
+        const b = settings ? getDynamicBimester(record.date, settings) : getBimesterFromDate(record.date);
         return rYear === currentYear &&
             record.discipline === subject &&
             record.unit === student.unit &&
             record.gradeLevel === student.gradeLevel &&
             record.schoolClass === student.schoolClass &&
-            getBimesterFromDate(record.date) === bimester &&
+            b === bimester &&
             record.studentStatus &&
             record.studentStatus[student.id] === AttendanceStatus.ABSENT;
     }).length;
@@ -65,20 +67,21 @@ const generateBulletinHtml = (
     attendanceRecords: AttendanceRecord[],
     unitDetail: SchoolUnitDetail,
     pageBreak: boolean = false,
-    academicSubjects?: AcademicSubject[]
+    academicSubjects?: AcademicSubject[],
+    settings?: AcademicSettings | null
 ) => {
     const unitInfo = unitDetail;
     const currentDate = new Date().toLocaleDateString('pt-BR');
     const currentYear = getCurrentSchoolYear();
     const today = new Date().toISOString().split('T')[0];
-    const calendarBim = getBimesterFromDate(today);
+    const calendarBim = settings ? getDynamicBimester(today, settings) : getBimesterFromDate(today);
 
     // Dynamic detection of elapsed bimesters
     const maxDataBim = (attendanceRecords || []).reduce((max, record) => {
         const rYear = parseInt(record.date.split('-')[0], 10);
         if (rYear !== currentYear) return max;
         if (!record.studentStatus || !record.studentStatus[student.id]) return max;
-        const b = getBimesterFromDate(record.date);
+        const b = settings ? getDynamicBimester(record.date, settings) : getBimesterFromDate(record.date);
         return b > max ? b : max;
     }, 1);
     const elapsedBimesters = Math.max(calendarBim, maxDataBim);
@@ -98,7 +101,8 @@ const generateBulletinHtml = (
             student.gradeLevel,
             student.unit,
             student.schoolClass,
-            academicSubjects
+            academicSubjects,
+            settings
         );
     };
 
@@ -122,7 +126,7 @@ const generateBulletinHtml = (
                         record.unit === student.unit &&
                         record.gradeLevel === student.gradeLevel &&
                         record.schoolClass === student.schoolClass &&
-                        getBimesterFromDate(record.date) === bim &&
+                        (settings ? getDynamicBimester(record.date, settings) : getBimesterFromDate(record.date)) === bim &&
                         record.studentStatus &&
                         record.studentStatus[g.studentId] === AttendanceStatus.ABSENT;
                 }).length;
@@ -164,10 +168,10 @@ const generateBulletinHtml = (
 
             const totalCH = weeklyClasses > 0 ? (weeklyClasses * 40) : '-';
 
-            const bfreq1 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 1, currentYear, academicSubjects);
-            const bfreq2 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 2, currentYear, academicSubjects);
-            const bfreq3 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 3, currentYear, academicSubjects);
-            const bfreq4 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 4, currentYear, academicSubjects);
+            const bfreq1 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 1, currentYear, academicSubjects, settings);
+            const bfreq2 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 2, currentYear, academicSubjects, settings);
+            const bfreq3 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 3, currentYear, academicSubjects, settings);
+            const bfreq4 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 4, currentYear, academicSubjects, settings);
 
             return `
             <tr>
@@ -366,15 +370,17 @@ export const generateSchoolBulletin = (
     currentGrades: GradeEntry[] = [],
     attendanceRecords: AttendanceRecord[] = [],
     unitDetail: SchoolUnitDetail,
-    academicSubjects?: AcademicSubject[]
+    academicSubjects?: AcademicSubject[],
+    settings?: AcademicSettings | null
 ) => {
-    generateBatchSchoolBulletin([{ student, grades: currentGrades, attendance: attendanceRecords }], unitDetail, academicSubjects);
+    generateBatchSchoolBulletin([{ student, grades: currentGrades, attendance: attendanceRecords }], unitDetail, academicSubjects, settings);
 };
 
 export const generateBatchSchoolBulletin = (
     data: { student: Student, grades: GradeEntry[], attendance: AttendanceRecord[] }[],
     unitDetail: SchoolUnitDetail,
-    academicSubjects?: AcademicSubject[]
+    academicSubjects?: AcademicSubject[],
+    settings?: AcademicSettings | null
 ) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -383,7 +389,7 @@ export const generateBatchSchoolBulletin = (
     }
 
     const pagesHtml = data.map((item, index) =>
-        generateBulletinHtml(item.student, item.grades, item.attendance, unitDetail, index < data.length - 1, academicSubjects)
+        generateBulletinHtml(item.student, item.grades, item.attendance, unitDetail, index < data.length - 1, academicSubjects, settings)
     ).join('');
 
     const content = `

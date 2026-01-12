@@ -84,6 +84,7 @@ interface AdminDashboardProps {
     onResetFees?: (studentId: string) => Promise<void>; // Nova prop para reset
     mensalidades?: Mensalidade[]; // Nova prop
     onLogout: () => void;
+    academicSettings?: any;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
@@ -115,7 +116,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     onFixDuplicates,
     onResetFees,
     mensalidades = [],
-    onLogout
+    onLogout,
+    academicSettings
 }) => {
     const { grades: academicGrades, subjects: academicSubjects, loading: loadingAcademic } = useAcademicData();
     const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'admins' | 'messages' | 'attendance' | 'contacts' | 'rematricula' | 'financial' | 'tickets' | 'coordination' | 'schedule'>('students');

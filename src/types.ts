@@ -240,3 +240,19 @@ export interface Ticket {
   responseTimestamp?: string; // ISO
   status: TicketStatus;
 }
+
+export interface BimesterConfig {
+  number: number;
+  label: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface AcademicSettings {
+  id: string;
+  year: number;
+  unit: string;
+  bimesters: BimesterConfig[];
+  currentBimester: number;
+  updatedAt: string;
+}
