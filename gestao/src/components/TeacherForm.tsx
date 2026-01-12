@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Input } from './Input';
 import { Select } from './Select';
 import { Checkbox } from './Checkbox';
@@ -61,7 +61,7 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
         }
     }, [teacher]);
 
-    const handleToggleAssignment = (gradeLevel: string, subject: string) => {
+    const handleToggleAssignment = useCallback((gradeLevel: string, subject: string) => {
         setFormData(prev => {
             const currentAssignments = [...(prev.assignments || [])];
             const assignmentIndex = currentAssignments.findIndex(a => a.gradeLevel === gradeLevel);
@@ -89,9 +89,9 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
 
             return { ...prev, assignments: currentAssignments };
         });
-    };
+    }, []);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
         let finalValue: any = value;
 
@@ -104,9 +104,9 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
         }
 
         setFormData(prev => ({ ...prev, [name]: finalValue }));
-    };
+    }, []);
 
-    const handleToggleCollection = (name: 'subjects' | 'gradeLevels', item: string) => {
+    const handleToggleCollection = useCallback((name: 'subjects' | 'gradeLevels', item: string) => {
         setFormData(prev => {
             const current = (prev[name] || []) as string[];
             const exists = current.includes(item);
@@ -116,7 +116,7 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                 return { ...prev, [name]: [...current, item] };
             }
         });
-    };
+    }, []);
 
     const generatePassword = () => {
         const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -345,47 +345,51 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                         </section>
                     </div>
 
-                    {/* NEW: Linked Assignments Section */}
-                    {formData.gradeLevels && formData.gradeLevels.length > 0 && formData.subjects && formData.subjects.length > 0 && (
-                        <section className="bg-slate-50 rounded-2xl p-6 border border-slate-100 space-y-4">
-                            <div className="flex items-center gap-2 mb-2">
-                                <Layers className="w-5 h-5 text-blue-950" />
-                                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Vínculos de Aula (Matérias por Série)</h3>
-                            </div>
-                            <p className="text-xs text-slate-500 mb-4 italic">
-                                Marque especificamente quais matérias o professor leciona em cada série selecionada.
-                            </p>
+                    {/* NEW: Linked Assignments Section (Memoized to fix INP) */}
+                    {useMemo(() => {
+                        if (!formData.gradeLevels || formData.gradeLevels.length === 0 || !formData.subjects || formData.subjects.length === 0) return null;
 
-                            <div className="space-y-6">
-                                {formData.gradeLevels.map(grade => (
-                                    <div key={grade} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                                        <div className="flex items-center gap-2 mb-3 border-b border-slate-50 pb-2">
-                                            <GraduationCap className="w-4 h-4 text-blue-950" />
-                                            <span className="text-xs font-black text-slate-700 uppercase">{grade}</span>
+                        return (
+                            <section className="bg-slate-50 rounded-2xl p-6 border border-slate-100 space-y-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Layers className="w-5 h-5 text-blue-950" />
+                                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Vínculos de Aula (Matérias por Série)</h3>
+                                </div>
+                                <p className="text-xs text-slate-500 mb-4 italic">
+                                    Marque especificamente quais matérias o professor leciona em cada série selecionada.
+                                </p>
+
+                                <div className="space-y-6">
+                                    {formData.gradeLevels.map(grade => (
+                                        <div key={grade} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                            <div className="flex items-center gap-2 mb-3 border-b border-slate-50 pb-2">
+                                                <GraduationCap className="w-4 h-4 text-blue-950" />
+                                                <span className="text-xs font-black text-slate-700 uppercase">{grade}</span>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {formData.subjects?.map(subject => {
+                                                    const isLinked = formData.assignments?.find(a => a.gradeLevel === grade)?.subjects.includes(subject);
+                                                    return (
+                                                        <button
+                                                            key={`${grade}-${subject}`}
+                                                            type="button"
+                                                            onClick={() => handleToggleAssignment(grade, subject)}
+                                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isLinked
+                                                                ? 'bg-blue-950 text-white border-blue-950 shadow-md shadow-blue-950/20'
+                                                                : 'bg-slate-50 text-slate-400 border-slate-100 hover:border-slate-300'
+                                                                }`}
+                                                        >
+                                                            {subject}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
-                                        <div className="flex flex-wrap gap-2">
-                                            {formData.subjects?.map(subject => {
-                                                const isLinked = formData.assignments?.find(a => a.gradeLevel === grade)?.subjects.includes(subject);
-                                                return (
-                                                    <button
-                                                        key={`${grade}-${subject}`}
-                                                        type="button"
-                                                        onClick={() => handleToggleAssignment(grade, subject)}
-                                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isLinked
-                                                            ? 'bg-blue-950 text-white border-blue-950 shadow-md shadow-blue-950/20'
-                                                            : 'bg-slate-50 text-slate-400 border-slate-100 hover:border-slate-300'
-                                                            }`}
-                                                    >
-                                                        {subject}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-                    )}
+                                    ))}
+                                </div>
+                            </section>
+                        );
+                    }, [formData.gradeLevels, formData.subjects, formData.assignments, handleToggleAssignment])}
                 </form>
 
                 {/* Footer */}
