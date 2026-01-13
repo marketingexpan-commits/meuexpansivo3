@@ -185,43 +185,63 @@ export const calculateBimesterMedia = (bData: BimesterData): BimesterData => {
   return { ...bData, media: parseFloat(media.toFixed(1)) };
 };
 
-export const calculateFinalData = (bimesters: GradeEntry['bimesters'], recFinal?: number | null): Pick<GradeEntry, 'mediaAnual' | 'mediaFinal' | 'situacaoFinal'> => {
+export const calculateFinalData = (bimesters: GradeEntry['bimesters'], recFinal?: number | null, isYearFinished: boolean = false): Pick<GradeEntry, 'mediaAnual' | 'mediaFinal' | 'situacaoFinal'> => {
   const bimesterMedias = [
     bimesters.bimester1.media,
     bimesters.bimester2.media,
     bimesters.bimester3.media,
     bimesters.bimester4.media,
-  ].filter(m => m !== undefined && m !== null && m >= 0) as number[];
+  ];
 
-  const totalMedias = bimesterMedias.reduce((sum, current) => sum + current, 0);
-  const mediaAnual = parseFloat((totalMedias / 4).toFixed(1));
+  const hasAllMedias = bimesterMedias.every(m => m !== undefined && m !== null && m >= 0);
+  const validMedias = bimesterMedias.filter(m => m !== undefined && m !== null && m >= 0) as number[];
+
+  // Se não houver nenhuma nota em nenhum bimestre, a situação é 'Cursando'
+  // IMPORTANTE: Retornar -1 para que a UI exiba o traço '-'
+  if (validMedias.length === 0) {
+    return { mediaAnual: -1, mediaFinal: -1, situacaoFinal: 'Cursando' };
+  }
+
+  const totalMedias = validMedias.reduce((sum, current) => sum + current, 0);
+
+  // Média Anual: No Expansivo a média é a soma dos 4 bimestres dividida por 4.
+  // Só exibimos se o ano acabou OU se já temos as 4 notas.
+  let mediaAnual = parseFloat((totalMedias / 4).toFixed(1));
+  const showAverages = isYearFinished || hasAllMedias;
 
   let mediaFinal = mediaAnual;
   let situacaoFinal: GradeEntry['situacaoFinal'] = 'Aprovado';
-
-  // Se não houver nenhuma nota em nenhum bimestre, a situação é 'Cursando'
-  if (bimesterMedias.length === 0) {
-    return { mediaAnual: 0, mediaFinal: 0, situacaoFinal: 'Cursando' };
-  }
 
   if (mediaAnual >= 7.0) {
     situacaoFinal = 'Aprovado';
   } else {
     if (recFinal !== undefined && recFinal !== null) {
       mediaFinal = parseFloat(((mediaAnual + recFinal) / 2).toFixed(1));
-
       if (mediaFinal >= 5.0) {
         situacaoFinal = 'Aprovado';
       } else {
         situacaoFinal = 'Reprovado';
       }
     } else {
-      // Se tiver nota mas ainda não alcançou 7.0 e não fez a prova final
-      situacaoFinal = 'Recuperação';
+      // Se já temos as 4 notas e a média < 7, está em Recuperação Final.
+      // Se não temos as 4 notas e o ano não acabou, está Cursando.
+      if (hasAllMedias || isYearFinished) {
+        situacaoFinal = 'Recuperação';
+      } else {
+        situacaoFinal = 'Cursando';
+      }
     }
   }
 
-  return { mediaAnual, mediaFinal, situacaoFinal };
+  // Se não for para mostrar as médias ainda, retornamos -1 como marcador
+  const finalMediaAnual = showAverages ? mediaAnual : -1;
+  const finalMediaFinal = (showAverages && (mediaAnual >= 7.0 || (recFinal !== undefined && recFinal !== null))) ? mediaFinal : -1;
+
+  return {
+    mediaAnual: finalMediaAnual,
+    mediaFinal: finalMediaFinal,
+    situacaoFinal
+  };
 }
 
 export const INITIAL_GRADES_MOCK: GradeEntry[] = [

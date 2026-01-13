@@ -97,8 +97,7 @@ const generateBulletinHtml = (
 
     // Helper to format grade
     const fG = (n: number | null | undefined) => {
-        if (n === null || n === undefined) return '-';
-        if (n < 0) return '-'; // Handle -1 or placeholders
+        if (n === null || n === undefined || n === -1) return '-';
         return n.toFixed(1);
     };
 

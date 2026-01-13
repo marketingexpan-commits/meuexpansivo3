@@ -231,6 +231,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
     const headerText = `Boletim Escolar ${currentYear}.${semester}`;
 
+    const isYearFinished = useMemo(() => {
+        if (!academicSettings?.bimesters) return false;
+        const b4 = academicSettings.bimesters.find((b: any) => b.number === 4);
+        if (!b4) return false;
+        const today = new Date().toISOString().split('T')[0];
+        return today > b4.endDate;
+    }, [academicSettings]);
+
     // CORREÇÃO DE SINCRONIZAÇÃO: Recalcular médias dinamicamente
     const studentGrades = useMemo(() => {
         const subjectsInCurriculum = getCurriculumSubjects(student.gradeLevel || "");
@@ -252,7 +260,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     bimester3: calculateBimesterMedia(grade.bimesters.bimester3),
                     bimester4: calculateBimesterMedia(grade.bimesters.bimester4),
                 };
-                const finalData = calculateFinalData(calculatedBimesters, grade.recuperacaoFinal);
+                const finalData = calculateFinalData(calculatedBimesters, grade.recuperacaoFinal, isYearFinished);
                 return { ...grade, bimesters: calculatedBimesters, ...finalData };
             });
 
@@ -264,31 +272,35 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 const exists = existingGrades.some(g => g.subject === subjectName);
                 if (!exists) {
                     // Cria uma entrada "vazia" para a matéria faltante
+                    const emptyGradesBimesters = {
+                        bimester1: { nota: null, recuperacao: null, media: -1, faltas: 0 },
+                        bimester2: { nota: null, recuperacao: null, media: -1, faltas: 0 },
+                        bimester3: { nota: null, recuperacao: null, media: -1, faltas: 0 },
+                        bimester4: { nota: null, recuperacao: null, media: -1, faltas: 0 },
+                    };
+                    const finalData = calculateFinalData(emptyGradesBimesters, null, isYearFinished);
                     const emptyGrade: GradeEntry = {
                         id: `empty_${subjectName}_${student.id}`,
                         studentId: student.id,
                         subject: subjectName,
-                        bimesters: {
-                            bimester1: { nota: null, recuperacao: null, media: -1, faltas: 0 },
-                            bimester2: { nota: null, recuperacao: null, media: -1, faltas: 0 },
-                            bimester3: { nota: null, recuperacao: null, media: -1, faltas: 0 },
-                            bimester4: { nota: null, recuperacao: null, media: -1, faltas: 0 },
-                        },
-                        mediaAnual: 0,
-                        mediaFinal: 0,
-                        situacaoFinal: 'Cursando',
+                        bimesters: emptyGradesBimesters,
+                        ...finalData,
                         lastUpdated: new Date().toISOString()
                     };
                     finalGrades.push(emptyGrade);
                 }
             });
 
-            // Ordena as matérias do boletim pela ordem da matriz curricular
-            return finalGrades.sort((a, b) => subjectsInCurriculum.indexOf(a.subject) - subjectsInCurriculum.indexOf(b.subject));
+            // Ordena as notas finais de acordo com a ordem da matriz curricular
+            return finalGrades.sort((a, b) => {
+                const indexA = subjectsInCurriculum.indexOf(a.subject);
+                const indexB = subjectsInCurriculum.indexOf(b.subject);
+                return indexA - indexB;
+            });
         }
 
         return existingGrades;
-    }, [grades, student.id, student.gradeLevel]);
+    }, [student.id, student.gradeLevel, grades, academicSettings, isYearFinished]);
 
     const { settings: contactSettings } = useFinancialSettings(student.unit);
 
@@ -1552,13 +1564,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             );
                                                         })}
                                                         <td className="px-1 py-2 text-center font-bold text-gray-700 border-r border-gray-300 bg-gray-50 text-sm">
-                                                            {Object.values(grade.bimesters).every((b: any) => b.isNotaApproved !== false && b.isRecuperacaoApproved !== false) ? formatGrade(grade.mediaAnual) : '-'}
+                                                            {grade.mediaAnual >= 0 ? formatGrade(grade.mediaAnual) : '-'}
                                                         </td>
                                                         <td className={`px-1 py-1 text-center font-bold text-amber-600 text-[10px] md:text-xs border-r border-gray-300 ${grade.recuperacaoFinalApproved === false ? 'bg-yellow-100' : 'bg-amber-50/30'}`}>
                                                             {grade.recuperacaoFinalApproved !== false ? formatGrade(grade.recuperacaoFinal) : <span className="text-gray-300">-</span>}
                                                         </td>
                                                         <td className="px-1 py-1 text-center font-extrabold text-blue-900 bg-blue-50/50 text-xs md:text-sm border-r border-gray-300">
-                                                            {(grade.recuperacaoFinalApproved !== false && Object.values(grade.bimesters).every((b: any) => b.isNotaApproved !== false && b.isRecuperacaoApproved !== false)) ? formatGrade(grade.mediaFinal) : '-'}
+                                                            {grade.mediaFinal >= 0 ? formatGrade(grade.mediaFinal) : '-'}
                                                         </td>
                                                         {(() => {
                                                             const totalAbsences = [1, 2, 3, 4].reduce((sum, bNum) => {

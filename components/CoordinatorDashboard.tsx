@@ -64,6 +64,14 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
     const [historyFilterTerm, setHistoryFilterTerm] = useState('');
     const [studentSearchTerm, setStudentSearchTerm] = useState(''); // NEW: Search for students in occurrence modal
 
+    const isYearFinished = useMemo(() => {
+        if (!academicSettings?.bimesters) return false;
+        const b4 = academicSettings.bimesters.find((b: any) => b.number === 4);
+        if (!b4) return false;
+        const today = new Date().toISOString().split('T')[0];
+        return today > b4.endDate;
+    }, [academicSettings]);
+
     const [pendingGradesStudents, setPendingGradesStudents] = useState<any[]>([]);
     const [pendingGradesMap, setPendingGradesMap] = useState<Record<string, GradeEntry[]>>({});
     const [allStudentGradesMap, setAllStudentGradesMap] = useState<Record<string, GradeEntry[]>>({}); // NEW: Holds ALL grades for frequency calc
@@ -775,7 +783,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                                     bimester3: calculateBimesterMedia(grade.bimesters.bimester3),
                                                                     bimester4: calculateBimesterMedia(grade.bimesters.bimester4),
                                                                 };
-                                                                const finalData = calculateFinalData(calculatedBimesters, grade.recuperacaoFinal);
+                                                                const finalData = calculateFinalData(calculatedBimesters, grade.recuperacaoFinal, isYearFinished);
                                                                 return { ...grade, bimesters: calculatedBimesters, ...finalData };
                                                             });
 
@@ -843,16 +851,16 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                                             })}
 
                                                                             <td className="px-1 py-2 text-center font-bold text-gray-700 bg-gray-50 border-r border-gray-300">
-                                                                                {formatGrade(grade.mediaAnual)}
+                                                                                {grade.mediaAnual >= 0 ? formatGrade(grade.mediaAnual) : '-'}
                                                                             </td>
 
                                                                             <td className={`px-1 py-2 text-center font-bold text-red-600 border-r border-gray-300 ${isRecFinalPending ? 'bg-yellow-100 ring-inset ring-2 ring-yellow-300' : ''}`}>
-                                                                                {formatGrade(grade.recuperacaoFinal)}
-                                                                                {isRecFinalPending && <span className="block text-[8px] bg-yellow-200 text-yellow-900 rounded px-1 mt-0.5 font-bold uppercase">Alterado</span>}
+                                                                                {grade.recuperacaoFinalApproved !== false ? formatGrade(grade.recuperacaoFinal) : '-'}
+                                                                                {isRecFinalPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-orange-600 rounded-full animate-pulse" title="Prova Final Pendente"></span>}
                                                                             </td>
 
-                                                                            <td className="px-1 py-1 text-center font-extrabold text-blue-900 bg-blue-50 border-r border-gray-300">
-                                                                                {formatGrade(grade.mediaFinal)}
+                                                                            <td className="px-1 py-2 text-center font-extrabold text-blue-900 bg-blue-50 border-r border-gray-300">
+                                                                                {grade.mediaFinal >= 0 ? formatGrade(grade.mediaFinal) : '-'}
                                                                             </td>
                                                                             {(() => {
                                                                                 const totalAbsences = [grade.bimesters.bimester1, grade.bimesters.bimester2, grade.bimesters.bimester3, grade.bimesters.bimester4].reduce((sum, b, idx) => {
