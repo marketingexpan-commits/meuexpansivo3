@@ -31,15 +31,36 @@ interface TeacherDashboardProps {
     onSaveEarlyChildhoodReport: (report: EarlyChildhoodReport) => Promise<void>;
     onLogout: () => void;
     notifications?: AppNotification[];
-    onMarkNotificationAsRead?: (id: string) => Promise<void>;
+    onDeleteNotification?: (id: string) => Promise<void>;
     academicSettings?: any;
+    materials?: ClassMaterial[];
+    agendas?: DailyAgenda[];
+    examGuides?: ExamGuide[];
+    tickets?: Ticket[];
 }
 
 const formatGrade = (value: number | undefined | null) => {
     return value !== undefined && value !== null && value !== -1 ? value.toFixed(1) : '-';
 };
 
-export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, students, grades, attendanceRecords, earlyChildhoodReports, onSaveGrade, onSaveAttendance, onSaveEarlyChildhoodReport, onLogout, notifications = [], onMarkNotificationAsRead, academicSettings }) => {
+export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
+    teacher,
+    students,
+    grades,
+    attendanceRecords,
+    earlyChildhoodReports,
+    onSaveGrade,
+    onSaveAttendance,
+    onSaveEarlyChildhoodReport,
+    onLogout,
+    notifications = [],
+    onDeleteNotification,
+    academicSettings,
+    materials: propsMaterials = [],
+    agendas: propsAgendas = [],
+    examGuides: propsExamGuides = [],
+    tickets: propsTickets = []
+}) => {
     const { grades: academicGrades, subjects: academicSubjects, loading: loadingAcademic } = useAcademicData();
 
     const [activeTab, setActiveTab] = useState<'menu' | 'grades' | 'attendance' | 'tickets' | 'materials'>('menu');
@@ -92,9 +113,37 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
 
     const [isAttendanceSaving, setIsAttendanceSaving] = useState(false);
 
-    // Estados para o Sistema de Dúvidas (Tickets)
-    const [tickets, setTickets] = useState<Ticket[]>([]);
-    const [isLoadingTickets, setIsLoadingTickets] = useState(false);
+    const tickets = useMemo(() => {
+        if (!propsTickets) return [];
+        const filtered = propsTickets.filter(t => teacher.subjects.includes(t.subject as any) && t.unit === teacher.unit);
+        return filtered.sort((a, b) => {
+            if (a.status === TicketStatus.PENDING && b.status !== TicketStatus.PENDING) return -1;
+            if (a.status !== TicketStatus.PENDING && b.status === TicketStatus.PENDING) return 1;
+            return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+        });
+    }, [propsTickets, teacher.subjects, teacher.unit]);
+
+    const uploadedMaterials = useMemo(() => {
+        if (!propsMaterials) return [];
+        return propsMaterials
+            .filter(m => m.teacherId === teacher.id)
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    }, [propsMaterials, teacher.id]);
+
+    const examGuidesList = useMemo(() => {
+        if (!propsExamGuides) return [];
+        return propsExamGuides
+            .filter(eg => eg.teacherId === teacher.id)
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    }, [propsExamGuides, teacher.id]);
+
+    // Note: agendas are filtered by teacher and some current parameters in the UI
+    const teacherAgendas = useMemo(() => {
+        if (!propsAgendas) return [];
+        return propsAgendas.filter(a => a.teacherId === teacher.id);
+    }, [propsAgendas, teacher.id]);
+
+
     const [replyingTicketId, setReplyingTicketId] = useState<string | null>(null);
     const [replyText, setReplyText] = useState('');
     const [isSendingReply, setIsSendingReply] = useState(false);
@@ -109,8 +158,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadError, setUploadError] = useState<string | null>(null);
-    const [uploadedMaterials, setUploadedMaterials] = useState<ClassMaterial[]>([]);
-    const [isLoadingMaterials, setIsLoadingMaterials] = useState(false);
+    // Removed local state and fetching for materials as it's now prop-driven
+
 
     // --- STATES PARA AGENDA E ROTEIROS ---
     const [agendaDate, setAgendaDate] = useState(new Date().toISOString().split('T')[0]);
@@ -533,48 +582,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
         }
     };
 
-    // --- TICKET SYSTEM LOGIC ---
-    useEffect(() => {
-        loadTickets();
-    }, [teacher.unit, teacher.subjects]); // Reloads if teacher unit or subjects change, or on mount
 
-    const loadTickets = async () => {
-        setIsLoadingTickets(true);
-        try {
-            // Fetch tickets for this unit and teacher's subjects
-            // Note: Firestore 'in' query supports max 10 values. If teacher has more than 10 subjects, we need to batch or client-side filter.
-            // Assuming for now teacher has <= 10 subjects usually. 
-            // If empty subjects, don't query.
-            if (teacher.subjects.length === 0) {
-                setTickets([]);
-                return;
-            }
-
-            // We filter primarily by Unit
-            let query = db.collection('tickets_pedagogicos')
-                .where('unit', '==', teacher.unit);
-
-            // Client side filtering for subjects might be safer if list is long
-            const snapshot = await query.get();
-            const allUnitTickets = snapshot.docs.map(doc => doc.data() as Ticket);
-
-            // Filter by teacher subjects
-            const relevantTickets = allUnitTickets.filter(t => teacher.subjects.includes(t.subject as any));
-
-            // Sort: Pending first, then by date (newest first)
-            const sorted = relevantTickets.sort((a, b) => {
-                if (a.status === TicketStatus.PENDING && b.status !== TicketStatus.PENDING) return -1;
-                if (a.status !== TicketStatus.PENDING && b.status === TicketStatus.PENDING) return 1;
-                return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-            });
-
-            setTickets(sorted);
-        } catch (error) {
-            console.error("Erro ao carregar tickets:", error);
-        } finally {
-            setIsLoadingTickets(false);
-        }
-    };
 
     const handleReplySubmit = async (ticketId: string) => {
         if (!replyText.trim()) return;
@@ -606,12 +614,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                 await db.collection('notifications').add(notification);
             }
 
-            // Update local state
-            setTickets(prev => prev.map(t =>
-                t.id === ticketId
-                    ? { ...t, response: replyText, responseTimestamp: timestamp, status: TicketStatus.ANSWERED, responderName: teacher.name }
-                    : t
-            ));
+
 
             setReplyingTicketId(null);
             setReplyText('');
@@ -636,31 +639,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
     const unreadNotifications = useMemo(() => {
         return notifications.filter(n => !n.read).length;
     }, [notifications]);
-
-    // --- MATERIALS LOGIC ---
-    // Load Materials on Tab Switch or Mount
-    useEffect(() => {
-        if (activeTab === 'materials') {
-            loadMaterials();
-        }
-    }, [activeTab]);
-
-    const loadMaterials = async () => {
-        setIsLoadingMaterials(true);
-        try {
-            const snapshot = await db.collection('materials')
-                .where('teacherId', '==', teacher.id)
-                .get();
-            const mats = snapshot.docs.map(doc => doc.data() as ClassMaterial);
-            // Sort by date desc
-            mats.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-            setUploadedMaterials(mats);
-        } catch (error) {
-            console.error("Erro ao carregar materiais:", error);
-        } finally {
-            setIsLoadingMaterials(false);
-        }
-    };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -751,7 +729,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
             setMaterialTitle('');
             setUploadProgress(0);
             alert("Material enviado com sucesso!");
-            loadMaterials();
 
         } catch (error: any) {
             console.error("ERRO NO UPLOAD:", error);
@@ -789,7 +766,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                 console.warn("Erro ao deletar arquivo do storage (pode já ter sido removido):", err);
             }
 
-            setUploadedMaterials(prev => prev.filter(m => m.id !== material.id));
             alert("Material removido.");
         } catch (error) {
             console.error("Erro ao deletar material:", error);
@@ -916,13 +892,35 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                         </button>
                                     </div>
                                     <div className="max-h-60 overflow-y-auto">
+                                        {pendingTicketsCount > 0 && (
+                                            <div
+                                                className="p-3 border-b border-orange-100 bg-orange-50 hover:bg-orange-100 cursor-pointer flex justify-between items-center"
+                                                onClick={() => {
+                                                    if (onDeleteNotification) {
+                                                        // Mark all "Nova Dúvida" notifications as read (delete them)
+                                                        const doubtNotifs = notifications.filter(n => (n.title.toLowerCase().includes('dúvida') || n.title.toLowerCase().includes('nova dúvida')));
+                                                        doubtNotifs.forEach(n => onDeleteNotification(n.id));
+                                                    }
+                                                    setActiveTab('tickets');
+                                                    setShowNotifications(false);
+                                                }}
+                                            >
+                                                <div>
+                                                    <span className="font-bold text-xs text-orange-800">Dúvidas Pendentes</span>
+                                                    <p className="text-[10px] text-orange-600 line-clamp-1">Você tem {pendingTicketsCount} {pendingTicketsCount === 1 ? 'dúvida' : 'dúvidas'} para responder.</p>
+                                                </div>
+                                                <div className="bg-orange-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                                                    {pendingTicketsCount}
+                                                </div>
+                                            </div>
+                                        )}
                                         {notifications.length > 0 ? (
                                             notifications.map(n => (
                                                 <div
                                                     key={n.id}
                                                     className={`p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer ${!n.read ? 'bg-blue-50/30' : ''}`}
                                                     onClick={() => {
-                                                        if (!n.read && onMarkNotificationAsRead) onMarkNotificationAsRead(n.id);
+                                                        if (onDeleteNotification) onDeleteNotification(n.id);
 
                                                         // Smart Navigation: Pre-select student
                                                         if (n.studentId) {
@@ -1021,11 +1019,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                             <svg className="w-7 h-7 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm text-center">Dúvidas dos Alunos</h3>
-                                        {pendingTicketsCount > 0 && (
-                                            <span className="absolute top-2 right-2 bg-orange-600 text-white rounded-full px-2 py-0.5 text-xs font-bold animate-pulse">
-                                                {pendingTicketsCount}
-                                            </span>
-                                        )}
                                     </button>
 
                                     <button
@@ -1156,9 +1149,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                 </h2>
 
                                 <div className="flex-1 overflow-y-auto pr-2">
-                                    {isLoadingMaterials ? (
-                                        <div className="text-center py-10 text-gray-500">Carregando...</div>
-                                    ) : uploadedMaterials.length > 0 ? (
+                                    {uploadedMaterials.length > 0 ? (
                                         <div className="grid grid-cols-1 gap-4">
                                             {uploadedMaterials.map(mat => (
                                                 <div key={mat.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex justify-between items-start">
@@ -2004,9 +1995,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ teacher, stu
                                     Dúvidas e Perguntas
                                 </h2>
 
-                                {isLoadingTickets ? (
-                                    <TableSkeleton rows={5} />
-                                ) : tickets.length === 0 ? (
+                                {tickets.length === 0 ? (
                                     <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
                                         <span className="text-4xl block mb-2">🎉</span>
                                         <p className="text-gray-500 text-lg">Nenhuma dúvida pendente no momento!</p>

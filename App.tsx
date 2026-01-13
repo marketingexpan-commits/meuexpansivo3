@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import firebase from 'firebase/compat/app';
-import { UserRole, UserSession, Student, Teacher, GradeEntry, Admin, SchoolMessage, AttendanceRecord, EarlyChildhoodReport, UnitContact, AppNotification, Mensalidade, EventoFinanceiro, AcademicSettings } from './types';
+import { UserRole, UserSession, Student, Teacher, GradeEntry, Admin, SchoolMessage, AttendanceRecord, EarlyChildhoodReport, UnitContact, AppNotification, Mensalidade, EventoFinanceiro, AcademicSettings, Ticket, ClassMaterial, DailyAgenda, ExamGuide } from './types';
 import { MOCK_STUDENTS, MOCK_TEACHERS, MOCK_ADMINS, FINAL_GRADES_CALCULATED, ALLOW_MOCK_LOGIN } from './constants';
 import { Login } from './components/Login';
 import { StudentDashboard } from './components/StudentDashboard';
@@ -36,6 +36,10 @@ const AppContent: React.FC = () => {
   const [mensalidades, setMensalidades] = useState<Mensalidade[]>([]);
   const [eventosFinanceiros, setEventosFinanceiros] = useState<EventoFinanceiro[]>([]);
   const [academicSettings, setAcademicSettings] = useState<AcademicSettings | null>(null);
+  const [classMaterials, setClassMaterials] = useState<ClassMaterial[]>([]);
+  const [dailyAgendas, setDailyAgendas] = useState<DailyAgenda[]>([]);
+  const [examGuides, setExamGuides] = useState<ExamGuide[]>([]);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
 
 
   const [loginError, setLoginError] = useState<string>('');
@@ -52,7 +56,11 @@ const AppContent: React.FC = () => {
     notifications: false,
     mensalidades: false,
     eventosFinanceiros: false,
-    academicSettings: false
+    academicSettings: false,
+    materials: false,
+    agenda: false,
+    examGuides: false,
+    tickets: false
   });
 
   const [isSeeding, setIsSeeding] = useState(false);
@@ -187,6 +195,40 @@ const AppContent: React.FC = () => {
         setInitialLoad(prev => ({ ...prev, academicSettings: true }));
       }, userUnit));
 
+      // Real-time Support Tickets
+      unsubs.push(db.collection('tickets_pedagogicos').where('studentId', '==', userId).onSnapshot(snap => {
+        setTickets(snap.docs.map(doc => ({ ...doc.data() as Ticket, id: doc.id })));
+        setInitialLoad(prev => ({ ...prev, tickets: true }));
+      }, (err) => {
+        console.error("Tickets listen error:", err);
+        setInitialLoad(prev => ({ ...prev, tickets: true }));
+      }));
+
+      // Real-time Materials, Agenda, and Exam Guides (Student view)
+      unsubs.push(db.collection('materials').where('unit', '==', userUnit).onSnapshot(snap => {
+        setClassMaterials(snap.docs.map(doc => ({ ...doc.data() as ClassMaterial, id: doc.id })));
+        setInitialLoad(prev => ({ ...prev, materials: true }));
+      }, (err) => {
+        console.error("Materials listen error:", err);
+        setInitialLoad(prev => ({ ...prev, materials: true }));
+      }));
+
+      unsubs.push(db.collection('daily_agenda').where('unit', '==', userUnit).onSnapshot(snap => {
+        setDailyAgendas(snap.docs.map(doc => ({ ...doc.data() as DailyAgenda, id: doc.id })));
+        setInitialLoad(prev => ({ ...prev, agenda: true }));
+      }, (err) => {
+        console.error("Agenda listen error:", err);
+        setInitialLoad(prev => ({ ...prev, agenda: true }));
+      }));
+
+      unsubs.push(db.collection('exam_guides').where('unit', '==', userUnit).onSnapshot(snap => {
+        setExamGuides(snap.docs.map(doc => ({ ...doc.data() as ExamGuide, id: doc.id })));
+        setInitialLoad(prev => ({ ...prev, examGuides: true }));
+      }, (err) => {
+        console.error("ExamGuides listen error:", err);
+        setInitialLoad(prev => ({ ...prev, examGuides: true }));
+      }));
+
       // Set others to ready for students
       setInitialLoad(prev => ({ ...prev, students: true, admins: true, messages: true }));
 
@@ -235,6 +277,39 @@ const AppContent: React.FC = () => {
       }, (err) => {
         console.error("Teacher Notifications listen error:", err);
         setInitialLoad(prev => ({ ...prev, notifications: true }));
+      }));
+
+      // Real-time Data for Teacher (Materials, Agenda, Exam Guides, Tickets)
+      unsubs.push(db.collection('materials').where('unit', '==', userUnit).onSnapshot(snap => {
+        setClassMaterials(snap.docs.map(doc => ({ ...doc.data() as ClassMaterial, id: doc.id })));
+        setInitialLoad(prev => ({ ...prev, materials: true }));
+      }, (err) => {
+        console.error("Materials listen error:", err);
+        setInitialLoad(prev => ({ ...prev, materials: true }));
+      }));
+
+      unsubs.push(db.collection('daily_agenda').where('unit', '==', userUnit).onSnapshot(snap => {
+        setDailyAgendas(snap.docs.map(doc => ({ ...doc.data() as DailyAgenda, id: doc.id })));
+        setInitialLoad(prev => ({ ...prev, agenda: true }));
+      }, (err) => {
+        console.error("Agenda listen error:", err);
+        setInitialLoad(prev => ({ ...prev, agenda: true }));
+      }));
+
+      unsubs.push(db.collection('exam_guides').where('unit', '==', userUnit).onSnapshot(snap => {
+        setExamGuides(snap.docs.map(doc => ({ ...doc.data() as ExamGuide, id: doc.id })));
+        setInitialLoad(prev => ({ ...prev, examGuides: true }));
+      }, (err) => {
+        console.error("ExamGuides listen error:", err);
+        setInitialLoad(prev => ({ ...prev, examGuides: true }));
+      }));
+
+      unsubs.push(db.collection('tickets_pedagogicos').where('unit', '==', userUnit).onSnapshot(snap => {
+        setTickets(snap.docs.map(doc => ({ ...doc.data() as Ticket, id: doc.id })));
+        setInitialLoad(prev => ({ ...prev, tickets: true }));
+      }, (err) => {
+        console.error("Tickets listen error:", err);
+        setInitialLoad(prev => ({ ...prev, tickets: true }));
       }));
 
       setInitialLoad(prev => ({ ...prev, teachers: true, admins: true, messages: true, mensalidades: true, academicSettings: true }));
@@ -622,12 +697,12 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handleMarkNotificationAsRead = async (id: string) => {
+  const handleDeleteNotification = async (id: string) => {
     try {
-      await db.collection('notifications').doc(id).update({ read: true });
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+      await db.collection('notifications').doc(id).delete();
+      setNotifications(prev => prev.filter(n => n.id !== id));
     } catch (e) {
-      console.error("Erro ao marcar notificação como lida", e);
+      console.error("Erro ao deletar notificação", e);
     }
   };
 
@@ -1123,6 +1198,7 @@ const AppContent: React.FC = () => {
           onLogout={handleLogout}
           onCreateNotification={createNotification}
           academicSettings={academicSettings}
+          tickets={tickets}
         />
         <BackToTopButton />
       </>
@@ -1142,10 +1218,15 @@ const AppContent: React.FC = () => {
           academicSettings={academicSettings}
           onLogout={handleLogout}
           onSendMessage={handleSendMessage}
+          onCreateNotification={createNotification}
           notifications={notifications.filter(n => n.studentId === (session.user as Student).id)}
-          onMarkNotificationAsRead={handleMarkNotificationAsRead}
+          onDeleteNotification={handleDeleteNotification}
           mensalidades={mensalidades}
           eventos={eventosFinanceiros}
+          materials={classMaterials}
+          agendas={dailyAgendas}
+          examGuides={examGuides}
+          tickets={tickets}
         />
         <BackToTopButton />
       </>
@@ -1155,7 +1236,24 @@ const AppContent: React.FC = () => {
   if (session.role === UserRole.TEACHER && session.user) {
     return (
       <>
-        <TeacherDashboard teacher={session.user as Teacher} students={students} grades={grades} onSaveGrade={handleSaveGrade} onLogout={handleLogout} attendanceRecords={attendanceRecords} onSaveAttendance={handleSaveAttendance} earlyChildhoodReports={earlyChildhoodReports} onSaveEarlyChildhoodReport={handleSaveEarlyChildhoodReport} notifications={notifications} onMarkNotificationAsRead={handleMarkNotificationAsRead} academicSettings={academicSettings} />
+        <TeacherDashboard
+          teacher={session.user as Teacher}
+          students={students}
+          grades={grades}
+          onSaveGrade={handleSaveGrade}
+          onLogout={handleLogout}
+          attendanceRecords={attendanceRecords}
+          onSaveAttendance={handleSaveAttendance}
+          earlyChildhoodReports={earlyChildhoodReports}
+          onSaveEarlyChildhoodReport={handleSaveEarlyChildhoodReport}
+          notifications={notifications}
+          onDeleteNotification={handleDeleteNotification}
+          academicSettings={academicSettings}
+          materials={classMaterials}
+          agendas={dailyAgendas}
+          examGuides={examGuides}
+          tickets={tickets}
+        />
         <BackToTopButton />
       </>
     );

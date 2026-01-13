@@ -89,10 +89,15 @@ interface StudentDashboardProps {
     onLogout: () => void;
     onSendMessage: (message: Omit<SchoolMessage, 'id'>) => Promise<void>;
     notifications?: AppNotification[];
-    onMarkNotificationAsRead?: (id: string) => Promise<void>;
+    onDeleteNotification?: (id: string) => Promise<void>;
     mensalidades: Mensalidade[];
     eventos: EventoFinanceiro[];
     academicSettings?: any;
+    materials?: ClassMaterial[];
+    agendas?: DailyAgenda[];
+    examGuides?: ExamGuide[];
+    tickets?: Ticket[];
+    onCreateNotification?: (title: string, message: string, studentId?: string, teacherId?: string) => Promise<void>;
     [key: string]: any;
 }
 
@@ -103,13 +108,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     attendanceRecords = [],
     earlyChildhoodReports = [],
     unitContacts = [],
+    notifications = [],
+    onDeleteNotification,
+    mensalidades = [],
+    eventos = [],
     academicSettings,
     onLogout,
     onSendMessage,
-    notifications = [],
-    onMarkNotificationAsRead,
-    mensalidades = [],
-    eventos = []
+    onCreateNotification,
+    materials: propsMaterials = [],
+    agendas: propsAgendas = [],
+    examGuides: propsExamGuides = [],
+    tickets: propsTickets = []
 }) => {
     const { subjects: academicSubjects } = useAcademicData();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -119,28 +129,71 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
     const [showNotifications, setShowNotifications] = useState(false);
 
-    // Estado para o sistema de Dúvidas (Tickets)
+    // Estado para o sistema de Dúvidas (Tickets) - UI ONLY
     const [ticketModalOpen, setTicketModalOpen] = useState(false);
     const [selectedTicketSubject, setSelectedTicketSubject] = useState<string>('');
     const [ticketMessage, setTicketMessage] = useState('');
     const [isTicketSending, setIsTicketSending] = useState(false);
     const [ticketSuccess, setTicketSuccess] = useState(false);
-    const [studentTickets, setStudentTickets] = useState<Ticket[]>([]);
-    const [isLoadingStudentTickets, setIsLoadingStudentTickets] = useState(false);
 
-    // Estados para Materiais
-    const [classMaterials, setClassMaterials] = useState<ClassMaterial[]>([]);
-    const [isLoadingMaterials, setIsLoadingMaterials] = useState(false);
-    const [materialsError, setMaterialsError] = useState<string | null>(null);
+    // Memoized data from props
+    const studentTickets = useMemo(() => {
+        if (!propsTickets) return [];
+        return propsTickets
+            .filter(t => t.studentId === student.id)
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    }, [propsTickets, student.id]);
+
+    const studentMaterials = useMemo(() => {
+        if (!propsMaterials) return [];
+        return propsMaterials.filter(mat => {
+            const studentGrade = parseGradeLevel(student.gradeLevel).grade.trim();
+            const materialGrade = parseGradeLevel(mat.gradeLevel).grade.trim();
+            const studentClass = normalizeClass(student.schoolClass);
+            const materialClass = normalizeClass(mat.schoolClass);
+            const studentShift = (student.shift || '').toString().trim().toLowerCase();
+            const materialShift = (mat.shift || '').toString().trim().toLowerCase();
+
+            return studentGrade === materialGrade &&
+                studentClass === materialClass &&
+                studentShift === materialShift &&
+                mat.unit === student.unit;
+        }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    }, [propsMaterials, student.gradeLevel, student.schoolClass, student.shift, student.unit]);
+
+    const studentAgendas = useMemo(() => {
+        if (!propsAgendas) return [];
+        return propsAgendas.filter(a => {
+            const sGrade = parseGradeLevel(student.gradeLevel).grade.trim();
+            const aGrade = parseGradeLevel(a.gradeLevel).grade.trim();
+            const sClass = normalizeClass(student.schoolClass);
+            const aClass = normalizeClass(a.schoolClass);
+            return sGrade === aGrade && sClass === aClass && a.unit === student.unit;
+        }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [propsAgendas, student.gradeLevel, student.schoolClass, student.unit]);
+
+    const studentExamGuides = useMemo(() => {
+        if (!propsExamGuides) return [];
+        return propsExamGuides.filter(e => {
+            const sGrade = parseGradeLevel(student.gradeLevel).grade.trim();
+            const eGrade = parseGradeLevel(e.gradeLevel).grade.trim();
+            const sClass = normalizeClass(student.schoolClass);
+            const eClass = normalizeClass(e.schoolClass);
+            return sGrade === eGrade && sClass === eClass && e.unit === student.unit;
+        }).sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime());
+    }, [propsExamGuides, student.gradeLevel, student.schoolClass, student.unit]);
+
     const [materialsTab, setMaterialsTab] = useState<'files' | 'agenda' | 'exams'>('files');
-    const [agendas, setAgendas] = useState<DailyAgenda[]>([]);
-    const [examGuides, setExamGuides] = useState<ExamGuide[]>([]);
 
     // Estados para Ocorrências
     const [occurrences, setOccurrences] = useState<Occurrence[]>([]);
     const [isLoadingOccurrences, setIsLoadingOccurrences] = useState(false);
 
     const unreadNotifications = (notifications || []).filter(n => n && !n.read).length;
+
+    const answeredTicketsCount = useMemo(() => {
+        return notifications.filter(n => !n.read && (n.title.toLowerCase().includes('dúvida respondida') || n.title.toLowerCase().includes('ticket respondido'))).length;
+    }, [notifications]);
 
     // Estado para controle do semestre do relatório infantil
     const [selectedReportSemester, setSelectedReportSemester] = useState<1 | 2>(1);
@@ -407,6 +460,20 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             };
 
             await db.collection('tickets_pedagogicos').doc(ticket.id).set(ticket);
+
+            // Notify Teachers
+            if (onCreateNotification && (teachers || []).length > 0) {
+                const teachersToNotify = (teachers || []).filter(t => t.subjects.includes(selectedTicketSubject as any) && t.unit === student.unit);
+                for (const t of teachersToNotify) {
+                    await onCreateNotification(
+                        `Nova Dúvida: ${student.name}`,
+                        `Assunto: ${selectedTicketSubject}`,
+                        undefined,
+                        t.id
+                    );
+                }
+            }
+
             setTicketSuccess(true);
             setTimeout(() => {
                 setTicketModalOpen(false);
@@ -420,131 +487,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         }
     };
 
-    // Load Student Tickets
-    useEffect(() => {
-        if (currentView === 'tickets') {
-            loadStudentTickets();
-        }
-    }, [currentView]);
+    // Removed local state and effects for tickets, materials, agendas and exams
+    // Logic is now centralized in App.tsx and passed via props
 
-    const loadStudentTickets = async () => {
-        setIsLoadingStudentTickets(true);
-        try {
-            const snapshot = await db.collection('tickets_pedagogicos')
-                .where('studentId', '==', student.id)
-                .get();
 
-            const tickets = snapshot.docs.map(doc => doc.data() as Ticket);
-            // Sort by date (newest first)
-            tickets.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-            setStudentTickets(tickets);
-        } catch (error) {
-            console.error("Erro ao carregar dúvidas:", error);
-        } finally {
-            setIsLoadingStudentTickets(false);
-        }
-    };
-
-    // --- MATERIALS LOADING LOGIC ---
-    useEffect(() => {
-        if (currentView === 'materials') {
-            loadClassMaterials();
-            loadAgenda();
-            loadExamGuides();
-        }
-    }, [currentView]);
-
-    const loadClassMaterials = async () => {
-        setIsLoadingMaterials(true);
-        setMaterialsError(null); // Reset error
-        try {
-            console.log("Fetching materials for:", {
-                unit: student.unit,
-                grade: student.gradeLevel,
-                class: student.schoolClass,
-                shift: student.shift
-            });
-
-            // Filter ONLY by unit in Firestore to avoid complex composite index requirements
-            const snapshot = await db.collection('materials')
-                .where('unit', '==', student.unit)
-                .get();
-
-            const allMats = snapshot.docs.map(doc => doc.data() as ClassMaterial);
-
-            // Filter by Grade, Class, and Shift in memory with robust normalization
-            const mats = allMats.filter(mat => {
-                // Normalize Grade (Remove " - Level" suffix if present)
-                const studentGrade = parseGradeLevel(student.gradeLevel).grade.trim();
-                const materialGrade = parseGradeLevel(mat.gradeLevel).grade.trim();
-
-                // Normalize Class (Handle "01" vs "A")
-                const studentClass = normalizeClass(student.schoolClass);
-                const materialClass = normalizeClass(mat.schoolClass);
-
-                // Normalize Shift (Case insensitive and trimmed)
-                const studentShift = (student.shift || '').toString().trim().toLowerCase();
-                const materialShift = (mat.shift || '').toString().trim().toLowerCase();
-
-                return studentGrade === materialGrade &&
-                    studentClass === materialClass &&
-                    studentShift === materialShift;
-            });
-
-            // Sort by Timestamp Desc
-            mats.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-            setClassMaterials(mats);
-        } catch (error: any) {
-            console.error("Erro ao carregar materiais:", error);
-            setMaterialsError(error.message || "Erro desconhecido ao carregar materiais.");
-        } finally {
-            setIsLoadingMaterials(false);
-        }
-    };
-
-    const loadAgenda = async () => {
-        try {
-            const snapshot = await db.collection('daily_agenda')
-                .where('unit', '==', student.unit)
-                .get();
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DailyAgenda));
-            // Filter in memory with normalization
-            const filtered = data.filter(a => {
-                const sGrade = parseGradeLevel(student.gradeLevel).grade.trim();
-                const aGrade = parseGradeLevel(a.gradeLevel).grade.trim();
-                const sClass = normalizeClass(student.schoolClass);
-                const aClass = normalizeClass(a.schoolClass);
-                return sGrade === aGrade && sClass === aClass;
-            });
-            filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            setAgendas(filtered);
-        } catch (error) {
-            console.error("Erro ao carregar agenda:", error);
-        }
-    };
-
-    const loadExamGuides = async () => {
-        try {
-            const snapshot = await db.collection('exam_guides')
-                .where('unit', '==', student.unit)
-                .get();
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ExamGuide));
-            // Filter with normalization
-            const filtered = data.filter(e => {
-                const sGrade = parseGradeLevel(student.gradeLevel).grade.trim();
-                const eGrade = parseGradeLevel(e.gradeLevel).grade.trim();
-                const sClass = normalizeClass(student.schoolClass);
-                const eClass = normalizeClass(e.schoolClass);
-                return sGrade === eGrade && sClass === eClass;
-            });
-            // Sort by examDate ASC (Next exams first)
-            filtered.sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime());
-            setExamGuides(filtered);
-        } catch (error) {
-            console.error("Erro ao carregar roteiros:", error);
-        }
-    };
 
 
     // --- OCCURRENCES LOADING LOGIC ---
@@ -623,13 +570,35 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         </button>
                                     </div>
                                     <div className="max-h-60 overflow-y-auto">
+                                        {answeredTicketsCount > 0 && (
+                                            <div
+                                                className="p-3 border-b border-orange-100 bg-orange-50 hover:bg-orange-100 cursor-pointer flex justify-between items-center"
+                                                onClick={() => {
+                                                    // Mark all "Dúvida Respondida" notifications as read (delete them)
+                                                    const doubtNotifs = notifications.filter(n => (n.title.toLowerCase().includes('dúvida respondida') || n.title.toLowerCase().includes('ticket respondido')));
+                                                    doubtNotifs.forEach(n => {
+                                                        if (onDeleteNotification) onDeleteNotification(n.id);
+                                                    });
+                                                    setCurrentView('tickets');
+                                                    setShowNotifications(false);
+                                                }}
+                                            >
+                                                <div>
+                                                    <span className="font-bold text-xs text-orange-800">Dúvidas Respondidas</span>
+                                                    <p className="text-[10px] text-orange-600 line-clamp-1">Você tem {answeredTicketsCount} {answeredTicketsCount === 1 ? 'dúvida' : 'dúvidas'} com nova resposta.</p>
+                                                </div>
+                                                <div className="bg-orange-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                                                    {answeredTicketsCount}
+                                                </div>
+                                            </div>
+                                        )}
                                         {notifications.length > 0 ? (
                                             notifications.map(n => (
                                                 <div
                                                     key={n.id}
                                                     className={`p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer ${!n.read ? 'bg-blue-50/30' : ''}`}
                                                     onClick={() => {
-                                                        if (!n.read && onMarkNotificationAsRead) onMarkNotificationAsRead(n.id);
+                                                        if (onDeleteNotification) onDeleteNotification(n.id);
 
                                                         // Normalize strings to ignore accents (e.g. 'ê' -> 'e')
                                                         const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -733,13 +702,35 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                     </button>
                                                 </div>
                                                 <div className="max-h-60 overflow-y-auto">
+                                                    {answeredTicketsCount > 0 && (
+                                                        <div
+                                                            className="p-3 border-b border-orange-100 bg-orange-50 hover:bg-orange-100 cursor-pointer flex justify-between items-center"
+                                                            onClick={async () => {
+                                                                // Mark all "Dúvida Respondida" notifications as read (delete them)
+                                                                const doubtNotifs = notifications.filter(n => (n.title.toLowerCase().includes('dúvida respondida') || n.title.toLowerCase().includes('ticket respondido')));
+                                                                for (const n of doubtNotifs) {
+                                                                    if (onDeleteNotification) await onDeleteNotification(n.id);
+                                                                }
+                                                                setCurrentView('tickets');
+                                                                setShowNotifications(false);
+                                                            }}
+                                                        >
+                                                            <div>
+                                                                <span className="font-bold text-xs text-orange-800">Dúvidas Respondidas</span>
+                                                                <p className="text-[10px] text-orange-600 line-clamp-1">Você tem {answeredTicketsCount} {answeredTicketsCount === 1 ? 'dúvida' : 'dúvidas'} com nova resposta.</p>
+                                                            </div>
+                                                            <div className="bg-orange-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                                                                {answeredTicketsCount}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                     {notifications.length > 0 ? (
                                                         notifications.map(n => (
                                                             <div
                                                                 key={n.id}
                                                                 className={`p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer ${!n.read ? 'bg-blue-50/30' : ''}`}
                                                                 onClick={() => {
-                                                                    if (!n.read && onMarkNotificationAsRead) onMarkNotificationAsRead(n.id);
+                                                                    if (onDeleteNotification) onDeleteNotification(n.id);
 
                                                                     const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
                                                                     const titleNorm = normalize(n.title);
@@ -1113,20 +1104,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                     {/* TAB: FILES */}
                                     {materialsTab === 'files' && (
-                                        isLoadingMaterials ? (
-                                            <GridSkeleton count={4} />
-                                        ) : materialsError ? (
-                                            <ErrorState
-                                                title="Erro ao carregar materiais"
-                                                message={materialsError}
-                                                onRetry={() => {
-                                                    setIsLoadingMaterials(true);
-                                                    setMaterialsError(null);
-                                                }}
-                                            />
-                                        ) : classMaterials.length > 0 ? (
+                                        studentMaterials.length > 0 ? (
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                {classMaterials.map(mat => (
+                                                {studentMaterials.map(mat => (
                                                     <div key={mat.id} className="bg-gray-50 hover:bg-white p-4 rounded-lg shadow-sm hover:shadow-md border border-gray-200 transition-all group">
                                                         <div className="flex justify-between items-start">
                                                             <div>
@@ -1165,11 +1145,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                     {/* TAB: AGENDA */}
                                     {materialsTab === 'agenda' && (
-                                        agendas.length > 0 ? (
+                                        studentAgendas.length > 0 ? (
                                             <div className="space-y-6">
                                                 {/* Group by Date Logic handled visually */}
-                                                {agendas.map((item, index) => {
-                                                    const isNewDay = index === 0 || agendas[index - 1].date !== item.date;
+                                                {studentAgendas.map((item, index) => {
+                                                    const isNewDay = index === 0 || studentAgendas[index - 1].date !== item.date;
                                                     return (
                                                         <div key={item.id} className="animate-fade-in-up">
                                                             {isNewDay && (
@@ -1222,9 +1202,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                     {/* TAB: EXAMS */}
                                     {materialsTab === 'exams' && (
-                                        examGuides.length > 0 ? (
+                                        studentExamGuides.length > 0 ? (
                                             <div className="space-y-4">
-                                                {examGuides.map(guide => {
+                                                {studentExamGuides.map(guide => {
                                                     const today = new Date();
                                                     today.setHours(0, 0, 0, 0);
                                                     const examDate = new Date(guide.examDate + 'T00:00:00'); // Fix timezone offset issue simple
@@ -1720,9 +1700,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 Minhas Dúvidas
                             </h3>
 
-                            {isLoadingStudentTickets ? (
-                                <TableSkeleton rows={3} />
-                            ) : studentTickets.length === 0 ? (
+                            {studentTickets.length === 0 ? (
                                 <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-100">
                                     <p className="text-gray-500">Você ainda não enviou dúvidas.</p>
                                     <Button onClick={() => setCurrentView('grades')} className="mt-4">
@@ -1748,7 +1726,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                 {ticket.message}
                                             </div>
 
-                                            {ticket.response && (
+                                            {ticket.response ? (
                                                 <div className="bg-blue-50/50 p-3 rounded-md text-sm text-gray-800 border border-blue-100">
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <User className="w-5 h-5 text-blue-800" />
@@ -1756,6 +1734,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                     </div>
                                                     <p className="whitespace-pre-wrap pl-2 border-l-2 border-blue-200">{ticket.response}</p>
                                                     <p className="text-[10px] text-gray-400 mt-2 text-right">Respondido em {new Date(ticket.responseTimestamp!).toLocaleDateString()}</p>
+
+                                                    <div className="mt-3 pt-2 border-t border-blue-200/50 flex items-center gap-2 text-[10px] uppercase font-bold text-blue-800/60 tracking-wider">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+                                                        Interação concluída pelo professor
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="mt-2 text-center py-2 bg-yellow-50 rounded border border-dashed border-yellow-200">
+                                                    <p className="text-[10px] font-bold text-yellow-700 uppercase tracking-widest italic">Aguardando atendimento do professor...</p>
                                                 </div>
                                             )}
                                         </div>
