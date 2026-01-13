@@ -1,34 +1,25 @@
 /**
- * 🔒 CRITICAL LOGIC: Unit-Specific Frequency Calculation
- * DO NOT REVERT TO STATIC ESTIMATION.
- * This file implements dynamic calculation based on real school days (calendarEvents).
- * Refer to ARCHITECTURE.md for details.
+ * 🔒 CRITICAL LOGIC: Fixed Workload Frequency Calculation
+ * This file replaces dynamic calendar logic with a fixed C.H. basis for stable bulletin display.
+ * Refer to implementation_plan.md for details.
  */
 import { AttendanceStatus } from "../types";
 import type { AcademicSettings, GradeEntry, AttendanceRecord, AcademicSubject } from "../types";
 import { CURRICULUM_MATRIX } from "../constants";
-import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, calculateSchoolDays } from "./academicUtils";
+import { getCurrentSchoolYear, getDynamicBimester } from "./academicUtils";
 
 /**
  * Calculates the attendance percentage for a given subject and student grade level.
  * Formula: ((Total Expected Classes - Absences) / Total Expected Classes) * 100
- * 
- * @param subject The subject name (e.g., "Matemática")
- * @param absences Total number of absences in the period
- * @param gradeLevel The student's grade level string (e.g., "6º Ano - Fundamental II")
- * @param bimester Optional. Specific bimester for holiday-aware calculation.
- * @param academicSubjects Optional dynamic subjects.
- * @param settings Optional academic settings.
- * @param calendarEvents Optional calendar events.
  */
 export const calculateAttendancePercentage = (
     subject: string,
     absences: number,
     gradeLevel: string,
-    bimester?: number,
+    _bimester?: number,
     academicSubjects?: AcademicSubject[],
-    settings?: AcademicSettings | null,
-    calendarEvents?: any[]
+    _settings?: AcademicSettings | null,
+    _calendarEvents?: any[]
 ): number | null => {
     // 1. Try Dynamic Lookup
     if (academicSubjects && academicSubjects.length > 0) {
@@ -38,20 +29,12 @@ export const calculateAttendancePercentage = (
             if (gradeKey) {
                 const weeklyClasses = dynamicSubject.weeklyHours[gradeKey];
                 if (weeklyClasses > 0) {
-                    let totalExpectedClasses = weeklyClasses * 10;
-
-                    // Multi-Unit Logic
-                    if (settings && calendarEvents && bimester) {
-                        const bim = settings.bimesters.find(b => b.number === bimester);
-                        if (bim) {
-                            const days = calculateSchoolDays(bim.startDate, bim.endDate, calendarEvents);
-                            totalExpectedClasses = (weeklyClasses / 5) * days;
-                        }
-                    }
+                    // C.H. BASIS: Each bimester is exactly 10 weeks
+                    const totalExpectedClasses = weeklyClasses * 10;
 
                     if (absences === 0) return null;
                     const percentage = ((totalExpectedClasses - absences) / totalExpectedClasses) * 100;
-                    return Math.max(0, Math.min(100, parseFloat(percentage.toFixed(1))));
+                    return Math.max(0, Math.min(100, parseFloat(percentage.toFixed(2))));
                 }
             }
         }
@@ -71,21 +54,13 @@ export const calculateAttendancePercentage = (
     const weeklyClasses = levelMatrix[subject];
     if (weeklyClasses === undefined || weeklyClasses === 0) return null;
 
-    let totalExpectedClasses = weeklyClasses * 10;
-
-    // Multi-Unit Logic for Legacy
-    if (settings && calendarEvents && bimester) {
-        const bim = settings.bimesters.find(b => b.number === bimester);
-        if (bim) {
-            const days = calculateSchoolDays(bim.startDate, bim.endDate, calendarEvents);
-            totalExpectedClasses = (weeklyClasses / 5) * days;
-        }
-    }
+    // C.H. BASIS: Each bimester is exactly 10 weeks
+    const totalExpectedClasses = weeklyClasses * 10;
 
     if (absences === 0) return null;
 
     const percentage = ((totalExpectedClasses - absences) / totalExpectedClasses) * 100;
-    return Math.max(0, Math.min(100, parseFloat(percentage.toFixed(1))));
+    return Math.max(0, Math.min(100, parseFloat(percentage.toFixed(2))));
 };
 
 /**
@@ -95,15 +70,11 @@ export const calculateAnnualAttendancePercentage = (
     subject: string,
     totalAbsences: number,
     gradeLevel: string,
-    elapsedBimesters: number = 4,
+    _elapsedBimesters: number = 4,
     academicSubjects?: AcademicSubject[],
-    settings?: AcademicSettings | null,
-    calendarEvents?: any[]
+    _settings?: AcademicSettings | null,
+    _calendarEvents?: any[]
 ): number | null => {
-    const effectiveElapsed = (settings && elapsedBimesters === 4)
-        ? Math.max(1, getDynamicBimester(new Date().toISOString().split('T')[0], settings))
-        : elapsedBimesters;
-
     if (academicSubjects && academicSubjects.length > 0) {
         const dynamicSubject = academicSubjects.find(s => s.name === subject);
         if (dynamicSubject && dynamicSubject.weeklyHours) {
@@ -111,22 +82,12 @@ export const calculateAnnualAttendancePercentage = (
             if (gradeKey) {
                 const weeklyClasses = dynamicSubject.weeklyHours[gradeKey];
                 if (weeklyClasses > 0) {
-                    let totalExpectedClasses = 0;
-                    if (settings && calendarEvents) {
-                        for (let i = 1; i <= effectiveElapsed; i++) {
-                            const bim = settings.bimesters.find(b => b.number === i);
-                            if (bim) {
-                                const days = calculateSchoolDays(bim.startDate, bim.endDate, calendarEvents);
-                                totalExpectedClasses += (weeklyClasses / 5) * days;
-                            }
-                        }
-                    } else {
-                        totalExpectedClasses = weeklyClasses * 10 * effectiveElapsed;
-                    }
+                    // C.H. BASIS: full year is 40 weeks
+                    const totalExpectedClasses = weeklyClasses * 40;
 
                     if (totalExpectedClasses === 0) return 100;
                     const percentage = ((totalExpectedClasses - totalAbsences) / totalExpectedClasses) * 100;
-                    return Math.max(0, Math.min(100, parseFloat(percentage.toFixed(1))));
+                    return Math.max(0, Math.min(100, parseFloat(percentage.toFixed(2))));
                 }
             }
         }
@@ -145,23 +106,13 @@ export const calculateAnnualAttendancePercentage = (
     const weeklyClasses = levelMatrix[subject];
     if (weeklyClasses === undefined || weeklyClasses === 0) return null;
 
-    let totalExpectedClasses = 0;
-    if (settings && calendarEvents) {
-        for (let i = 1; i <= effectiveElapsed; i++) {
-            const bim = settings.bimesters.find(b => b.number === i);
-            if (bim) {
-                const days = calculateSchoolDays(bim.startDate, bim.endDate, calendarEvents);
-                totalExpectedClasses += (weeklyClasses / 5) * days;
-            }
-        }
-    } else {
-        totalExpectedClasses = weeklyClasses * 10 * effectiveElapsed;
-    }
+    // C.H. BASIS: full year is 40 weeks
+    const totalExpectedClasses = weeklyClasses * 40;
 
     if (totalExpectedClasses === 0) return 100;
 
     const percentage = ((totalExpectedClasses - totalAbsences) / totalExpectedClasses) * 100;
-    return Math.max(0, Math.min(100, parseFloat(percentage.toFixed(1))));
+    return Math.max(0, Math.min(100, parseFloat(percentage.toFixed(2))));
 };
 
 /**
@@ -173,22 +124,10 @@ export const calculateGeneralFrequency = (
     studentId: string,
     gradeLevel: string,
     academicSubjects?: AcademicSubject[],
-    settings?: AcademicSettings | null,
-    calendarEvents?: any[]
+    _settings?: AcademicSettings | null,
+    _calendarEvents?: any[]
 ): string => {
     const currentYear = getCurrentSchoolYear();
-    const today = new Date().toISOString().split('T')[0];
-    const calendarBim = settings ? getDynamicBimester(today, settings) : getBimesterFromDate(today);
-
-    const maxDataBim = (attendanceRecords || []).reduce((max, record) => {
-        const rYear = parseInt(record.date.split('-')[0], 10);
-        if (rYear !== currentYear) return max;
-        if (!record.studentStatus || !record.studentStatus[studentId]) return max;
-        const b = settings ? getDynamicBimester(record.date, settings) : getBimesterFromDate(record.date);
-        return Math.max(max, b);
-    }, 1);
-
-    const elapsedBimesters = Math.max(calendarBim, maxDataBim);
 
     let levelKey = '';
     if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
@@ -200,7 +139,7 @@ export const calculateGeneralFrequency = (
     const levelMatrix = CURRICULUM_MATRIX[levelKey];
     if (!levelMatrix) return '-';
 
-    let totalExpected = 0;
+    let totalExpectedHours = 0;
     let foundDynamic = false;
 
     if (academicSubjects && academicSubjects.length > 0) {
@@ -209,17 +148,8 @@ export const calculateGeneralFrequency = (
                 const gradeKey = Object.keys(s.weeklyHours).find(key => gradeLevel.includes(key));
                 if (gradeKey && s.weeklyHours[gradeKey] > 0) {
                     const weeklyClasses = s.weeklyHours[gradeKey];
-                    if (settings && calendarEvents) {
-                        for (let i = 1; i <= elapsedBimesters; i++) {
-                            const bim = settings.bimesters.find(b => b.number === i);
-                            if (bim) {
-                                const days = calculateSchoolDays(bim.startDate, bim.endDate, calendarEvents);
-                                totalExpected += (weeklyClasses / 5) * days;
-                            }
-                        }
-                    } else {
-                        totalExpected += (weeklyClasses * 10 * elapsedBimesters);
-                    }
+                    // C.H. BASIS: 40 weeks per year
+                    totalExpectedHours += (weeklyClasses * 40);
                     foundDynamic = true;
                 }
             }
@@ -229,29 +159,84 @@ export const calculateGeneralFrequency = (
     if (!foundDynamic) {
         Object.values(levelMatrix).forEach(weeklyClasses => {
             if (typeof weeklyClasses === 'number' && weeklyClasses > 0) {
-                if (settings && calendarEvents) {
-                    for (let i = 1; i <= elapsedBimesters; i++) {
-                        const bim = settings.bimesters.find(b => b.number === i);
-                        if (bim) {
-                            const days = calculateSchoolDays(bim.startDate, bim.endDate, calendarEvents);
-                            totalExpected += (weeklyClasses / 5) * days;
-                        }
-                    }
-                } else {
-                    totalExpected += (weeklyClasses * 10 * elapsedBimesters);
-                }
+                // C.H. BASIS: 40 weeks per year
+                totalExpectedHours += (weeklyClasses * 40);
             }
         });
     }
 
     const totalAbsences = (attendanceRecords || []).filter(record => {
         const rYear = parseInt(record.date.split('-')[0], 10);
-        const rBim = settings ? getDynamicBimester(record.date, settings) : getBimesterFromDate(record.date);
-        const hasStudentRecord = record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT;
-        return rYear === currentYear && rBim <= elapsedBimesters && hasStudentRecord;
+        return rYear === currentYear &&
+            record.studentStatus &&
+            record.studentStatus[studentId] === AttendanceStatus.ABSENT;
     }).length;
 
-    if (totalExpected === 0) return '-';
-    const freq = ((totalExpected - totalAbsences) / totalExpected) * 100;
-    return Math.max(0, Math.min(100, freq)).toFixed(1) + '%';
+    if (totalExpectedHours === 0) return '-';
+    const freq = ((totalExpectedHours - totalAbsences) / totalExpectedHours) * 100;
+    return Math.max(0, Math.min(100, freq)).toFixed(2) + '%';
+};
+
+/**
+ * Calculates the general attendance percentage for a SPECIFIC bimester.
+ */
+export const calculateBimesterGeneralFrequency = (
+    attendanceRecords: AttendanceRecord[],
+    studentId: string,
+    gradeLevel: string,
+    bimester: number,
+    academicSubjects?: AcademicSubject[],
+    _settings?: AcademicSettings | null,
+    _calendarEvents?: any[]
+): string => {
+    const currentYear = getCurrentSchoolYear();
+
+    let levelKey = '';
+    if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
+    else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
+    else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
+
+    if (!levelKey) return '-';
+
+    const levelMatrix = CURRICULUM_MATRIX[levelKey];
+    if (!levelMatrix) return '-';
+
+    let totalExpectedHours = 0;
+    let foundDynamic = false;
+
+    if (academicSubjects && academicSubjects.length > 0) {
+        academicSubjects.forEach(s => {
+            if (s.isActive && s.weeklyHours) {
+                const gradeKey = Object.keys(s.weeklyHours).find(key => gradeLevel.includes(key));
+                if (gradeKey && s.weeklyHours[gradeKey] > 0) {
+                    const weeklyClasses = s.weeklyHours[gradeKey];
+                    // C.H. BASIS: 10 weeks per bimester
+                    totalExpectedHours += (weeklyClasses * 10);
+                    foundDynamic = true;
+                }
+            }
+        });
+    }
+
+    if (!foundDynamic) {
+        Object.values(levelMatrix).forEach(weeklyClasses => {
+            if (typeof weeklyClasses === 'number' && weeklyClasses > 0) {
+                // C.H. BASIS: 10 weeks per bimester
+                totalExpectedHours += (weeklyClasses * 10);
+            }
+        });
+    }
+
+    const totalAbsences = (attendanceRecords || []).filter(record => {
+        const rYear = parseInt(record.date.split('-')[0], 10);
+        const rBim = getDynamicBimester(record.date, _settings);
+        return rYear === currentYear &&
+            rBim === bimester &&
+            record.studentStatus &&
+            record.studentStatus[studentId] === AttendanceStatus.ABSENT;
+    }).length;
+
+    if (totalExpectedHours === 0) return '-';
+    const freq = ((totalExpectedHours - totalAbsences) / totalExpectedHours) * 100;
+    return Math.max(0, Math.min(100, freq)).toFixed(2) + '%';
 };

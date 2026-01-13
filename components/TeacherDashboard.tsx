@@ -29,6 +29,7 @@ interface TeacherDashboardProps {
     earlyChildhoodReports: EarlyChildhoodReport[];
     onSaveGrade: (grade: GradeEntry) => Promise<void>;
     onSaveAttendance: (record: AttendanceRecord) => Promise<void>;
+    onDeleteAttendance?: (recordId: string) => Promise<void>;
     onSaveEarlyChildhoodReport: (report: EarlyChildhoodReport) => Promise<void>;
     onLogout: () => void;
     notifications?: AppNotification[];
@@ -53,6 +54,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     earlyChildhoodReports,
     onSaveGrade,
     onSaveAttendance,
+    onDeleteAttendance,
     onSaveEarlyChildhoodReport,
     onLogout,
     notifications = [],
@@ -580,6 +582,80 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         } catch (error) {
             console.error("Erro ao salvar chamada:", error);
             alert("Erro ao salvar chamada.");
+        } finally {
+            setIsAttendanceSaving(false);
+        }
+    };
+
+    const handleDeleteAttendance = async () => {
+        const recordId = `${attendanceDate}_${activeUnit}_${attendanceGrade}_${attendanceClass}_${attendanceSubject}`;
+        const existingRecord = attendanceRecords.find(r => r.id === recordId);
+
+        if (!existingRecord) return;
+        if (!window.confirm("ATENÇÃO: Deseja realmente excluir esta chamada? Esta ação é irreversível e atualizará os boletins dos alunos.")) return;
+
+        setIsAttendanceSaving(true);
+        try {
+            if (onDeleteAttendance) {
+                await onDeleteAttendance(recordId);
+
+                // SYNC BULLETIN: Recalculate absences excluding the deleted record
+                const [yearStr] = attendanceDate.split('-');
+                const yearNum = Number(yearStr);
+                const currentSchoolYear = getCurrentSchoolYear();
+                const targetBimester = getDynamicBimester(attendanceDate, academicSettings);
+
+                if (targetBimester && yearNum === currentSchoolYear) {
+                    const bimesterKey = `bimester${targetBimester}` as keyof GradeEntry['bimesters'];
+                    const updates: Promise<void>[] = [];
+
+                    // Filter only students affected (who had an absence in this record)
+                    const affectedStudents = attendanceStudents.filter(s => existingRecord.studentStatus[s.id] === AttendanceStatus.ABSENT);
+
+                    for (const student of affectedStudents) {
+                        const existingGrade = grades.find(g => g.studentId === student.id && g.subject === attendanceSubject);
+                        if (!existingGrade) continue;
+
+                        // Calculate totals excluding the current recordId
+                        const otherRecords = attendanceRecords.filter(r => r.id !== recordId && r.discipline === attendanceSubject);
+
+                        let totalAbsences = 0;
+                        otherRecords.forEach(r => {
+                            if (r.studentStatus[student.id] === AttendanceStatus.ABSENT) {
+                                const [y] = r.date.split('-');
+                                if (Number(y) === currentSchoolYear && getDynamicBimester(r.date, academicSettings) === targetBimester) {
+                                    totalAbsences++;
+                                }
+                            }
+                        });
+
+                        const baseBimesters = existingGrade.bimesters;
+                        const currentBimesterData = baseBimesters[bimesterKey];
+                        const newBimesterData = { ...currentBimesterData, faltas: totalAbsences };
+                        const newBimesters = { ...baseBimesters, [bimesterKey]: newBimesterData };
+
+                        const finalData = calculateFinalData(newBimesters, existingGrade.recuperacaoFinal ?? null);
+
+                        const gradeToSave: GradeEntry = {
+                            ...existingGrade,
+                            bimesters: newBimesters,
+                            ...finalData,
+                            lastUpdated: new Date().toISOString()
+                        };
+
+                        updates.push(onSaveGrade(gradeToSave));
+                    }
+
+                    if (updates.length > 0) {
+                        await Promise.all(updates);
+                    }
+                }
+            }
+            // Reset to clean state for this selection
+            loadAttendance();
+        } catch (error) {
+            console.error("Erro ao excluir chamada:", error);
+            alert("Erro ao excluir chamada.");
         } finally {
             setIsAttendanceSaving(false);
         }
@@ -1980,7 +2056,16 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                             </table>
                                         </div>
 
-                                        <div className="mt-6 text-right">
+                                        <div className="mt-6 text-right flex justify-end gap-3">
+                                            {attendanceRecords.some(r => r.id === `${attendanceDate}_${activeUnit}_${attendanceGrade}_${attendanceClass}_${attendanceSubject}`) && (
+                                                <Button
+                                                    onClick={handleDeleteAttendance}
+                                                    disabled={isAttendanceSaving}
+                                                    className="bg-red-500 hover:bg-red-600 text-white border-red-700"
+                                                >
+                                                    {isAttendanceSaving ? 'Processando...' : 'Excluir Chamada'}
+                                                </Button>
+                                            )}
                                             <Button onClick={handleSaveAttendance} disabled={isAttendanceSaving}>{isAttendanceSaving ? 'Salvando...' : 'Salvar Chamada'}</Button>
                                         </div>
                                     </div>

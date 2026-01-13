@@ -398,7 +398,17 @@ const AppContent: React.FC = () => {
         setInitialLoad(prev => ({ ...prev, mensalidades: true }));
       }));
 
-      setInitialLoad(prev => ({ ...prev, notifications: true, earlyChildhoodReports: true, academicSettings: true }));
+      setInitialLoad(prev => ({
+        ...prev,
+        notifications: true,
+        earlyChildhoodReports: true,
+        academicSettings: true,
+        materials: true,
+        agenda: true,
+        examGuides: true,
+        tickets: true,
+        calendarEvents: true
+      }));
 
     } else if (session.role === UserRole.COORDINATOR) {
       // Coordinator manages their own data fetch in the dashboard or doesn't need global data pre-loaded
@@ -416,7 +426,12 @@ const AppContent: React.FC = () => {
         notifications: true,
         mensalidades: true,
         eventosFinanceiros: true,
-        academicSettings: true
+        academicSettings: true,
+        materials: true,
+        agenda: true,
+        examGuides: true,
+        tickets: true,
+        calendarEvents: true
       }));
     }
 
@@ -739,6 +754,17 @@ const AppContent: React.FC = () => {
       console.error("Erro ao salvar chamada:", error);
       alert("Erro ao salvar a chamada. Verifique sua conexão e tente novamente.");
       throw error; // Re-throw para o componente poder lidar com o estado de 'isSaving'
+    }
+  };
+
+  const handleDeleteAttendance = async (recordId: string) => {
+    try {
+      await db.collection('attendance').doc(recordId).delete();
+      alert('Chamada excluída com sucesso!');
+    } catch (error) {
+      console.error("Erro ao excluir chamada:", error);
+      alert("Erro ao excluir a chamada. Verifique sua conexão.");
+      throw error;
     }
   };
 
@@ -1270,6 +1296,7 @@ const AppContent: React.FC = () => {
           onLogout={handleLogout}
           attendanceRecords={attendanceRecords}
           onSaveAttendance={handleSaveAttendance}
+          onDeleteAttendance={handleDeleteAttendance}
           earlyChildhoodReports={earlyChildhoodReports}
           onSaveEarlyChildhoodReport={handleSaveEarlyChildhoodReport}
           notifications={notifications}

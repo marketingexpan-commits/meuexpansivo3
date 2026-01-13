@@ -8,6 +8,7 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Loader2, Plus, Edit2, Trash2, Database, Layers, ChevronRight, ChevronDown } from 'lucide-react';
 import { GradeStandardizationTool } from '../components/GradeStandardizationTool';
+import { AbsenceCleanupTool } from '../components/AbsenceCleanupTool';
 
 export default function AcademicConfig() {
     const [segments, setSegments] = useState<AcademicSegment[]>([]);
@@ -425,6 +426,7 @@ export default function AcademicConfig() {
                 </div>
             )}
             <GradeStandardizationTool />
+            <AbsenceCleanupTool />
         </div>
     );
 }

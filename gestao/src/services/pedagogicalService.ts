@@ -1,6 +1,5 @@
-
 import { db } from '../firebaseConfig';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, setDoc } from 'firebase/firestore';
 import type { GradeEntry, AttendanceRecord, AcademicSubject, AcademicSettings } from '../types';
 import { calculateGeneralFrequency } from '../utils/frequency';
 
@@ -61,5 +60,43 @@ export const pedagogicalService = {
 
         // Converte "95.5%" para 95.5
         return parseFloat(freqString.replace('%', '')) || 100;
+    },
+
+    // --- NOVO: MÉTODOS PARA CLEANUP TOOL ---
+
+    // Buscar todas as notas de todos os alunos
+    async getAllGrades() {
+        try {
+            const snap = await getDocs(collection(db, GRADES_COLLECTION));
+            return snap.docs.map(d => ({ id: d.id, ...d.data() })) as GradeEntry[];
+        } catch (error) {
+            console.error("Erro ao buscar todas as notas:", error);
+            throw error;
+        }
+    },
+
+    // Buscar todos os registros de frequência
+    async getAllAttendance() {
+        try {
+            const snap = await getDocs(collection(db, ATTENDANCE_COLLECTION));
+            return snap.docs.map(d => ({ id: d.id, ...d.data() })) as AttendanceRecord[];
+        } catch (error) {
+            console.error("Erro ao buscar todos os registros de presença:", error);
+            throw error;
+        }
+    },
+
+    // Atualizar uma nota específica
+    async updateGrade(gradeId: string, gradeData: Partial<GradeEntry>) {
+        try {
+            const docRef = doc(db, GRADES_COLLECTION, gradeId);
+            await setDoc(docRef, {
+                ...gradeData,
+                lastUpdated: new Date().toISOString()
+            }, { merge: true });
+        } catch (error) {
+            console.error("Erro ao atualizar nota:", error);
+            throw error;
+        }
     }
 };
