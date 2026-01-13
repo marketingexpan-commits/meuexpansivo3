@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { CalendarEvent, EventType, AcademicSettings } from '../types';
 import { db } from '../firebaseConfig';
-import { subscribeToAcademicSettings, updateAcademicSettings } from '../services/academicSettings';
+import { subscribeToAcademicSettings, updateAcademicSettings, syncBimesterFromEvent } from '../services/academicSettings';
 import {
     collection,
     query,
@@ -101,6 +101,8 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                 const docRef = doc(collection(db, 'calendar_events'));
                 const finalUnits = targetUnit === 'all' ? ['all'] : [targetUnit];
                 batch.set(docRef, { ...eventData, units: finalUnits, createdAt: new Date().toISOString() });
+                // NEW: Sync bimester dates if this is a key event
+                syncBimesterFromEvent(eventData.title, eventData.startDate, targetUnit, 2026);
             });
             await batch.commit();
             alert("Eventos importados com sucesso!");
@@ -134,6 +136,13 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                     ...data,
                     createdAt: new Date().toISOString()
                 });
+            }
+            // NEW: Sync bimester dates if this is a key event
+            if (data.title && data.startDate) {
+                const targetUnits = data.units || [];
+                for (const u of targetUnits) {
+                    syncBimesterFromEvent(data.title as string, data.startDate as string, u, 2026);
+                }
             }
             setIsFormOpen(false);
             setEditingEvent(null);

@@ -45,13 +45,21 @@ export const calculateAttendancePercentage = (
     let startDate = `${getCurrentSchoolYear()}-01-01`;
     let endDate = new Date().toISOString().split('T')[0];
 
-    if (bimester && settings?.bimesters) {
-        const bimConfig = settings.bimesters.find(b => b.number === bimester);
-        if (bimConfig) {
-            startDate = bimConfig.startDate;
-            const bEndDate = bimConfig.endDate;
-            // Cap end date to today if current bimester
-            endDate = (endDate < bEndDate) ? endDate : bEndDate;
+    // STRICTOR RULES: Mirroring calendar events
+    if (settings?.bimesters) {
+        if (!bimester) {
+            // Annual window: Strict mirror of first and last bimester boundaries
+            startDate = settings.bimesters[0].startDate;
+            const absoluteYearEnd = settings.bimesters[3].endDate;
+            if (endDate > absoluteYearEnd) endDate = absoluteYearEnd;
+        } else {
+            const bimConfig = settings.bimesters.find(b => b.number === bimester);
+            if (bimConfig) {
+                startDate = bimConfig.startDate;
+                const bEndDate = bimConfig.endDate;
+                // Cap end date to today if current bimester
+                endDate = (endDate < bEndDate) ? endDate : bEndDate;
+            }
         }
     }
 
@@ -169,10 +177,12 @@ export const calculateGeneralFrequency = (
     studentId: string,
     gradeLevel: string,
     academicSubjects?: AcademicSubject[],
-    _settings?: AcademicSettings | null,
+    settings?: AcademicSettings | null,
     _calendarEvents?: any[]
 ): string => {
     const currentYear = getCurrentSchoolYear();
+    const startDate = settings?.bimesters?.[0]?.startDate || `${currentYear}-01-01`;
+    const endDate = settings?.bimesters?.[3]?.endDate || `${currentYear}-12-31`;
 
     let levelKey = '';
     if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
@@ -211,8 +221,8 @@ export const calculateGeneralFrequency = (
     }
 
     const totalAbsences = (attendanceRecords || []).reduce((acc, record) => {
-        const rYear = parseInt(record.date.split('-')[0], 10);
-        if (rYear === currentYear && record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT) {
+        if (record.date < startDate || record.date > endDate) return acc;
+        if (record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT) {
             const individualCount = record.studentAbsenceCount?.[studentId];
             const weight = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
             return acc + weight;

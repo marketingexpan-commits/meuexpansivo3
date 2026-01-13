@@ -100,3 +100,32 @@ export const subscribeToAcademicSettings = (year: number, unit: string, callback
         }
     });
 };
+
+export const syncBimesterFromEvent = async (eventTitle: string, date: string, unit: string, year: number) => {
+    let update: { index: number; field: 'startDate' | 'endDate' } | null = null;
+    const normalizedTitle = eventTitle.trim().toLowerCase();
+
+    if (normalizedTitle === 'início do ano letivo') {
+        update = { index: 0, field: 'startDate' };
+    } else if (normalizedTitle === 'encerramento do ano letivo') {
+        update = { index: 3, field: 'endDate' };
+    }
+
+    if (!update) return;
+
+    try {
+        const settings = await getAcademicSettings(year, unit);
+        if (!settings || !settings.bimesters) return;
+
+        const newBimesters = [...settings.bimesters];
+        if (newBimesters[update.index]) {
+            newBimesters[update.index] = {
+                ...newBimesters[update.index],
+                [update.field]: date
+            };
+            await updateAcademicSettings(settings.id, { bimesters: newBimesters }, unit, year);
+        }
+    } catch (error) {
+        console.error("Error syncing bimester from event:", error);
+    }
+};
