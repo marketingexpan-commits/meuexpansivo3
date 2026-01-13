@@ -291,8 +291,8 @@ export const generateSchoolHistory = (
                     <td style="color: #666; font-size: 8px;">${fG(bData.nota)}</td>
                     <td style="color: #666; font-size: 8px;">${fG(bData.recuperacao)}</td>
                     <td style="font-weight: bold; font-size: 8px;">${fG(bData.media)}</td>
-                    <td style="color: #444; font-size: 8px;">${bAbs > 0 ? bAbs : '-'}</td>
-                    <td style="color: #444; font-size: 8px;">${bAbs > 0 ? bAbs + 'h' : '-'}</td>
+                    <td style="color: #444; font-size: 8px;">${bAbs}</td>
+                    <td style="color: #444; font-size: 8px;">${bAbs + 'h'}</td>
                     <td style="font-size: 8px; font-weight: bold;">${isStarted ? freq : '-'}</td>
                     <td style="color: #666; font-size: 8px; background: #fafafa;">${bMin > 0 ? bMin + 'h' : '-'}</td>
                 `;
@@ -310,8 +310,8 @@ export const generateSchoolHistory = (
                 <td style="font-weight: bold; background: #f9f9f9;">${fG(g.mediaAnual)}</td>
                 <td style="color: #844; font-weight: bold;">${fG(g.recuperacaoFinal)}</td>
                 <td style="font-weight: 900; background: #f0f4f8;">${fG(g.mediaFinal)}</td>
-                <td style="color: #444; font-weight: bold;">${totalAbsences > 0 ? totalAbsences : '-'}</td>
-                <td style="color: #444; font-weight: bold;">${totalAbsences > 0 ? totalAbsences + 'h' : '-'}</td>
+                <td style="color: #444; font-weight: bold;">${totalAbsences}</td>
+                <td style="color: #444; font-weight: bold;">${totalAbsences + 'h'}</td>
                 <td style="background: #eef2f6; font-weight: bold;">${totalFrequency}</td>
                 <td style="font-size: 8px;"><strong>${(g.mediaFinal === 0 || g.mediaFinal === null) && g.situacaoFinal === 'Recuperação' ? 'Cursando' : (g.situacaoFinal || 'Cursando')}</strong></td>
             </tr>

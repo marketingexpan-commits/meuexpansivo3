@@ -136,7 +136,7 @@ const generateBulletinHtml = (
                         record.studentStatus[g.studentId] === AttendanceStatus.ABSENT;
                 }).length;
 
-                return bAbsences > 0 ? bAbsences : null;
+                return bAbsences;
             };
 
             const absencesB1 = getBimesterAbsences(1);
@@ -189,28 +189,28 @@ const generateBulletinHtml = (
                 <td style="color: #666; font-size: 9px; width: 25px;">${fG(g.bimesters.bimester1.nota)}</td>
                 <td style="color: #666; font-size: 9px; width: 25px;">${fG(g.bimesters.bimester1.recuperacao)}</td>
                 <td style="background: #fdfdfd; width: 25px;">${fG(g.bimesters.bimester1.media)}</td>
-                <td style="color: #666; width: 25px;">${absencesB1 !== null ? absencesB1 : '-'}</td>
+                <td style="color: #666; width: 25px;">${absencesB1}</td>
                 <td style="font-size: 9px; font-weight: bold; width: 35px;">${bfreq1}</td>
                 
                 <!-- 2B -->
                 <td style="color: #666; font-size: 9px; width: 25px;">${fG(g.bimesters.bimester2.nota)}</td>
                 <td style="color: #666; font-size: 9px; width: 25px;">${fG(g.bimesters.bimester2.recuperacao)}</td>
                 <td style="background: #fdfdfd; width: 25px;">${fG(g.bimesters.bimester2.media)}</td>
-                <td style="color: #666; width: 25px;">${absencesB2 !== null ? absencesB2 : '-'}</td>
+                <td style="color: #666; width: 25px;">${absencesB2}</td>
                 <td style="font-size: 9px; font-weight: bold; width: 35px;">${bfreq2}</td>
 
                 <!-- 3B -->
                 <td style="color: #666; font-size: 9px; width: 25px;">${fG(g.bimesters.bimester3.nota)}</td>
                 <td style="color: #666; font-size: 9px; width: 25px;">${fG(g.bimesters.bimester3.recuperacao)}</td>
                 <td style="background: #fdfdfd; width: 25px;">${fG(g.bimesters.bimester3.media)}</td>
-                <td style="color: #666; width: 25px;">${absencesB3 !== null ? absencesB3 : '-'}</td>
+                <td style="color: #666; width: 25px;">${absencesB3}</td>
                 <td style="font-size: 9px; font-weight: bold; width: 35px;">${bfreq3}</td>
 
                 <!-- 4B -->
                 <td style="color: #666; font-size: 9px; width: 25px;">${fG(g.bimesters.bimester4.nota)}</td>
                 <td style="color: #666; font-size: 9px; width: 25px;">${fG(g.bimesters.bimester4.recuperacao)}</td>
                 <td style="background: #fdfdfd; width: 25px;">${fG(g.bimesters.bimester4.media)}</td>
-                <td style="color: #666; width: 25px;">${absencesB4 !== null ? absencesB4 : '-'}</td>
+                <td style="color: #666; width: 25px;">${absencesB4}</td>
                 <td style="font-size: 9px; font-weight: bold; width: 35px;">${bfreq4}</td>
 
                 <td style="background: #f0f4f8; font-weight: bold;">${totalFrequency}</td>

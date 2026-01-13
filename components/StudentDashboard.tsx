@@ -1490,7 +1490,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                     </td>
                                                                     <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs w-8 md:w-10">{(bData.isNotaApproved !== false && bData.isRecuperacaoApproved !== false) ? formatGrade(bData.media) : '-'}</td>
                                                                     <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-8 md:w-10">
-                                                                        {isActive ? currentAbsences : '-'}
+                                                                        {currentAbsences}
                                                                     </td>
                                                                     {(() => {
                                                                         // Calculate F(h) per bimester
@@ -1537,7 +1537,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                         return (
                                                                             <>
                                                                                 <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-8 md:w-10">
-                                                                                    {isActive ? `${currentAbsences}h` : '-'}
+                                                                                    {currentAbsences}h
                                                                                 </td>
                                                                                 <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs w-10 md:w-12 ${isLowFreq ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência">
                                                                                     {isBimesterStarted ? (<div className="flex flex-col items-center"><span>{freqPercent !== null ? `${freqPercent}%` : '100%'}</span>{isFreqEstimated && <span className="text-[8px] text-amber-600">⚠ Est.</span>}</div>) : '-'}
@@ -1606,10 +1606,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             return (
                                                                 <>
                                                                     <td className="px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs text-gray-500">
-                                                                        {totalAbsences > 0 ? totalAbsences : '-'}
+                                                                        {totalAbsences}
                                                                     </td>
                                                                     <td className="px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs text-gray-500">
-                                                                        {totalAbsences > 0 ? `${totalAbsences}h` : '-'}
+                                                                        {totalAbsences}h
                                                                     </td>
                                                                     <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs ${isCritical ? 'text-red-600 bg-red-50' : 'text-gray-600'}`}>
                                                                         <div className="flex flex-col items-center"><span>{annualFreq !== null ? `${annualFreq}%` : '100%'}</span>{isAnnualEstimated && <span className="text-[8px] text-amber-600">⚠ Est.</span>}</div>
