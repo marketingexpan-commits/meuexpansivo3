@@ -18,10 +18,9 @@ import {
     User,
     CheckCircle2,
     Trash2,
-    Filter,
-    Calendar as CalendarIcon
+    Filter
 } from 'lucide-react';
-import { CalendarManagement } from './CalendarManagement';
+
 
 
 // Types for Grade coordination (copied/adapted from AdminDashboard)
@@ -156,7 +155,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
     const [isSavingOcc, setIsSavingOcc] = useState(false);
 
     // --- CALENDAR MANAGEMENT STATE ---
-    const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
+
 
 
     // --- HELPER ---
@@ -530,15 +529,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                 )}
                             </div>
                             <div className="flex items-center gap-3">
-                                <Button
-                                    variant="primary"
-                                    onClick={() => setIsCalendarModalOpen(true)}
-                                    className="text-sm font-semibold py-1.5 px-4 flex items-center gap-2 shadow-sm hover:opacity-90 transition-opacity"
-                                    style={{ backgroundColor: '#020617', color: '#FFFFFF' }} // Blue-950
-                                >
-                                    <CalendarIcon className="w-4 h-4" />
-                                    Gerenciar Calendário
-                                </Button>
+
                                 <Button
                                     variant="primary"
                                     onClick={() => setIsOccModalOpen(true)}
@@ -1288,12 +1279,6 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                     </div>
                 </div>
             )}
-            {/* CALENDAR MANAGEMENT MODAL */}
-            <CalendarManagement
-                isOpen={isCalendarModalOpen}
-                onClose={() => setIsCalendarModalOpen(false)}
-                unit={coordinator.unit}
-            />
 
             {/* ATTENDANCE MANAGEMENT MODAL */}
             {isAttendanceManageModalOpen && (
