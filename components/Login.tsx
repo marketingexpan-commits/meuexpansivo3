@@ -578,7 +578,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
           {/* CRÉDITOS DO DESENVOLVEDOR */}
           <div className="mt-6 text-center">
-            <p className="text-[10px] text-gray-500">© 2025 Expansivo Rede de Ensino. Todos os direitos reservados.</p>
+            <p className="text-[10px] text-gray-500">© 2026 Expansivo Rede de Ensino. Todos os direitos reservados.</p>
             <p className="text-[10px] text-gray-500 mt-1">
               <span>Desenvolvido por: </span>
               <a
