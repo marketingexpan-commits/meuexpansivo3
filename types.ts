@@ -480,7 +480,17 @@ export interface ExamGuide {
 }
 // End of types definitions
 
-export type EventType = 'holiday' | 'exam' | 'meeting' | 'event' | 'vacation';
+export type EventType =
+  | 'event'
+  | 'school_day'
+  | 'substitution'
+  | 'holiday_national'
+  | 'holiday_state'
+  | 'holiday_municipal'
+  | 'vacation'
+  | 'recess'
+  | 'meeting'
+  | 'exam';
 
 export interface CalendarEvent {
   id: string;

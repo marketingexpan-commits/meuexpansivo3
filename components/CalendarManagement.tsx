@@ -214,14 +214,24 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                             </div>
                                             <div>
                                                 <div className="flex items-center gap-2 mb-1">
-                                                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${event.type === 'holiday' ? 'bg-red-100 text-red-600' :
-                                                        event.type === 'exam' ? 'bg-orange-100 text-orange-600' :
-                                                            event.type === 'meeting' ? 'bg-gray-100 text-gray-600' :
-                                                                'bg-blue-100 text-blue-600'
+                                                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${event.type === 'holiday_national' || event.type === 'holiday_state' || event.type === 'holiday_municipal' ? 'bg-red-100 text-red-600' :
+                                                            event.type === 'exam' ? 'bg-orange-100 text-orange-600' :
+                                                                event.type === 'meeting' ? 'bg-gray-100 text-gray-600' :
+                                                                    event.type === 'school_day' ? 'bg-green-100 text-green-600' :
+                                                                        event.type === 'substitution' ? 'bg-purple-100 text-purple-600' :
+                                                                            event.type === 'vacation' ? 'bg-yellow-100 text-yellow-600' :
+                                                                                event.type === 'recess' ? 'bg-orange-50 text-orange-500' :
+                                                                                    'bg-blue-100 text-blue-600'
                                                         }`}>
-                                                        {event.type === 'holiday' ? 'Feriado' :
-                                                            event.type === 'exam' ? 'Prova' :
-                                                                event.type === 'meeting' ? 'Reunião' : 'Evento'}
+                                                        {event.type === 'holiday_national' ? 'Feriado Nacional' :
+                                                            event.type === 'holiday_state' ? 'Feriado Estadual' :
+                                                                event.type === 'holiday_municipal' ? 'Feriado Municipal' :
+                                                                    event.type === 'exam' ? 'Prova' :
+                                                                        event.type === 'meeting' ? 'Reunião' :
+                                                                            event.type === 'school_day' ? 'Letivo' :
+                                                                                event.type === 'substitution' ? 'Reposição' :
+                                                                                    event.type === 'vacation' ? 'Férias' :
+                                                                                        event.type === 'recess' ? 'Recesso' : 'Evento'}
                                                     </span>
                                                     {isAdmin && (
                                                         <span className="text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider bg-purple-100 text-purple-600 flex items-center gap-1">
@@ -330,10 +340,15 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                         required
                                     >
                                         <option value="event">Evento / Geral</option>
-                                        <option value="holiday">Feriado / Recesso</option>
-                                        <option value="exam">Prova / Avaliação</option>
-                                        <option value="meeting">Reunião</option>
+                                        <option value="school_day">Letivo</option>
+                                        <option value="substitution">Reposição</option>
+                                        <option value="holiday_national">Feriado Nacional</option>
+                                        <option value="holiday_state">Feriado Estadual</option>
+                                        <option value="holiday_municipal">Feriado Municipal</option>
                                         <option value="vacation">Férias</option>
+                                        <option value="recess">Recesso</option>
+                                        <option value="meeting">Reunião</option>
+                                        <option value="exam">Prova / Avaliação</option>
                                     </select>
                                 </div>
 

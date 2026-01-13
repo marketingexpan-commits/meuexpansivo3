@@ -65,30 +65,63 @@ export const SchoolCalendar: React.FC<SchoolCalendarProps> = ({ events }) => {
 
     const getEventColor = (type: string) => {
         switch (type) {
-            case 'holiday': return '#ef4444'; // red-500
-            case 'vacation': return '#9ca3af'; // gray-400
-            case 'exam': return '#f97316'; // orange-500
-            case 'meeting': return '#6b7280'; // gray-500
-            case 'event': return '#1e40af'; // blue-800
-            default: return '#3b82f6';
+            case 'holiday_national':
+            case 'holiday_state':
+            case 'holiday_municipal':
+                return '#ef4444'; // red-500
+            case 'vacation':
+                return '#eab308'; // yellow-500
+            case 'recess':
+                return '#fb923c'; // orange-400
+            case 'exam':
+                return '#f97316'; // orange-500
+            case 'meeting':
+                return '#6b7280'; // gray-500
+            case 'school_day':
+                return '#22c55e'; // green-500
+            case 'substitution':
+                return '#a855f7'; // purple-500
+            case 'event':
+                return '#1e40af'; // blue-800
+            default:
+                return '#3b82f6';
         }
     };
 
     const getEventColorClass = (type: string) => {
         switch (type) {
-            case 'holiday': return 'bg-red-500';
-            case 'vacation': return 'bg-gray-400';
-            case 'exam': return 'bg-orange-500';
-            case 'meeting': return 'bg-gray-500';
-            case 'event': return 'bg-blue-800';
-            default: return 'bg-blue-500';
+            case 'holiday_national':
+            case 'holiday_state':
+            case 'holiday_municipal':
+                return 'bg-red-500';
+            case 'vacation':
+                return 'bg-yellow-500';
+            case 'recess':
+                return 'bg-orange-400';
+            case 'exam':
+                return 'bg-orange-500';
+            case 'meeting':
+                return 'bg-gray-500';
+            case 'school_day':
+                return 'bg-green-500';
+            case 'substitution':
+                return 'bg-purple-500';
+            case 'event':
+                return 'bg-blue-800';
+            default:
+                return 'bg-blue-500';
         }
     };
 
     const getEventLabel = (type: string) => {
         switch (type) {
-            case 'holiday': return 'Feriado';
-            case 'vacation': return 'Férias/Recesso';
+            case 'holiday_national': return 'Feriado Nacional';
+            case 'holiday_state': return 'Feriado Estadual';
+            case 'holiday_municipal': return 'Feriado Municipal';
+            case 'vacation': return 'Férias';
+            case 'recess': return 'Recesso';
+            case 'school_day': return 'Letivo';
+            case 'substitution': return 'Reposição';
             case 'exam': return 'Prova/Avaliação';
             case 'meeting': return 'Reunião';
             case 'event': return 'Evento Escolar';
@@ -209,17 +242,29 @@ export const SchoolCalendar: React.FC<SchoolCalendarProps> = ({ events }) => {
 
                     {/* Legend */}
                     <div className="flex flex-wrap gap-4 mt-6 border-t border-gray-100 pt-4 justify-center">
-                        <div className="flex items-center gap-2 text-xs text-gray-600">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#1e40af' }}></div> Evento/Geral
+                        <div className="flex items-center gap-2 text-[10px] text-gray-600">
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#22c55e' }}></div> Letivo
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-600">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#f97316' }}></div> Prova
+                        <div className="flex items-center gap-2 text-[10px] text-gray-600">
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#a855f7' }}></div> Reposição
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-600">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#ef4444' }}></div> Feriado
+                        <div className="flex items-center gap-2 text-[10px] text-gray-600">
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#ef4444' }}></div> Feriado
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-600">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#6b7280' }}></div> Reunião
+                        <div className="flex items-center gap-2 text-[10px] text-gray-600">
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#eab308' }}></div> Férias
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] text-gray-600">
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#fb923c' }}></div> Recesso
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] text-gray-600">
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#f97316' }}></div> Prova
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] text-gray-600">
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#1e40af' }}></div> Evento/Geral
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] text-gray-600">
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#6b7280' }}></div> Reunião
                         </div>
                     </div>
                 </div>

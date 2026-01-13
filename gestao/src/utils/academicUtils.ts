@@ -109,7 +109,7 @@ export const calculateSchoolDays = (
     // Map holidays for faster lookup
     const holidayDates = new Set<string>();
     (events || []).forEach(e => {
-        if (e.type === 'holiday' || e.type === 'vacation') {
+        if (e.type === 'holiday_national' || e.type === 'holiday_state' || e.type === 'holiday_municipal' || e.type === 'vacation' || e.type === 'recess') {
             const s = new Date(e.startDate + 'T00:00:00');
             const f = e.endDate ? new Date(e.endDate + 'T00:00:00') : new Date(e.startDate + 'T00:00:00');
 
