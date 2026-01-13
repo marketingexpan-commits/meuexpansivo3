@@ -66,7 +66,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     tickets: propsTickets = [],
     calendarEvents = []
 }) => {
-    const { grades: academicGrades, subjects: academicSubjects, loading: loadingAcademic } = useAcademicData();
+    const { grades: academicGrades, subjects: academicSubjects, schedules, loading: loadingAcademic } = useAcademicData();
 
     const [activeTab, setActiveTab] = useState<'menu' | 'grades' | 'attendance' | 'tickets' | 'materials'>('menu');
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -244,9 +244,38 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         return getFilteredSubjects(grade);
     }, [selectedStudent, filterGrade, getFilteredSubjects]);
 
-    const filteredSubjectsForAttendance = useMemo(() => getFilteredSubjects(attendanceGrade), [attendanceGrade, getFilteredSubjects]);
-    const filteredSubjectsForMaterials = useMemo(() => getFilteredSubjects(materialGrade), [materialGrade, getFilteredSubjects]);
+    const filteredSubjectsForAttendance = useMemo(() => {
+        if (!attendanceGrade) return [];
+        const subjects = getCurriculumSubjects(attendanceGrade);
+        // Only return subjects the teacher is authorized to teach
+        return subjects.filter(subj => teacher.subjects.includes(subj as Subject));
+    }, [attendanceGrade, teacher.subjects]);
+
+    const scheduleConflict = useMemo(() => {
+        if (!attendanceDate || !attendanceGrade || !attendanceClass || !attendanceSubject || !schedules || schedules.length === 0) return false;
+
+        // Convert date to day of week (0 = Sunday, 1 = Monday ...)
+        // Note: ClassSchedule uses 0=Sunday, 1=Monday... or similar. 
+        // Let's verify standard: 0 (Sunday) to 6 (Saturday).
+        const dateObj = new Date(attendanceDate + 'T00:00:00');
+        const dayOfWeek = dateObj.getDay();
+
+        // Find schedule for this day/grade/class
+        const daySchedule = schedules.find(s =>
+            s.dayOfWeek === dayOfWeek &&
+            s.grade === attendanceGrade &&
+            s.class === attendanceClass &&
+            (attendanceShift ? s.shift === attendanceShift : true)
+        );
+
+        if (!daySchedule) return true; // No classes at all on this day
+
+        // Check if the specific subject is in the items
+        const hasSubject = daySchedule.items.some(item => item.subject === attendanceSubject);
+        return !hasSubject;
+    }, [attendanceDate, attendanceGrade, attendanceClass, attendanceSubject, attendanceShift, schedules]);
     const filteredSubjectsForAgenda = useMemo(() => getFilteredSubjects(agendaGrade), [agendaGrade, getFilteredSubjects]);
+    const filteredSubjectsForMaterials = useMemo(() => getFilteredSubjects(materialGrade), [materialGrade, getFilteredSubjects]);
     const filteredSubjectsForExams = useMemo(() => getFilteredSubjects(examGrade), [examGrade, getFilteredSubjects]);
 
     const isEarlyChildhoodStudent = useMemo(() => selectedStudent?.gradeLevel.toLowerCase().includes('edu. infantil'), [selectedStudent]);
@@ -1948,7 +1977,18 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                     </div>
                                     <div>
                                         <label className="text-sm font-bold text-gray-700 mb-1 block">Data</label>
-                                        <input type="date" value={attendanceDate} onChange={e => setAttendanceDate(e.target.value)} className="w-full p-2 border rounded" />
+                                        <input
+                                            type="date"
+                                            value={attendanceDate}
+                                            readOnly
+                                            className={`w-full p-2 border rounded bg-gray-100 cursor-not-allowed ${scheduleConflict ? 'border-red-500 bg-red-50' : ''}`}
+                                        />
+                                        <p className="text-[9px] text-gray-500 mt-0.5">Automático (Dia Atual)</p>
+                                        {scheduleConflict && attendanceDate && (
+                                            <p className="text-[10px] text-red-600 font-bold mt-1 leading-tight animate-pulse">
+                                                ⚠️ Disciplina não cadastrada para este dia no calendário oficial.
+                                            </p>
+                                        )}
                                     </div>
 
                                     <div className="flex flex-col">
@@ -1966,7 +2006,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                     </div>
 
                                     <div className="self-end">
-                                        <Button onClick={loadAttendance} className="w-full" disabled={!attendanceGrade}>Buscar Turma</Button>
+                                        <Button onClick={loadAttendance} className="w-full" disabled={!attendanceGrade || scheduleConflict}>Buscar Turma</Button>
                                     </div>
                                 </div>
 

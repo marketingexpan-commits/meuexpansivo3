@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { db } from '../firebaseConfig';
-import { UnitContact, SchoolUnit, CoordinationSegment, Subject, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES } from '../types';
+import { UnitContact, SchoolUnit, CoordinationSegment, Subject, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student } from '../types';
 import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, CURRICULUM_MATRIX, getCurriculumSubjects, calculateBimesterMedia, calculateFinalData, SCHOOL_CLASSES_OPTIONS, SCHOOL_SHIFTS } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency } from '../utils/frequency';
 import { getDynamicBimester } from '../src/utils/academicUtils';
@@ -70,6 +70,23 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
     const [pendingGradesMap, setPendingGradesMap] = useState<Record<string, GradeEntry[]>>({});
     const [allStudentGradesMap, setAllStudentGradesMap] = useState<Record<string, GradeEntry[]>>({}); // NEW: Holds ALL grades for frequency calc
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]); // Added for frequency calc
+
+    // --- ATTENDANCE MANAGEMENT STATE ---
+    const [isAttendanceManageModalOpen, setIsAttendanceManageModalOpen] = useState(false);
+    const [manageAttendanceStep, setManageAttendanceStep] = useState<'filters' | 'form'>('filters');
+    const [manageFilters, setManageFilters] = useState({
+        date: new Date().toISOString().split('T')[0],
+        grade: '',
+        class: 'A',
+        subject: '',
+        lessonCount: 1
+    });
+    const [manageStudents, setManageStudents] = useState<Student[]>([]);
+    const [manageStatuses, setManageStatuses] = useState<Record<string, AttendanceStatus>>({});
+    const [manageAbsenceOverrides, setManageAbsenceOverrides] = useState<Record<string, number>>({});
+    const [isSavingAttendance, setIsSavingAttendance] = useState(false);
+    const [isLoadingManageAttendance, setIsLoadingManageAttendance] = useState(false);
+    const [manageTeacherName, setManageTeacherName] = useState('Coordenador (Manual)');
 
     // --- COMPUTED ---
     const uniqueClasses = useMemo(() => {
@@ -541,6 +558,14 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                 >
                                     <ClipboardList className="w-4 h-4" />
                                     Postar Ocorrência
+                                </Button>
+                                <Button
+                                    variant="primary"
+                                    onClick={() => setIsAttendanceManageModalOpen(true)}
+                                    className="text-sm font-semibold py-1.5 px-4 !bg-emerald-600 hover:!bg-emerald-700 flex items-center gap-2 text-white shadow-sm"
+                                >
+                                    <ClipboardList className="w-4 h-4" />
+                                    Gerenciar Chamadas
                                 </Button>
                                 <Button
                                     variant="primary"
@@ -1302,6 +1327,303 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                         </div>
                         <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
                             <ScheduleManagement unit={coordinator.unit as SchoolUnit} />
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* ATTENDANCE MANAGEMENT MODAL */}
+            {isAttendanceManageModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="p-4 bg-blue-950 text-white flex justify-between items-center">
+                            <h3 className="font-bold flex items-center gap-2">
+                                <ClipboardList className="w-5 h-5" />
+                                Gerenciamento de Chamada Manual
+                            </h3>
+                            <button onClick={() => { setIsAttendanceManageModalOpen(false); setManageAttendanceStep('filters'); }} className="hover:bg-white/10 p-1 rounded transition-colors">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {manageAttendanceStep === 'filters' ? (
+                                <div className="space-y-6">
+                                    <p className="text-gray-600">Selecione os dados para localizar ou criar a chamada. Esta ferramenta permite ignorar as restrições de calendário.</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-sm font-bold text-gray-700 mb-1 block">Data</label>
+                                            <input
+                                                type="date"
+                                                value={manageFilters.date}
+                                                onChange={e => setManageFilters(prev => ({ ...prev, date: e.target.value }))}
+                                                className="w-full p-2 border rounded"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-bold text-gray-700 mb-1 block">Série/Ano</label>
+                                            <select
+                                                value={manageFilters.grade}
+                                                onChange={e => setManageFilters(prev => ({ ...prev, grade: e.target.value }))}
+                                                className="w-full p-2 border rounded"
+                                            >
+                                                <option value="">Selecione...</option>
+                                                {academicGrades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-bold text-gray-700 mb-1 block">Turma</label>
+                                            <select
+                                                value={manageFilters.class}
+                                                onChange={e => setManageFilters(prev => ({ ...prev, class: e.target.value as SchoolClass }))}
+                                                className="w-full p-2 border rounded"
+                                            >
+                                                {SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-bold text-gray-700 mb-1 block">Disciplina</label>
+                                            <select
+                                                value={manageFilters.subject}
+                                                onChange={e => setManageFilters(prev => ({ ...prev, subject: e.target.value }))}
+                                                className="w-full p-2 border rounded"
+                                            >
+                                                <option value="">Selecione...</option>
+                                                {academicSubjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <label className="text-sm font-bold text-gray-700 mb-1 block">Nº de Aulas (Peso)</label>
+                                            <select
+                                                value={manageFilters.lessonCount}
+                                                onChange={e => setManageFilters(prev => ({ ...prev, lessonCount: Number(e.target.value) }))}
+                                                className="w-full p-2 border rounded font-bold text-blue-900"
+                                            >
+                                                <option value={1}>1 Aula</option>
+                                                <option value={2}>2 Aulas</option>
+                                                <option value={3}>3 Aulas</option>
+                                                <option value={4}>4 Aulas</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <Button
+                                        className="w-full py-3 !bg-blue-950 hover:!bg-black text-white"
+                                        disabled={!manageFilters.grade || !manageFilters.subject || isLoadingManageAttendance}
+                                        onClick={async () => {
+                                            setIsLoadingManageAttendance(true);
+                                            try {
+                                                // 1. Load Students
+                                                const studentSnap = await db.collection('students')
+                                                    .where('unit', '==', coordinator.unit)
+                                                    .where('schoolClass', '==', manageFilters.class)
+                                                    .get();
+
+                                                let students = studentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
+                                                students = students.filter(s => s.gradeLevel === manageFilters.grade || s.gradeLevel.startsWith(manageFilters.grade));
+
+                                                if (students.length === 0) {
+                                                    alert("Nenhum aluno encontrado para os critérios selecionados.");
+                                                    return;
+                                                }
+                                                setManageStudents(students);
+
+                                                // 2. Load Existing Record (if any)
+                                                const recordId = `${manageFilters.date}_${coordinator.unit}_${manageFilters.grade}_${manageFilters.class}_${manageFilters.subject}`;
+                                                const recDoc = await db.collection('attendance').doc(recordId).get();
+
+                                                if (recDoc.exists) {
+                                                    const data = recDoc.data() as AttendanceRecord;
+                                                    setManageStatuses(data.studentStatus);
+                                                    setManageFilters(prev => ({ ...prev, lessonCount: data.lessonCount || 1 }));
+                                                    setManageAbsenceOverrides(data.studentAbsenceCount || {});
+                                                    setManageTeacherName(data.teacherName || 'Manual');
+                                                } else {
+                                                    const defaultStatuses: Record<string, AttendanceStatus> = {};
+                                                    students.forEach(s => { defaultStatuses[s.id] = AttendanceStatus.PRESENT; });
+                                                    setManageStatuses(defaultStatuses);
+                                                    setManageAbsenceOverrides({});
+                                                    setManageTeacherName('Coordenador (Manual)');
+                                                }
+                                                setManageAttendanceStep('form');
+                                            } catch (err) {
+                                                console.error(err);
+                                                alert("Erro ao buscar dados da chamada.");
+                                            } finally {
+                                                setIsLoadingManageAttendance(false);
+                                            }
+                                        }}
+                                    >
+                                        {isLoadingManageAttendance ? 'Buscando...' : 'Localizar / Criar Chamada'}
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="space-y-6">
+                                    <div className="flex justify-between items-center bg-gray-50 p-4 rounded-lg border">
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Chamada para:</p>
+                                            <p className="font-bold text-blue-950">{manageFilters.subject} - {manageFilters.grade} ({manageFilters.class})</p>
+                                            <p className="text-sm text-gray-600">{new Date(manageFilters.date + 'T12:00:00').toLocaleDateString('pt-BR')} • {manageFilters.lessonCount} Aula(s)</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Responsável:</p>
+                                            <p className="font-medium text-gray-800 italic">{manageTeacherName}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="border rounded-xl overflow-hidden shadow-sm bg-white">
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-gray-50 border-b">
+                                                <tr>
+                                                    <th className="text-left py-3 px-4 font-bold text-gray-700">Aluno</th>
+                                                    <th className="text-center py-3 px-4 font-bold text-gray-700">Status</th>
+                                                    <th className="text-center py-3 px-4 font-bold text-gray-700">Qtd. Faltas</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y">
+                                                {manageStudents.sort((a, b) => a.name.localeCompare(b.name)).map(student => (
+                                                    <tr key={student.id} className="hover:bg-gray-50 transition-colors">
+                                                        <td className="py-3 px-4 font-medium text-gray-800">{student.name}</td>
+                                                        <td className="py-3 px-4 text-center">
+                                                            <div className="flex justify-center gap-2">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setManageStatuses(prev => ({ ...prev, [student.id]: AttendanceStatus.PRESENT }));
+                                                                        setManageAbsenceOverrides(prev => {
+                                                                            const next = { ...prev };
+                                                                            delete next[student.id];
+                                                                            return next;
+                                                                        });
+                                                                    }}
+                                                                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${manageStatuses[student.id] === AttendanceStatus.PRESENT ? 'bg-emerald-500 text-white shadow-lg' : 'bg-gray-100 text-gray-400'}`}
+                                                                >
+                                                                    PRESENTE
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setManageStatuses(prev => ({ ...prev, [student.id]: AttendanceStatus.ABSENT }));
+                                                                    }}
+                                                                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${manageStatuses[student.id] === AttendanceStatus.ABSENT ? 'bg-rose-500 text-white shadow-lg' : 'bg-gray-100 text-gray-400'}`}
+                                                                >
+                                                                    FALTOU
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-3 px-4 text-center">
+                                                            {manageStatuses[student.id] === AttendanceStatus.ABSENT ? (
+                                                                <div className="flex justify-center gap-1">
+                                                                    {[1, 2, 3, 4].map(num => (
+                                                                        <button
+                                                                            key={num}
+                                                                            onClick={() => setManageAbsenceOverrides(prev => ({ ...prev, [student.id]: num }))}
+                                                                            className={`w-7 h-7 rounded-lg text-[10px] font-black border transition-all ${(manageAbsenceOverrides[student.id] === num || (!manageAbsenceOverrides[student.id] && manageFilters.lessonCount === num))
+                                                                                ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-110'
+                                                                                : 'bg-white text-gray-400 border-gray-200'
+                                                                                }`}
+                                                                        >
+                                                                            {num}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-gray-300 font-bold">-</span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div className="flex gap-4 pt-4 border-t">
+                                        <Button variant="secondary" className="flex-1" onClick={() => setManageAttendanceStep('filters')}>
+                                            Voltar aos Filtros
+                                        </Button>
+                                        <Button
+                                            className="flex-[2] !bg-emerald-600 hover:!bg-emerald-700 text-white font-bold py-3"
+                                            disabled={isSavingAttendance}
+                                            onClick={async () => {
+                                                setIsSavingAttendance(true);
+                                                try {
+                                                    const recordId = `${manageFilters.date}_${coordinator.unit}_${manageFilters.grade}_${manageFilters.class}_${manageFilters.subject}`;
+                                                    const record: AttendanceRecord = {
+                                                        id: recordId,
+                                                        date: manageFilters.date,
+                                                        unit: coordinator.unit,
+                                                        gradeLevel: manageFilters.grade,
+                                                        schoolClass: manageFilters.class as SchoolClass,
+                                                        teacherId: coordinator.id,
+                                                        teacherName: manageTeacherName,
+                                                        discipline: manageFilters.subject,
+                                                        studentStatus: manageStatuses,
+                                                        lessonCount: manageFilters.lessonCount,
+                                                        studentAbsenceCount: manageAbsenceOverrides
+                                                    };
+
+                                                    // 1. Save Attendance Record
+                                                    await db.collection('attendance').doc(recordId).set(record);
+
+                                                    // 2. Sync to Grades (Manual Trigger)
+                                                    const [yStr] = manageFilters.date.split('-');
+                                                    const targetBimester = getDynamicBimester(manageFilters.date, academicSettings);
+
+                                                    if (targetBimester) {
+                                                        const bimesterKey = `bimester${targetBimester}`;
+
+                                                        // Get ALL records for this student/subject to calculate total absences
+                                                        // For simplicity and safety, we fetch and recalculate
+                                                        for (const student of manageStudents) {
+                                                            const snapshot = await db.collection('attendance')
+                                                                .where('discipline', '==', manageFilters.subject)
+                                                                .where('unit', '==', coordinator.unit)
+                                                                // Note: grade/class might have changed for the student across records,
+                                                                // but here we filter by discipline and unit, then manually check studentStatus in memory.
+                                                                .get();
+
+                                                            const allRecs = snapshot.docs.map(d => d.data() as AttendanceRecord);
+
+                                                            let totalAbsences = 0;
+                                                            allRecs.forEach(r => {
+                                                                if (r.studentStatus[student.id] === AttendanceStatus.ABSENT) {
+                                                                    if (getDynamicBimester(r.date, academicSettings) === targetBimester) {
+                                                                        const indWeight = r.studentAbsenceCount?.[student.id];
+                                                                        totalAbsences += indWeight !== undefined ? indWeight : (r.lessonCount || 1);
+                                                                    }
+                                                                }
+                                                            });
+
+                                                            const gradeId = `grade_${student.id}_${manageFilters.subject.replace(/\s+/g, '_')}_${yStr}`;
+                                                            const gradeDoc = await db.collection('grades').doc(gradeId).get();
+
+                                                            if (gradeDoc.exists) {
+                                                                const gData = gradeDoc.data();
+                                                                const updatedBimesters = { ...gData?.bimesters };
+                                                                if (updatedBimesters[bimesterKey]) {
+                                                                    updatedBimesters[bimesterKey].faltas = totalAbsences;
+                                                                    // Recalculate if needed, but usually bimesters is already formed
+                                                                    await db.collection('grades').doc(gradeId).update({
+                                                                        bimesters: updatedBimesters,
+                                                                        lastUpdated: new Date().toISOString()
+                                                                    });
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+
+                                                    alert("Chamada salva e boletins sincronizados!");
+                                                    setIsAttendanceManageModalOpen(false);
+                                                    setManageAttendanceStep('filters');
+                                                } catch (err) {
+                                                    console.error(err);
+                                                    alert("Erro ao salvar chamada.");
+                                                } finally {
+                                                    setIsSavingAttendance(false);
+                                                }
+                                            }}
+                                        >
+                                            {isSavingAttendance ? 'Salvando...' : 'Salvar Alterações e Atualizar Boletins'}
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

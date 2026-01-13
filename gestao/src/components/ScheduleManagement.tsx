@@ -110,9 +110,39 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
         setItems([...items, { startTime: '', endTime: '', subject: '' }]);
     };
 
-    const handleRemoveItem = (index: number) => {
+    const handleRemoveItem = async (index: number) => {
+        if (isReadOnly) return;
+        if (!confirm("Deseja apagar este horário?")) return;
+
         const newItems = items.filter((_, i) => i !== index);
         setItems(newItems);
+
+        // Auto-save after removal
+        setSaving(true);
+        try {
+            const scheduleId = `${unit}_${selectedGrade}_${selectedClass}_${selectedShift}_${selectedDay}`;
+            const scheduleRef = doc(db, 'class_schedules', scheduleId);
+
+            const sortedItems = [...newItems].sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+            await setDoc(scheduleRef, {
+                schoolId: unit,
+                grade: selectedGrade,
+                class: selectedClass,
+                shift: selectedShift,
+                dayOfWeek: selectedDay,
+                items: sortedItems,
+                lastUpdated: new Date().toISOString()
+            });
+
+            setItems(sortedItems);
+            // Optional: alert("Horário removido com sucesso!");
+        } catch (error) {
+            console.error("Error saving schedule after removal:", error);
+            alert("Erro ao salvar após remover o horário.");
+        } finally {
+            setSaving(false);
+        }
     };
 
     const handleItemChange = (index: number, field: keyof ScheduleItem, value: string) => {
@@ -419,7 +449,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                 </div>
 
                 <div className="p-4 border-t border-gray-50 bg-gray-50/20 flex justify-end gap-3">
-                    {!isReadOnly && items.length > 0 && (
+                    {!isReadOnly && (
                         <button
                             onClick={handleSave}
                             disabled={loading || saving}
