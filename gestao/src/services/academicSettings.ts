@@ -61,24 +61,33 @@ export const getAcademicSettings = async (year: number = 2026, unit: string = 'a
 };
 
 export const updateAcademicSettings = async (id: string, data: Partial<AcademicSettings>, unit?: string, year?: number) => {
+    if (!id) return;
+
     const docRef = doc(db, SETTINGS_COLLECTION, id);
     const updateData = { ...data, updatedAt: new Date().toISOString() };
     await setDoc(docRef, updateData, { merge: true });
 
     // If updating 'all' unit, propagate to all specific units for the same year
     if (unit === 'all' && year) {
-        const q = query(
-            collection(db, SETTINGS_COLLECTION),
-            where('year', '==', year),
-            where('unit', '!=', 'all')
-        );
-        const snapshot = await getDocs(q);
-        if (!snapshot.empty) {
-            const batch = writeBatch(db);
-            snapshot.docs.forEach(d => {
-                batch.set(doc(db, SETTINGS_COLLECTION, d.id), updateData, { merge: true });
-            });
-            await batch.commit();
+        try {
+            const q = query(
+                collection(db, SETTINGS_COLLECTION),
+                where('year', '==', Number(year))
+            );
+            const snapshot = await getDocs(q);
+            if (!snapshot.empty) {
+                const batch = writeBatch(db);
+                snapshot.docs.forEach(d => {
+                    const docData = d.data();
+                    // Propagate to all documents that are NOT the 'all' unit
+                    if (docData.unit && docData.unit !== 'all') {
+                        batch.set(doc(db, SETTINGS_COLLECTION, d.id), updateData, { merge: true });
+                    }
+                });
+                await batch.commit();
+            }
+        } catch (error) {
+            console.error("Error during academic settings propagation:", error);
         }
     }
 };
@@ -101,28 +110,46 @@ export const subscribeToAcademicSettings = (year: number, unit: string, callback
     });
 };
 
-export const syncBimesterFromEvent = async (eventTitle: string, date: string, unit: string, year: number) => {
-    let update: { index: number; field: 'startDate' | 'endDate' } | null = null;
+export const syncBimesterFromEvent = async (eventTitle: string, startDate: string, unit: string, year: number, endDate?: string) => {
+    let updateStart = false;
+    let updateEnd = false;
     const normalizedTitle = eventTitle.trim().toLowerCase();
 
-    if (normalizedTitle === 'início do ano letivo') {
-        update = { index: 0, field: 'startDate' };
-    } else if (normalizedTitle === 'encerramento do ano letivo') {
-        update = { index: 3, field: 'endDate' };
+    if (normalizedTitle.includes('início do ano letivo')) {
+        updateStart = true;
+    } else if (normalizedTitle.includes('encerramento do ano letivo') || normalizedTitle.includes('término do ano letivo') || normalizedTitle.includes('fim do ano letivo')) {
+        updateEnd = true;
+    } else if (normalizedTitle === 'ano letivo') {
+        updateStart = true;
+        if (endDate) updateEnd = true;
     }
 
-    if (!update) return;
+    if (!updateStart && !updateEnd) return;
 
     try {
         const settings = await getAcademicSettings(year, unit);
         if (!settings || !settings.bimesters) return;
 
         const newBimesters = [...settings.bimesters];
-        if (newBimesters[update.index]) {
-            newBimesters[update.index] = {
-                ...newBimesters[update.index],
-                [update.field]: date
+        let changed = false;
+
+        if (updateStart && newBimesters[0]) {
+            newBimesters[0] = {
+                ...newBimesters[0],
+                startDate: startDate
             };
+            changed = true;
+        }
+
+        if (updateEnd && endDate && newBimesters[3]) {
+            newBimesters[3] = {
+                ...newBimesters[3],
+                endDate: endDate
+            };
+            changed = true;
+        }
+
+        if (changed) {
             await updateAcademicSettings(settings.id, { bimesters: newBimesters }, unit, year);
         }
     } catch (error) {

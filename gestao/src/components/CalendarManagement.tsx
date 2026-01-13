@@ -102,7 +102,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                 const finalUnits = targetUnit === 'all' ? ['all'] : [targetUnit];
                 batch.set(docRef, { ...eventData, units: finalUnits, createdAt: new Date().toISOString() });
                 // NEW: Sync bimester dates if this is a key event
-                syncBimesterFromEvent(eventData.title, eventData.startDate, targetUnit, 2026);
+                syncBimesterFromEvent(eventData.title, eventData.startDate, targetUnit, 2026, eventData.endDate);
             });
             await batch.commit();
             alert("Eventos importados com sucesso!");
@@ -141,7 +141,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
             if (data.title && data.startDate) {
                 const targetUnits = data.units || [];
                 for (const u of targetUnits) {
-                    syncBimesterFromEvent(data.title as string, data.startDate as string, u, 2026);
+                    syncBimesterFromEvent(data.title as string, data.startDate as string, u, 2026, data.endDate as string);
                 }
             }
             setIsFormOpen(false);
