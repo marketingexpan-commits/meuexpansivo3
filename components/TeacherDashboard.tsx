@@ -115,6 +115,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     const [attendanceStudents, setAttendanceStudents] = useState<Student[]>([]);
     const [studentStatuses, setStudentStatuses] = useState<Record<string, AttendanceStatus>>({});
     const [isAttendanceLoading, setIsAttendanceLoading] = useState(false);
+    const [attendanceLessonCount, setAttendanceLessonCount] = useState<number>(1);
+    const [studentAbsenceOverrides, setStudentAbsenceOverrides] = useState<Record<string, number>>({});
 
     const [isAttendanceSaving, setIsAttendanceSaving] = useState(false);
 
@@ -470,12 +472,42 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         // ID Includes Discipline now
         const recordId = `${attendanceDate}_${activeUnit}_${attendanceGrade}_${attendanceClass}_${attendanceSubject}`;
         const existingRecord = attendanceRecords.find(r => r.id === recordId);
-        if (existingRecord) { setStudentStatuses(existingRecord.studentStatus); }
-        else { const defaultStatuses: Record<string, AttendanceStatus> = {}; studentsInClass.forEach(s => { defaultStatuses[s.id] = AttendanceStatus.PRESENT; }); setStudentStatuses(defaultStatuses); }
+        if (existingRecord) {
+            setStudentStatuses(existingRecord.studentStatus);
+            setAttendanceLessonCount(existingRecord.lessonCount || 1);
+            setStudentAbsenceOverrides(existingRecord.studentAbsenceCount || {});
+        }
+        else {
+            const defaultStatuses: Record<string, AttendanceStatus> = {};
+            studentsInClass.forEach(s => { defaultStatuses[s.id] = AttendanceStatus.PRESENT; });
+            setStudentStatuses(defaultStatuses);
+            setAttendanceLessonCount(1);
+            setStudentAbsenceOverrides({});
+        }
         setIsAttendanceLoading(false);
     };
 
-    const handleStatusChange = (studentId: string, status: AttendanceStatus) => { setStudentStatuses(prev => ({ ...prev, [studentId]: status })); };
+    const handleStatusChange = (studentId: string, status: AttendanceStatus) => {
+        setStudentStatuses(prev => ({ ...prev, [studentId]: status }));
+        // Reset override if changing back to Present
+        if (status === AttendanceStatus.PRESENT) {
+            setStudentAbsenceOverrides(prev => {
+                const next = { ...prev };
+                delete next[studentId];
+                return next;
+            });
+        }
+    };
+
+    const handleIndividualAbsenceChange = (studentId: string, count: number) => {
+        setStudentAbsenceOverrides(prev => ({ ...prev, [studentId]: count }));
+        // If count > 0, make sure status is ABSENT
+        if (count > 0) {
+            setStudentStatuses(prev => ({ ...prev, [studentId]: AttendanceStatus.ABSENT }));
+        } else {
+            setStudentStatuses(prev => ({ ...prev, [studentId]: AttendanceStatus.PRESENT }));
+        }
+    };
 
     const handleSaveAttendance = async () => {
         if (attendanceStudents.length === 0) return;
@@ -492,15 +524,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             teacherId: teacher.id,
             teacherName: teacher.name,
             discipline: attendanceSubject,
-            studentStatus: studentStatuses
+            studentStatus: studentStatuses,
+            lessonCount: attendanceLessonCount,
+            studentAbsenceCount: studentAbsenceOverrides
         };
 
         try {
             await onSaveAttendance(record);
 
             // 2. TRIGGER: Synchronize Absences to 'Grades' Collection
-            // Goal: Immediately reflect "Faltas" in the Grade/Bulletin document without manual "Save Grade"
-
             const [yearStr] = attendanceDate.split('-');
             const yearNum = Number(yearStr);
             const currentSchoolYear = getCurrentSchoolYear();
@@ -510,11 +542,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
             if (targetBimester && yearNum === currentSchoolYear) {
                 const bimesterKey = `bimester${targetBimester}` as keyof GradeEntry['bimesters'];
-
-                // Helper to calculate total absences for a specific student/subject/bimester
-                // We must use the *updated* record we just created, plus *other* records from the list
-                // Since 'attendanceRecords' might be stale, we filter out the OPEN record from 'attendanceRecords' and add our 'record'
-
                 const otherRecords = attendanceRecords.filter(r => r.id !== recordId && r.discipline === attendanceSubject);
                 const allRelevantRecords = [...otherRecords, record];
 
@@ -523,23 +550,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 for (const student of attendanceStudents) {
                     // Calculate Total Absences for this Student/Bimester
                     let totalAbsences = 0;
-
                     allRelevantRecords.forEach(r => {
                         if (r.studentStatus[student.id] === AttendanceStatus.ABSENT) {
-                            const [y] = r.date.split('-');
-                            const yN = Number(y);
-                            if (yN !== currentSchoolYear) return;
-
                             if (getDynamicBimester(r.date, academicSettings) === targetBimester) {
-                                totalAbsences++;
+                                const individualCount = r.studentAbsenceCount?.[student.id];
+                                totalAbsences += individualCount !== undefined ? individualCount : (r.lessonCount || 1);
                             }
                         }
                     });
 
                     // Find or Create partial Grade Entry
                     const existingGrade = grades.find(g => g.studentId === student.id && g.subject === attendanceSubject);
-
-                    // Construct new bimesters object
                     const baseBimesters = existingGrade?.bimesters || {
                         bimester1: { nota: null, recuperacao: null, media: 0, faltas: 0 },
                         bimester2: { nota: null, recuperacao: null, media: 0, faltas: 0 },
@@ -548,16 +569,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     };
 
                     const currentBimesterData = baseBimesters[bimesterKey];
-
-                    // If the absence count hasn't changed, skip write to save bandwidth? 
-                    // No, 'existingGrade.faltas' might be stale. Better to ensure sync.
                     if (currentBimesterData.faltas === totalAbsences) continue;
 
                     const newBimesterData = { ...currentBimesterData, faltas: totalAbsences };
                     const newBimesters = { ...baseBimesters, [bimesterKey]: newBimesterData };
 
-                    // Recalculate Final Data (Media Annual might not change if only faltas changed, but good to be safe)
-                    // Note: calculateFinalData usually inputs bimesters and recuperacaoFinal
                     const finalData = calculateFinalData(newBimesters, existingGrade?.recuperacaoFinal ?? null);
 
                     const gradeToSave: GradeEntry = {
@@ -622,9 +638,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                         let totalAbsences = 0;
                         otherRecords.forEach(r => {
                             if (r.studentStatus[student.id] === AttendanceStatus.ABSENT) {
-                                const [y] = r.date.split('-');
-                                if (Number(y) === currentSchoolYear && getDynamicBimester(r.date, academicSettings) === targetBimester) {
-                                    totalAbsences++;
+                                if (getDynamicBimester(r.date, academicSettings) === targetBimester) {
+                                    const individualCount = r.studentAbsenceCount?.[student.id];
+                                    totalAbsences += individualCount !== undefined ? individualCount : (r.lessonCount || 1);
                                 }
                             }
                         });
@@ -1756,10 +1772,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
                                                                                                 if (yNum === getCurrentSchoolYear()) {
                                                                                                     // Explicit check against bimesterNum (1,2,3,4)
-                                                                                                    if (getDynamicBimester(record.date, academicSettings) === bimesterNum) return acc + 1;
-
-
-
+                                                                                                    if (getDynamicBimester(record.date, academicSettings) === bimesterNum) {
+                                                                                                        const individualCount = record.studentAbsenceCount?.[grade.studentId];
+                                                                                                        return acc + (individualCount !== undefined ? individualCount : (record.lessonCount || 1));
+                                                                                                    }
                                                                                                 }
                                                                                             }
                                                                                             return acc;
@@ -1808,15 +1824,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                                             const studentAbsSnapshot = attendanceRecords.filter(att =>
                                                                                                 att.discipline === grade.subject &&
                                                                                                 att.studentStatus[selectedStudent.id] === AttendanceStatus.ABSENT
-                                                                                            ).filter(att => {
+                                                                                            ).reduce((currentSum, att) => {
                                                                                                 const d = new Date(att.date + 'T00:00:00');
                                                                                                 const m = d.getMonth() + 1;
-                                                                                                if (getDynamicBimester(att.date, academicSettings) === bNum && parseInt(att.date.split('-')[0], 10) === getCurrentSchoolYear()) return true;
-
-
-
-                                                                                                return false;
-                                                                                            }).length;
+                                                                                                if (getDynamicBimester(att.date, academicSettings) === bNum && parseInt(att.date.split('-')[0], 10) === getCurrentSchoolYear()) {
+                                                                                                    const individualCount = att.studentAbsenceCount?.[selectedStudent.id];
+                                                                                                    return currentSum + (individualCount !== undefined ? individualCount : (att.lessonCount || 1));
+                                                                                                }
+                                                                                                return currentSum;
+                                                                                            }, 0);
 
                                                                                             return sum + studentAbsSnapshot;
                                                                                         }, 0);
@@ -1906,6 +1922,19 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                         <select value={attendanceShift} onChange={e => setAttendanceShift(e.target.value)} className="w-full p-2 border rounded">
                                             <option value="">Todos</option>
                                             {SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-bold text-gray-700 mb-1 block">Nº de Aulas</label>
+                                        <select
+                                            value={attendanceLessonCount}
+                                            onChange={e => setAttendanceLessonCount(Number(e.target.value))}
+                                            className="w-full p-2 border rounded font-bold text-blue-900 bg-white"
+                                        >
+                                            <option value={1}>1 Aula</option>
+                                            <option value={2}>2 Aulas</option>
+                                            <option value={3}>3 Aulas</option>
+                                            <option value={4}>4 Aulas</option>
                                         </select>
                                     </div>
 
@@ -1998,15 +2027,30 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                             >
                                                                 Presente
                                                             </button>
-                                                            <button
-                                                                onClick={() => handleStatusChange(student.id, AttendanceStatus.ABSENT)}
-                                                                className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all duration-200 border ${status === AttendanceStatus.ABSENT
-                                                                    ? 'bg-red-500 text-white border-red-600 shadow-md transform scale-105'
-                                                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                                                                    }`}
-                                                            >
-                                                                Faltou
-                                                            </button>
+                                                            <div className="flex flex-col gap-1 flex-1">
+                                                                <button
+                                                                    onClick={() => handleStatusChange(student.id, AttendanceStatus.ABSENT)}
+                                                                    className={`w-full py-3 rounded-lg font-bold text-sm transition-all duration-200 border ${status === AttendanceStatus.ABSENT
+                                                                        ? 'bg-red-500 text-white border-red-600 shadow-md transform scale-105'
+                                                                        : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                                                        }`}
+                                                                >
+                                                                    Faltou {status === AttendanceStatus.ABSENT && `(${studentAbsenceOverrides[student.id] || attendanceLessonCount})`}
+                                                                </button>
+                                                                {status === AttendanceStatus.ABSENT && attendanceLessonCount > 1 && (
+                                                                    <div className="flex justify-center gap-2 mt-1">
+                                                                        {[...Array(attendanceLessonCount)].map((_, i) => (
+                                                                            <button
+                                                                                key={i}
+                                                                                onClick={() => handleIndividualAbsenceChange(student.id, i + 1)}
+                                                                                className={`w-8 h-8 rounded-full border text-xs font-bold ${(studentAbsenceOverrides[student.id] || attendanceLessonCount) === (i + 1) ? 'bg-red-600 text-white border-red-700' : 'bg-white text-red-600 border-red-200 hover:bg-red-50'}`}
+                                                                            >
+                                                                                {i + 1}
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 );
@@ -2059,9 +2103,25 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                     </div>
                                                                 </td>
                                                                 <td className="px-6 py-4 text-center">
-                                                                    <div className="inline-flex rounded-md shadow-sm" role="group">
-                                                                        <button type="button" onClick={() => handleStatusChange(student.id, AttendanceStatus.PRESENT)} className={`px-4 py-2 text-sm font-medium border rounded-l-lg transition-colors ${studentStatuses[student.id] === AttendanceStatus.PRESENT ? 'bg-blue-950 text-white border-blue-900 z-10' : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-100'}`}>Presente</button>
-                                                                        <button type="button" onClick={() => handleStatusChange(student.id, AttendanceStatus.ABSENT)} className={`px-4 py-2 text-sm font-medium border rounded-r-lg transition-colors ${studentStatuses[student.id] === AttendanceStatus.ABSENT ? 'bg-red-600 text-white border-red-700 z-10' : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-100'}`}>Faltou</button>
+                                                                    <div className="flex flex-col gap-2 items-center">
+                                                                        <div className="inline-flex rounded-md shadow-sm" role="group">
+                                                                            <button type="button" onClick={() => handleStatusChange(student.id, AttendanceStatus.PRESENT)} className={`px-4 py-2 text-sm font-medium border rounded-l-lg transition-colors ${studentStatuses[student.id] === AttendanceStatus.PRESENT ? 'bg-blue-950 text-white border-blue-900 z-10' : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-100'}`}>Presente</button>
+                                                                            <button type="button" onClick={() => handleStatusChange(student.id, AttendanceStatus.ABSENT)} className={`px-4 py-2 text-sm font-medium border rounded-r-lg transition-colors ${studentStatuses[student.id] === AttendanceStatus.ABSENT ? 'bg-red-600 text-white border-red-700 z-10' : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-100'}`}>Faltou {studentStatuses[student.id] === AttendanceStatus.ABSENT && `(${studentAbsenceOverrides[student.id] || attendanceLessonCount})`}</button>
+                                                                        </div>
+                                                                        {studentStatuses[student.id] === AttendanceStatus.ABSENT && attendanceLessonCount > 1 && (
+                                                                            <div className="flex gap-2">
+                                                                                {[...Array(attendanceLessonCount)].map((_, i) => (
+                                                                                    <button
+                                                                                        key={i}
+                                                                                        onClick={() => handleIndividualAbsenceChange(student.id, i + 1)}
+                                                                                        className={`w-7 h-7 rounded border text-[10px] font-bold transition-colors ${(studentAbsenceOverrides[student.id] || attendanceLessonCount) === (i + 1) ? 'bg-red-100 text-red-700 border-red-300' : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-50'}`}
+                                                                                        title={`Marcar ${i + 1} falta(s)`}
+                                                                                    >
+                                                                                        {i + 1}
+                                                                                    </button>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                 </td>
                                                             </tr>

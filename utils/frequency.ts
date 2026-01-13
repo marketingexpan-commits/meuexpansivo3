@@ -210,12 +210,15 @@ export const calculateGeneralFrequency = (
         });
     }
 
-    const totalAbsences = (attendanceRecords || []).filter(record => {
+    const totalAbsences = (attendanceRecords || []).reduce((acc, record) => {
         const rYear = parseInt(record.date.split('-')[0], 10);
-        return rYear === currentYear &&
-            record.studentStatus &&
-            record.studentStatus[studentId] === AttendanceStatus.ABSENT;
-    }).length;
+        if (rYear === currentYear && record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT) {
+            const individualCount = record.studentAbsenceCount?.[studentId];
+            const weight = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
+            return acc + weight;
+        }
+        return acc;
+    }, 0);
 
     if (totalExpectedHours === 0) return '-';
     const freq = ((totalExpectedHours - totalAbsences) / totalExpectedHours) * 100;
@@ -272,14 +275,16 @@ export const calculateBimesterGeneralFrequency = (
         });
     }
 
-    const totalAbsences = (attendanceRecords || []).filter(record => {
+    const totalAbsences = (attendanceRecords || []).reduce((acc, record) => {
         const rYear = parseInt(record.date.split('-')[0], 10);
         const rBim = getDynamicBimester(record.date, _settings);
-        return rYear === currentYear &&
-            rBim === bimester &&
-            record.studentStatus &&
-            record.studentStatus[studentId] === AttendanceStatus.ABSENT;
-    }).length;
+        if (rYear === currentYear && rBim === bimester && record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT) {
+            const individualCount = record.studentAbsenceCount?.[studentId];
+            const weight = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
+            return acc + weight;
+        }
+        return acc;
+    }, 0);
 
     if (totalExpectedHours === 0) return '-';
     const freq = ((totalExpectedHours - totalAbsences) / totalExpectedHours) * 100;

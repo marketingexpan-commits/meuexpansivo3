@@ -52,12 +52,19 @@ export const getAttendanceBreakdown = (
                 const bimester = Math.floor((recordMonth - 1) / 3) + 1;
 
                 if (bimester >= 1 && bimester <= 4) {
-                    breakdown[bimester].count++;
+                    // NEW: Calculate absence weight (default to lessonCount or 1)
+                    const individualCount = record.studentAbsenceCount?.[studentId];
+                    const absenceWeight = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
+
+                    breakdown[bimester].count += absenceWeight;
 
                     const monthName = MONTH_NAMES[recordMonth - 1];
                     if (!breakdown[bimester].details[monthName]) {
                         breakdown[bimester].details[monthName] = [];
                     }
+                    // We push the day multiple times if there are multiple absences, or just once with a different label?
+                    // Standard: push the day for each absence count to show "dots" or just once?
+                    // Let's push it once but the 'count' is already updated.
                     breakdown[bimester].details[monthName].push(recordDay);
                 }
             }

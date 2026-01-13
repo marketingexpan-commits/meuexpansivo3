@@ -377,6 +377,8 @@ export interface AttendanceRecord {
   teacherName: string;
   discipline: string; // Disciplina da chamada to allow subject-specific absences
   studentStatus: Record<string, AttendanceStatus>; // studentId -> status
+  lessonCount?: number; // Quantidade de aulas (ex: 2 para aula geminada)
+  studentAbsenceCount?: Record<string, number>; // studentId -> número de faltas (sobrescreve padrão se houver)
 }
 
 // NOVO: Tipos para o sistema de Tickets (Dúvidas)
