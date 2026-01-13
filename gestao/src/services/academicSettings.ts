@@ -7,7 +7,8 @@ import {
     query,
     where,
     limit,
-    onSnapshot
+    onSnapshot,
+    writeBatch
 } from 'firebase/firestore';
 import type { AcademicSettings, BimesterConfig } from '../types';
 
@@ -59,9 +60,27 @@ export const getAcademicSettings = async (year: number = 2026, unit: string = 'a
     return { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() } as AcademicSettings;
 };
 
-export const updateAcademicSettings = async (id: string, data: Partial<AcademicSettings>) => {
+export const updateAcademicSettings = async (id: string, data: Partial<AcademicSettings>, unit?: string, year?: number) => {
     const docRef = doc(db, SETTINGS_COLLECTION, id);
-    await setDoc(docRef, { ...data, updatedAt: new Date().toISOString() }, { merge: true });
+    const updateData = { ...data, updatedAt: new Date().toISOString() };
+    await setDoc(docRef, updateData, { merge: true });
+
+    // If updating 'all' unit, propagate to all specific units for the same year
+    if (unit === 'all' && year) {
+        const q = query(
+            collection(db, SETTINGS_COLLECTION),
+            where('year', '==', year),
+            where('unit', '!=', 'all')
+        );
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+            const batch = writeBatch(db);
+            snapshot.docs.forEach(d => {
+                batch.set(doc(db, SETTINGS_COLLECTION, d.id), updateData, { merge: true });
+            });
+            await batch.commit();
+        }
+    }
 };
 
 export const subscribeToAcademicSettings = (year: number, unit: string, callback: (settings: AcademicSettings) => void) => {
