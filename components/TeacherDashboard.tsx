@@ -245,11 +245,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     }, [selectedStudent, filterGrade, getFilteredSubjects]);
 
     const filteredSubjectsForAttendance = useMemo(() => {
-        if (!attendanceGrade) return [];
-        const subjects = getCurriculumSubjects(attendanceGrade);
-        // Only return subjects the teacher is authorized to teach
-        return subjects.filter(subj => teacher.subjects.includes(subj as Subject));
-    }, [attendanceGrade, teacher.subjects]);
+        return getFilteredSubjects(attendanceGrade);
+    }, [attendanceGrade, getFilteredSubjects]);
 
     const scheduleConflict = useMemo(() => {
         if (!attendanceDate || !attendanceGrade || !attendanceClass || !attendanceSubject || !schedules || schedules.length === 0) return false;
@@ -260,8 +257,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         const dateObj = new Date(attendanceDate + 'T00:00:00');
         const dayOfWeek = dateObj.getDay();
 
-        // Find schedule for this day/grade/class
+        // Find schedule for this day/grade/class AND UNIT
         const daySchedule = schedules.find(s =>
+            s.schoolId === activeUnit &&
             s.dayOfWeek === dayOfWeek &&
             s.grade === attendanceGrade &&
             s.class === attendanceClass &&
@@ -273,7 +271,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         // Check if the specific subject is in the items
         const hasSubject = daySchedule.items.some(item => item.subject === attendanceSubject);
         return !hasSubject;
-    }, [attendanceDate, attendanceGrade, attendanceClass, attendanceSubject, attendanceShift, schedules]);
+    }, [attendanceDate, attendanceGrade, attendanceClass, attendanceSubject, attendanceShift, schedules, activeUnit]);
     const filteredSubjectsForAgenda = useMemo(() => getFilteredSubjects(agendaGrade), [agendaGrade, getFilteredSubjects]);
     const filteredSubjectsForMaterials = useMemo(() => getFilteredSubjects(materialGrade), [materialGrade, getFilteredSubjects]);
     const filteredSubjectsForExams = useMemo(() => getFilteredSubjects(examGrade), [examGrade, getFilteredSubjects]);
