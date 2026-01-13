@@ -1775,7 +1775,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                                                 </td>
                                                                                                 {(() => {
                                                                                                     const absences = currentStudentAbsences;
-                                                                                                    const freqPercent = calculateAttendancePercentage(grade.subject, absences, selectedStudent?.gradeLevel || "", bimesterNum, academicSubjects, academicSettings, calendarEvents);
+                                                                                                    const freqResult = calculateAttendancePercentage(grade.subject, absences, selectedStudent?.gradeLevel || "", bimesterNum, academicSubjects, academicSettings, calendarEvents);
+                                                                                                    const freqPercent = freqResult?.percent ?? null;
+                                                                                                    const isEstimated = freqResult?.isEstimated ?? false;
 
                                                                                                     // Só exibe a porcentagem se houver pelo menos uma falta
                                                                                                     const hasAbsence = absences > 0;
@@ -1783,7 +1785,12 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
                                                                                                     return (
                                                                                                         <td className={`px-1 py-2 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs w-10 md:w-12 ${isLowFreq ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência">
-                                                                                                            {hasAbsence && freqPercent !== null ? `${freqPercent}%` : '-'}
+                                                                                                            {hasAbsence && freqPercent !== null ? (
+                                                                                                                <span className="flex items-center justify-center gap-0.5">
+                                                                                                                    {freqPercent}%
+                                                                                                                    {isEstimated && <span className="text-[9px] text-amber-500" title="Cálculo Estimado (Sem Grade Horária)">⚠</span>}
+                                                                                                                </span>
+                                                                                                            ) : '-'}
                                                                                                         </td>
                                                                                                     );
                                                                                                 })()}
@@ -1814,13 +1821,21 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                                             return sum + studentAbsSnapshot;
                                                                                         }, 0);
 
-                                                                                        const annualFreq = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, selectedStudent.gradeLevel || "", 4, academicSubjects, academicSettings, calendarEvents);
+                                                                                        const annualResult = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, selectedStudent.gradeLevel || "", 4, academicSubjects, academicSettings, calendarEvents);
+                                                                                        const annualFreq = annualResult?.percent ?? null;
+                                                                                        const isAnnualEstimated = annualResult?.isEstimated ?? false;
+
                                                                                         const isCritical = annualFreq !== null && annualFreq < 75;
                                                                                         const hasAbsenceTotal = totalAbsences > 0;
 
                                                                                         return (
                                                                                             <td className={`px-1 py-2 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs ${isCritical ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência Anual">
-                                                                                                {hasAbsenceTotal && annualFreq !== null ? `${annualFreq}%` : '-'}
+                                                                                                {hasAbsenceTotal && annualFreq !== null ? (
+                                                                                                    <span className="flex items-center justify-center gap-0.5">
+                                                                                                        {annualFreq}%
+                                                                                                        {isAnnualEstimated && <span className="text-[9px] text-amber-500" title="Cálculo Estimado (Sem Grade Horária)">⚠</span>}
+                                                                                                    </span>
+                                                                                                ) : '-'}
                                                                                             </td>
                                                                                         );
                                                                                     })()}

@@ -409,6 +409,18 @@ const AppContent: React.FC = () => {
         setInitialLoad(prev => ({ ...prev, mensalidades: true }));
       }));
 
+      const calendarQuery = isGeneral
+        ? db.collection('calendar_events')
+        : db.collection('calendar_events').where('units', 'array-contains-any', [userUnit, 'all']);
+
+      unsubs.push(calendarQuery.onSnapshot(snap => {
+        setCalendarEvents(snap.docs.map(doc => ({ ...doc.data() as CalendarEvent, id: doc.id })));
+        setInitialLoad(prev => ({ ...prev, calendarEvents: true }));
+      }, (err) => {
+        console.error("Calendar Events (Admin) listen error:", err);
+        setInitialLoad(prev => ({ ...prev, calendarEvents: true }));
+      }));
+
       setInitialLoad(prev => ({
         ...prev,
         notifications: true,
