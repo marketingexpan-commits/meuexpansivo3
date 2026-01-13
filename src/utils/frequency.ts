@@ -22,7 +22,7 @@ export const calculateAttendancePercentage = (
     let levelKey = '';
     if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
     else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-    else if (gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ens. Médio';
+    else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
 
     if (!levelKey) return null;
 
@@ -66,7 +66,7 @@ export const calculateGeneralFrequency = (
     let levelKey = '';
     if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
     else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-    else if (gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ens. Médio';
+    else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
 
     if (!levelKey) return '-';
 
@@ -111,7 +111,7 @@ export const calculateAnnualAttendancePercentage = (
     let levelKey = '';
     if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
     else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-    else if (gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ens. Médio';
+    else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
 
     if (!levelKey) return null;
 

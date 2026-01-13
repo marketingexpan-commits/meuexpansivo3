@@ -1,6 +1,6 @@
 import { CURRICULUM_MATRIX } from './academicDefaults';
-import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester } from './academicUtils';
-import type { Student, GradeEntry, AttendanceRecord, AcademicSubject, SchoolUnitDetail, AcademicSettings } from '../types';
+import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, calculateSchoolDays } from './academicUtils';
+import type { Student, GradeEntry, AttendanceRecord, AcademicSubject, SchoolUnitDetail, AcademicSettings, CalendarEvent } from '../types';
 import { AttendanceStatus } from '../types';
 import { calculateGeneralFrequency as calculateUnifiedFrequency } from './frequency';
 
@@ -12,17 +12,15 @@ const calculateSubjectFrequency = (
     bimester: number,
     currentYear: number,
     academicSubjects?: AcademicSubject[],
-    settings?: AcademicSettings | null
+    settings?: AcademicSettings | null,
+    calendarEvents?: CalendarEvent[]
 ): string => {
     // Count absences strictly from logs
     const absences = attendanceRecords.filter(record => {
         const rYear = parseInt(record.date.split('-')[0], 10);
         const b = settings ? getDynamicBimester(record.date, settings) : getBimesterFromDate(record.date);
         return rYear === currentYear &&
-            record.discipline === subject &&
-            record.unit === student.unit &&
-            record.gradeLevel === student.gradeLevel &&
-            record.schoolClass === student.schoolClass &&
+            record.discipline.trim().toLowerCase() === subject.trim().toLowerCase() &&
             b === bimester &&
             record.studentStatus &&
             record.studentStatus[student.id] === AttendanceStatus.ABSENT;
@@ -51,12 +49,22 @@ const calculateSubjectFrequency = (
     // Determine level for Matrix (Fixed 10 weeks basis)
     let levelKey = 'Fundamental I';
     if (student.gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-    else if (student.gradeLevel.includes('Ens. Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ens. Médio';
+    else if (student.gradeLevel.includes('Ensino Médio') || student.gradeLevel.includes('Ens. Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
 
     const weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[subject] || 0;
     if (weeklyClasses === 0) return '-';
 
-    const expectedClasses = weeklyClasses * 10;
+    const expectedClasses = (() => {
+        if (settings && calendarEvents) {
+            const bim = settings.bimesters.find(b => b.number === bimester);
+            if (bim) {
+                const days = calculateSchoolDays(bim.startDate, bim.endDate, calendarEvents);
+                return (weeklyClasses / 5) * days;
+            }
+        }
+        return weeklyClasses * 10;
+    })();
+
     const frequency = ((expectedClasses - absences) / expectedClasses) * 100;
     return Math.max(0, Math.min(100, frequency)).toFixed(1) + '%';
 };
@@ -68,7 +76,8 @@ const generateBulletinHtml = (
     unitDetail: SchoolUnitDetail,
     pageBreak: boolean = false,
     academicSubjects?: AcademicSubject[],
-    settings?: AcademicSettings | null
+    settings?: AcademicSettings | null,
+    calendarEvents?: CalendarEvent[]
 ) => {
     const unitInfo = unitDetail;
     const currentDate = new Date().toLocaleDateString('pt-BR');
@@ -99,10 +108,9 @@ const generateBulletinHtml = (
             attendanceRecords,
             student.id,
             student.gradeLevel,
-            student.unit,
-            student.schoolClass,
             academicSubjects,
-            settings
+            settings,
+            calendarEvents
         );
     };
 
@@ -114,7 +122,7 @@ const generateBulletinHtml = (
         return currentGrades.map(g => {
             let levelKey = 'Fundamental I';
             if (student.gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-            else if (student.gradeLevel.includes('Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ens. Médio';
+            else if (student.gradeLevel.includes('Ensino Médio') || student.gradeLevel.includes('Ens. Médio') || student.gradeLevel.includes('Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
 
             const currentYear = getCurrentSchoolYear();
 
@@ -122,10 +130,7 @@ const generateBulletinHtml = (
                 const bAbsences = attendanceRecords.filter(record => {
                     const rYear = parseInt(record.date.split('-')[0], 10);
                     return rYear === currentYear &&
-                        record.discipline === g.subject &&
-                        record.unit === student.unit &&
-                        record.gradeLevel === student.gradeLevel &&
-                        record.schoolClass === student.schoolClass &&
+                        record.discipline.trim().toLowerCase() === g.subject.trim().toLowerCase() &&
                         (settings ? getDynamicBimester(record.date, settings) : getBimesterFromDate(record.date)) === bim &&
                         record.studentStatus &&
                         record.studentStatus[g.studentId] === AttendanceStatus.ABSENT;
@@ -209,7 +214,9 @@ const generateBulletinHtml = (
                 <td style="font-size: 9px; font-weight: bold; width: 35px;">${bfreq4}</td>
 
                 <td style="background: #f0f4f8; font-weight: bold;">${totalFrequency}</td>
-                <td style="font-weight: bold; background: #f5f5f5;">${fG(g.mediaFinal)}</td>
+                <td style="background: #fdfdfd; font-weight: bold; font-size: 9px; color: #1e3a8a;">${fG(g.mediaAnual)}</td>
+                <td style="background: #fdfdfd; font-weight: bold; font-size: 9px; color: #b91c1c;">${fG(g.recuperacaoFinal)}</td>
+                <td style="font-weight: bold; background: #f5f5f5; color: #1e3a8a;">${fG(g.mediaFinal)}</td>
                 <td style="font-weight: bold; font-size: 9px;">${(g.mediaFinal === 0 || g.mediaFinal === null) && g.situacaoFinal === 'Recuperação' ? 'Cursando' : (g.situacaoFinal || 'Cursando')}</td>
             </tr>
             `;
@@ -262,7 +269,9 @@ const generateBulletinHtml = (
                                 <th colspan="5">3º Bimestre</th>
                                 <th colspan="5">4º Bimestre</th>
                                 <th rowspan="2" style="width: 35px; background: #eef2f6;">Freq. Final</th>
-                                <th rowspan="2" style="width: 35px;">Média Final</th>
+                                <th rowspan="2" style="width: 25px;" title="Média Anual">MA</th>
+                                <th rowspan="2" style="width: 25px;" title="Prova Final">PF</th>
+                                <th rowspan="2" style="width: 35px;" title="Média Final">MF</th>
                                 <th rowspan="2" style="width: 60px;">Resultado</th>
                             </tr>
                             <tr>
@@ -275,13 +284,13 @@ const generateBulletinHtml = (
                         <tbody>
                             ${renderCurrentGradesRows()}
                             <tr style="background: #f8f9fa; font-weight: bold;">
-                                <td colspan="24" style="text-align: right; padding-right: 15px;">FREQUÊNCIA GERAL NO ANO LETIVO:</td>
+                                <td colspan="26" style="text-align: right; padding-right: 15px;">FREQUÊNCIA GERAL NO ANO LETIVO:</td>
                                 <td colspan="1" style="text-align: center; font-size: 11px; color: #1a426f;">${calculateGeneralFrequency()}</td>
                             </tr>
                         </tbody>
                     </table>
                     <p style="font-size: 8px; margin-top: 5px; font-style: italic;">
-                        Legenda: CH: Carga Horária Anual | N: Nota Bim. | R: Recup. Bim. | M: Média Bim. | F: Faltas | %: Frequência Mensal Estimada.<br />
+                        Legenda: CH: Carga Horária Anual | N: Nota Bim. | R: Recup. Bim. | M: Média Bim. | F: Faltas | %: Frequência Mensal | MA: Média Anual | PF: Prova Final | MF: Média Final.<br />
                         * O boletim reflete o desempenho parcial até o momento da emissão.
                     </p>
                 </div>
@@ -371,16 +380,18 @@ export const generateSchoolBulletin = (
     attendanceRecords: AttendanceRecord[] = [],
     unitDetail: SchoolUnitDetail,
     academicSubjects?: AcademicSubject[],
-    settings?: AcademicSettings | null
+    settings?: AcademicSettings | null,
+    calendarEvents?: CalendarEvent[]
 ) => {
-    generateBatchSchoolBulletin([{ student, grades: currentGrades, attendance: attendanceRecords }], unitDetail, academicSubjects, settings);
+    generateBatchSchoolBulletin([{ student, grades: currentGrades, attendance: attendanceRecords }], unitDetail, academicSubjects, settings, calendarEvents);
 };
 
 export const generateBatchSchoolBulletin = (
     data: { student: Student, grades: GradeEntry[], attendance: AttendanceRecord[] }[],
     unitDetail: SchoolUnitDetail,
     academicSubjects?: AcademicSubject[],
-    settings?: AcademicSettings | null
+    settings?: AcademicSettings | null,
+    calendarEvents?: CalendarEvent[]
 ) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -389,7 +400,7 @@ export const generateBatchSchoolBulletin = (
     }
 
     const pagesHtml = data.map((item, index) =>
-        generateBulletinHtml(item.student, item.grades, item.attendance, unitDetail, index < data.length - 1, academicSubjects, settings)
+        generateBulletinHtml(item.student, item.grades, item.attendance, unitDetail, index < data.length - 1, academicSubjects, settings, calendarEvents)
     ).join('');
 
     const content = `

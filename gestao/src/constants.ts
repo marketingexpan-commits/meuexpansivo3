@@ -23,7 +23,7 @@ export const getCurriculumSubjects = (gradeLevel: string, academicSubjects?: Aca
     const sortedMatrixKeys = Object.keys(CURRICULUM_MATRIX).sort((a, b) => b.length - a.length);
     const levelKey = sortedMatrixKeys.find(key =>
         gradeLevel.includes(key) ||
-        (key === 'Ens. Médio' && (gradeLevel.includes('Médio') || gradeLevel.includes('Série')))
+        (key === 'Ensino Médio' && (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Médio') || gradeLevel.includes('Série')))
     );
     return levelKey ? Object.keys(CURRICULUM_MATRIX[levelKey]) : [];
 };

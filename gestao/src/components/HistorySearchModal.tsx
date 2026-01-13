@@ -7,7 +7,9 @@ import { Input } from './Input';
 import { studentService } from '../services/studentService';
 import { pedagogicalService } from '../services/pedagogicalService';
 import { generateSchoolHistory } from '../utils/historyGenerator';
-import type { Student, AcademicHistoryRecord, AttendanceRecord } from '../types';
+import type { Student, AcademicHistoryRecord, AttendanceRecord, CalendarEvent } from '../types';
+import { db } from '../firebaseConfig';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useSchoolUnits } from '../hooks/useSchoolUnits';
 import { HistoryEditor } from './HistoryEditor';
 import { getAcademicSettings } from '../services/academicSettings';
@@ -30,6 +32,7 @@ export function HistorySearchModal({ onClose }: HistorySearchModalProps) {
     const [currentGrades, setCurrentGrades] = useState<any[]>([]);
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
     const [academicSettings, setAcademicSettings] = useState<AcademicSettings | null>(null);
+    const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
 
     const handleSearch = async () => {
         if (!code.trim()) {
@@ -63,6 +66,18 @@ export function HistorySearchModal({ onClose }: HistorySearchModalProps) {
             const settings = await getAcademicSettings(2026, student.unit);
             setAcademicSettings(settings);
 
+            try {
+                const calendarQuery = query(
+                    collection(db, 'calendar_events'),
+                    where('units', 'array-contains-any', [student.unit, 'all'])
+                );
+                const snap = await getDocs(calendarQuery);
+                const events = snap.docs.map((d: any) => ({ id: d.id, ...d.data() } as CalendarEvent));
+                setCalendarEvents(events);
+            } catch (e) {
+                console.error("Error fetching calendar events", e);
+            }
+
             setFoundStudentInfo(student);
             setStep('EDITOR');
 
@@ -84,7 +99,7 @@ export function HistorySearchModal({ onClose }: HistorySearchModalProps) {
         }
 
         try {
-            generateSchoolHistory(foundStudentInfo, enteredRecords, currentGrades, attendanceRecords, unitDetail, academicSubjects, academicSettings);
+            generateSchoolHistory(foundStudentInfo, enteredRecords, currentGrades, attendanceRecords, unitDetail, academicSubjects, academicSettings, calendarEvents);
         } catch (e) {
             console.error("Error generating history:", e);
             alert("Erro ao gerar o PDF. Verifique se o bloqueador de pop-ups está ativo.");

@@ -570,6 +570,28 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
             // Synchronize phone fields & Sanitize Financials
             const cleanTuition = parseCurrency(formData.valor_mensalidade);
 
+            // STANDARDIZATION: Append full suffix to gradeLevel based on selectedLevel
+            let finalGradeLevel = formData.gradeLevel;
+            // Only append if it doesn't already have the long format suffix
+            if (finalGradeLevel) {
+                if (selectedLevel === 'Ensino Médio' && !finalGradeLevel.includes(' - Ensino Médio')) {
+                    // Try to strip existing short suffix if present
+                    const clean = finalGradeLevel.replace(' - Ens. Médio', '').replace(' - Médio', '');
+                    finalGradeLevel = `${clean} - Ensino Médio`;
+                } else if (selectedLevel === 'Fundamental II' && !finalGradeLevel.includes(' - Fundamental II')) {
+                    const clean = finalGradeLevel.replace(' - Fund. II', '');
+                    finalGradeLevel = `${clean} - Fundamental II`;
+                } else if (selectedLevel === 'Fundamental I' && !finalGradeLevel.includes(' - Fundamental I')) {
+                    const clean = finalGradeLevel.replace(' - Fund. I', '');
+                    finalGradeLevel = `${clean} - Fundamental I`;
+                } else if (selectedLevel === 'Educação Infantil' && !finalGradeLevel.includes(' - Edu. Infantil')) {
+                    // Usually Education Infantil grades are unique (Nível I, etc), but we can standardize if needed.
+                    // Checking previous logs, "Nível II - Edu. Infantil" exists.
+                    const clean = finalGradeLevel.replace(' - Edu. Infantil', '').replace(' - Infantil', '');
+                    finalGradeLevel = `${clean} - Edu. Infantil`;
+                }
+            }
+
             // Build the complete ficha_saude object
             const fichaSaude = {
                 alergias: formData.health_alergias,
@@ -595,6 +617,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
 
             const dataToSave = {
                 ...formData,
+                gradeLevel: finalGradeLevel, // Use standardized grade
                 valor_mensalidade: cleanTuition, // Save as dot-decimal string or number
                 phoneNumber: formData.telefone_responsavel, // Ensure root project field is updated
                 ficha_saude: fichaSaude

@@ -28,7 +28,7 @@ export const CURRICULUM_MATRIX: Record<string, Record<string, number>> = {
         [Subject.PHYSICAL_ED]: 1,
         [Subject.LIFE_PROJECT]: 1
     },
-    'Ens. Médio': {
+    'Ensino Médio': {
         [Subject.PORTUGUESE]: 2,
         [Subject.MATH]: 4,
         [Subject.PHYSICS]: 4,

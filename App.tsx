@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import firebase from 'firebase/compat/app';
-import { UserRole, UserSession, Student, Teacher, GradeEntry, Admin, SchoolMessage, AttendanceRecord, EarlyChildhoodReport, UnitContact, AppNotification, Mensalidade, EventoFinanceiro, AcademicSettings, Ticket, ClassMaterial, DailyAgenda, ExamGuide } from './types';
+import { UserRole, UserSession, Student, Teacher, GradeEntry, Admin, SchoolMessage, AttendanceRecord, EarlyChildhoodReport, UnitContact, AppNotification, Mensalidade, EventoFinanceiro, AcademicSettings, Ticket, ClassMaterial, DailyAgenda, ExamGuide, CalendarEvent } from './types';
 import { MOCK_STUDENTS, MOCK_TEACHERS, MOCK_ADMINS, FINAL_GRADES_CALCULATED, ALLOW_MOCK_LOGIN } from './constants';
 import { Login } from './components/Login';
 import { StudentDashboard } from './components/StudentDashboard';
@@ -40,6 +40,7 @@ const AppContent: React.FC = () => {
   const [dailyAgendas, setDailyAgendas] = useState<DailyAgenda[]>([]);
   const [examGuides, setExamGuides] = useState<ExamGuide[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]); // New State
 
 
   const [loginError, setLoginError] = useState<string>('');
@@ -60,7 +61,8 @@ const AppContent: React.FC = () => {
     materials: false,
     agenda: false,
     examGuides: false,
-    tickets: false
+    tickets: false,
+    calendarEvents: false // New Initial Load Key
   });
 
   const [isSeeding, setIsSeeding] = useState(false);
@@ -229,6 +231,17 @@ const AppContent: React.FC = () => {
         setInitialLoad(prev => ({ ...prev, examGuides: true }));
       }));
 
+      // Calendar Events (Unit + All)
+      unsubs.push(db.collection('calendar_events')
+        .where('units', 'array-contains-any', [userUnit, 'all'])
+        .onSnapshot(snap => {
+          setCalendarEvents(snap.docs.map(doc => ({ ...doc.data() as CalendarEvent, id: doc.id })));
+          setInitialLoad(prev => ({ ...prev, calendarEvents: true }));
+        }, (err) => {
+          console.error("Calendar Events listen error:", err);
+          setInitialLoad(prev => ({ ...prev, calendarEvents: true }));
+        }));
+
       // Set others to ready for students
       setInitialLoad(prev => ({ ...prev, students: true, admins: true, messages: true }));
 
@@ -311,6 +324,17 @@ const AppContent: React.FC = () => {
         console.error("Tickets listen error:", err);
         setInitialLoad(prev => ({ ...prev, tickets: true }));
       }));
+
+      // Calendar Events (Unit + All)
+      unsubs.push(db.collection('calendar_events')
+        .where('units', 'array-contains-any', [userUnit, 'all'])
+        .onSnapshot(snap => {
+          setCalendarEvents(snap.docs.map(doc => ({ ...doc.data() as CalendarEvent, id: doc.id })));
+          setInitialLoad(prev => ({ ...prev, calendarEvents: true }));
+        }, (err) => {
+          console.error("Calendar Events listen error:", err);
+          setInitialLoad(prev => ({ ...prev, calendarEvents: true }));
+        }));
 
       setInitialLoad(prev => ({ ...prev, teachers: true, admins: true, messages: true, mensalidades: true, academicSettings: true }));
 
@@ -1209,6 +1233,7 @@ const AppContent: React.FC = () => {
     return (
       <>
         <StudentDashboard
+          calendarEvents={calendarEvents}
           student={session.user as Student}
           grades={grades}
           teachers={teachers}
@@ -1237,6 +1262,7 @@ const AppContent: React.FC = () => {
     return (
       <>
         <TeacherDashboard
+          calendarEvents={calendarEvents}
           teacher={session.user as Teacher}
           students={students}
           grades={grades}

@@ -7,7 +7,8 @@ import {
     AppNotification,
     DailyAgenda,
     ExamGuide,
-    ClassMaterial
+    ClassMaterial,
+    CalendarEvent
 } from '../types';
 import { db, storage } from '../firebaseConfig';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
@@ -37,6 +38,7 @@ interface TeacherDashboardProps {
     agendas?: DailyAgenda[];
     examGuides?: ExamGuide[];
     tickets?: Ticket[];
+    calendarEvents?: CalendarEvent[];
 }
 
 const formatGrade = (value: number | undefined | null) => {
@@ -59,7 +61,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     materials: propsMaterials = [],
     agendas: propsAgendas = [],
     examGuides: propsExamGuides = [],
-    tickets: propsTickets = []
+    tickets: propsTickets = [],
+    calendarEvents = []
 }) => {
     const { grades: academicGrades, subjects: academicSubjects, loading: loadingAcademic } = useAcademicData();
 
@@ -1652,7 +1655,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                         finalGrades.sort((a, b) => subjectsInCurriculum.indexOf(a.subject) - subjectsInCurriculum.indexOf(b.subject));
                                                                     }
 
-                                                                    const generalFreq = calculateGeneralFrequency(finalGrades, attendanceRecords, selectedStudent.id, selectedStudent.gradeLevel || "", academicSubjects, academicSettings);
+                                                                    const generalFreq = calculateGeneralFrequency(finalGrades, attendanceRecords, selectedStudent.id, selectedStudent.gradeLevel || "", academicSubjects, academicSettings, calendarEvents);
 
                                                                     return (
                                                                         <>
@@ -1696,7 +1699,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                                                 </td>
                                                                                                 {(() => {
                                                                                                     const absences = currentStudentAbsences;
-                                                                                                    const freqPercent = calculateAttendancePercentage(grade.subject, absences, selectedStudent?.gradeLevel || "", academicSubjects);
+                                                                                                    const freqPercent = calculateAttendancePercentage(grade.subject, absences, selectedStudent?.gradeLevel || "", bimesterNum, academicSubjects, academicSettings, calendarEvents);
 
                                                                                                     // Só exibe a porcentagem se houver pelo menos uma falta
                                                                                                     const hasAbsence = absences > 0;
@@ -1735,7 +1738,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                                             return sum + studentAbsSnapshot;
                                                                                         }, 0);
 
-                                                                                        const annualFreq = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, selectedStudent.gradeLevel || "", 4, academicSubjects, academicSettings);
+                                                                                        const annualFreq = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, selectedStudent.gradeLevel || "", 4, academicSubjects, academicSettings, calendarEvents);
                                                                                         const isCritical = annualFreq !== null && annualFreq < 75;
                                                                                         const hasAbsenceTotal = totalAbsences > 0;
 

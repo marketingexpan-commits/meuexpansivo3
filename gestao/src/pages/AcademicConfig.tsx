@@ -7,6 +7,7 @@ import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Loader2, Plus, Edit2, Trash2, Database, Layers, ChevronRight, ChevronDown } from 'lucide-react';
+import { GradeStandardizationTool } from '../components/GradeStandardizationTool';
 
 export default function AcademicConfig() {
     const [segments, setSegments] = useState<AcademicSegment[]>([]);
@@ -423,6 +424,7 @@ export default function AcademicConfig() {
                     </div>
                 </div>
             )}
+            <GradeStandardizationTool />
         </div>
     );
 }

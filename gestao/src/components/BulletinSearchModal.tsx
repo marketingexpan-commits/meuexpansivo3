@@ -10,7 +10,9 @@ import type { Student } from '../types';
 import { SCHOOL_SHIFTS, SCHOOL_CLASSES_OPTIONS } from '../utils/academicDefaults';
 import { useSchoolUnits } from '../hooks/useSchoolUnits';
 import { getAcademicSettings } from '../services/academicSettings';
-import type { AcademicSettings } from '../types';
+import type { AcademicSettings, CalendarEvent } from '../types';
+import { db } from '../firebaseConfig';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 interface BulletinSearchModalProps {
     onClose: () => void;
@@ -40,6 +42,7 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
     const [foundStudents, setFoundStudents] = useState<Student[]>([]); // Array for single or multiple
     const [preparedData, setPreparedData] = useState<any[]>([]); // { student, grades, attendance }
     const [academicSettings, setAcademicSettings] = useState<AcademicSettings | null>(null);
+    const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
 
     const handleSearch = async () => {
         setIsLoading(true);
@@ -49,25 +52,48 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
             const allStudents = await studentService.getStudents();
             let results: Student[] = [];
 
+            // Filter by logged user unit using correct mapping
+            const userUnitCode = localStorage.getItem('userUnit') || 'Zona Norte';
+
+            const unitMapping: Record<string, string> = {
+                'unit_zn': 'Zona Norte',
+                'unit_ext': 'Extremoz',
+                'unit_qui': 'Quintas',
+                'unit_bs': 'Boa Sorte'
+            };
+
+            const effectiveUnitName = unitMapping[userUnitCode] || userUnitCode;
+
             if (searchType === 'INDIVIDUAL') {
                 if (!code.trim()) { setError('Digite o código de matrícula'); setIsLoading(false); return; }
                 const s = allStudents.find(stu => stu.code?.trim() === code.trim());
-                if (s) results = [s];
-                else setError('Nenhum aluno encontrado com este código.');
+
+                if (s) {
+                    if (userUnitCode !== 'admin_geral' && s.unit !== effectiveUnitName) {
+                        setError('Aluno pertence a outra unidade.');
+                    } else {
+                        results = [s];
+                    }
+                } else {
+                    setError('Nenhum aluno encontrado com este código.');
+                }
             } else {
                 // Class Search
                 if (!gradeLevel || !shift || !schoolClass) { setError('Selecione Série, Turno e Turma.'); setIsLoading(false); return; }
 
-                // Filter by logged user unit (stored in localStorage usually, getting from first student or assumption)
-                // Assuming we filter by selected criteria.
-                const userUnit = localStorage.getItem('userUnit') || 'Zona Norte'; // Fallback or current usage
+                results = allStudents.filter(s => {
+                    const isUnitMatch = (userUnitCode === 'admin_geral' || s.unit === effectiveUnitName);
+                    if (!isUnitMatch) return false;
 
-                results = allStudents.filter(s =>
-                    s.unit === userUnit &&
-                    s.gradeLevel === gradeLevel &&
-                    s.shift === shift &&
-                    s.schoolClass === schoolClass
-                );
+                    // Grade match logic: Check if DB value INCLUDES the selected value (e.g. "3ª Série - Ens. Médio" includes "3ª Série")
+                    const dbGrade = s.gradeLevel || '';
+                    const isGradeMatch = dbGrade === gradeLevel || dbGrade.includes(gradeLevel);
+
+                    const isShiftMatch = s.shift === shift;
+                    const isClassMatch = s.schoolClass === schoolClass;
+
+                    return isGradeMatch && isShiftMatch && isClassMatch;
+                });
 
                 if (results.length === 0) setError('Nenhum aluno encontrado nesta turma.');
             }
@@ -77,7 +103,7 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
                 const dataPromises = results.map(async (student) => {
                     const [grades, attendance] = await Promise.all([
                         pedagogicalService.getGrades(student.id),
-                        pedagogicalService.getAttendance(student.id)
+                        pedagogicalService.getAttendance(student.id, student.unit)
                     ]);
                     return { student, grades, attendance };
                 });
@@ -88,6 +114,18 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
                 const unitToFetch = results[0].unit;
                 const settings = await getAcademicSettings(2026, unitToFetch);
                 setAcademicSettings(settings);
+
+                try {
+                    const calendarQuery = query(
+                        collection(db, 'calendar_events'),
+                        where('units', 'array-contains-any', [unitToFetch, 'all'])
+                    );
+                    const snap = await getDocs(calendarQuery);
+                    const events = snap.docs.map((d: any) => ({ id: d.id, ...d.data() } as CalendarEvent));
+                    setCalendarEvents(events);
+                } catch (e) {
+                    console.error("Error fetching calendar events", e);
+                }
 
                 setFoundStudents(results);
                 setPreparedData(finalData);
@@ -116,9 +154,9 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
 
         try {
             if (preparedData.length === 1) {
-                generateSchoolBulletin(preparedData[0].student, preparedData[0].grades, preparedData[0].attendance, unitDetail, academicSubjects, academicSettings);
+                generateSchoolBulletin(preparedData[0].student, preparedData[0].grades, preparedData[0].attendance, unitDetail, academicSubjects, academicSettings, calendarEvents);
             } else {
-                generateBatchSchoolBulletin(preparedData, unitDetail, academicSubjects, academicSettings);
+                generateBatchSchoolBulletin(preparedData, unitDetail, academicSubjects, academicSettings, calendarEvents);
             }
         }
         catch (e) {

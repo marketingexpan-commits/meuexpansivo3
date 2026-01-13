@@ -90,3 +90,46 @@ export const parseGradeLevel = (gradeLevel: string) => {
 
     return { grade, level };
 };
+
+/**
+ * Calculates the number of school days between two dates, 
+ * excluding weekends and unit-specific holidays/vacations.
+ */
+export const calculateSchoolDays = (
+    start: string,
+    end: string,
+    events: any[] // CalendarEvent[]
+) => {
+    let count = 0;
+    const curDate = new Date(start + 'T00:00:00');
+    const endDate = new Date(end + 'T00:00:00');
+
+    if (isNaN(curDate.getTime()) || isNaN(endDate.getTime())) return 0;
+
+    // Map holidays for faster lookup
+    const holidayDates = new Set<string>();
+    (events || []).forEach(e => {
+        if (e.type === 'holiday' || e.type === 'vacation') {
+            const s = new Date(e.startDate + 'T00:00:00');
+            const f = e.endDate ? new Date(e.endDate + 'T00:00:00') : new Date(e.startDate + 'T00:00:00');
+
+            if (!isNaN(s.getTime())) {
+                for (let d = new Date(s); d <= f; d.setDate(d.getDate() + 1)) {
+                    holidayDates.add(d.toISOString().split('T')[0]);
+                }
+            }
+        }
+    });
+
+    while (curDate <= endDate) {
+        const dayOfWeek = curDate.getDay();
+        const dateStr = curDate.toISOString().split('T')[0];
+        // 0 = Sunday, 6 = Saturday
+        if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidayDates.has(dateStr)) {
+            count++;
+        }
+        curDate.setDate(curDate.getDate() + 1);
+    }
+    return count;
+};
+

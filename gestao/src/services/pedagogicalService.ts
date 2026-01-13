@@ -21,9 +21,27 @@ export const pedagogicalService = {
     },
 
     // Buscar registros de frequência de um aluno
-    async getAttendance(studentId: string) {
+    async getAttendance(studentId: string, unit?: string) {
         try {
-            const q = collection(db, ATTENDANCE_COLLECTION);
+            const currentYear = new Date().getFullYear().toString();
+            let q;
+
+            if (unit) {
+                // Optimized Query: Filter by Unit + Date (Requires Composite Index)
+                q = query(
+                    collection(db, ATTENDANCE_COLLECTION),
+                    where('unit', '==', unit),
+                    where('date', '>=', `${currentYear}-01-01`),
+                    where('date', '<=', `${currentYear}-12-31`)
+                );
+            } else {
+                q = query(
+                    collection(db, ATTENDANCE_COLLECTION),
+                    where('date', '>=', `${currentYear}-01-01`),
+                    where('date', '<=', `${currentYear}-12-31`)
+                );
+            }
+
             const snap = await getDocs(q);
             const allRecords = snap.docs.map(d => ({ id: d.id, ...d.data() })) as AttendanceRecord[];
             return allRecords.filter(record => record.studentStatus && record.studentStatus[studentId]);
@@ -39,7 +57,7 @@ export const pedagogicalService = {
 
         // Delegamos para a função unificada que é usada no App do Aluno
         const studentId = grades[0].studentId;
-        const freqString = calculateGeneralFrequency(grades, attendanceRecords, studentId, gradeLevel, undefined, undefined, academicSubjects, settings);
+        const freqString = calculateGeneralFrequency(grades, attendanceRecords, studentId, gradeLevel, academicSubjects, settings);
 
         // Converte "95.5%" para 95.5
         return parseFloat(freqString.replace('%', '')) || 100;

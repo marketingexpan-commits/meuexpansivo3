@@ -97,6 +97,7 @@ interface StudentDashboardProps {
     agendas?: DailyAgenda[];
     examGuides?: ExamGuide[];
     tickets?: Ticket[];
+    calendarEvents?: CalendarEvent[];
     onCreateNotification?: (title: string, message: string, studentId?: string, teacherId?: string) => Promise<void>;
     [key: string]: any;
 }
@@ -119,7 +120,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     materials: propsMaterials = [],
     agendas: propsAgendas = [],
     examGuides: propsExamGuides = [],
-    tickets: propsTickets = []
+    tickets: propsTickets = [],
+    calendarEvents = []
 }) => {
     const { subjects: academicSubjects } = useAcademicData();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -204,8 +206,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     // State for the Informational Banner visibility
     const [isBannerOpen, setIsBannerOpen] = useState(false);
 
-    // State for Calendar Events
-    const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
 
     const MONTH_NAMES = [
         "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -518,19 +518,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         }
     };
 
-    // --- CALENDAR EVENTS LOADING LOGIC ---
-    useEffect(() => {
-        if (!student.unit) return;
-        const unsubscribe = db.collection('calendar_events')
-            .where('units', 'array-contains-any', [student.unit, 'all'])
-            .onSnapshot((snap) => {
-                const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as CalendarEvent));
-                // Sort in memory to avoid needing a composite index
-                data.sort((a, b) => a.startDate.localeCompare(b.startDate));
-                setCalendarEvents(data);
-            });
-        return () => unsubscribe();
-    }, [student.unit]);
 
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans transition-all duration-500 ease-in-out print:min-h-0 print:h-auto print:bg-white print:p-0 print:block print:overflow-visible">
@@ -1436,7 +1423,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 let levelKey = '';
                                                                 if (student.gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
                                                                 else if (student.gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-                                                                else if (student.gradeLevel.includes('Ens. Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ens. Médio';
+                                                                else if (student.gradeLevel.includes('Ensino Médio') || student.gradeLevel.includes('Ens. Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
 
                                                                 weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[grade.subject] || 0;
                                                             }
@@ -1484,7 +1471,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                         {isActive ? currentAbsences : '-'}
                                                                     </td>
                                                                     {(() => {
-                                                                        const freqPercent = calculateAttendancePercentage(grade.subject, currentAbsences, student.gradeLevel, academicSubjects);
+                                                                        const freqPercent = calculateAttendancePercentage(grade.subject, currentAbsences, student.gradeLevel, bimesterNum, academicSubjects, academicSettings, calendarEvents);
                                                                         const isLowFreq = freqPercent !== null && freqPercent < 75;
 
                                                                         return (
@@ -1517,7 +1504,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 }, 0);
                                                             }, 0);
 
-                                                            const annualFreq = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel, elapsedBimesters, academicSubjects, academicSettings);
+                                                            const annualFreq = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel, elapsedBimesters, academicSubjects, academicSettings, calendarEvents);
                                                             const isCritical = annualFreq !== null && annualFreq < 75;
 
                                                             return (
@@ -1538,7 +1525,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                     </tr>
                                                 ))}
                                                 {studentGrades.length > 0 && (() => {
-                                                    const generalFreq = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings);
+                                                    const generalFreq = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings, calendarEvents);
                                                     return (
                                                         <tr className="bg-gray-100/80 font-bold border-t-2 border-gray-400">
                                                             <td colSpan={25} className="px-4 py-1 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[11px]">
