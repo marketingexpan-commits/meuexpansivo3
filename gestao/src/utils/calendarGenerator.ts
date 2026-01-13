@@ -20,20 +20,30 @@ export const generateSchoolCalendar = (
 
     const getEventBadgeColor = (type: string) => {
         switch (type) {
-            case 'holiday': return '#ef4444';
+            case 'holiday_national':
+            case 'holiday_state':
+            case 'holiday_municipal':
+            case 'holiday': // Fallback legacy
+                return '#ef4444';
             case 'exam': return '#f59e0b';
             case 'meeting': return '#3b82f6';
-            case 'vacation': return '#10b981';
+            case 'vacation':
+            case 'recess':
+                return '#10b981';
             default: return '#64748b';
         }
     };
 
     const getEventLabel = (type: string) => {
         switch (type) {
+            case 'holiday_national': return 'Feriado Nacional';
+            case 'holiday_state': return 'Feriado Estadual';
+            case 'holiday_municipal': return 'Feriado Municipal';
             case 'holiday': return 'Feriado';
             case 'exam': return 'Avaliação';
             case 'meeting': return 'Reunião';
-            case 'vacation': return 'Recesso';
+            case 'vacation': return 'Férias';
+            case 'recess': return 'Recesso';
             default: return 'Evento';
         }
     };
@@ -48,7 +58,8 @@ export const generateSchoolCalendar = (
         // Map holidays for faster lookup (check ranges)
         const holidayDates = new Set<string>();
         events.forEach(e => {
-            if (e.type === 'holiday' || e.type === 'vacation') {
+            const isHoliday = e.type === 'vacation' || e.type === 'recess' || e.type.startsWith('holiday');
+            if (isHoliday) {
                 const s = new Date(e.startDate + 'T00:00:00');
                 // Use startDate if endDate missing, else iterate range
                 const f = e.endDate ? new Date(e.endDate + 'T00:00:00') : new Date(e.startDate + 'T00:00:00');

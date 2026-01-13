@@ -281,3 +281,5 @@ export const CURRICULUM_MATRIX: Record<string, Record<string, number>> = {
     [Subject.ENTREPRENEURSHIP]: 0
   }
 };
+
+export const HS_SUBJECTS_2025 = Object.keys(CURRICULUM_MATRIX['Ens. Médio']);

@@ -66,7 +66,8 @@ export const getAttendanceBreakdown = (
 
     // Sort days numerically for better UX
     Object.values(breakdown).forEach(b => {
-        Object.values(b.details).forEach(days => days.sort((a, b) => a - b));
+        Object.values(b.details).forEach((days: number[]) => days.sort((a, b) => a - b));
+
     });
 
     return breakdown;

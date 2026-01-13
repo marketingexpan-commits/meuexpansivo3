@@ -821,7 +821,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                                                             {bData.faltas ?? '-'}
                                                                                         </td>
                                                                                         {(() => {
-                                                                                            const freqPercent = calculateAttendancePercentage(grade.subject, bData.faltas || 0, student.gradeLevel || "");
+                                                                                            const freqResult = calculateAttendancePercentage(grade.subject, bData.faltas || 0, student.gradeLevel || "");
+                                                                                            const freqPercent = freqResult ? freqResult.percent : null;
 
                                                                                             // Só exibe a porcentagem se houver pelo menos uma falta
                                                                                             const hasAbsence = (bData.faltas || 0) > 0;
@@ -866,7 +867,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                                                     return sum + studentAbsSnapshot;
                                                                                 }, 0);
 
-                                                                                const annualFreq = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel || "", 4, academicSubjects, academicSettings);
+                                                                                const annualFreqResult = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel || "", 4, academicSubjects, academicSettings);
+                                                                                const annualFreq = annualFreqResult ? annualFreqResult.percent : null;
                                                                                 const isCritical = annualFreq !== null && annualFreq < 75;
                                                                                 const hasAbsenceTotal = totalAbsences > 0;
 
