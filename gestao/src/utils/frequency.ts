@@ -1,66 +1,121 @@
 /**
- * 🔒 CRITICAL LOGIC: Fixed Workload Frequency Calculation
- * This file replaces dynamic calendar logic with a fixed C.H. basis for stable bulletin display.
- * Refer to implementation_plan.md for details.
+ * 🔒 CRITICAL LOGIC: Unit-Specific Frequency Calculation
+ * DO NOT REVERT TO STATIC ESTIMATION.
+ * This file implements dynamic calculation based on real school days (calendarEvents).
+ * Refer to ARCHITECTURE.md for details.
  */
-import { AttendanceStatus } from "../types";
-import type { AcademicSettings, GradeEntry, AttendanceRecord, AcademicSubject } from "../types";
+
 import { CURRICULUM_MATRIX } from "../constants";
-import { getCurrentSchoolYear, getDynamicBimester } from "./academicUtils";
+import { AttendanceStatus } from "../types";
+import type { GradeEntry, AttendanceRecord, AcademicSubject, AcademicSettings } from "../types";
+import { getCurrentSchoolYear, getDynamicBimester, calculateSchoolDays, calculateEffectiveTaughtClasses } from "./academicUtils";
 
 /**
  * Calculates the attendance percentage for a given subject and student grade level.
- * Formula: ((Total Expected Classes - Absences) / Total Expected Classes) * 100
+ * STRICT FORMULA: (Effective Taught Classes - Absences) / Effective Taught Classes * 100
+ * 
+ * @param subject The subject name
+ * @param absences Total NUMBER of absence hours (not days)
+ * @param gradeLevel The student's grade level
+ * @param bimester Optional bimester
+ * @param academicSubjects Optional dynamic subjects
+ * @param settings Academic settings (for dates)
+ * @param calendarEvents Calendar events (for holidays)
+ * @param unit Student's unit (for holiday filtering)
+ * @param classSchedules List of class schedules (for effective taught calculation)
  */
 export const calculateAttendancePercentage = (
     subject: string,
     absences: number,
     gradeLevel: string,
-    _bimester?: number,
+    bimester?: number,
     academicSubjects?: AcademicSubject[],
-    _settings?: AcademicSettings | null,
-    _calendarEvents?: any[]
-): number | null => {
-    // 1. Try Dynamic Lookup
-    if (academicSubjects && academicSubjects.length > 0) {
-        const dynamicSubject = academicSubjects.find(s => s.name === subject);
-        if (dynamicSubject && dynamicSubject.weeklyHours) {
-            const gradeKey = Object.keys(dynamicSubject.weeklyHours).find(key => gradeLevel.includes(key));
-            if (gradeKey) {
-                const weeklyClasses = dynamicSubject.weeklyHours[gradeKey];
-                if (weeklyClasses > 0) {
-                    // C.H. BASIS: Each bimester is exactly 10 weeks
-                    const totalExpectedClasses = weeklyClasses * 10;
+    settings?: AcademicSettings | null,
+    calendarEvents?: any[],
+    unit?: string,
+    classSchedules?: any[],
+    schoolClass?: string
+): { percent: number, isEstimated: boolean } | null => {
 
-                    if (absences === 0) return null;
-                    const percentage = ((totalExpectedClasses - absences) / totalExpectedClasses) * 100;
-                    return Math.max(0, Math.min(100, parseFloat(percentage.toFixed(2))));
-                }
-            }
+    if (!unit) return null; // Unit is mandatory for strict calculation
+
+    // 1. Determine Date Range
+    let startDate = `${getCurrentSchoolYear()}-01-01`;
+    let endDate = new Date().toISOString().split('T')[0];
+
+    if (bimester && settings?.bimesters) {
+        const bimConfig = settings.bimesters.find(b => b.number === bimester);
+        if (bimConfig) {
+            startDate = bimConfig.startDate;
+            const bEndDate = bimConfig.endDate;
+            // Cap end date to today if current bimester
+            endDate = (endDate < bEndDate) ? endDate : bEndDate;
         }
     }
 
-    // 2. Fallback to Legacy Matrix
-    let levelKey = '';
-    if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
-    else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-    else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
+    // 2. Calculate Effective Taught Classes
+    let taughtClasses = 0;
+    let isEstimated = false;
 
-    if (!levelKey) return null;
+    if (classSchedules && classSchedules.length > 0) {
+        const result = calculateEffectiveTaughtClasses(
+            startDate,
+            endDate,
+            unit,
+            subject,
+            classSchedules,
+            calendarEvents || [],
+            gradeLevel,
+            schoolClass
+        );
+        taughtClasses = result.taught;
+        isEstimated = result.isEstimated;
+    } else {
+        isEstimated = true;
+    }
 
-    const levelMatrix = CURRICULUM_MATRIX[levelKey];
-    if (!levelMatrix) return null;
+    // 3. Fallback to Estimation if Schedule Missing (Safety Rule #5)
+    if (isEstimated) {
+        // Legacy: Weekly Classes * School Days / 5
+        let weeklyClasses = 0;
+        // Dynamic lookup
+        if (academicSubjects) {
+            const ds = academicSubjects.find(s => s.name === subject);
+            if (ds?.weeklyHours) {
+                const k = Object.keys(ds.weeklyHours).find(key => gradeLevel.includes(key));
+                if (k) weeklyClasses = ds.weeklyHours[k];
+            }
+        }
+        // Matrix lookup
+        if (weeklyClasses === 0) {
+            let levelKey = '';
+            if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
+            else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
+            else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
 
-    const weeklyClasses = levelMatrix[subject];
-    if (weeklyClasses === undefined || weeklyClasses === 0) return null;
+            if (levelKey && CURRICULUM_MATRIX[levelKey]) {
+                weeklyClasses = CURRICULUM_MATRIX[levelKey][subject] || 0;
+            }
+        }
 
-    // C.H. BASIS: Each bimester is exactly 10 weeks
-    const totalExpectedClasses = weeklyClasses * 10;
+        if (weeklyClasses > 0) {
+            const schoolDays = calculateSchoolDays(startDate, endDate, calendarEvents || [], unit);
+            taughtClasses = Math.round((weeklyClasses / 5) * schoolDays);
+        }
+    }
 
-    if (absences === 0) return null;
+    // 4. Apply Strict Rules
+    // Rule: Start of Year (Taught = 0) -> 100%
+    if (taughtClasses === 0) return { percent: 100, isEstimated };
 
-    const percentage = ((totalExpectedClasses - absences) / totalExpectedClasses) * 100;
-    return Math.max(0, Math.min(100, parseFloat(percentage.toFixed(2))));
+    // Rule: Implicit Presence (Formula)
+    // Freq = (Taught - Absences) / Taught
+    const percentage = ((taughtClasses - absences) / taughtClasses) * 100;
+
+    return {
+        percent: Math.max(0, Math.min(100, parseFloat(percentage.toFixed(2)))),
+        isEstimated
+    };
 };
 
 /**
@@ -68,51 +123,34 @@ export const calculateAttendancePercentage = (
  */
 export const calculateAnnualAttendancePercentage = (
     subject: string,
-    totalAbsences: number,
+    totalAbsences: number, // Sum of absence hours from logs
     gradeLevel: string,
     _elapsedBimesters: number = 4,
     academicSubjects?: AcademicSubject[],
-    _settings?: AcademicSettings | null,
-    _calendarEvents?: any[]
-): number | null => {
-    if (academicSubjects && academicSubjects.length > 0) {
-        const dynamicSubject = academicSubjects.find(s => s.name === subject);
-        if (dynamicSubject && dynamicSubject.weeklyHours) {
-            const gradeKey = Object.keys(dynamicSubject.weeklyHours).find(key => gradeLevel.includes(key));
-            if (gradeKey) {
-                const weeklyClasses = dynamicSubject.weeklyHours[gradeKey];
-                if (weeklyClasses > 0) {
-                    // C.H. BASIS: full year is 40 weeks
-                    const totalExpectedClasses = weeklyClasses * 40;
+    settings?: AcademicSettings | null,
+    calendarEvents?: any[],
+    unit?: string,
+    classSchedules?: any[],
+    schoolClass?: string
+): { percent: number, isEstimated: boolean } | null => {
 
-                    if (totalExpectedClasses === 0) return 100;
-                    const percentage = ((totalExpectedClasses - totalAbsences) / totalExpectedClasses) * 100;
-                    return Math.max(0, Math.min(100, parseFloat(percentage.toFixed(2))));
-                }
-            }
-        }
-    }
+    if (!unit) return null;
 
-    let levelKey = '';
-    if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
-    else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-    else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
+    // Check if year ended (optional optimization, keeping simple for now: effective up to today)
 
-    if (!levelKey) return null;
-
-    const levelMatrix = CURRICULUM_MATRIX[levelKey];
-    if (!levelMatrix) return null;
-
-    const weeklyClasses = levelMatrix[subject];
-    if (weeklyClasses === undefined || weeklyClasses === 0) return null;
-
-    // C.H. BASIS: full year is 40 weeks
-    const totalExpectedClasses = weeklyClasses * 40;
-
-    if (totalExpectedClasses === 0) return 100;
-
-    const percentage = ((totalExpectedClasses - totalAbsences) / totalExpectedClasses) * 100;
-    return Math.max(0, Math.min(100, parseFloat(percentage.toFixed(2))));
+    // Reuse shared logic
+    return calculateAttendancePercentage(
+        subject,
+        totalAbsences,
+        gradeLevel,
+        undefined, // Annual (no specific bimester limit, uses full range)
+        academicSubjects,
+        settings,
+        calendarEvents,
+        unit,
+        classSchedules,
+        schoolClass
+    );
 };
 
 /**
@@ -139,7 +177,7 @@ export const calculateGeneralFrequency = (
     const levelMatrix = CURRICULUM_MATRIX[levelKey];
     if (!levelMatrix) return '-';
 
-    let totalExpectedHours = 0;
+    let totalExpectedHours = 0; // Cumulative expected classes for the full year
     let foundDynamic = false;
 
     if (academicSubjects && academicSubjects.length > 0) {

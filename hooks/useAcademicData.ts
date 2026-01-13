@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebaseConfig';
 import { collection, getDocs } from 'firebase/firestore';
-import { AcademicSegment, AcademicGrade, AcademicSubject } from '../types';
+import { AcademicSegment, AcademicGrade, AcademicSubject, ClassSchedule } from '../types';
 import { EDUCATION_LEVELS, GRADES_BY_LEVEL, DEFAULT_SUBJECTS } from '../src/utils/academicDefaults';
 
 export function useAcademicData() {
     const [segments, setSegments] = useState<AcademicSegment[]>([]);
     const [grades, setGrades] = useState<AcademicGrade[]>([]);
     const [subjects, setSubjects] = useState<AcademicSubject[]>([]);
+    const [schedules, setSchedules] = useState<ClassSchedule[]>([]); // New State
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -83,6 +84,13 @@ export function useAcademicData() {
                 subjectsData.sort((a, b) => (a.order || 0) - (b.order || 0));
                 setSubjects(subjectsData);
 
+                // Fetch Class Schedules (NEW)
+                const scheduleSnap = await getDocs(collection(db, 'class_schedules'));
+                if (!scheduleSnap.empty) {
+                    const schedulesData = scheduleSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ClassSchedule));
+                    setSchedules(schedulesData);
+                }
+
             } catch (error) {
                 console.error("Error loading academic data:", error);
 
@@ -112,5 +120,5 @@ export function useAcademicData() {
         fetchData();
     }, []);
 
-    return { segments, grades, subjects, loading };
+    return { segments, grades, subjects, schedules, loading };
 }

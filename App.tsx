@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import firebase from 'firebase/compat/app';
-import { UserRole, UserSession, Student, Teacher, GradeEntry, Admin, SchoolMessage, AttendanceRecord, EarlyChildhoodReport, UnitContact, AppNotification, Mensalidade, EventoFinanceiro, AcademicSettings, Ticket, ClassMaterial, DailyAgenda, ExamGuide, CalendarEvent } from './types';
+import { UserRole, UserSession, Student, Teacher, GradeEntry, Admin, SchoolMessage, AttendanceRecord, EarlyChildhoodReport, UnitContact, AppNotification, Mensalidade, EventoFinanceiro, AcademicSettings, Ticket, ClassMaterial, DailyAgenda, ExamGuide, CalendarEvent, ClassSchedule } from './types';
 import { MOCK_STUDENTS, MOCK_TEACHERS, MOCK_ADMINS, FINAL_GRADES_CALCULATED, ALLOW_MOCK_LOGIN } from './constants';
 import { Login } from './components/Login';
 import { StudentDashboard } from './components/StudentDashboard';
@@ -41,6 +41,7 @@ const AppContent: React.FC = () => {
   const [examGuides, setExamGuides] = useState<ExamGuide[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]); // New State
+  const [classSchedules, setClassSchedules] = useState<ClassSchedule[]>([]);
 
 
   const [loginError, setLoginError] = useState<string>('');
@@ -62,7 +63,8 @@ const AppContent: React.FC = () => {
     agenda: false,
     examGuides: false,
     tickets: false,
-    calendarEvents: false // New Initial Load Key
+    calendarEvents: false, // New Initial Load Key
+    classSchedules: false
   });
 
   const [isSeeding, setIsSeeding] = useState(false);
@@ -242,6 +244,15 @@ const AppContent: React.FC = () => {
           setInitialLoad(prev => ({ ...prev, calendarEvents: true }));
         }));
 
+      // Class Schedules (Unit)
+      unsubs.push(db.collection('class_schedules').where('schoolId', '==', userUnit).onSnapshot(snap => {
+        setClassSchedules(snap.docs.map(doc => ({ ...doc.data() as ClassSchedule, id: doc.id })));
+        setInitialLoad(prev => ({ ...prev, classSchedules: true }));
+      }, (err) => {
+        console.error("Class Schedules listen error:", err);
+        setInitialLoad(prev => ({ ...prev, classSchedules: true }));
+      }));
+
       // Set others to ready for students
       setInitialLoad(prev => ({ ...prev, students: true, admins: true, messages: true }));
 
@@ -336,7 +347,7 @@ const AppContent: React.FC = () => {
           setInitialLoad(prev => ({ ...prev, calendarEvents: true }));
         }));
 
-      setInitialLoad(prev => ({ ...prev, teachers: true, admins: true, messages: true, mensalidades: true, academicSettings: true }));
+      setInitialLoad(prev => ({ ...prev, teachers: true, admins: true, messages: true, mensalidades: true, academicSettings: true, classSchedules: true }));
 
     } else if (session.role === UserRole.ADMIN) {
       const isGeneral = !userUnit;
@@ -407,7 +418,8 @@ const AppContent: React.FC = () => {
         agenda: true,
         examGuides: true,
         tickets: true,
-        calendarEvents: true
+        calendarEvents: true,
+        classSchedules: true
       }));
 
     } else if (session.role === UserRole.COORDINATOR) {
@@ -431,7 +443,8 @@ const AppContent: React.FC = () => {
         agenda: true,
         examGuides: true,
         tickets: true,
-        calendarEvents: true
+        calendarEvents: true,
+        classSchedules: true
       }));
     }
 
@@ -1278,6 +1291,7 @@ const AppContent: React.FC = () => {
           agendas={dailyAgendas}
           examGuides={examGuides}
           tickets={tickets}
+          classSchedules={classSchedules}
         />
         <BackToTopButton />
       </>

@@ -1540,7 +1540,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                     <div className="bg-blue-50 border border-blue-200 text-blue-900 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 animate-fade-in">
                                                         <span className="text-blue-400">👤</span>
                                                         {selectedStudent.name}
-                                                        <span className="text-xs font-normal text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded ml-1">#{selectedStudent.code}</span>
+                                                        <span className="text-xs font-normal text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded ml-1">{selectedStudent.code}</span>
                                                     </div>
                                                 )}
                                             </div>

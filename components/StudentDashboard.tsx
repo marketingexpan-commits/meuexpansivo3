@@ -3,7 +3,7 @@ import { useAcademicData } from '../hooks/useAcademicData';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
 import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial, Occurrence, DailyAgenda, ExamGuide, CalendarEvent, AcademicSubject } from '../types';
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
-import { getBimesterFromDate, getDynamicBimester, normalizeClass, parseGradeLevel, calculateSchoolDays } from '../src/utils/academicUtils';
+import { getBimesterFromDate, getDynamicBimester, normalizeClass, parseGradeLevel, calculateSchoolDays, isClassScheduled } from '../src/utils/academicUtils';
 import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects, MOCK_CALENDAR_EVENTS } from '../constants'; // Import Sync Fix
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency, calculateBimesterGeneralFrequency } from '../utils/frequency';
 import { getStudyTips } from '../services/geminiService';
@@ -98,6 +98,7 @@ interface StudentDashboardProps {
     examGuides?: ExamGuide[];
     tickets?: Ticket[];
     calendarEvents?: CalendarEvent[];
+    classSchedules?: any[]; // ClassSchedule[]
     onCreateNotification?: (title: string, message: string, studentId?: string, teacherId?: string) => Promise<void>;
     [key: string]: any;
 }
@@ -121,7 +122,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     agendas: propsAgendas = [],
     examGuides: propsExamGuides = [],
     tickets: propsTickets = [],
-    calendarEvents = []
+    calendarEvents = [],
+    classSchedules = []
 }) => {
     const { subjects: academicSubjects } = useAcademicData();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -1459,7 +1461,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             const currentAbsences = studentAttendance.reduce((acc, att) => {
                                                                 if (att.discipline !== grade.subject) return acc;
                                                                 if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
-                                                                    if (getDynamicBimester(att.date, academicSettings) === bimesterNum) return acc + 1;
+                                                                    if (getDynamicBimester(att.date, academicSettings) === bimesterNum) {
+                                                                        if (classSchedules && classSchedules.length > 0) {
+                                                                            if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit)) return acc;
+                                                                        }
+                                                                        return acc + 1;
+                                                                    }
                                                                 }
                                                                 return acc;
                                                             }, 0);
@@ -1501,7 +1508,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                         }
                                                                         const bimesterFaltasH = currentAbsences * (weeklyClasses > 0 ? 1 : 0); // Assuming 1h per absence locally or direct weight if available. Using 1 for simplicity consistent with previous logic.
 
-                                                                        const freqPercent = calculateAttendancePercentage(grade.subject, currentAbsences, student.gradeLevel, bimesterNum, academicSubjects, academicSettings, calendarEvents);
+                                                                        const freqResult = calculateAttendancePercentage(grade.subject, currentAbsences, student.gradeLevel, bimesterNum, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass);
+                                                                        const freqPercent = freqResult?.percent ?? null;
+                                                                        const isFreqEstimated = freqResult?.isEstimated ?? false;
                                                                         const isLowFreq = freqPercent !== null && freqPercent < 75;
                                                                         const isBimesterStarted = bimesterNum <= elapsedBimesters;
 
@@ -1531,7 +1540,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                                     {isActive ? `${currentAbsences}h` : '-'}
                                                                                 </td>
                                                                                 <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs w-10 md:w-12 ${isLowFreq ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência">
-                                                                                    {isBimesterStarted ? `${freqPercent || 100}%` : '-'}
+                                                                                    {isBimesterStarted ? (<div className="flex flex-col items-center"><span>{freqPercent !== null ? `${freqPercent}%` : '100%'}</span>{isFreqEstimated && <span className="text-[8px] text-amber-600">⚠ Est.</span>}</div>) : '-'}
                                                                                 </td>
                                                                                 <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-[9px] border-r border-gray-300 w-10 md:w-12 bg-gray-50/50">
                                                                                     {bMin > 0 ? `${bMin}h` : '-'}
@@ -1557,7 +1566,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 return sum + studentAttendance.reduce((acc, att) => {
                                                                     if (att.discipline !== grade.subject) return acc;
                                                                     if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
-                                                                        if (getDynamicBimester(att.date, academicSettings) === bNum) return acc + 1;
+                                                                        if (getDynamicBimester(att.date, academicSettings) === bNum) {
+                                                                            if (classSchedules && classSchedules.length > 0) {
+                                                                                if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass)) return acc;
+                                                                            }
+                                                                            return acc + 1;
+                                                                        }
                                                                     }
                                                                     return acc;
                                                                 }, 0);
@@ -1577,7 +1591,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 weeklyClasses = (CURRICULUM_MATRIX[lk] || {})[grade.subject] || 0;
                                                             }
 
-                                                            const annualFreq = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel, elapsedBimesters, academicSubjects, academicSettings, calendarEvents);
+                                                            const annualResult = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel, elapsedBimesters, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass);
+                                                            const annualFreq = annualResult?.percent ?? null;
+                                                            const isAnnualEstimated = annualResult?.isEstimated ?? false;
                                                             const isCritical = annualFreq !== null && annualFreq < 75;
 
                                                             // Calculate Annual Ministrada
@@ -1596,7 +1612,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                         {totalAbsences > 0 ? `${totalAbsences}h` : '-'}
                                                                     </td>
                                                                     <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs ${isCritical ? 'text-red-600 bg-red-50' : 'text-gray-600'}`}>
-                                                                        {annualFreq !== null ? `${annualFreq}%` : '100%'}
+                                                                        <div className="flex flex-col items-center"><span>{annualFreq !== null ? `${annualFreq}%` : '100%'}</span>{isAnnualEstimated && <span className="text-[8px] text-amber-600">⚠ Est.</span>}</div>
                                                                     </td>
                                                                 </>
                                                             );
