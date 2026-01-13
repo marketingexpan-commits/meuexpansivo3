@@ -3,7 +3,7 @@ import { useAcademicData } from '../hooks/useAcademicData';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
 import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial, Occurrence, DailyAgenda, ExamGuide, CalendarEvent, AcademicSubject } from '../types';
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
-import { getBimesterFromDate, getDynamicBimester, normalizeClass, parseGradeLevel } from '../src/utils/academicUtils';
+import { getBimesterFromDate, getDynamicBimester, normalizeClass, parseGradeLevel, calculateSchoolDays } from '../src/utils/academicUtils';
 import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects, MOCK_CALENDAR_EVENTS } from '../constants'; // Import Sync Fix
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency, calculateBimesterGeneralFrequency } from '../utils/frequency';
 import { getStudyTips } from '../services/geminiService';
@@ -1370,16 +1370,20 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             <thead className="bg-blue-50 print:bg-gray-100">
                                                 <tr>
                                                     <th rowSpan={2} className="px-2 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-20 md:w-32 sticky left-0 bg-blue-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[10px] md:text-sm">Disciplina</th>
-                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-12 text-[10px] leading-tight" title="Carga Horária Anual">C.H.</th>
+                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-12 text-[10px] leading-tight" title="Carga Horária Prevista">C.H.<br />Prev.</th>
+                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-12 text-[10px] leading-tight" title="Carga Horária Ministrada Anual">C.H.<br />Min.</th>
                                                     {[1, 2, 3, 4].map(num => (
-                                                        <th key={num} colSpan={5} className="px-1 py-2 text-center font-bold text-gray-700 uppercase border-r border-gray-300">
+                                                        <th key={num} colSpan={7} className="px-1 py-2 text-center font-bold text-gray-700 uppercase border-r border-gray-300">
                                                             {num}º Bim
                                                         </th>
                                                     ))}
-                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-16 text-[10px] leading-tight">Média<br />Anual</th>
-                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-amber-700 uppercase border-r border-gray-300 bg-amber-50 w-16 text-[10px] leading-tight">Prova<br />Final</th>
-                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-blue-950 uppercase border-r border-gray-300 bg-blue-100 w-16 text-[10px] leading-tight">Média<br />Final</th>
-                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-16 text-[10px] leading-tight">%<br />Tot</th>
+                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-16 text-[10px] leading-tight">Méd.<br />Anual</th>
+                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-amber-700 uppercase border-r border-gray-300 bg-amber-50 w-16 text-[10px] leading-tight">Prov.<br />Final</th>
+                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-blue-950 uppercase border-r border-gray-300 bg-blue-100 w-16 text-[10px] leading-tight">Méd.<br />Final</th>
+
+                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-10 text-[10px] leading-tight">F</th>
+                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-12 text-[10px] leading-tight">Faltas<br />(h)</th>
+                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-16 text-[10px] leading-tight">Freq.<br />(%)</th>
                                                     <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase w-20 text-[10px]">Situação</th>
                                                 </tr>
                                                 <tr className="bg-blue-50 print:bg-gray-100 text-[10px]">
@@ -1389,7 +1393,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600 w-8 md:w-10" title="Recuperação">R{num}</th>
                                                             <th className="px-1 py-1 text-center border-r border-gray-300 font-bold text-blue-950 bg-blue-50 w-8 md:w-10" title="Média">M{num}</th>
                                                             <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600 w-8 md:w-10" title="Faltas">F{num}</th>
+                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600 w-8 md:w-10" title="Faltas em Horas">F(h)</th>
                                                             <th className="px-1 py-1 text-center border-r border-gray-300 font-bold text-gray-700 bg-gray-50 w-10 md:w-12" title="Frequência">%</th>
+                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600 w-10 md:w-12" title="CH Ministrada">Min.</th>
                                                         </React.Fragment>
                                                     ))}
                                                 </tr>
@@ -1403,7 +1409,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 {getTeacherName(grade.subject)}
                                                             </span>
                                                         </td>
-                                                        {/* Workload Calculation */}
                                                         {(() => {
                                                             let weeklyClasses = 0;
                                                             let foundDynamic = false;
@@ -1429,11 +1434,21 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             }
 
                                                             const annualWorkload = weeklyClasses * 40; // 40 weeks standard
+                                                            const currentYear = new Date().getFullYear();
+                                                            const startOfYear = `${currentYear}-01-01`;
+                                                            const todayStr = new Date().toISOString().split('T')[0];
+                                                            const totalDaysElapsed = calculateSchoolDays(startOfYear, todayStr, calendarEvents);
+                                                            const ministradaWorkload = Math.round((weeklyClasses / 5) * totalDaysElapsed);
 
                                                             return (
-                                                                <td className="px-1 py-2 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-12 font-medium bg-gray-50/30">
-                                                                    {annualWorkload > 0 ? `${annualWorkload} h` : '-'}
-                                                                </td>
+                                                                <>
+                                                                    <td className="px-1 py-2 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-12 font-medium bg-gray-50/30">
+                                                                        {annualWorkload > 0 ? `${annualWorkload} h` : '-'}
+                                                                    </td>
+                                                                    <td className="px-1 py-2 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-12 font-medium bg-gray-50/30">
+                                                                        {ministradaWorkload > 0 ? `${ministradaWorkload} h` : '-'}
+                                                                    </td>
+                                                                </>
                                                             );
                                                         })()}
                                                         {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
@@ -1471,13 +1486,57 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                         {isActive ? currentAbsences : '-'}
                                                                     </td>
                                                                     {(() => {
+                                                                        // Calculate F(h) per bimester
+                                                                        let weeklyClasses = 0;
+                                                                        if (academicSubjects) {
+                                                                            const ds = academicSubjects.find(s => s.name === grade.subject);
+                                                                            if (ds?.weeklyHours) {
+                                                                                const k = Object.keys(ds.weeklyHours).find(key => student.gradeLevel.includes(key));
+                                                                                if (k) weeklyClasses = ds.weeklyHours[k];
+                                                                            }
+                                                                        }
+                                                                        if (weeklyClasses === 0) {
+                                                                            let lk = student.gradeLevel.includes('Fundamental II') ? 'Fundamental II' : student.gradeLevel.includes('Ensino Médio') ? 'Ensino Médio' : 'Fundamental I';
+                                                                            weeklyClasses = (CURRICULUM_MATRIX[lk] || {})[grade.subject] || 0;
+                                                                        }
+                                                                        const bimesterFaltasH = currentAbsences * (weeklyClasses > 0 ? 1 : 0); // Assuming 1h per absence locally or direct weight if available. Using 1 for simplicity consistent with previous logic.
+
                                                                         const freqPercent = calculateAttendancePercentage(grade.subject, currentAbsences, student.gradeLevel, bimesterNum, academicSubjects, academicSettings, calendarEvents);
                                                                         const isLowFreq = freqPercent !== null && freqPercent < 75;
+                                                                        const isBimesterStarted = bimesterNum <= elapsedBimesters;
+
+                                                                        // Calculate CH Min per bimester (Estimate based on elapsed days in THIS bimester)
+                                                                        let bMin = 0;
+                                                                        if (isBimesterStarted && academicSettings?.bimesterDates?.[bimesterNum]) {
+                                                                            const bStart = academicSettings.bimesterDates[bimesterNum].start;
+                                                                            const bEnd = academicSettings.bimesterDates[bimesterNum].end;
+                                                                            const today = new Date().toISOString().split('T')[0];
+                                                                            const effectiveEnd = today < bEnd ? today : bEnd;
+                                                                            const bDays = calculateSchoolDays(bStart, effectiveEnd, calendarEvents);
+                                                                            bMin = Math.round((weeklyClasses / 5) * bDays);
+                                                                        } else if (isBimesterStarted) {
+                                                                            // Fallback if dates missing: assume equal distribution (roughly 50 days per bimester)
+                                                                            bMin = Math.round((weeklyClasses / 5) * 50);
+                                                                            // But adjust if it's the CURRENT bimester
+                                                                            const currentBim = getDynamicBimester(new Date().toISOString().split('T')[0], academicSettings);
+                                                                            if (bimesterNum === currentBim) {
+                                                                                // Very rough estimate for current if missing dates
+                                                                                bMin = Math.round(bMin * 0.5);
+                                                                            }
+                                                                        }
 
                                                                         return (
-                                                                            <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs w-10 md:w-12 ${isLowFreq ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência">
-                                                                                {isActive && freqPercent !== null ? `${freqPercent}%` : '-'}
-                                                                            </td>
+                                                                            <>
+                                                                                <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-8 md:w-10">
+                                                                                    {isActive ? `${currentAbsences}h` : '-'}
+                                                                                </td>
+                                                                                <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs w-10 md:w-12 ${isLowFreq ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência">
+                                                                                    {isBimesterStarted ? `${freqPercent || 100}%` : '-'}
+                                                                                </td>
+                                                                                <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-[9px] border-r border-gray-300 w-10 md:w-12 bg-gray-50/50">
+                                                                                    {bMin > 0 ? `${bMin}h` : '-'}
+                                                                                </td>
+                                                                            </>
                                                                         );
                                                                     })()}
                                                                 </React.Fragment>
@@ -1504,13 +1563,42 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 }, 0);
                                                             }, 0);
 
+                                                            // Get weeklyClasses again
+                                                            let weeklyClasses = 0;
+                                                            if (academicSubjects) {
+                                                                const ds = academicSubjects.find(s => s.name === grade.subject);
+                                                                if (ds?.weeklyHours) {
+                                                                    const k = Object.keys(ds.weeklyHours).find(key => student.gradeLevel.includes(key));
+                                                                    if (k) weeklyClasses = ds.weeklyHours[k];
+                                                                }
+                                                            }
+                                                            if (weeklyClasses === 0) {
+                                                                let lk = student.gradeLevel.includes('Fundamental II') ? 'Fundamental II' : student.gradeLevel.includes('Ensino Médio') ? 'Ensino Médio' : 'Fundamental I';
+                                                                weeklyClasses = (CURRICULUM_MATRIX[lk] || {})[grade.subject] || 0;
+                                                            }
+
                                                             const annualFreq = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel, elapsedBimesters, academicSubjects, academicSettings, calendarEvents);
                                                             const isCritical = annualFreq !== null && annualFreq < 75;
 
+                                                            // Calculate Annual Ministrada
+                                                            const currentYear = new Date().getFullYear();
+                                                            const startOfYear = `${currentYear}-01-01`;
+                                                            const today = new Date().toISOString().split('T')[0];
+                                                            const totalDaysElapsed = calculateSchoolDays(startOfYear, today, calendarEvents);
+                                                            const ministradaWorkload = Math.round((weeklyClasses / 5) * totalDaysElapsed);
+
                                                             return (
-                                                                <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs ${isCritical ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência Anual">
-                                                                    {annualFreq !== null ? `${annualFreq}%` : '-'}
-                                                                </td>
+                                                                <>
+                                                                    <td className="px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs text-gray-500">
+                                                                        {totalAbsences > 0 ? totalAbsences : '-'}
+                                                                    </td>
+                                                                    <td className="px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs text-gray-500">
+                                                                        {totalAbsences > 0 ? `${totalAbsences}h` : '-'}
+                                                                    </td>
+                                                                    <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs ${isCritical ? 'text-red-600 bg-red-50' : 'text-gray-600'}`}>
+                                                                        {annualFreq !== null ? `${annualFreq}%` : '100%'}
+                                                                    </td>
+                                                                </>
                                                             );
                                                         })()}
                                                         <td className="px-1 py-2 text-center align-middle">
@@ -1528,17 +1616,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                     const generalFreq = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings, calendarEvents);
                                                     return (
                                                         <tr className="bg-gray-100/80 font-bold border-t-2 border-gray-400">
-                                                            <td colSpan={25} className="px-4 py-1 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[11px]">
+                                                            <td colSpan={36} className="px-4 py-1 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[11px]">
                                                                 FREQUÊNCIA GERAL NO ANO LETIVO:
                                                             </td>
                                                             <td className="px-1 py-1 text-center text-blue-900 font-extrabold text-[11px] md:text-sm bg-blue-50/50 border-r border-gray-300">
                                                                 {generalFreq}
                                                             </td>
+                                                            <td className="bg-gray-100/80"></td>
                                                         </tr>
                                                     );
                                                 })()}
                                                 {studentGrades.length === 0 && (
-                                                    <tr><td colSpan={26} className="px-6 py-8 text-center text-gray-500 italic">Nenhuma nota lançada para este período letivo.</td></tr>
+                                                    <tr><td colSpan={38} className="px-6 py-8 text-center text-gray-500 italic">Nenhuma nota lançada para este período letivo.</td></tr>
                                                 )}
                                             </tbody>
                                         </table>
@@ -1892,7 +1981,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         </div>
                     )}
                 </div>
-            </div>
+            </div >
 
             {/* --- Banner Modal --- */}
             {
@@ -1946,8 +2035,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             </div>
                         </div>
                     </div>
-                )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 
