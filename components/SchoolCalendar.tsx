@@ -199,8 +199,23 @@ export const SchoolCalendar: React.FC<SchoolCalendarProps> = ({ events }) => {
                         {calendarGrid.map((day, index) => {
                             if (day === null) return <div key={`empty-${index}`} className="aspect-square" />;
 
-                            const dayEvents = getEventsForDay(day);
-                            const hasEvent = dayEvents.length > 0;
+                            const allDayEvents = getEventsForDay(day);
+                            const weekDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), day).getDay();
+
+                            // Filter events for visualization
+                            const dayEvents = allDayEvents.filter(ev => {
+                                if (ev.type === 'school_day') {
+                                    // 1. Omit if weekend (0=Sun, 6=Sat)
+                                    if (weekDay === 0 || weekDay === 6) return false;
+                                    // 2. Omit if there's a holiday, recess or vacation on the same day
+                                    const hasConflict = allDayEvents.some(other =>
+                                        ['holiday_national', 'holiday_state', 'holiday_municipal', 'recess', 'vacation', 'exam'].includes(other.type)
+                                    );
+                                    if (hasConflict) return false;
+                                }
+                                return true;
+                            });
+
                             const isToday = day === new Date().getDate() && currentDate.getMonth() === new Date().getMonth() && currentDate.getFullYear() === new Date().getFullYear();
 
                             const dateString = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
