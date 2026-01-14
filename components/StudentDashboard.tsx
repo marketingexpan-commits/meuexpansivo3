@@ -103,6 +103,32 @@ interface StudentDashboardProps {
     [key: string]: any;
 }
 
+// Helper to abbreviate subject names for print
+const abbreviateSubject = (subject: string): string => {
+    const map: Record<string, string> = {
+        'Português': 'Port.',
+        'Língua Portuguesa': 'Port.',
+        'Matemática': 'Mat.',
+        'História': 'Hist.',
+        'Geografia': 'Geog.',
+        'Ciências': 'Ciên.',
+        'Ensino Religioso': 'Ens. Rel.',
+        'Educação Física': 'Ed. Fís.',
+        'Filosofia': 'Filos.',
+        'Sociologia': 'Sociol.',
+        'Biologia': 'Biol.',
+        'Literatura': 'Lit.',
+        'Produção Textual': 'Prod. Text.',
+        'Empreendedorismo': 'Empreend.',
+        'Projeto de Vida': 'Proj. Vida',
+        'Língua Inglesa': 'Inglês',
+        'Inglês': 'Inglês',
+        'Artes': 'Artes',
+        'Ens. Artes': 'Artes'
+    };
+    return map[subject] || (subject.length > 10 ? subject.substring(0, 10) + '.' : subject);
+};
+
 export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     student,
     grades = [],
@@ -391,7 +417,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
         const fallbackTeacher = teachers.find(t => t.subjects && t.subjects.includes(subjectName as any));
 
-        return teacher ? teacher.name : (fallbackTeacher ? fallbackTeacher.name : 'Professor não atribuído');
+        const foundTeacher = teacher || fallbackTeacher;
+        return foundTeacher ? foundTeacher.name.split(' ')[0] : '';
     };
 
     const handleGetHelp = async (subject: Subject, difficultyTopic: string) => {
@@ -539,7 +566,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans transition-all duration-500 ease-in-out print:min-h-0 print:h-auto print:bg-white print:p-0 print:block print:overflow-visible">
-            <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${currentView === 'menu' ? 'max-w-md' : 'max-w-5xl'} print:min-h-0 print:h-auto print:shadow-none print:rounded-none`}>
+            <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${currentView === 'menu' ? 'max-w-md' : 'max-w-5xl'} print:min-h-0 print:h-auto print:shadow-none print:rounded-none print:max-w-none print:overflow-visible print:w-auto print:inline-block`}>
 
                 {/* Minimal Header Bar - For all views EXCEPT menu */}
                 {currentView !== 'menu' && (
@@ -1266,325 +1293,278 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                     {(currentView === 'grades' || currentView === 'early_childhood') && (
                         <div className="animate-fade-in-up">
-                            <div className="mb-8 border-b-2 border-blue-950 pb-4">
-                                <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                                    <div className="flex items-center gap-4">
-                                        <div className="print:block hidden w-20">
-                                            <SchoolLogo variant="header" />
+                            {/* PRINT FIX: Styles to force single page landscape layout */}
+                            <style>{`
+                                @media print {
+                                    @page {
+                                        size: landscape;
+                                        margin: 3mm; /* Minimal margin */
+                                    }
+                                    body {
+                                        zoom: 0.58;
+                                        -webkit-print-color-adjust: exact !important;
+                                        print-color-adjust: exact !important;
+                                        margin: 0 !important;
+                                        padding: 0 !important;
+                                        display: flex !important;
+                                        justify-content: center !important;
+                                        align-items: flex-start !important;
+                                        width: 100% !important;
+                                    }
+                                    .print-force-landscape {
+                                        width: auto !important;
+                                        min-width: 100% !important;
+                                        max-width: none !important;
+                                        margin: 0 auto !important;
+                                        max-height: none !important;
+                                        overflow: visible !important;
+                                        display: table !important; /* Force width discovery */
+                                    }
+                                    .print-student-info-grid {
+                                        display: grid !important;
+                                        grid-template-columns: 1fr 1fr !important;
+                                        column-gap: 2rem !important;
+                                        row-gap: 0.25rem !important;
+                                    }
+                                    .print-bulletin-container {
+                                        border: 2pt solid #6b7280 !important;
+                                        padding: 8mm !important;
+                                        border-radius: 0 !important;
+                                        width: auto !important;
+                                        min-width: 100% !important;
+                                        max-width: none !important;
+                                        box-sizing: border-box !important;
+                                        background: white !important;
+                                        overflow: visible !important;
+                                        margin: 0 auto !important;
+                                        display: table !important; /* Force container to WRAP table width exactly */
+                                    }
+                                    table {
+                                        width: 100% !important;
+                                        border-collapse: collapse !important;
+                                        table-layout: auto !important;
+                                    }
+                                    ::-webkit-scrollbar {
+                                        display: none !important;
+                                    }
+                                }
+                            `}</style>
+                            <div className="print-bulletin-container">
+                                <div className="mb-8 border-b-2 border-blue-950 pb-4 print:mb-2 print:pb-2">
+                                    <div className="flex flex-col md:flex-row justify-between items-start gap-4 print:gap-1">
+                                        <div className="flex items-center gap-4 print:gap-2">
+                                            <div className="print:block hidden w-16">
+                                                <SchoolLogo variant="header" />
+                                            </div>
+                                            <div>
+                                                <h2 className="text-2xl font-extrabold text-blue-950 uppercase tracking-wide print:text-lg">EXPANSIVO REDE DE ENSINO</h2>
+                                                <h3 className="text-lg font-bold text-gray-700 uppercase print:text-sm">UNIDADE: {student.unit}</h3>
+
+                                                <div className="mt-2 text-xs text-gray-500 space-y-0.5 font-medium print:mt-1 print:text-[10px]">
+                                                    <p>{currentUnitInfo.address} - CEP: {currentUnitInfo.cep}</p>
+                                                    <p>CNPJ: {currentUnitInfo.cnpj}</p>
+                                                    <p>Tel: {currentUnitInfo.phone} | E-mail: {currentUnitInfo.email}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-left md:text-right w-full md:w-auto">
+                                            <h4 className="text-xl font-bold text-gray-800 uppercase print:text-base">{isEarlyChildhood ? 'Relatório de Desenvolvimento' : headerText}</h4>
+                                            <p className="text-xs text-gray-500 mt-1 print:mt-0">Emissão: {new Date().toLocaleDateString('pt-BR')}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200 grid grid-cols-1 md:grid-cols-2 print-student-info-grid gap-y-2 gap-x-8 text-sm print:text-xs print:p-2 print:mt-2">
+                                        <div>
+                                            <span className="font-bold text-gray-600 uppercase text-xs block">Aluno</span>
+                                            <span className="font-bold text-gray-900 text-lg">{student.name}</span>
                                         </div>
                                         <div>
-                                            <h2 className="text-2xl font-extrabold text-blue-950 uppercase tracking-wide">EXPANSIVO REDE DE ENSINO</h2>
-                                            <h3 className="text-lg font-bold text-gray-700 uppercase">UNIDADE: {student.unit}</h3>
+                                            <span className="font-bold text-gray-600 uppercase text-xs block">Matrícula</span>
+                                            <span className="font-mono text-gray-900">{student.code}</span>
+                                        </div>
+                                        <div>
+                                            <span className="font-bold text-gray-600 uppercase text-xs block">Série/Ano</span>
+                                            <span className="text-gray-900">{student.gradeLevel}</span>
+                                        </div>
+                                        <div>
+                                            <span className="font-bold text-gray-600 uppercase text-xs block">Turma/Turno</span>
+                                            <span className="text-gray-900">{student.schoolClass} - {student.shift}</span>
+                                        </div>
+                                    </div>
+                                </div>
 
-                                            <div className="mt-2 text-xs text-gray-500 space-y-0.5 font-medium">
-                                                <p>{currentUnitInfo.address} - CEP: {currentUnitInfo.cep}</p>
-                                                <p>CNPJ: {currentUnitInfo.cnpj}</p>
-                                                <p>Tel: {currentUnitInfo.phone} | E-mail: {currentUnitInfo.email}</p>
+                                <div className="mb-6 flex justify-end print:hidden">
+                                    <Button
+                                        type="button"
+                                        onClick={handleDownloadPDF}
+                                        className="flex items-center gap-2"
+                                    >
+                                        <Download className="w-5 h-5" />
+                                        {isEarlyChildhood ? 'Baixar Relatório (PDF)' : 'Baixar Boletim (PDF)'}
+                                    </Button>
+                                </div>
+
+                                {isEarlyChildhood ? (
+                                    <div className="space-y-6">
+                                        <div className="flex gap-4 mb-4 print:hidden">
+                                            <button
+                                                onClick={() => setSelectedReportSemester(1)}
+                                                className={`flex-1 md:flex-none px-4 py-2 rounded font-bold text-sm transition-colors ${selectedReportSemester === 1 ? 'bg-blue-950 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                            >
+                                                1º Semestre
+                                            </button>
+                                            <button
+                                                onClick={() => setSelectedReportSemester(2)}
+                                                className={`flex-1 md:flex-none px-4 py-2 rounded font-bold text-sm transition-colors ${selectedReportSemester === 2 ? 'bg-blue-950 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                            >
+                                                2º Semestre
+                                            </button>
+                                        </div>
+                                        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                                            <h3 className="text-center font-bold text-xl text-blue-950 mb-2 uppercase">Relatório - {selectedReportSemester}º Semestre</h3>
+
+                                            <div className="flex flex-wrap justify-center gap-4 my-6 text-xs">
+                                                <div className="flex items-center gap-2"><span className="w-3 h-3 bg-green-100 border border-green-300 rounded-sm flex-shrink-0"></span> <span className="whitespace-nowrap"><strong>D</strong> - Desenvolvido</span></div>
+                                                <div className="flex items-center gap-2"><span className="w-3 h-3 bg-yellow-100 border border-yellow-300 rounded-sm flex-shrink-0"></span> <span className="whitespace-nowrap"><strong>EP</strong> - Em Processo</span></div>
+                                                <div className="flex items-center gap-2"><span className="w-3 h-3 bg-red-100 border border-red-300 rounded-sm flex-shrink-0"></span> <span className="whitespace-nowrap"><strong>NO</strong> - Não Observado</span></div>
                                             </div>
-                                        </div>
-                                    </div>
-                                    <div className="text-left md:text-right w-full md:w-auto">
-                                        <h4 className="text-xl font-bold text-gray-800 uppercase">{isEarlyChildhood ? 'Relatório de Desenvolvimento' : headerText}</h4>
-                                        <p className="text-xs text-gray-500 mt-1">Emissão: {new Date().toLocaleDateString('pt-BR')}</p>
-                                    </div>
-                                </div>
 
-                                <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-8 text-sm">
-                                    <div>
-                                        <span className="font-bold text-gray-600 uppercase text-xs block">Aluno</span>
-                                        <span className="font-bold text-gray-900 text-lg">{student.name}</span>
-                                    </div>
-                                    <div>
-                                        <span className="font-bold text-gray-600 uppercase text-xs block">Matrícula</span>
-                                        <span className="font-mono text-gray-900">{student.code}</span>
-                                    </div>
-                                    <div>
-                                        <span className="font-bold text-gray-600 uppercase text-xs block">Série/Ano</span>
-                                        <span className="text-gray-900">{student.gradeLevel}</span>
-                                    </div>
-                                    <div>
-                                        <span className="font-bold text-gray-600 uppercase text-xs block">Turma/Turno</span>
-                                        <span className="text-gray-900">{student.schoolClass} - {student.shift}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="mb-6 flex justify-end print:hidden">
-                                <Button
-                                    type="button"
-                                    onClick={handleDownloadPDF}
-                                    className="flex items-center gap-2"
-                                >
-                                    <Download className="w-5 h-5" />
-                                    {isEarlyChildhood ? 'Baixar Relatório (PDF)' : 'Baixar Boletim (PDF)'}
-                                </Button>
-                            </div>
-
-                            {isEarlyChildhood ? (
-                                <div className="space-y-6">
-                                    <div className="flex gap-4 mb-4 print:hidden">
-                                        <button
-                                            onClick={() => setSelectedReportSemester(1)}
-                                            className={`flex-1 md:flex-none px-4 py-2 rounded font-bold text-sm transition-colors ${selectedReportSemester === 1 ? 'bg-blue-950 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                                        >
-                                            1º Semestre
-                                        </button>
-                                        <button
-                                            onClick={() => setSelectedReportSemester(2)}
-                                            className={`flex-1 md:flex-none px-4 py-2 rounded font-bold text-sm transition-colors ${selectedReportSemester === 2 ? 'bg-blue-950 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                                        >
-                                            2º Semestre
-                                        </button>
-                                    </div>
-                                    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                                        <h3 className="text-center font-bold text-xl text-blue-950 mb-2 uppercase">Relatório - {selectedReportSemester}º Semestre</h3>
-
-                                        <div className="flex flex-wrap justify-center gap-4 my-6 text-xs">
-                                            <div className="flex items-center gap-2"><span className="w-3 h-3 bg-green-100 border border-green-300 rounded-sm flex-shrink-0"></span> <span className="whitespace-nowrap"><strong>D</strong> - Desenvolvido</span></div>
-                                            <div className="flex items-center gap-2"><span className="w-3 h-3 bg-yellow-100 border border-yellow-300 rounded-sm flex-shrink-0"></span> <span className="whitespace-nowrap"><strong>EP</strong> - Em Processo</span></div>
-                                            <div className="flex items-center gap-2"><span className="w-3 h-3 bg-red-100 border border-red-300 rounded-sm flex-shrink-0"></span> <span className="whitespace-nowrap"><strong>NO</strong> - Não Observado</span></div>
-                                        </div>
-
-                                        {currentReport && currentReport.fields ? (
-                                            <>
-                                                <div className="space-y-6">
-                                                    {currentReport.fields.map(field => (
-                                                        <div key={field.id} className="border border-gray-200 rounded-lg overflow-hidden">
-                                                            <div className="bg-gray-100 px-4 py-2 font-bold text-gray-800 text-sm uppercase border-b border-gray-200">
-                                                                {field.name}
-                                                            </div>
-                                                            <div className="divide-y divide-gray-100">
-                                                                {field.competencies && field.competencies.map(comp => (
-                                                                    <div key={comp.id} className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white">
-                                                                        <p className="text-sm text-gray-700">{comp.description}</p>
-                                                                        <div className="flex-shrink-0">
-                                                                            {getStatusBadge(comp.status)}
+                                            {currentReport && currentReport.fields ? (
+                                                <>
+                                                    <div className="space-y-6">
+                                                        {currentReport.fields.map(field => (
+                                                            <div key={field.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                                                                <div className="bg-gray-100 px-4 py-2 font-bold text-gray-800 text-sm uppercase border-b border-gray-200">
+                                                                    {field.name}
+                                                                </div>
+                                                                <div className="divide-y divide-gray-100">
+                                                                    {field.competencies && field.competencies.map(comp => (
+                                                                        <div key={comp.id} className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white">
+                                                                            <p className="text-sm text-gray-700">{comp.description}</p>
+                                                                            <div className="flex-shrink-0">
+                                                                                {getStatusBadge(comp.status)}
+                                                                            </div>
                                                                         </div>
-                                                                    </div>
-                                                                ))}
+                                                                    ))}
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
+                                                        ))}
+                                                    </div>
 
-                                                <div className="mt-8 border border-gray-200 rounded-lg p-6 bg-blue-50/30">
-                                                    <h4 className="font-bold text-blue-950 mb-3 flex items-center gap-2">
-                                                        <MessageCircle className="w-5 h-5" />
-                                                        Observações do Professor(a)
-                                                    </h4>
-                                                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap italic">
-                                                        {currentReport.teacherObservations || "Nenhuma observação registrada."}
-                                                    </p>
+                                                    <div className="mt-8 border border-gray-200 rounded-lg p-6 bg-blue-50/30">
+                                                        <h4 className="font-bold text-blue-950 mb-3 flex items-center gap-2">
+                                                            <MessageCircle className="w-5 h-5" />
+                                                            Observações do Professor(a)
+                                                        </h4>
+                                                        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap italic">
+                                                            {currentReport.teacherObservations || "Nenhuma observação registrada."}
+                                                        </p>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="py-12 text-center text-gray-500 italic">
+                                                    <p>O relatório deste semestre ainda não foi disponibilizado pelos professores.</p>
                                                 </div>
-                                            </>
-                                        ) : (
-                                            <div className="py-12 text-center text-gray-500 italic">
-                                                <p>O relatório deste semestre ainda não foi disponibilizado pelos professores.</p>
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="overflow-auto w-full border border-gray-200 rounded-lg pb-4 print:pb-0 print:overflow-visible print:border-none" style={{ maxHeight: '75vh' }}>
-                                        <table className="min-w-[1000px] print:min-w-0 print:w-full divide-y divide-gray-200 border border-gray-300 text-sm print:text-[8px] print:leading-tight relative">
-                                            <thead className="bg-blue-50 print:bg-gray-100 sticky top-0 z-20 shadow-sm">
-                                                <tr>
-                                                    <th rowSpan={2} className="px-2 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-20 md:w-32 sticky left-0 bg-blue-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[10px] md:text-sm">Disciplina</th>
-                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-12 text-[10px] leading-tight" title="Carga Horária Prevista">C.H.<br />Prev.</th>
-                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-12 text-[10px] leading-tight" title="Carga Horária Ministrada Anual">C.H.<br />Min.</th>
-                                                    {[1, 2, 3, 4].map(num => (
-                                                        <th key={num} colSpan={6} className="px-1 py-2 text-center font-bold text-gray-700 uppercase border-r border-gray-300">
-                                                            {num}º Bim
-                                                        </th>
-                                                    ))}
-                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-16 text-[10px] leading-tight">Méd.<br />Anual</th>
-                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-amber-700 uppercase border-r border-gray-300 bg-amber-50 w-16 text-[10px] leading-tight">Prov.<br />Final</th>
-                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-blue-950 uppercase border-r border-gray-300 bg-blue-100 w-16 text-[10px] leading-tight">Méd.<br />Final</th>
+                                ) : (
+                                    <>
+                                        <div className="overflow-auto w-full border border-gray-200 rounded-lg pb-4 print:pb-0 print:overflow-visible print:border-none print-force-landscape" style={{ maxHeight: '75vh' }}>
+                                            <table className="min-w-[1000px] print:min-w-0 print:w-full divide-y divide-gray-200 border border-gray-300 text-sm print:text-[8px] print:leading-tight relative">
+                                                <thead className="bg-blue-50 print:bg-gray-100 sticky top-0 z-20 shadow-sm">
+                                                    <tr>
+                                                        <th rowSpan={2} className="px-2 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-20 md:w-32 sticky left-0 bg-blue-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[10px] md:text-sm print:w-16 print:px-1 print:py-1">Disc.</th>
+                                                        <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-12 text-[10px] leading-tight print:text-[8px] print:px-0.5 print:w-8 print:py-1" title="Carga Horária Prevista">C.H.<br />Prev.</th>
+                                                        <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-12 text-[10px] leading-tight print:text-[8px] print:px-0.5 print:w-8 print:py-1" title="Carga Horária Ministrada Anual">C.H.<br />Min.</th>
+                                                        {[1, 2, 3, 4].map(num => (
+                                                            <th key={num} colSpan={6} className="px-1 py-2 text-center font-bold text-gray-700 uppercase border-r border-gray-300 print:py-1">
+                                                                {num}º Bim
+                                                            </th>
+                                                        ))}
+                                                        <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-16 text-[10px] leading-tight print:text-[8px] print:px-0.5 print:w-8 print:py-1">Méd.<br />Anual</th>
+                                                        <th rowSpan={2} className="px-2 py-3 text-center font-bold text-amber-700 uppercase border-r border-gray-300 bg-amber-50 w-16 text-[10px] leading-tight print:text-[8px] print:px-0.5 print:w-8 print:py-1">Prov.<br />Final</th>
+                                                        <th rowSpan={2} className="px-2 py-3 text-center font-bold text-blue-950 uppercase border-r border-gray-300 bg-blue-100 w-16 text-[10px] leading-tight print:text-[8px] print:px-0.5 print:w-8 print:py-1">Méd.<br />Final</th>
 
-                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-10 text-[10px] leading-tight">F</th>
-                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-16 text-[10px] leading-tight">Freq.<br />(%)</th>
-                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase w-20 text-[10px]">Situação</th>
-                                                </tr>
-                                                <tr className="bg-blue-50 print:bg-gray-100 text-[10px]">
-                                                    {[1, 2, 3, 4].map(num => (
-                                                        <React.Fragment key={num}>
-                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600 w-8 md:w-10" title="Nota">N{num}</th>
-                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600 w-8 md:w-10" title="Recuperação">R{num}</th>
-                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-bold text-blue-950 bg-blue-50 w-8 md:w-10" title="Média">M{num}</th>
-                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600 w-8 md:w-10" title="Faltas">F{num}</th>
-                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-bold text-gray-700 bg-gray-50 w-10 md:w-12" title="Frequência">%</th>
-                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600 w-10 md:w-12" title="CH Ministrada">Min.</th>
-                                                        </React.Fragment>
-                                                    ))}
-                                                </tr>
-                                            </thead>
-                                            <tbody className="bg-white divide-y divide-gray-200">
-                                                {studentGrades.map((grade) => (
-                                                    <tr key={grade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-300">
-                                                        <td className="px-2 py-2 font-bold text-gray-900 border-r border-gray-300 text-[10px] md:text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] align-top">
-                                                            <span className="uppercase block leading-tight mb-1">{grade.subject}</span>
-                                                            <span className="text-[9px] text-gray-500 font-normal block italic whitespace-normal leading-tight break-words">
-                                                                {getTeacherName(grade.subject)}
-                                                            </span>
-                                                        </td>
-                                                        {(() => {
-                                                            let weeklyClasses = 0;
-                                                            let foundDynamic = false;
+                                                        <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-10 text-[10px] leading-tight print:text-[8px] print:px-0.5 print:w-6 print:py-1">F</th>
+                                                        <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-16 text-[10px] leading-tight print:text-[8px] print:px-0.5 print:w-8 print:py-1">Freq.<br />(%)</th>
+                                                        <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase w-20 text-[10px] print:w-16 print:text-[8px] print:px-0.5 print:py-1">Situação</th>
+                                                    </tr>
+                                                    <tr className="bg-blue-50 print:bg-gray-100 text-[10px]">
+                                                        {[1, 2, 3, 4].map(num => (
+                                                            <React.Fragment key={num}>
+                                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600 w-8 md:w-10 print:w-5 print:px-0 print:py-0.5" title="Nota">N{num}</th>
+                                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600 w-8 md:w-10 print:w-5 print:px-0 print:py-0.5" title="Recuperação">R{num}</th>
+                                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-bold text-blue-950 bg-blue-50 w-8 md:w-10 print:w-5 print:px-0 print:py-0.5" title="Média">M{num}</th>
+                                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600 w-8 md:w-10 print:w-5 print:px-0 print:py-0.5" title="Faltas">F{num}</th>
+                                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-bold text-gray-700 bg-gray-50 w-10 md:w-12 print:w-6 print:px-0 print:py-0.5" title="Frequência">%</th>
+                                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600 w-10 md:w-12 print:w-6 print:px-0 print:py-0.5" title="CH Ministrada">Min.</th>
+                                                            </React.Fragment>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="bg-white divide-y divide-gray-200">
+                                                    {studentGrades.map((grade) => (
+                                                        <tr key={grade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-300">
+                                                            <td className="px-2 py-2 font-bold text-gray-900 border-r border-gray-300 text-[10px] md:text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] align-top print:w-16 print:px-1 print:py-0.5">
+                                                                <span className="uppercase block leading-tight mb-1" title={grade.subject}>{abbreviateSubject(grade.subject)}</span>
+                                                                <span className="text-[9px] text-gray-500 font-normal block italic whitespace-normal leading-tight break-words">
+                                                                    {getTeacherName(grade.subject)}
+                                                                </span>
+                                                            </td>
+                                                            {(() => {
+                                                                let weeklyClasses = 0;
+                                                                let foundDynamic = false;
 
-                                                            if (academicSubjects && academicSubjects.length > 0) {
-                                                                const dynamicSubject = academicSubjects.find(s => s.name === grade.subject);
-                                                                if (dynamicSubject && dynamicSubject.weeklyHours) {
-                                                                    const gradeKey = Object.keys(dynamicSubject.weeklyHours).find(key => student.gradeLevel.includes(key));
-                                                                    if (gradeKey) {
-                                                                        weeklyClasses = dynamicSubject.weeklyHours[gradeKey];
-                                                                        foundDynamic = true;
+                                                                if (academicSubjects && academicSubjects.length > 0) {
+                                                                    const dynamicSubject = academicSubjects.find(s => s.name === grade.subject);
+                                                                    if (dynamicSubject && dynamicSubject.weeklyHours) {
+                                                                        const gradeKey = Object.keys(dynamicSubject.weeklyHours).find(key => student.gradeLevel.includes(key));
+                                                                        if (gradeKey) {
+                                                                            weeklyClasses = dynamicSubject.weeklyHours[gradeKey];
+                                                                            foundDynamic = true;
+                                                                        }
                                                                     }
                                                                 }
-                                                            }
 
-                                                            if (!foundDynamic) {
-                                                                let levelKey = '';
-                                                                if (student.gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
-                                                                else if (student.gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-                                                                else if (student.gradeLevel.includes('Ensino Médio') || student.gradeLevel.includes('Ens. Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
+                                                                if (!foundDynamic) {
+                                                                    let levelKey = '';
+                                                                    if (student.gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
+                                                                    else if (student.gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
+                                                                    else if (student.gradeLevel.includes('Ensino Médio') || student.gradeLevel.includes('Ens. Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
 
-                                                                weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[grade.subject] || 0;
-                                                            }
-
-                                                            const annualWorkload = weeklyClasses * 40; // 40 weeks standard
-                                                            const currentYear = new Date().getFullYear();
-                                                            const startOfYear = `${currentYear}-01-01`;
-                                                            const todayStr = new Date().toLocaleDateString('en-CA');
-                                                            const totalDaysElapsed = calculateSchoolDays(startOfYear, todayStr, calendarEvents);
-                                                            const ministradaWorkload = Math.round((weeklyClasses / 5) * totalDaysElapsed);
-
-                                                            return (
-                                                                <>
-                                                                    <td className="px-1 py-2 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-12 font-medium bg-gray-50/30">
-                                                                        {annualWorkload > 0 ? `${annualWorkload} h` : '-'}
-                                                                    </td>
-                                                                    <td className="px-1 py-2 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-12 font-medium bg-gray-50/30">
-                                                                        {ministradaWorkload > 0 ? `${ministradaWorkload} h` : '-'}
-                                                                    </td>
-                                                                </>
-                                                            );
-                                                        })()}
-                                                        {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
-                                                            const bData = grade.bimesters[key as keyof typeof grade.bimesters];
-                                                            const bimesterNum = Number(key.replace('bimester', '')) as 1 | 2 | 3 | 4;
-
-                                                            // RULE: Count absences strictly from logs
-                                                            const currentAbsences = studentAttendance.reduce((acc, att) => {
-                                                                if (att.discipline !== grade.subject) return acc;
-                                                                if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
-                                                                    if (getDynamicBimester(att.date, academicSettings) === bimesterNum) {
-                                                                        if (classSchedules && classSchedules.length > 0) {
-                                                                            if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit)) return acc;
-                                                                        }
-                                                                        const individualCount = att.studentAbsenceCount?.[student.id];
-                                                                        return acc + (individualCount !== undefined ? individualCount : (att.lessonCount || 1));
-                                                                    }
+                                                                    weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[grade.subject] || 0;
                                                                 }
-                                                                return acc;
-                                                            }, 0);
 
-                                                            // RULE: Only active if there are assinaladas absences
-                                                            const isActive = currentAbsences > 0;
+                                                                const annualWorkload = weeklyClasses * 40; // 40 weeks standard
+                                                                const currentYear = new Date().getFullYear();
+                                                                const startOfYear = `${currentYear}-01-01`;
+                                                                const todayStr = new Date().toLocaleDateString('en-CA');
+                                                                const totalDaysElapsed = calculateSchoolDays(startOfYear, todayStr, calendarEvents);
+                                                                const ministradaWorkload = Math.round((weeklyClasses / 5) * totalDaysElapsed);
 
-                                                            return (
-                                                                <React.Fragment key={key}>
-                                                                    <td className="px-1 py-1 text-center text-gray-500 font-medium text-[10px] md:text-sm border-r border-gray-300 relative w-8 md:w-10">
-                                                                        {bData.isNotaApproved !== false ? formatGrade(bData.nota) : <span className="text-gray-300 pointer-events-none select-none cursor-help" title="Esta nota está em processo de atualização pela coordenação pedagógica.">-</span>}
-                                                                        {bData.isNotaApproved === false && (
-                                                                            <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-400 rounded-full cursor-help" title="Esta nota está em processo de atualização pela coordenação pedagógica."></div>
-                                                                        )}
-                                                                    </td>
-                                                                    <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 relative w-8 md:w-10">
-                                                                        {bData.isRecuperacaoApproved !== false ? formatGrade(bData.recuperacao) : <span className="text-gray-300 pointer-events-none select-none cursor-help" title="Esta nota está em processo de atualização pela coordenação pedagógica.">-</span>}
-                                                                        {bData.isRecuperacaoApproved === false && (
-                                                                            <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-400 rounded-full cursor-help" title="Esta nota está em processo de atualização pela coordenação pedagógica."></div>
-                                                                        )}
-                                                                    </td>
-                                                                    <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs w-8 md:w-10">{(bData.isNotaApproved !== false && bData.isRecuperacaoApproved !== false) ? formatGrade(bData.media) : '-'}</td>
-                                                                    <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-8 md:w-10">
-                                                                        {currentAbsences}
-                                                                    </td>
-                                                                    {(() => {
-                                                                        // Calculate F(h) per bimester
-                                                                        let weeklyClasses = 0;
-                                                                        if (academicSubjects) {
-                                                                            const ds = academicSubjects.find(s => s.name === grade.subject);
-                                                                            if (ds?.weeklyHours) {
-                                                                                const k = Object.keys(ds.weeklyHours).find(key => student.gradeLevel.includes(key));
-                                                                                if (k) weeklyClasses = ds.weeklyHours[k];
-                                                                            }
-                                                                        }
-                                                                        if (weeklyClasses === 0) {
-                                                                            let lk = student.gradeLevel.includes('Fundamental II') ? 'Fundamental II' : student.gradeLevel.includes('Ensino Médio') ? 'Ensino Médio' : 'Fundamental I';
-                                                                            weeklyClasses = (CURRICULUM_MATRIX[lk] || {})[grade.subject] || 0;
-                                                                        }
-                                                                        const bimesterFaltasH = currentAbsences * (weeklyClasses > 0 ? 1 : 0); // Assuming 1h per absence locally or direct weight if available. Using 1 for simplicity consistent with previous logic.
+                                                                return (
+                                                                    <>
+                                                                        <td className="px-1 py-2 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-12 font-medium bg-gray-50/30">
+                                                                            {annualWorkload > 0 ? `${annualWorkload} h` : '-'}
+                                                                        </td>
+                                                                        <td className="px-1 py-2 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-12 font-medium bg-gray-50/30">
+                                                                            {ministradaWorkload > 0 ? `${ministradaWorkload} h` : '-'}
+                                                                        </td>
+                                                                    </>
+                                                                );
+                                                            })()}
+                                                            {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
+                                                                const bData = grade.bimesters[key as keyof typeof grade.bimesters];
+                                                                const bimesterNum = Number(key.replace('bimester', '')) as 1 | 2 | 3 | 4;
 
-                                                                        const freqResult = calculateAttendancePercentage(grade.subject, currentAbsences, student.gradeLevel, bimesterNum, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass);
-                                                                        const freqPercent = freqResult?.percent ?? null;
-                                                                        const isFreqEstimated = freqResult?.isEstimated ?? false;
-                                                                        const isLowFreq = freqPercent !== null && freqPercent < 75;
-                                                                        const isBimesterStarted = bimesterNum <= elapsedBimesters;
-
-                                                                        // Calculate CH Min per bimester (Estimate based on elapsed days in THIS bimester)
-                                                                        let bMin = 0;
-                                                                        if (isBimesterStarted && academicSettings?.bimesterDates?.[bimesterNum]) {
-                                                                            const bStart = academicSettings.bimesterDates[bimesterNum].start;
-                                                                            const bEnd = academicSettings.bimesterDates[bimesterNum].end;
-                                                                            const today = new Date().toLocaleDateString('en-CA');
-                                                                            const effectiveEnd = today < bEnd ? today : bEnd;
-                                                                            const bDays = calculateSchoolDays(bStart, effectiveEnd, calendarEvents);
-                                                                            bMin = Math.round((weeklyClasses / 5) * bDays);
-                                                                        } else if (isBimesterStarted) {
-                                                                            // Fallback if dates missing: assume equal distribution (roughly 50 days per bimester)
-                                                                            bMin = Math.round((weeklyClasses / 5) * 50);
-                                                                            // But adjust if it's the CURRENT bimester
-                                                                            const currentBim = getDynamicBimester(new Date().toLocaleDateString('en-CA'), academicSettings);
-                                                                            if (bimesterNum === currentBim) {
-                                                                                // Very rough estimate for current if missing dates
-                                                                                bMin = Math.round(bMin * 0.5);
-                                                                            }
-                                                                        }
-
-                                                                        return (
-                                                                            <>
-
-                                                                                <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs w-10 md:w-12 ${isLowFreq ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência">
-                                                                                    {isBimesterStarted ? (<div className="flex flex-col items-center"><span>{freqPercent !== null ? `${freqPercent}%` : '100%'}</span>{isFreqEstimated && <span className="text-[8px] text-amber-600">⚠ Est.</span>}</div>) : '-'}
-                                                                                </td>
-                                                                                <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-[9px] border-r border-gray-300 w-10 md:w-12 bg-gray-50/50">
-                                                                                    {bMin > 0 ? `${bMin}h` : '-'}
-                                                                                </td>
-                                                                            </>
-                                                                        );
-                                                                    })()}
-                                                                </React.Fragment>
-                                                            );
-                                                        })}
-                                                        <td className="px-1 py-2 text-center font-bold text-gray-700 border-r border-gray-300 bg-gray-50 text-sm">
-                                                            {grade.mediaAnual >= 0 ? formatGrade(grade.mediaAnual) : '-'}
-                                                        </td>
-                                                        <td className={`px-1 py-1 text-center font-bold text-amber-600 text-[10px] md:text-xs border-r border-gray-300 ${grade.recuperacaoFinalApproved === false ? 'bg-yellow-100' : 'bg-amber-50/30'}`}>
-                                                            {grade.recuperacaoFinalApproved !== false ? formatGrade(grade.recuperacaoFinal) : <span className="text-gray-300">-</span>}
-                                                        </td>
-                                                        <td className="px-1 py-1 text-center font-extrabold text-blue-900 bg-blue-50/50 text-xs md:text-sm border-r border-gray-300">
-                                                            {grade.mediaFinal >= 0 ? formatGrade(grade.mediaFinal) : '-'}
-                                                        </td>
-                                                        {(() => {
-                                                            const totalAbsences = [1, 2, 3, 4].reduce((sum, bNum) => {
-                                                                if (bNum > elapsedBimesters) return sum;
-                                                                return sum + studentAttendance.reduce((acc, att) => {
+                                                                // RULE: Count absences strictly from logs
+                                                                const currentAbsences = studentAttendance.reduce((acc, att) => {
                                                                     if (att.discipline !== grade.subject) return acc;
                                                                     if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
-                                                                        if (getDynamicBimester(att.date, academicSettings) === bNum) {
+                                                                        if (getDynamicBimester(att.date, academicSettings) === bimesterNum) {
                                                                             if (classSchedules && classSchedules.length > 0) {
-                                                                                if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass)) return acc;
+                                                                                if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit)) return acc;
                                                                             }
                                                                             const individualCount = att.studentAbsenceCount?.[student.id];
                                                                             return acc + (individualCount !== undefined ? individualCount : (att.lessonCount || 1));
@@ -1592,82 +1572,189 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                     }
                                                                     return acc;
                                                                 }, 0);
-                                                            }, 0);
 
-                                                            // Get weeklyClasses again
-                                                            let weeklyClasses = 0;
-                                                            if (academicSubjects) {
-                                                                const ds = academicSubjects.find(s => s.name === grade.subject);
-                                                                if (ds?.weeklyHours) {
-                                                                    const k = Object.keys(ds.weeklyHours).find(key => student.gradeLevel.includes(key));
-                                                                    if (k) weeklyClasses = ds.weeklyHours[k];
+                                                                // RULE: Only active if there are assinaladas absences
+                                                                const isActive = currentAbsences > 0;
+
+                                                                return (
+                                                                    <React.Fragment key={key}>
+                                                                        <td className="px-1 py-1 text-center text-gray-500 font-medium text-[10px] md:text-sm border-r border-gray-300 relative w-8 md:w-10">
+                                                                            {bData.isNotaApproved !== false ? formatGrade(bData.nota) : <span className="text-gray-300 pointer-events-none select-none cursor-help" title="Esta nota está em processo de atualização pela coordenação pedagógica.">-</span>}
+                                                                            {bData.isNotaApproved === false && (
+                                                                                <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-400 rounded-full cursor-help" title="Esta nota está em processo de atualização pela coordenação pedagógica."></div>
+                                                                            )}
+                                                                        </td>
+                                                                        <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 relative w-8 md:w-10">
+                                                                            {bData.isRecuperacaoApproved !== false ? formatGrade(bData.recuperacao) : <span className="text-gray-300 pointer-events-none select-none cursor-help" title="Esta nota está em processo de atualização pela coordenação pedagógica.">-</span>}
+                                                                            {bData.isRecuperacaoApproved === false && (
+                                                                                <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-400 rounded-full cursor-help" title="Esta nota está em processo de atualização pela coordenação pedagógica."></div>
+                                                                            )}
+                                                                        </td>
+                                                                        <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs w-8 md:w-10">{(bData.isNotaApproved !== false && bData.isRecuperacaoApproved !== false) ? formatGrade(bData.media) : '-'}</td>
+                                                                        <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-8 md:w-10">
+                                                                            {currentAbsences}
+                                                                        </td>
+                                                                        {(() => {
+                                                                            // Calculate F(h) per bimester
+                                                                            let weeklyClasses = 0;
+                                                                            if (academicSubjects) {
+                                                                                const ds = academicSubjects.find(s => s.name === grade.subject);
+                                                                                if (ds?.weeklyHours) {
+                                                                                    const k = Object.keys(ds.weeklyHours).find(key => student.gradeLevel.includes(key));
+                                                                                    if (k) weeklyClasses = ds.weeklyHours[k];
+                                                                                }
+                                                                            }
+                                                                            if (weeklyClasses === 0) {
+                                                                                let lk = student.gradeLevel.includes('Fundamental II') ? 'Fundamental II' : student.gradeLevel.includes('Ensino Médio') ? 'Ensino Médio' : 'Fundamental I';
+                                                                                weeklyClasses = (CURRICULUM_MATRIX[lk] || {})[grade.subject] || 0;
+                                                                            }
+                                                                            const bimesterFaltasH = currentAbsences * (weeklyClasses > 0 ? 1 : 0); // Assuming 1h per absence locally or direct weight if available. Using 1 for simplicity consistent with previous logic.
+
+                                                                            const freqResult = calculateAttendancePercentage(grade.subject, currentAbsences, student.gradeLevel, bimesterNum, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass);
+                                                                            const freqPercent = freqResult?.percent ?? null;
+                                                                            const isFreqEstimated = freqResult?.isEstimated ?? false;
+                                                                            const isLowFreq = freqPercent !== null && freqPercent < 75;
+                                                                            const isBimesterStarted = bimesterNum <= elapsedBimesters;
+
+                                                                            // Calculate CH Min per bimester (Estimate based on elapsed days in THIS bimester)
+                                                                            let bMin = 0;
+                                                                            if (isBimesterStarted && academicSettings?.bimesterDates?.[bimesterNum]) {
+                                                                                const bStart = academicSettings.bimesterDates[bimesterNum].start;
+                                                                                const bEnd = academicSettings.bimesterDates[bimesterNum].end;
+                                                                                const today = new Date().toLocaleDateString('en-CA');
+                                                                                const effectiveEnd = today < bEnd ? today : bEnd;
+                                                                                const bDays = calculateSchoolDays(bStart, effectiveEnd, calendarEvents);
+                                                                                bMin = Math.round((weeklyClasses / 5) * bDays);
+                                                                            } else if (isBimesterStarted) {
+                                                                                // Fallback if dates missing: assume equal distribution (roughly 50 days per bimester)
+                                                                                bMin = Math.round((weeklyClasses / 5) * 50);
+                                                                                // But adjust if it's the CURRENT bimester
+                                                                                const currentBim = getDynamicBimester(new Date().toLocaleDateString('en-CA'), academicSettings);
+                                                                                if (bimesterNum === currentBim) {
+                                                                                    // Very rough estimate for current if missing dates
+                                                                                    bMin = Math.round(bMin * 0.5);
+                                                                                }
+                                                                            }
+
+                                                                            return (
+                                                                                <>
+
+                                                                                    <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs w-10 md:w-12 ${isLowFreq ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência">
+                                                                                        {isBimesterStarted ? (<div className="flex flex-col items-center"><span>{freqPercent !== null ? `${freqPercent}%` : '100%'}</span>{isFreqEstimated && <span className="text-[8px] text-amber-600">⚠ Est.</span>}</div>) : '-'}
+                                                                                    </td>
+                                                                                    <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-[9px] border-r border-gray-300 w-10 md:w-12 bg-gray-50/50">
+                                                                                        {bMin > 0 ? `${bMin}h` : '-'}
+                                                                                    </td>
+                                                                                </>
+                                                                            );
+                                                                        })()}
+                                                                    </React.Fragment>
+                                                                );
+                                                            })}
+                                                            <td className="px-1 py-2 text-center font-bold text-gray-700 border-r border-gray-300 bg-gray-50 text-sm">
+                                                                {grade.mediaAnual >= 0 ? formatGrade(grade.mediaAnual) : '-'}
+                                                            </td>
+                                                            <td className={`px-1 py-1 text-center font-bold text-amber-600 text-[10px] md:text-xs border-r border-gray-300 ${grade.recuperacaoFinalApproved === false ? 'bg-yellow-100' : 'bg-amber-50/30'}`}>
+                                                                {grade.recuperacaoFinalApproved !== false ? formatGrade(grade.recuperacaoFinal) : <span className="text-gray-300">-</span>}
+                                                            </td>
+                                                            <td className="px-1 py-1 text-center font-extrabold text-blue-900 bg-blue-50/50 text-xs md:text-sm border-r border-gray-300">
+                                                                {grade.mediaFinal >= 0 ? formatGrade(grade.mediaFinal) : '-'}
+                                                            </td>
+                                                            {(() => {
+                                                                const totalAbsences = [1, 2, 3, 4].reduce((sum, bNum) => {
+                                                                    if (bNum > elapsedBimesters) return sum;
+                                                                    return sum + studentAttendance.reduce((acc, att) => {
+                                                                        if (att.discipline !== grade.subject) return acc;
+                                                                        if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
+                                                                            if (getDynamicBimester(att.date, academicSettings) === bNum) {
+                                                                                if (classSchedules && classSchedules.length > 0) {
+                                                                                    if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass)) return acc;
+                                                                                }
+                                                                                const individualCount = att.studentAbsenceCount?.[student.id];
+                                                                                return acc + (individualCount !== undefined ? individualCount : (att.lessonCount || 1));
+                                                                            }
+                                                                        }
+                                                                        return acc;
+                                                                    }, 0);
+                                                                }, 0);
+
+                                                                // Get weeklyClasses again
+                                                                let weeklyClasses = 0;
+                                                                if (academicSubjects) {
+                                                                    const ds = academicSubjects.find(s => s.name === grade.subject);
+                                                                    if (ds?.weeklyHours) {
+                                                                        const k = Object.keys(ds.weeklyHours).find(key => student.gradeLevel.includes(key));
+                                                                        if (k) weeklyClasses = ds.weeklyHours[k];
+                                                                    }
                                                                 }
-                                                            }
-                                                            if (weeklyClasses === 0) {
-                                                                let lk = student.gradeLevel.includes('Fundamental II') ? 'Fundamental II' : student.gradeLevel.includes('Ensino Médio') ? 'Ensino Médio' : 'Fundamental I';
-                                                                weeklyClasses = (CURRICULUM_MATRIX[lk] || {})[grade.subject] || 0;
-                                                            }
+                                                                if (weeklyClasses === 0) {
+                                                                    let lk = student.gradeLevel.includes('Fundamental II') ? 'Fundamental II' : student.gradeLevel.includes('Ensino Médio') ? 'Ensino Médio' : 'Fundamental I';
+                                                                    weeklyClasses = (CURRICULUM_MATRIX[lk] || {})[grade.subject] || 0;
+                                                                }
 
-                                                            const annualResult = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel, elapsedBimesters, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass);
-                                                            const annualFreq = annualResult?.percent ?? null;
-                                                            const isAnnualEstimated = annualResult?.isEstimated ?? false;
-                                                            const isCritical = annualFreq !== null && annualFreq < 75;
+                                                                const annualResult = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel, elapsedBimesters, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass);
+                                                                const annualFreq = annualResult?.percent ?? null;
+                                                                const isAnnualEstimated = annualResult?.isEstimated ?? false;
+                                                                const isCritical = annualFreq !== null && annualFreq < 75;
 
-                                                            // Calculate Annual Ministrada
-                                                            const currentYear = new Date().getFullYear();
-                                                            const startOfYear = `${currentYear}-01-01`;
-                                                            const today = new Date().toLocaleDateString('en-CA');
-                                                            const totalDaysElapsed = calculateSchoolDays(startOfYear, today, calendarEvents);
-                                                            const ministradaWorkload = Math.round((weeklyClasses / 5) * totalDaysElapsed);
+                                                                // Calculate Annual Ministrada
+                                                                const currentYear = new Date().getFullYear();
+                                                                const startOfYear = `${currentYear}-01-01`;
+                                                                const today = new Date().toLocaleDateString('en-CA');
+                                                                const totalDaysElapsed = calculateSchoolDays(startOfYear, today, calendarEvents);
+                                                                const ministradaWorkload = Math.round((weeklyClasses / 5) * totalDaysElapsed);
 
-                                                            return (
-                                                                <>
-                                                                    <td className="px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs text-gray-500">
-                                                                        {totalAbsences}
-                                                                    </td>
-                                                                    <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs ${isCritical ? 'text-red-600 bg-red-50' : 'text-gray-600'}`}>
-                                                                        <div className="flex flex-col items-center"><span>{annualFreq !== null ? `${annualFreq}%` : '100%'}</span>{isAnnualEstimated && <span className="text-[8px] text-amber-600">⚠ Est.</span>}</div>
-                                                                    </td>
-                                                                </>
-                                                            );
-                                                        })()}
-                                                        <td className="px-1 py-2 text-center align-middle">
-                                                            <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-blue-50 text-blue-950 border-blue-200' :
-                                                                grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                                                    (grade.situacaoFinal === 'Cursando' || grade.situacaoFinal === 'Pendente') ? 'bg-gray-50 text-gray-500 border-gray-200' :
-                                                                        'bg-red-50 text-red-700 border-red-200'
-                                                                }`}>
-                                                                {grade.situacaoFinal}
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                                {studentGrades.length > 0 && (() => {
-                                                    const generalFreq = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings, calendarEvents);
-                                                    return (
-                                                        <tr className="bg-gray-100/80 font-bold border-t-2 border-gray-400">
-                                                            <td colSpan={31} className="px-4 py-1 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[11px]">
-                                                                FREQUÊNCIA GERAL NO ANO LETIVO:
+                                                                return (
+                                                                    <>
+                                                                        <td className="px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs text-gray-500">
+                                                                            {totalAbsences}
+                                                                        </td>
+                                                                        <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs ${isCritical ? 'text-red-600 bg-red-50' : 'text-gray-600'}`}>
+                                                                            <div className="flex flex-col items-center"><span>{annualFreq !== null ? `${annualFreq}%` : '100%'}</span>{isAnnualEstimated && <span className="text-[8px] text-amber-600">⚠ Est.</span>}</div>
+                                                                        </td>
+                                                                    </>
+                                                                );
+                                                            })()}
+                                                            <td className="px-1 py-2 text-center align-middle print:px-0">
+                                                                <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-blue-50 text-blue-950 border-blue-200' :
+                                                                    grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                                                        (grade.situacaoFinal === 'Cursando' || grade.situacaoFinal === 'Pendente') ? 'bg-gray-50 text-gray-500 border-gray-200' :
+                                                                            'bg-red-50 text-red-700 border-red-200'
+                                                                    }`}>
+                                                                    {grade.situacaoFinal}
+                                                                </span>
                                                             </td>
-                                                            <td className="px-1 py-1 text-center text-blue-900 font-extrabold text-[11px] md:text-sm bg-blue-50/50 border-r border-gray-300">
-                                                                {generalFreq}
-                                                            </td>
-                                                            <td className="bg-gray-100/80"></td>
                                                         </tr>
-                                                    );
-                                                })()}
-                                                {studentGrades.length === 0 && (
-                                                    <tr><td colSpan={33} className="px-6 py-8 text-center text-gray-500 italic">Nenhuma nota lançada para este período letivo.</td></tr>
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div className="mt-2 flex items-center gap-2 text-xs text-yellow-700 bg-yellow-50 p-2 rounded border border-yellow-200 print:hidden">
-                                        <div className="w-2.5 h-2.5 bg-yellow-400 rounded-full flex-shrink-0"></div>
-                                        <span>= Nota em processo de atualização pela coordenação pedagógica.</span>
-                                    </div>
-                                </>
-                            )}
+                                                    ))}
+                                                    {studentGrades.length > 0 && (() => {
+                                                        const generalFreq = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings, calendarEvents);
+                                                        return (
+                                                            <tr className="bg-gray-100/80 font-bold border-t-2 border-gray-400">
+                                                                <td colSpan={31} className="px-4 py-1 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[11px]">
+                                                                    FREQUÊNCIA GERAL NO ANO LETIVO:
+                                                                </td>
+                                                                <td className="px-1 py-1 text-center text-blue-900 font-extrabold text-[11px] md:text-sm bg-blue-50/50 border-r border-gray-300">
+                                                                    {generalFreq}
+                                                                </td>
+                                                                <td className="bg-gray-100/80"></td>
+                                                            </tr>
+                                                        );
+                                                    })()}
+                                                    {studentGrades.length === 0 && (
+                                                        <tr><td colSpan={33} className="px-6 py-8 text-center text-gray-500 italic">Nenhuma nota lançada para este período letivo.</td></tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        {studentGrades.length > 0 && (
+                                            <div className="mt-2 flex items-center gap-2 text-xs text-yellow-700 bg-yellow-50 p-2 rounded border border-yellow-200 print:hidden">
+                                                <div className="w-2.5 h-2.5 bg-yellow-400 rounded-full flex-shrink-0"></div>
+                                                <span>= Nota em processo de atualização pela coordenação pedagógica.</span>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
                         </div>
                     )}
 

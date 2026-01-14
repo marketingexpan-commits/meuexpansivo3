@@ -46,6 +46,32 @@ const formatGrade = (value: number | undefined | null) => {
     return value !== undefined && value !== null && value !== -1 ? value.toFixed(1) : '-';
 };
 
+// Helper to abbreviate subject names for print/screen
+const abbreviateSubject = (subject: string): string => {
+    const map: Record<string, string> = {
+        'Português': 'Port.',
+        'Língua Portuguesa': 'Port.',
+        'Matemática': 'Mat.',
+        'História': 'Hist.',
+        'Geografia': 'Geog.',
+        'Ciências': 'Ciên.',
+        'Ensino Religioso': 'Ens. Rel.',
+        'Educação Física': 'Ed. Fís.',
+        'Filosofia': 'Filos.',
+        'Sociologia': 'Sociol.',
+        'Biologia': 'Biol.',
+        'Literatura': 'Lit.',
+        'Produção Textual': 'Prod. Text.',
+        'Empreendedorismo': 'Empreend.',
+        'Projeto de Vida': 'Proj. Vida',
+        'Língua Inglesa': 'Inglês',
+        'Inglês': 'Inglês',
+        'Artes': 'Artes',
+        'Ens. Artes': 'Artes'
+    };
+    return map[subject] || (subject.length > 10 ? subject.substring(0, 10) + '.' : subject);
+};
+
 export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     teacher,
     students,
@@ -1717,7 +1743,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                         <table className="min-w-[1000px] divide-y divide-gray-200 border border-gray-300 text-sm relative">
                                                             <thead className="bg-blue-50 sticky top-0 z-20 shadow-sm">
                                                                 <tr>
-                                                                    <th rowSpan={2} className="px-2 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-20 md:w-32 sticky left-0 bg-blue-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[10px] md:text-sm">Disciplina</th>
+                                                                    <th rowSpan={2} className="px-2 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-20 md:w-32 sticky left-0 bg-blue-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[10px] md:text-sm">Disc.</th>
                                                                     <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-12 text-[10px] leading-tight" title="Carga Horária Prevista">C.H.<br />Prev.</th>
                                                                     <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-12 text-[10px] leading-tight" title="Carga Horária Ministrada Anual">C.H.<br />Min.</th>
                                                                     {[1, 2, 3, 4].map(num => (
@@ -1835,7 +1861,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                             {finalGrades.map((grade) => (
                                                                                 <tr key={grade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-300">
                                                                                     <td className="px-2 py-2 font-bold text-gray-900 border-r border-gray-300 text-[10px] md:text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] align-top">
-                                                                                        <span className="uppercase block leading-tight mb-1">{grade.subject}</span>
+                                                                                        <span className="uppercase block leading-tight mb-1" title={grade.subject}>{abbreviateSubject(grade.subject)}</span>
                                                                                     </td>
                                                                                     {(() => {
                                                                                         let weeklyClasses = 0;
