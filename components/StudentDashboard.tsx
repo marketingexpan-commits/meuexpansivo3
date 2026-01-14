@@ -1386,15 +1386,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 </div>
                             ) : (
                                 <>
-                                    <div className="overflow-x-auto pb-4 w-full print:overflow-visible print:w-full print:pb-0">
-                                        <table className="min-w-[1000px] print:min-w-0 print:w-full divide-y divide-gray-200 border border-gray-300 text-sm print:text-[8px] print:leading-tight">
-                                            <thead className="bg-blue-50 print:bg-gray-100">
+                                    <div className="overflow-auto w-full border border-gray-200 rounded-lg pb-4 print:pb-0 print:overflow-visible print:border-none" style={{ maxHeight: '75vh' }}>
+                                        <table className="min-w-[1000px] print:min-w-0 print:w-full divide-y divide-gray-200 border border-gray-300 text-sm print:text-[8px] print:leading-tight relative">
+                                            <thead className="bg-blue-50 print:bg-gray-100 sticky top-0 z-20 shadow-sm">
                                                 <tr>
                                                     <th rowSpan={2} className="px-2 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-20 md:w-32 sticky left-0 bg-blue-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[10px] md:text-sm">Disciplina</th>
                                                     <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-12 text-[10px] leading-tight" title="Carga Horária Prevista">C.H.<br />Prev.</th>
                                                     <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-12 text-[10px] leading-tight" title="Carga Horária Ministrada Anual">C.H.<br />Min.</th>
                                                     {[1, 2, 3, 4].map(num => (
-                                                        <th key={num} colSpan={7} className="px-1 py-2 text-center font-bold text-gray-700 uppercase border-r border-gray-300">
+                                                        <th key={num} colSpan={6} className="px-1 py-2 text-center font-bold text-gray-700 uppercase border-r border-gray-300">
                                                             {num}º Bim
                                                         </th>
                                                     ))}
@@ -1403,7 +1403,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                     <th rowSpan={2} className="px-2 py-3 text-center font-bold text-blue-950 uppercase border-r border-gray-300 bg-blue-100 w-16 text-[10px] leading-tight">Méd.<br />Final</th>
 
                                                     <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-10 text-[10px] leading-tight">F</th>
-                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-12 text-[10px] leading-tight">Faltas<br />(h)</th>
                                                     <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-16 text-[10px] leading-tight">Freq.<br />(%)</th>
                                                     <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase w-20 text-[10px]">Situação</th>
                                                 </tr>
@@ -1414,7 +1413,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600 w-8 md:w-10" title="Recuperação">R{num}</th>
                                                             <th className="px-1 py-1 text-center border-r border-gray-300 font-bold text-blue-950 bg-blue-50 w-8 md:w-10" title="Média">M{num}</th>
                                                             <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600 w-8 md:w-10" title="Faltas">F{num}</th>
-                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600 w-8 md:w-10" title="Faltas em Horas">F(h)</th>
                                                             <th className="px-1 py-1 text-center border-r border-gray-300 font-bold text-gray-700 bg-gray-50 w-10 md:w-12" title="Frequência">%</th>
                                                             <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600 w-10 md:w-12" title="CH Ministrada">Min.</th>
                                                         </React.Fragment>
@@ -1556,9 +1554,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                                                         return (
                                                                             <>
-                                                                                <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-8 md:w-10">
-                                                                                    {currentAbsences}h
-                                                                                </td>
+
                                                                                 <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs w-10 md:w-12 ${isLowFreq ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência">
                                                                                     {isBimesterStarted ? (<div className="flex flex-col items-center"><span>{freqPercent !== null ? `${freqPercent}%` : '100%'}</span>{isFreqEstimated && <span className="text-[8px] text-amber-600">⚠ Est.</span>}</div>) : '-'}
                                                                                 </td>
@@ -1629,9 +1625,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                     <td className="px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs text-gray-500">
                                                                         {totalAbsences}
                                                                     </td>
-                                                                    <td className="px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs text-gray-500">
-                                                                        {totalAbsences}h
-                                                                    </td>
                                                                     <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs ${isCritical ? 'text-red-600 bg-red-50' : 'text-gray-600'}`}>
                                                                         <div className="flex flex-col items-center"><span>{annualFreq !== null ? `${annualFreq}%` : '100%'}</span>{isAnnualEstimated && <span className="text-[8px] text-amber-600">⚠ Est.</span>}</div>
                                                                     </td>
@@ -1653,7 +1646,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                     const generalFreq = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings, calendarEvents);
                                                     return (
                                                         <tr className="bg-gray-100/80 font-bold border-t-2 border-gray-400">
-                                                            <td colSpan={36} className="px-4 py-1 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[11px]">
+                                                            <td colSpan={31} className="px-4 py-1 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[11px]">
                                                                 FREQUÊNCIA GERAL NO ANO LETIVO:
                                                             </td>
                                                             <td className="px-1 py-1 text-center text-blue-900 font-extrabold text-[11px] md:text-sm bg-blue-50/50 border-r border-gray-300">
@@ -1664,7 +1657,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                     );
                                                 })()}
                                                 {studentGrades.length === 0 && (
-                                                    <tr><td colSpan={38} className="px-6 py-8 text-center text-gray-500 italic">Nenhuma nota lançada para este período letivo.</td></tr>
+                                                    <tr><td colSpan={33} className="px-6 py-8 text-center text-gray-500 italic">Nenhuma nota lançada para este período letivo.</td></tr>
                                                 )}
                                             </tbody>
                                         </table>

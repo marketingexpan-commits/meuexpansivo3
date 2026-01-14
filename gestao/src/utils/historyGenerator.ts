@@ -304,7 +304,6 @@ export const generateSchoolHistory = (
                     <td style="color: #666; font-size: 8px;">${fG(bData.recuperacao)}</td>
                     <td style="font-weight: bold; font-size: 8px;">${fG(bData.media)}</td>
                     <td style="color: #444; font-size: 8px;">${bAbs}</td>
-                    <td style="color: #444; font-size: 8px;">${bAbs + 'h'}</td>
                     <td style="font-size: 8px; font-weight: bold;">${isStarted ? freq : '-'}</td>
                     <td style="color: #666; font-size: 8px; background: #fafafa;">${bMin > 0 ? bMin + 'h' : '-'}</td>
                 `;
@@ -323,7 +322,6 @@ export const generateSchoolHistory = (
                 <td style="color: #844; font-weight: bold;">${fG(g.recuperacaoFinal)}</td>
                 <td style="font-weight: 900; background: #f0f4f8;">${fG(g.mediaFinal)}</td>
                 <td style="color: #444; font-weight: bold;">${totalAbsences}</td>
-                <td style="color: #444; font-weight: bold;">${totalAbsences + 'h'}</td>
                 <td style="background: #eef2f6; font-weight: bold;">${totalFrequency}</td>
                 <td style="font-size: 8px;"><strong>${(g.mediaFinal === 0 || g.mediaFinal === null) && g.situacaoFinal === 'Recuperação' ? 'Cursando' : (g.situacaoFinal || 'Cursando')}</strong></td>
             </tr>
@@ -423,29 +421,28 @@ export const generateSchoolHistory = (
                         <th rowspan="2" class="subject-col">Disciplina</th>
                         <th rowspan="2" style="width: 25px;">CH Prev.</th>
                         <th rowspan="2" style="width: 25px;">CH Min.</th>
-                        <th colspan="7">1º Bimestre</th>
-                        <th colspan="7">2º Bimestre</th>
-                        <th colspan="7">3º Bimestre</th>
-                        <th colspan="7">4º Bimestre</th>
+                        <th colspan="6">1º Bimestre</th>
+                        <th colspan="6">2º Bimestre</th>
+                        <th colspan="6">3º Bimestre</th>
+                        <th colspan="6">4º Bimestre</th>
                         <th rowspan="2" style="width: 22px;">M.An.</th>
                         <th rowspan="2" style="width: 22px;">P.Fi.</th>
                         <th rowspan="2" style="width: 22px;">M.Fi.</th>
                         <th rowspan="2" style="width: 15px;">F</th>
-                        <th rowspan="2" style="width: 20px;">F(h)</th>
                         <th rowspan="2" style="width: 30px; background: #eef2f6;">Fr (%)</th>
                         <th rowspan="2" style="width: 45px;">Resultado</th>
                     </tr>
                     <tr>
-                        <th title="Nota">N</th><th title="Recuperação">R</th><th title="Média">M</th><th title="Faltas">F</th><th title="Faltas(h)">h</th><th title="Frequência">%</th><th title="CH Min">Mi</th>
-                        <th title="Nota">N</th><th title="Recuperação">R</th><th title="Média">M</th><th title="Faltas">F</th><th title="Faltas(h)">h</th><th title="Frequência">%</th><th title="CH Min">Mi</th>
-                        <th title="Nota">N</th><th title="Recuperação">R</th><th title="Média">M</th><th title="Faltas">F</th><th title="Faltas(h)">h</th><th title="Frequência">%</th><th title="CH Min">Mi</th>
-                        <th title="Nota">N</th><th title="Recuperação">R</th><th title="Média">M</th><th title="Faltas">F</th><th title="Faltas(h)">h</th><th title="Frequência">%</th><th title="CH Min">Mi</th>
+                        <th title="Nota">N</th><th title="Recuperação">R</th><th title="Média">M</th><th title="Faltas">F</th><th title="Frequência">%</th><th title="CH Min">Mi</th>
+                        <th title="Nota">N</th><th title="Recuperação">R</th><th title="Média">M</th><th title="Faltas">F</th><th title="Frequência">%</th><th title="CH Min">Mi</th>
+                        <th title="Nota">N</th><th title="Recuperação">R</th><th title="Média">M</th><th title="Faltas">F</th><th title="Frequência">%</th><th title="CH Min">Mi</th>
+                        <th title="Nota">N</th><th title="Recuperação">R</th><th title="Média">M</th><th title="Faltas">F</th><th title="Frequência">%</th><th title="CH Min">Mi</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${renderCurrentGradesRows()}
                     <tr style="background: #f8f9fa; font-weight: bold;">
-                        <td colspan="36" style="text-align: right; padding-right: 15px;">FREQUÊNCIA GERAL NO ANO LETIVO:</td>
+                        <td colspan="31" style="text-align: right; padding-right: 15px;">FREQUÊNCIA GERAL NO ANO LETIVO:</td>
                         <td style="text-align: center; font-size: 11px; color: #1a426f;">${calculateGeneralFrequencyInternal()}</td>
                         <td style="background: #f8f9fa;"></td>
                     </tr>

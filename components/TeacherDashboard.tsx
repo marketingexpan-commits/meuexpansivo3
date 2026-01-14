@@ -1713,15 +1713,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                             {selectedStudent && (
                                                 <div className="mt-8">
                                                     <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center"><span className="mr-2">📊</span> Boletim Geral do Aluno</h3>
-                                                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto pb-4 w-full">
-                                                        <table className="min-w-[1000px] divide-y divide-gray-200 border border-gray-300 text-sm">
-                                                            <thead className="bg-blue-50">
+                                                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-auto pb-4 w-full" style={{ maxHeight: '75vh' }}>
+                                                        <table className="min-w-[1000px] divide-y divide-gray-200 border border-gray-300 text-sm relative">
+                                                            <thead className="bg-blue-50 sticky top-0 z-20 shadow-sm">
                                                                 <tr>
                                                                     <th rowSpan={2} className="px-2 py-3 text-left font-bold text-gray-700 uppercase border-r border-gray-300 w-20 md:w-32 sticky left-0 bg-blue-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-[10px] md:text-sm">Disciplina</th>
                                                                     <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-12 text-[10px] leading-tight" title="Carga Horária Prevista">C.H.<br />Prev.</th>
                                                                     <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-12 text-[10px] leading-tight" title="Carga Horária Ministrada Anual">C.H.<br />Min.</th>
                                                                     {[1, 2, 3, 4].map(num => (
-                                                                        <th key={num} colSpan={7} className="px-1 py-2 text-center font-bold text-gray-700 uppercase border-r border-gray-300">
+                                                                        <th key={num} colSpan={6} className="px-1 py-2 text-center font-bold text-gray-700 uppercase border-r border-gray-300">
                                                                             {num}º Bim
                                                                         </th>
                                                                     ))}
@@ -1730,7 +1730,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                     <th rowSpan={2} className="px-2 py-3 text-center font-bold text-blue-950 uppercase border-r border-gray-300 bg-blue-100 w-16 text-[10px] leading-tight">Méd.<br />Final</th>
 
                                                                     <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-10 text-[10px] leading-tight">F</th>
-                                                                    <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-12 text-[10px] leading-tight">Faltas<br />(h)</th>
                                                                     <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase border-r border-gray-300 w-16 text-[10px] leading-tight">Freq.<br />(%)</th>
                                                                     <th rowSpan={2} className="px-2 py-3 text-center font-bold text-gray-700 uppercase w-20 text-[10px]">Situação</th>
                                                                 </tr>
@@ -1741,7 +1740,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                             <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600 w-8 md:w-10" title="Recuperação">R{num}</th>
                                                                             <th className="px-1 py-1 text-center border-r border-gray-300 font-bold text-blue-950 bg-blue-50 w-8 md:w-10" title="Média">M{num}</th>
                                                                             <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600 w-8 md:w-10" title="Faltas">F{num}</th>
-                                                                            <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600 w-8 md:w-10" title="Faltas em Horas">F(h)</th>
                                                                             <th className="px-1 py-1 text-center border-r border-gray-300 font-bold text-gray-700 bg-gray-50 w-10 md:w-12" title="Frequência">%</th>
                                                                             <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold text-gray-600 w-10 md:w-12" title="CH Ministrada">Min.</th>
                                                                         </React.Fragment>
@@ -1927,7 +1925,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                                                         let lk = selectedStudent.gradeLevel.includes('Fundamental II') ? 'Fundamental II' : selectedStudent.gradeLevel.includes('Ensino Médio') ? 'Ensino Médio' : 'Fundamental I';
                                                                                                         weeklyClasses = (CURRICULUM_MATRIX[lk] || {})[grade.subject] || 0;
                                                                                                     }
-                                                                                                    const bimesterFaltasH = currentAbsences * (weeklyClasses > 0 ? 1 : 0);
+
 
                                                                                                     const freqResult = calculateAttendancePercentage(grade.subject, currentAbsences, selectedStudent.gradeLevel, bimesterNum, academicSubjects, academicSettings, calendarEvents, teacher.unit, schedules, selectedStudent.schoolClass);
                                                                                                     const freqPercent = freqResult?.percent ?? null;
@@ -1952,9 +1950,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
                                                                                                     return (
                                                                                                         <>
-                                                                                                            <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-8 md:w-10">
-                                                                                                                {currentAbsences}h
-                                                                                                            </td>
                                                                                                             <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs w-10 md:w-12 ${isLowFreq ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência">
                                                                                                                 {isBimesterStarted ? (
                                                                                                                     <div className="flex flex-col items-center">
@@ -2016,15 +2011,12 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                                         const annualFreq = annualResult?.percent ?? null;
                                                                                         const isAnnualEstimated = annualResult?.isEstimated ?? false;
                                                                                         const isCritical = annualFreq !== null && annualFreq < 75;
-                                                                                        const annualFaltasH = totalAbsences * (weeklyClasses > 0 ? 1 : 0);
+
 
                                                                                         return (
                                                                                             <>
                                                                                                 <td className="px-1 py-1 text-center font-bold text-gray-500 border-r border-gray-300 text-xs w-8 md:w-10">
                                                                                                     {totalAbsences}
-                                                                                                </td>
-                                                                                                <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-8 md:w-10">
-                                                                                                    {annualFaltasH}h
                                                                                                 </td>
                                                                                                 <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs w-12 md:w-16 ${isCritical ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência Anual">
                                                                                                     {annualFreq !== null ? (
