@@ -1759,7 +1759,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
                                                                         // 1. Check for specific assignment for this grade level (Exact Match requested)
                                                                         if (teacher.assignments && teacher.assignments.length > 0) {
-                                                                            const gradeAssignment = teacher.assignments.find(a => normalize(a.gradeLevel) === studentGradeLevelNorm);
+                                                                            const gradeAssignment = teacher.assignments.find(a => {
+                                                                                const assignNorm = normalize(a.gradeLevel);
+                                                                                return assignNorm === studentGradeLevelNorm || studentGradeLevelNorm.includes(assignNorm) || assignNorm.includes(studentGradeLevelNorm);
+                                                                            });
                                                                             if (gradeAssignment) {
                                                                                 return gradeAssignment.subjects.some(s => normalize(s) === subNameNorm);
                                                                             }
