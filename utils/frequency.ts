@@ -13,9 +13,76 @@ import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, calculat
 import type { AcademicSettings } from "../types";
 
 /**
+ * Calculates the number of taught classes for a given period and subject.
+ */
+export const calculateTaughtClasses = (
+    subject: string,
+    gradeLevel: string,
+    startDate: string,
+    endDate: string,
+    unit: string,
+    academicSubjects?: AcademicSubject[],
+    classSchedules?: any[],
+    calendarEvents?: any[],
+    schoolClass?: string
+): { taught: number, isEstimated: boolean } => {
+    let taughtClasses = 0;
+    let isEstimated = false;
+
+    if (classSchedules && classSchedules.length > 0) {
+        const result = calculateEffectiveTaughtClasses(
+            startDate,
+            endDate,
+            unit,
+            subject,
+            classSchedules,
+            calendarEvents || [],
+            gradeLevel,
+            schoolClass
+        );
+        taughtClasses = result.taught;
+        isEstimated = result.isEstimated;
+    } else {
+        isEstimated = true;
+    }
+
+    // Fallback to Estimation if Schedule Missing
+    if (isEstimated) {
+        // Legacy: Weekly Classes * School Days / 5
+        let weeklyClasses = 0;
+        // Dynamic lookup
+        if (academicSubjects) {
+            const ds = academicSubjects.find(s => s.name === subject);
+            if (ds?.weeklyHours) {
+                const k = Object.keys(ds.weeklyHours).find(key => gradeLevel.includes(key));
+                if (k) weeklyClasses = ds.weeklyHours[k];
+            }
+        }
+        // Matrix lookup
+        if (weeklyClasses === 0) {
+            let levelKey = '';
+            if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
+            else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
+            else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
+
+            if (levelKey && CURRICULUM_MATRIX[levelKey]) {
+                weeklyClasses = CURRICULUM_MATRIX[levelKey][subject] || 0;
+            }
+        }
+
+        if (weeklyClasses > 0) {
+            const schoolDays = calculateSchoolDays(startDate, endDate, calendarEvents || [], unit);
+            taughtClasses = Math.round((weeklyClasses / 5) * schoolDays);
+        }
+    }
+
+    return { taught: taughtClasses, isEstimated };
+};
+
+/**
  * Calculates the attendance percentage for a given subject and student grade level.
  * STRICT FORMULA: (Effective Taught Classes - Absences) / Effective Taught Classes * 100
- * 
+ *
  * @param subject The subject name
  * @param absences Total NUMBER of absence hours (not days)
  * @param gradeLevel The student's grade level
@@ -63,56 +130,18 @@ export const calculateAttendancePercentage = (
         }
     }
 
-    // 2. Calculate Effective Taught Classes
-    let taughtClasses = 0;
-    let isEstimated = false;
-
-    if (classSchedules && classSchedules.length > 0) {
-        const result = calculateEffectiveTaughtClasses(
-            startDate,
-            endDate,
-            unit,
-            subject,
-            classSchedules,
-            calendarEvents || [],
-            gradeLevel,
-            schoolClass
-        );
-        taughtClasses = result.taught;
-        isEstimated = result.isEstimated;
-    } else {
-        isEstimated = true;
-    }
-
-    // 3. Fallback to Estimation if Schedule Missing (Safety Rule #5)
-    if (isEstimated) {
-        // Legacy: Weekly Classes * School Days / 5
-        let weeklyClasses = 0;
-        // Dynamic lookup
-        if (academicSubjects) {
-            const ds = academicSubjects.find(s => s.name === subject);
-            if (ds?.weeklyHours) {
-                const k = Object.keys(ds.weeklyHours).find(key => gradeLevel.includes(key));
-                if (k) weeklyClasses = ds.weeklyHours[k];
-            }
-        }
-        // Matrix lookup
-        if (weeklyClasses === 0) {
-            let levelKey = '';
-            if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
-            else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-            else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
-
-            if (levelKey && CURRICULUM_MATRIX[levelKey]) {
-                weeklyClasses = CURRICULUM_MATRIX[levelKey][subject] || 0;
-            }
-        }
-
-        if (weeklyClasses > 0) {
-            const schoolDays = calculateSchoolDays(startDate, endDate, calendarEvents || [], unit);
-            taughtClasses = Math.round((weeklyClasses / 5) * schoolDays);
-        }
-    }
+    // 2. Calculate Taught Classes using shared logic
+    const { taught: taughtClasses, isEstimated } = calculateTaughtClasses(
+        subject,
+        gradeLevel,
+        startDate,
+        endDate,
+        unit,
+        academicSubjects,
+        classSchedules,
+        calendarEvents,
+        schoolClass
+    );
 
     // 4. Apply Strict Rules
     // Rule: Start of Year (Taught = 0) -> 100%
@@ -178,48 +207,53 @@ export const calculateGeneralFrequency = (
     gradeLevel: string,
     academicSubjects?: AcademicSubject[],
     settings?: AcademicSettings | null,
-    _calendarEvents?: any[]
+    calendarEvents?: any[],
+    unit?: string,
+    classSchedules?: any[],
+    schoolClass?: string
 ): string => {
     const currentYear = getCurrentSchoolYear();
     const startDate = settings?.bimesters?.[0]?.startDate || `${currentYear}-01-01`;
-    const endDate = settings?.bimesters?.[3]?.endDate || `${currentYear}-12-31`;
+    let endDate = new Date().toLocaleDateString('en-CA');
+    const absoluteEnd = settings?.bimesters?.[3]?.endDate || `${currentYear}-12-31`;
+    if (endDate > absoluteEnd) endDate = absoluteEnd;
 
-    let levelKey = '';
-    if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
-    else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-    else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
+    let totalTaughtClasses = 0;
 
-    if (!levelKey) return '-';
-
-    const levelMatrix = CURRICULUM_MATRIX[levelKey];
-    if (!levelMatrix) return '-';
-
-    let totalExpectedHours = 0; // Cumulative expected classes for the full year
-    let foundDynamic = false;
-
+    // Determine which subjects to iterate over
+    const subjectsToCalculate: string[] = [];
     if (academicSubjects && academicSubjects.length > 0) {
         academicSubjects.forEach(s => {
-            if (s.isActive && s.weeklyHours) {
-                const gradeKey = Object.keys(s.weeklyHours).find(key => gradeLevel.includes(key));
-                if (gradeKey && s.weeklyHours[gradeKey] > 0) {
-                    const weeklyClasses = s.weeklyHours[gradeKey];
-                    // C.H. BASIS: 40 weeks per year
-                    totalExpectedHours += (weeklyClasses * 40);
-                    foundDynamic = true;
-                }
-            }
+            if (s.isActive) subjectsToCalculate.push(s.name);
         });
+    } else {
+        let levelKey = '';
+        if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
+        else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
+        else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
+
+        if (levelKey && CURRICULUM_MATRIX[levelKey]) {
+            Object.keys(CURRICULUM_MATRIX[levelKey]).forEach(s => subjectsToCalculate.push(s));
+        }
     }
 
-    if (!foundDynamic) {
-        Object.values(levelMatrix).forEach(weeklyClasses => {
-            if (typeof weeklyClasses === 'number' && weeklyClasses > 0) {
-                // C.H. BASIS: 40 weeks per year
-                totalExpectedHours += (weeklyClasses * 40);
-            }
-        });
-    }
+    // Sum taught classes for all subjects
+    subjectsToCalculate.forEach(subject => {
+        const { taught } = calculateTaughtClasses(
+            subject,
+            gradeLevel,
+            startDate,
+            endDate,
+            unit || '', // If unit missing, calculateTaughtClasses will fallback to estimation
+            academicSubjects,
+            classSchedules,
+            calendarEvents,
+            schoolClass
+        );
+        totalTaughtClasses += taught;
+    });
 
+    // Sum absences (Total across all subjects in the range)
     const totalAbsences = (attendanceRecords || []).reduce((acc, record) => {
         if (record.date < startDate || record.date > endDate) return acc;
         if (record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT) {
@@ -230,8 +264,8 @@ export const calculateGeneralFrequency = (
         return acc;
     }, 0);
 
-    if (totalExpectedHours === 0) return '-';
-    const freq = ((totalExpectedHours - totalAbsences) / totalExpectedHours) * 100;
+    if (totalTaughtClasses === 0) return '-';
+    const freq = ((totalTaughtClasses - totalAbsences) / totalTaughtClasses) * 100;
     return Math.max(0, Math.min(100, freq)).toFixed(2) + '%';
 };
 
@@ -244,50 +278,65 @@ export const calculateBimesterGeneralFrequency = (
     gradeLevel: string,
     bimester: number,
     academicSubjects?: AcademicSubject[],
-    _settings?: AcademicSettings | null,
-    _calendarEvents?: any[]
+    settings?: AcademicSettings | null,
+    calendarEvents?: any[],
+    unit?: string,
+    classSchedules?: any[],
+    schoolClass?: string
 ): string => {
     const currentYear = getCurrentSchoolYear();
 
-    let levelKey = '';
-    if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
-    else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-    else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
+    // Determine Bimester Dates
+    let startDate = `${currentYear}-01-01`;
+    let endDate = new Date().toLocaleDateString('en-CA');
 
-    if (!levelKey) return '-';
+    if (settings?.bimesters) {
+        const bimConfig = settings.bimesters.find(b => b.number === bimester);
+        if (bimConfig) {
+            startDate = bimConfig.startDate;
+            const bEndDate = bimConfig.endDate;
+            endDate = (endDate < bEndDate) ? endDate : bEndDate;
+        }
+    }
 
-    const levelMatrix = CURRICULUM_MATRIX[levelKey];
-    if (!levelMatrix) return '-';
+    let totalTaughtClasses = 0;
 
-    let totalExpectedHours = 0;
-    let foundDynamic = false;
-
+    // Determine which subjects to iterate over
+    const subjectsToCalculate: string[] = [];
     if (academicSubjects && academicSubjects.length > 0) {
         academicSubjects.forEach(s => {
-            if (s.isActive && s.weeklyHours) {
-                const gradeKey = Object.keys(s.weeklyHours).find(key => gradeLevel.includes(key));
-                if (gradeKey && s.weeklyHours[gradeKey] > 0) {
-                    const weeklyClasses = s.weeklyHours[gradeKey];
-                    // C.H. BASIS: 10 weeks per bimester
-                    totalExpectedHours += (weeklyClasses * 10);
-                    foundDynamic = true;
-                }
-            }
+            if (s.isActive) subjectsToCalculate.push(s.name);
         });
+    } else {
+        let levelKey = '';
+        if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
+        else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
+        else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
+
+        if (levelKey && CURRICULUM_MATRIX[levelKey]) {
+            Object.keys(CURRICULUM_MATRIX[levelKey]).forEach(s => subjectsToCalculate.push(s));
+        }
     }
 
-    if (!foundDynamic) {
-        Object.values(levelMatrix).forEach(weeklyClasses => {
-            if (typeof weeklyClasses === 'number' && weeklyClasses > 0) {
-                // C.H. BASIS: 10 weeks per bimester
-                totalExpectedHours += (weeklyClasses * 10);
-            }
-        });
-    }
+    // Sum taught classes for all subjects
+    subjectsToCalculate.forEach(subject => {
+        const { taught } = calculateTaughtClasses(
+            subject,
+            gradeLevel,
+            startDate,
+            endDate,
+            unit || '',
+            academicSubjects,
+            classSchedules,
+            calendarEvents,
+            schoolClass
+        );
+        totalTaughtClasses += taught;
+    });
 
     const totalAbsences = (attendanceRecords || []).reduce((acc, record) => {
         const rYear = parseInt(record.date.split('-')[0], 10);
-        const rBim = getDynamicBimester(record.date, _settings);
+        const rBim = getDynamicBimester(record.date, settings);
         if (rYear === currentYear && rBim === bimester && record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT) {
             const individualCount = record.studentAbsenceCount?.[studentId];
             const weight = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
@@ -296,8 +345,8 @@ export const calculateBimesterGeneralFrequency = (
         return acc;
     }, 0);
 
-    if (totalExpectedHours === 0) return '-';
-    const freq = ((totalExpectedHours - totalAbsences) / totalExpectedHours) * 100;
+    if (totalTaughtClasses === 0) return '-';
+    const freq = ((totalTaughtClasses - totalAbsences) / totalTaughtClasses) * 100;
     return Math.max(0, Math.min(100, freq)).toFixed(2) + '%';
 };
 

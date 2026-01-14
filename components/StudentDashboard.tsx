@@ -3,9 +3,9 @@ import { useAcademicData } from '../hooks/useAcademicData';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
 import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial, Occurrence, DailyAgenda, ExamGuide, CalendarEvent, AcademicSubject } from '../types';
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
-import { getBimesterFromDate, getDynamicBimester, normalizeClass, parseGradeLevel, calculateSchoolDays, isClassScheduled } from '../src/utils/academicUtils';
+import { getBimesterFromDate, getDynamicBimester, normalizeClass, parseGradeLevel, calculateSchoolDays, isClassScheduled, calculateEffectiveTaughtClasses } from '../src/utils/academicUtils';
 import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects, MOCK_CALENDAR_EVENTS } from '../constants'; // Import Sync Fix
-import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency, calculateBimesterGeneralFrequency } from '../utils/frequency';
+import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency, calculateBimesterGeneralFrequency, calculateTaughtClasses } from '../utils/frequency';
 import { getStudyTips } from '../services/geminiService';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
@@ -965,7 +965,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider mb-1">Frequência Geral Anual</span>
                                         <div className="flex items-baseline gap-2">
                                             {(() => {
-                                                const freqStr = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects);
+                                                const freqStr = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass);
                                                 const freqNum = parseFloat(freqStr.replace('%', ''));
                                                 const isLow = !isNaN(freqNum) && freqNum < 75;
                                                 return (
@@ -1538,10 +1538,20 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                                                 const annualWorkload = weeklyClasses * 40; // 40 weeks standard
                                                                 const currentYear = new Date().getFullYear();
-                                                                const startOfYear = `${currentYear}-01-01`;
+                                                                const startOfYear = `${academicSettings?.bimesters?.[0]?.startDate || `${currentYear}-01-01`}`;
                                                                 const todayStr = new Date().toLocaleDateString('en-CA');
-                                                                const totalDaysElapsed = calculateSchoolDays(startOfYear, todayStr, calendarEvents);
-                                                                const ministradaWorkload = Math.round((weeklyClasses / 5) * totalDaysElapsed);
+
+                                                                const { taught: ministradaWorkload } = calculateTaughtClasses(
+                                                                    grade.subject,
+                                                                    student.gradeLevel,
+                                                                    startOfYear,
+                                                                    todayStr,
+                                                                    student.unit,
+                                                                    academicSubjects,
+                                                                    classSchedules || [],
+                                                                    calendarEvents || [],
+                                                                    student.schoolClass
+                                                                );
 
                                                                 return (
                                                                     <>
@@ -1616,23 +1626,28 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                             const isLowFreq = freqPercent !== null && freqPercent < 75;
                                                                             const isBimesterStarted = bimesterNum <= elapsedBimesters;
 
-                                                                            // Calculate CH Min per bimester (Estimate based on elapsed days in THIS bimester)
+                                                                            // Calculate CH Min per bimester (using shared logic to ensure unificaton)
                                                                             let bMin = 0;
-                                                                            if (isBimesterStarted && academicSettings?.bimesterDates?.[bimesterNum]) {
-                                                                                const bStart = academicSettings.bimesterDates[bimesterNum].start;
-                                                                                const bEnd = academicSettings.bimesterDates[bimesterNum].end;
-                                                                                const today = new Date().toLocaleDateString('en-CA');
-                                                                                const effectiveEnd = today < bEnd ? today : bEnd;
-                                                                                const bDays = calculateSchoolDays(bStart, effectiveEnd, calendarEvents);
-                                                                                bMin = Math.round((weeklyClasses / 5) * bDays);
-                                                                            } else if (isBimesterStarted) {
-                                                                                // Fallback if dates missing: assume equal distribution (roughly 50 days per bimester)
-                                                                                bMin = Math.round((weeklyClasses / 5) * 50);
-                                                                                // But adjust if it's the CURRENT bimester
-                                                                                const currentBim = getDynamicBimester(new Date().toLocaleDateString('en-CA'), academicSettings);
-                                                                                if (bimesterNum === currentBim) {
-                                                                                    // Very rough estimate for current if missing dates
-                                                                                    bMin = Math.round(bMin * 0.5);
+                                                                            if (isBimesterStarted && academicSettings?.bimesters) {
+                                                                                const bimConfig = academicSettings.bimesters.find((b: any) => b.number === bimesterNum);
+                                                                                if (bimConfig) {
+                                                                                    const bStart = bimConfig.startDate;
+                                                                                    const bEnd = bimConfig.endDate;
+                                                                                    const today = new Date().toLocaleDateString('en-CA');
+                                                                                    const effectiveEnd = today < bEnd ? today : bEnd;
+
+                                                                                    const { taught } = calculateTaughtClasses(
+                                                                                        grade.subject,
+                                                                                        student.gradeLevel,
+                                                                                        bStart,
+                                                                                        effectiveEnd,
+                                                                                        student.unit,
+                                                                                        academicSubjects,
+                                                                                        classSchedules || [],
+                                                                                        calendarEvents || [],
+                                                                                        student.schoolClass
+                                                                                    );
+                                                                                    bMin = taught;
                                                                                 }
                                                                             }
 
@@ -1643,7 +1658,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                                         {isBimesterStarted ? (<div className="flex flex-col items-center"><span>{freqPercent !== null ? `${freqPercent}%` : '100%'}</span>{isFreqEstimated && <span className="text-[8px] text-amber-600">⚠ Est.</span>}</div>) : '-'}
                                                                                     </td>
                                                                                     <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-[9px] border-r border-gray-300 w-10 md:w-12 bg-gray-50/50">
-                                                                                        {bMin > 0 ? `${bMin}h` : '-'}
+                                                                                        {bMin > 0 ? `${bMin} h` : '-'}
                                                                                     </td>
                                                                                 </>
                                                                             );
@@ -1727,7 +1742,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                         </tr>
                                                     ))}
                                                     {studentGrades.length > 0 && (() => {
-                                                        const generalFreq = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings, calendarEvents);
+                                                        const generalFreq = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass);
                                                         return (
                                                             <tr className="bg-gray-100/80 font-bold border-t-2 border-gray-400">
                                                                 <td colSpan={31} className="px-4 py-1 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[11px]">
