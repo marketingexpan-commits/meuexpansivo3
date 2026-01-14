@@ -43,7 +43,7 @@ export const calculateAttendancePercentage = (
 
     // 1. Determine Date Range
     let startDate = `${getCurrentSchoolYear()}-01-01`;
-    let endDate = new Date().toISOString().split('T')[0];
+    let endDate = new Date().toLocaleDateString('en-CA');
 
     // STRICTOR RULES: Mirroring calendar events
     if (settings?.bimesters) {
@@ -148,7 +148,7 @@ export const calculateAnnualAttendancePercentage = (
 
     // Range: Start of Year -> Today (or end of year if past)
     const startDate = `${getCurrentSchoolYear()}-01-01`;
-    let endDate = new Date().toISOString().split('T')[0];
+    let endDate = new Date().toLocaleDateString('en-CA');
 
     // Check if year ended (optional optimization, keeping simple for now: effective up to today)
 

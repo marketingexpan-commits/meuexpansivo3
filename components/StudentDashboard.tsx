@@ -203,7 +203,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const [selectedReportSemester, setSelectedReportSemester] = useState<1 | 2>(1);
 
     // Estado para controle do mês de frequência
-    const [selectedBimester, setSelectedBimester] = useState<number>(() => getDynamicBimester(new Date().toISOString().split('T')[0], academicSettings));
+    const [selectedBimester, setSelectedBimester] = useState<number>(() => getDynamicBimester(new Date().toLocaleDateString('en-CA'), academicSettings));
 
     // State for the Informational Banner visibility
     const [isBannerOpen, setIsBannerOpen] = useState(false);
@@ -219,7 +219,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const semester = currentMonth >= 7 ? 2 : 1;
 
     // Dynamic detection of elapsed bimesters
-    const calendarBim = getDynamicBimester(new Date().toISOString().split('T')[0], academicSettings);
+    const calendarBim = getDynamicBimester(new Date().toLocaleDateString('en-CA'), academicSettings);
     const maxDataBim = (attendanceRecords || []).reduce((max, record) => {
         const rYear = parseInt(record.date.split('-')[0], 10);
         if (rYear !== currentYear) return max;
@@ -235,7 +235,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         if (!academicSettings?.bimesters) return false;
         const b4 = academicSettings.bimesters.find((b: any) => b.number === 4);
         if (!b4) return false;
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date().toLocaleDateString('en-CA');
         return today > b4.endDate;
     }, [academicSettings]);
 
@@ -357,10 +357,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     }, [attendanceRecords, student.id, student.code, student.name]);
 
     const absencesThisYear = useMemo(() => {
-        return studentAttendance.filter(record => {
+        return studentAttendance.reduce((acc, record) => {
             const recordDate = new Date(record.date + 'T00:00:00');
-            return recordDate.getFullYear() === currentYear && record.studentStatus[student.id] === AttendanceStatus.ABSENT;
-        }).length;
+            if (recordDate.getFullYear() === currentYear && record.studentStatus[student.id] === AttendanceStatus.ABSENT) {
+                const individualCount = record.studentAbsenceCount?.[student.id];
+                return acc + (individualCount !== undefined ? individualCount : (record.lessonCount || 1));
+            }
+            return acc;
+        }, 0);
     }, [studentAttendance, currentYear, student.id]);
 
 
@@ -1053,9 +1057,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                 <div className="flex flex-wrap gap-2">
                                                     {records.map(record => {
                                                         const day = record.date.split('-')[2];
+                                                        const individualCount = record.studentAbsenceCount?.[student.id];
+                                                        const countValue = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
                                                         return (
                                                             <span key={record.id} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-100 shadow-sm">
                                                                 Dia {day} <span className="mx-1 text-red-300">|</span> {record.discipline}
+                                                                {countValue > 1 && <span className="ml-1 opacity-75">({countValue} faltas)</span>}
                                                             </span>
                                                         );
                                                     })}
@@ -1450,7 +1457,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             const annualWorkload = weeklyClasses * 40; // 40 weeks standard
                                                             const currentYear = new Date().getFullYear();
                                                             const startOfYear = `${currentYear}-01-01`;
-                                                            const todayStr = new Date().toISOString().split('T')[0];
+                                                            const todayStr = new Date().toLocaleDateString('en-CA');
                                                             const totalDaysElapsed = calculateSchoolDays(startOfYear, todayStr, calendarEvents);
                                                             const ministradaWorkload = Math.round((weeklyClasses / 5) * totalDaysElapsed);
 
@@ -1477,7 +1484,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                         if (classSchedules && classSchedules.length > 0) {
                                                                             if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit)) return acc;
                                                                         }
-                                                                        return acc + 1;
+                                                                        const individualCount = att.studentAbsenceCount?.[student.id];
+                                                                        return acc + (individualCount !== undefined ? individualCount : (att.lessonCount || 1));
                                                                     }
                                                                 }
                                                                 return acc;
@@ -1531,7 +1539,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                         if (isBimesterStarted && academicSettings?.bimesterDates?.[bimesterNum]) {
                                                                             const bStart = academicSettings.bimesterDates[bimesterNum].start;
                                                                             const bEnd = academicSettings.bimesterDates[bimesterNum].end;
-                                                                            const today = new Date().toISOString().split('T')[0];
+                                                                            const today = new Date().toLocaleDateString('en-CA');
                                                                             const effectiveEnd = today < bEnd ? today : bEnd;
                                                                             const bDays = calculateSchoolDays(bStart, effectiveEnd, calendarEvents);
                                                                             bMin = Math.round((weeklyClasses / 5) * bDays);
@@ -1539,7 +1547,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                             // Fallback if dates missing: assume equal distribution (roughly 50 days per bimester)
                                                                             bMin = Math.round((weeklyClasses / 5) * 50);
                                                                             // But adjust if it's the CURRENT bimester
-                                                                            const currentBim = getDynamicBimester(new Date().toISOString().split('T')[0], academicSettings);
+                                                                            const currentBim = getDynamicBimester(new Date().toLocaleDateString('en-CA'), academicSettings);
                                                                             if (bimesterNum === currentBim) {
                                                                                 // Very rough estimate for current if missing dates
                                                                                 bMin = Math.round(bMin * 0.5);
@@ -1582,7 +1590,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                             if (classSchedules && classSchedules.length > 0) {
                                                                                 if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass)) return acc;
                                                                             }
-                                                                            return acc + 1;
+                                                                            const individualCount = att.studentAbsenceCount?.[student.id];
+                                                                            return acc + (individualCount !== undefined ? individualCount : (att.lessonCount || 1));
                                                                         }
                                                                     }
                                                                     return acc;
@@ -1611,7 +1620,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             // Calculate Annual Ministrada
                                                             const currentYear = new Date().getFullYear();
                                                             const startOfYear = `${currentYear}-01-01`;
-                                                            const today = new Date().toISOString().split('T')[0];
+                                                            const today = new Date().toLocaleDateString('en-CA');
                                                             const totalDaysElapsed = calculateSchoolDays(startOfYear, today, calendarEvents);
                                                             const ministradaWorkload = Math.round((weeklyClasses / 5) * totalDaysElapsed);
 

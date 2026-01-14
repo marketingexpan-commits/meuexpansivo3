@@ -6,10 +6,15 @@ const MONTH_NAMES = [
     "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
 ];
 
+export interface DetailedDay {
+    day: number;
+    count: number;
+}
+
 export interface DetailedBimesterData {
     count: number;
     details: {
-        [monthName: string]: number[]; // List of days
+        [monthName: string]: DetailedDay[];
     };
 }
 
@@ -62,10 +67,7 @@ export const getAttendanceBreakdown = (
                     if (!breakdown[bimester].details[monthName]) {
                         breakdown[bimester].details[monthName] = [];
                     }
-                    // We push the day multiple times if there are multiple absences, or just once with a different label?
-                    // Standard: push the day for each absence count to show "dots" or just once?
-                    // Let's push it once but the 'count' is already updated.
-                    breakdown[bimester].details[monthName].push(recordDay);
+                    breakdown[bimester].details[monthName].push({ day: recordDay, count: absenceWeight });
                 }
             }
         }
@@ -73,8 +75,7 @@ export const getAttendanceBreakdown = (
 
     // Sort days numerically for better UX
     Object.values(breakdown).forEach(b => {
-        Object.values(b.details).forEach((days: number[]) => days.sort((a, b) => a - b));
-
+        Object.values(b.details).forEach((days: DetailedDay[]) => days.sort((a, b) => a.day - b.day));
     });
 
     return breakdown;

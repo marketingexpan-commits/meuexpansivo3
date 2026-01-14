@@ -68,7 +68,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
         if (!academicSettings?.bimesters) return false;
         const b4 = academicSettings.bimesters.find((b: any) => b.number === 4);
         if (!b4) return false;
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date().toLocaleDateString('en-CA');
         return today > b4.endDate;
     }, [academicSettings]);
 
@@ -81,7 +81,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
     const [isAttendanceManageModalOpen, setIsAttendanceManageModalOpen] = useState(false);
     const [manageAttendanceStep, setManageAttendanceStep] = useState<'filters' | 'form'>('filters');
     const [manageFilters, setManageFilters] = useState({
-        date: new Date().toISOString().split('T')[0],
+        date: new Date().toLocaleDateString('en-CA'),
         grade: '',
         class: 'A',
         subject: '',
@@ -156,7 +156,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
     const [selectedOccStudent, setSelectedOccStudent] = useState<any | null>(null);
     const [occData, setOccData] = useState<Partial<Occurrence>>({
         category: OccurrenceCategory.PEDAGOGICAL,
-        date: new Date().toISOString().split('T')[0],
+        date: new Date().toLocaleDateString('en-CA'),
         title: '',
         description: ''
     });
@@ -418,7 +418,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                 category: occData.category as OccurrenceCategory,
                 title: occData.title,
                 description: occData.description,
-                date: occData.date || new Date().toISOString().split('T')[0],
+                date: occData.date || new Date().toLocaleDateString('en-CA'),
                 authorId: coordinator.id,
                 authorName: coordinator.name,
                 authorRole: 'Coordenação',
@@ -444,7 +444,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
             setSelectedOccStudent(null);
             setOccData({
                 category: OccurrenceCategory.PEDAGOGICAL,
-                date: new Date().toISOString().split('T')[0],
+                date: new Date().toLocaleDateString('en-CA'),
                 title: '',
                 description: ''
             });

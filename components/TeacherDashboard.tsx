@@ -81,7 +81,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         if (!academicSettings?.bimesters) return false;
         const b4 = academicSettings.bimesters.find((b: any) => b.number === 4);
         if (!b4) return false;
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date().toLocaleDateString('en-CA');
         return today > b4.endDate;
     }, [academicSettings]);
 
@@ -111,11 +111,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     };
 
     // New State for Bimester Filter - Default to current bimester
-    const [selectedFilterBimester, setSelectedFilterBimester] = useState<number>(() => getDynamicBimester(new Date().toISOString().split('T')[0], academicSettings));
+    const [selectedFilterBimester, setSelectedFilterBimester] = useState<number>(() => getDynamicBimester(new Date().toLocaleDateString('en-CA'), academicSettings));
 
 
     // Estados para a Chamada
-    const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
+    const [attendanceDate, setAttendanceDate] = useState(new Date().toLocaleDateString('en-CA'));
     const [attendanceGrade, setAttendanceGrade] = useState('');
     const [attendanceClass, setAttendanceClass] = useState<SchoolClass>(SchoolClass.A);
     const [attendanceShift, setAttendanceShift] = useState<string>('');
@@ -177,7 +177,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
 
     // --- STATES PARA AGENDA E ROTEIROS ---
-    const [agendaDate, setAgendaDate] = useState(new Date().toISOString().split('T')[0]);
+    const [agendaDate, setAgendaDate] = useState(new Date().toLocaleDateString('en-CA'));
     const [agendaSubject, setAgendaSubject] = useState('');
     const [agendaGrade, setAgendaGrade] = useState('');
     const [agendaClass, setAgendaClass] = useState('');
@@ -302,12 +302,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
                 if (yNum === currentYear) {
                     const bimester = getDynamicBimester(record.date, academicSettings);
-                    absences[bimester]++;
+                    const individualCount = record.studentAbsenceCount?.[selectedStudent.id];
+                    absences[bimester as 1 | 2 | 3 | 4] += individualCount !== undefined ? individualCount : (record.lessonCount || 1);
                 }
             }
         });
         return absences;
-    }, [selectedStudent, attendanceRecords, selectedSubject]);
+    }, [selectedStudent, attendanceRecords, selectedSubject, academicSettings]);
 
     const filteredStudents = useMemo(() => students.filter(student => {
         const matchesUnit = student.unit === activeUnit;
@@ -1749,16 +1750,30 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                             </thead>
                                                             <tbody className="bg-white divide-y divide-gray-200">
                                                                 {(() => {
-                                                                    const teacherAuthorizedSubjects = getCurriculumSubjects(selectedStudent.gradeLevel || "", academicSubjects).filter(subName => {
-                                                                        const hasSubject = teacher.subjects.includes(subName as any);
-                                                                        if (!hasSubject) return false;
+                                                                    const normalize = (s: string) => s.toLowerCase().trim();
+                                                                    const studentGradeLevelRaw = selectedStudent.gradeLevel || "";
+                                                                    const studentGradeLevelNorm = normalize(studentGradeLevelRaw);
+
+                                                                    const allCurriculumSubjects = getCurriculumSubjects(studentGradeLevelRaw, academicSubjects);
+
+                                                                    const teacherAuthorizedSubjects = allCurriculumSubjects.filter(subName => {
+                                                                        const subNameNorm = normalize(subName);
+
+                                                                        // 1. Check for specific assignment for this grade level (Exact Match requested)
                                                                         if (teacher.assignments && teacher.assignments.length > 0) {
-                                                                            return teacher.assignments.some(a =>
-                                                                                a.gradeLevel === (selectedStudent.gradeLevel || "") &&
-                                                                                a.subjects.includes(subName)
-                                                                            );
+                                                                            const gradeAssignment = teacher.assignments.find(a => normalize(a.gradeLevel) === studentGradeLevelNorm);
+                                                                            if (gradeAssignment) {
+                                                                                return gradeAssignment.subjects.some(s => normalize(s) === subNameNorm);
+                                                                            }
                                                                         }
-                                                                        return true;
+
+                                                                        // 2. Fallback: If assignments exist but none match this grade, return false
+                                                                        if (teacher.assignments && teacher.assignments.length > 0) {
+                                                                            return false;
+                                                                        }
+
+                                                                        // 3. Fallback: Rely on general subjects list if no assignments are defined
+                                                                        return teacher.subjects.some(s => normalize(s) === subNameNorm);
                                                                     });
                                                                     const studentId = selectedStudent.id;
 
@@ -1804,7 +1819,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                     }
 
                                                                     // Logic for elapsed bimesters (matching StudentDashboard)
-                                                                    const calendarBim = getDynamicBimester(new Date().toISOString().split('T')[0], academicSettings);
+                                                                    const calendarBim = getDynamicBimester(new Date().toLocaleDateString('en-CA'), academicSettings);
                                                                     const maxDataBim = (attendanceRecords || []).reduce((max, record) => {
                                                                         const rYear = parseInt(record.date.split('-')[0], 10);
                                                                         if (rYear !== getCurrentSchoolYear()) return max;
@@ -1848,7 +1863,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                                         const annualWorkload = weeklyClasses * 40;
                                                                                         const currentYear = getCurrentSchoolYear();
                                                                                         const startOfYear = `${currentYear}-01-01`;
-                                                                                        const todayStr = new Date().toISOString().split('T')[0];
+                                                                                        const todayStr = new Date().toLocaleDateString('en-CA');
                                                                                         const totalDaysElapsed = calculateSchoolDays(startOfYear, todayStr, calendarEvents);
                                                                                         const ministradaWorkload = Math.round((weeklyClasses / 5) * totalDaysElapsed);
 
@@ -1925,13 +1940,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                                                         const bSettings = academicSettings.bimesters.find((b: any) => b.number === bimesterNum);
                                                                                                         const bStart = bSettings.startDate;
                                                                                                         const bEnd = bSettings.endDate;
-                                                                                                        const today = new Date().toISOString().split('T')[0];
+                                                                                                        const today = new Date().toLocaleDateString('en-CA');
                                                                                                         const effectiveEnd = today < bEnd ? today : bEnd;
                                                                                                         const bDays = calculateSchoolDays(bStart, effectiveEnd, calendarEvents);
                                                                                                         bMin = Math.round((weeklyClasses / 5) * bDays);
                                                                                                     } else if (isBimesterStarted) {
                                                                                                         bMin = Math.round((weeklyClasses / 5) * 50);
-                                                                                                        const currentBim = getDynamicBimester(new Date().toISOString().split('T')[0], academicSettings);
+                                                                                                        const currentBim = getDynamicBimester(new Date().toLocaleDateString('en-CA'), academicSettings);
                                                                                                         if (bimesterNum === currentBim) bMin = Math.round(bMin * 0.5);
                                                                                                     }
 
@@ -2173,7 +2188,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                             <div className="mt-1 flex flex-wrap gap-2">
                                                                                 {Object.entries(bimesterBreakdown[selectedFilterBimester].details).map(([month, days]) => (
                                                                                     <span key={month} className="text-[10px] bg-red-50 text-red-800 border border-red-100 rounded px-1.5 py-0.5">
-                                                                                        <strong>{month}:</strong> {days.map(d => `[${d}]`).join(' ')}
+                                                                                        <strong>{month}:</strong> {days.map(d => `[${d.day}${d.count > 1 ? ` (${d.count})` : ''}]`).join(' ')}
                                                                                     </span>
                                                                                 ))}
                                                                             </div>
@@ -2260,7 +2275,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                                     <div className="mt-0.5 flex flex-wrap gap-1">
                                                                                         {Object.entries(bimesterBreakdown[selectedFilterBimester].details).map(([month, days]) => (
                                                                                             <span key={month} className="text-[10px] text-gray-500">
-                                                                                                <strong className="text-gray-700">{month}:</strong> {days.map(d => `[${d}]`).join(' ')} <span className="text-gray-300">|</span>
+                                                                                                <strong className="text-gray-700">{month}:</strong> {days.map(d => `[${d.day}${d.count > 1 ? ` (${d.count})` : ''}]`).join(' ')} <span className="text-gray-300">|</span>
                                                                                             </span>
                                                                                         ))}
                                                                                     </div>

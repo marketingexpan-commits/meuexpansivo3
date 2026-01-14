@@ -523,7 +523,7 @@ const AppContent: React.FC = () => {
     if (process.env.NODE_ENV === 'development' && ALLOW_MOCK_LOGIN) console.log(`[Mock] Logged access for ${userId}`);
 
     // Data para o ID do documento de estatísticas (YYYY-MM-DD)
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-CA');
     let ip = 'unknown';
 
     // Tentar obter IP (sem bloquear o fluxo principal se falhar)

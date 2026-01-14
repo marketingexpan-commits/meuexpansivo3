@@ -16,15 +16,19 @@ const calculateSubjectFrequency = (
     calendarEvents?: CalendarEvent[]
 ): string => {
     // Count absences strictly from logs
-    const absences = attendanceRecords.filter(record => {
+    const absences = attendanceRecords.reduce((acc, record) => {
         const rYear = parseInt(record.date.split('-')[0], 10);
         const b = settings ? getDynamicBimester(record.date, settings) : getBimesterFromDate(record.date);
-        return rYear === currentYear &&
+        if (rYear === currentYear &&
             record.discipline.trim().toLowerCase() === subject.trim().toLowerCase() &&
             b === bimester &&
             record.studentStatus &&
-            record.studentStatus[student.id] === AttendanceStatus.ABSENT;
-    }).length;
+            record.studentStatus[student.id] === AttendanceStatus.ABSENT) {
+            const individualCount = record.studentAbsenceCount?.[student.id];
+            return acc + (individualCount !== undefined ? individualCount : (record.lessonCount || 1));
+        }
+        return acc;
+    }, 0);
 
     // RULE: If 0 absences, return '-' for both absence count and frequency
     if (absences === 0) return '-';
@@ -82,7 +86,7 @@ const generateBulletinHtml = (
     const unitInfo = unitDetail;
     const currentDate = new Date().toLocaleDateString('pt-BR');
     const currentYear = getCurrentSchoolYear();
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-CA');
     const calendarBim = settings ? getDynamicBimester(today, settings) : getBimesterFromDate(today);
 
     // Dynamic detection of elapsed bimesters
@@ -126,14 +130,18 @@ const generateBulletinHtml = (
             const currentYear = getCurrentSchoolYear();
 
             const getBimesterAbsences = (bim: number) => {
-                const bAbsences = attendanceRecords.filter(record => {
+                const bAbsences = attendanceRecords.reduce((acc, record) => {
                     const rYear = parseInt(record.date.split('-')[0], 10);
-                    return rYear === currentYear &&
+                    if (rYear === currentYear &&
                         record.discipline.trim().toLowerCase() === g.subject.trim().toLowerCase() &&
                         (settings ? getDynamicBimester(record.date, settings) : getBimesterFromDate(record.date)) === bim &&
                         record.studentStatus &&
-                        record.studentStatus[g.studentId] === AttendanceStatus.ABSENT;
-                }).length;
+                        record.studentStatus[g.studentId] === AttendanceStatus.ABSENT) {
+                        const individualCount = record.studentAbsenceCount?.[g.studentId];
+                        return acc + (individualCount !== undefined ? individualCount : (record.lessonCount || 1));
+                    }
+                    return acc;
+                }, 0);
 
                 return bAbsences;
             };

@@ -19,19 +19,23 @@ const calculateSubjectFrequency = (
 ) => {
     const currentYear = getCurrentSchoolYear();
 
-    const absences = attendanceRecords.filter(record => {
+    const absences = attendanceRecords.reduce((acc, record) => {
         const rYear = parseInt(record.date.split('-')[0], 10);
-        return rYear === currentYear &&
+        if (rYear === currentYear &&
             record.discipline.trim().toLowerCase() === subject.trim().toLowerCase() &&
             (settings ? getDynamicBimester(record.date, settings) : getBimesterFromDate(record.date)) === bimesterIndex &&
             record.studentStatus &&
-            record.studentStatus[gradeEntry.studentId] === AttendanceStatus.ABSENT;
-    }).filter(record => {
-        if (classSchedules && classSchedules.length > 0 && student.unit) {
-            return isClassScheduled(record.date, subject, classSchedules, calendarEvents || [], student.unit, student.gradeLevel, schoolClass);
+            record.studentStatus[gradeEntry.studentId] === AttendanceStatus.ABSENT) {
+
+            if (classSchedules && classSchedules.length > 0 && student.unit) {
+                if (!isClassScheduled(record.date, subject, classSchedules, calendarEvents || [], student.unit, student.gradeLevel, schoolClass)) return acc;
+            }
+
+            const individualCount = record.studentAbsenceCount?.[gradeEntry.studentId];
+            return acc + (individualCount !== undefined ? individualCount : (record.lessonCount || 1));
         }
-        return true; // Fallback: count all if no schedule (legacy/est mode)
-    }).length;
+        return acc;
+    }, 0);
 
     const result = calculateAttendancePercentage(
         subject,
@@ -73,7 +77,7 @@ export const generateSchoolHistory = (
 
     const unitInfo = unitDetail;
     const currentDate = new Date().toLocaleDateString('pt-BR');
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-CA');
     const calendarBim = settings ? getDynamicBimester(today, settings) : getBimesterFromDate(today);
     const currentYear = getCurrentSchoolYear();
 
@@ -213,20 +217,24 @@ export const generateSchoolHistory = (
             const currentYear = getCurrentSchoolYear();
 
             // Annual calculations
-            const totalAbsences = attendanceRecords.filter(record => {
+            const totalAbsences = attendanceRecords.reduce((acc, record) => {
                 const rYear = parseInt(record.date.split('-')[0], 10);
                 const rBim = settings ? getDynamicBimester(record.date, settings) : getBimesterFromDate(record.date);
-                return rYear === currentYear &&
+                if (rYear === currentYear &&
                     record.discipline.trim().toLowerCase() === g.subject.trim().toLowerCase() &&
                     rBim <= elapsedBimesters &&
                     record.studentStatus &&
-                    record.studentStatus[g.studentId] === AttendanceStatus.ABSENT;
-            }).filter(record => {
-                if (classSchedules && classSchedules.length > 0 && student.unit) {
-                    return isClassScheduled(record.date, g.subject, classSchedules, calendarEvents || [], student.unit, student.gradeLevel, student.schoolClass);
+                    record.studentStatus[g.studentId] === AttendanceStatus.ABSENT) {
+
+                    if (classSchedules && classSchedules.length > 0 && student.unit) {
+                        if (!isClassScheduled(record.date, g.subject, classSchedules, calendarEvents || [], student.unit, student.gradeLevel, student.schoolClass)) return acc;
+                    }
+
+                    const individualCount = record.studentAbsenceCount?.[g.studentId];
+                    return acc + (individualCount !== undefined ? individualCount : (record.lessonCount || 1));
                 }
-                return true;
-            }).length;
+                return acc;
+            }, 0);
 
             const startOfYear = `${currentYear}-01-01`;
             let ministradaWorkload = 0;
@@ -256,19 +264,23 @@ export const generateSchoolHistory = (
             const totalFrequency = annualResult ? (annualResult.percent + '%') : '100%';
 
             const renderBimesterCols = (bim: number, bData: any) => {
-                const bAbs = attendanceRecords.filter(record => {
+                const bAbs = attendanceRecords.reduce((acc, record) => {
                     const rYear = parseInt(record.date.split('-')[0], 10);
-                    return rYear === currentYear &&
+                    if (rYear === currentYear &&
                         record.discipline.trim().toLowerCase() === g.subject.trim().toLowerCase() &&
                         (settings ? getDynamicBimester(record.date, settings) : getBimesterFromDate(record.date)) === bim &&
                         record.studentStatus &&
-                        record.studentStatus[g.studentId] === AttendanceStatus.ABSENT;
-                }).filter(record => {
-                    if (classSchedules && classSchedules.length > 0 && student.unit) {
-                        return isClassScheduled(record.date, g.subject, classSchedules, calendarEvents || [], student.unit, student.gradeLevel, student.schoolClass);
+                        record.studentStatus[g.studentId] === AttendanceStatus.ABSENT) {
+
+                        if (classSchedules && classSchedules.length > 0 && student.unit) {
+                            if (!isClassScheduled(record.date, g.subject, classSchedules, calendarEvents || [], student.unit, student.gradeLevel, student.schoolClass)) return acc;
+                        }
+
+                        const individualCount = record.studentAbsenceCount?.[g.studentId];
+                        return acc + (individualCount !== undefined ? individualCount : (record.lessonCount || 1));
                     }
-                    return true;
-                }).length;
+                    return acc;
+                }, 0);
 
                 const freq = calculateSubjectFrequency(student, g, g.subject, bim, attendanceRecords, academicSubjects, settings, calendarEvents, classSchedules, student.schoolClass);
                 const isStarted = bim <= elapsedBimesters;
