@@ -1264,6 +1264,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 <div>
                                                                     <div className="flex items-center gap-2 mb-1">
                                                                         <span className="font-bold text-xs uppercase tracking-wide bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">{guide.subject}</span>
+                                                                        <span className="font-bold text-xs uppercase tracking-wide bg-orange-50 text-orange-700 px-2 py-0.5 rounded border border-orange-100">
+                                                                            {getDynamicBimester(guide.examDate, academicSettings)}º Bim
+                                                                        </span>
                                                                         {isPast ? (
                                                                             <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded">Realizada</span>
                                                                         ) : diffDays === 0 ? (
@@ -1284,6 +1287,19 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             <div className="bg-gray-50 p-4 rounded-md border border-gray-100">
                                                                 <p className="font-bold text-xs text-gray-500 uppercase tracking-wider mb-2">Conteúdo da Avaliação:</p>
                                                                 <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{guide.content}</p>
+                                                                {guide.fileUrl && (
+                                                                    <div className="mt-4 pt-3 border-t border-gray-200">
+                                                                        <a
+                                                                            href={guide.fileUrl}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="inline-flex items-center text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors"
+                                                                        >
+                                                                            <Download className="w-4 h-4 mr-2" />
+                                                                            Baixar Arquivo Anexo (PDF)
+                                                                        </a>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     );

@@ -479,6 +479,8 @@ export interface ExamGuide {
   examDate: string; // YYYY-MM-DD
   title: string; // ex: Avaliação Mensal 1
   content: string; // Tópicos da prova
+  fileUrl?: string; // URL do arquivo PDF anexado
+  fileName?: string; // Nome original do arquivo
   timestamp: string;
   unit: SchoolUnit;
 }
