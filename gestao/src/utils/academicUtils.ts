@@ -146,6 +146,17 @@ export const calculateSchoolDays = (
 // Helper to normalize strings for comparison
 const normalizeStr = (str: string) => str.trim().toLowerCase();
 
+/**
+ * Calculates duration in hours between two HH:mm strings.
+ */
+const getDurationInHours = (startTime: string, endTime: string): number => {
+    if (!startTime || !endTime) return 1;
+    const [startH, startM] = startTime.split(':').map(Number);
+    const [endH, endM] = endTime.split(':').map(Number);
+    const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+    return durationMinutes > 0 ? durationMinutes / 60 : 1;
+};
+
 export const calculateEffectiveTaughtClasses = (
     startDate: string,
     endDate: string,
@@ -171,11 +182,17 @@ export const calculateEffectiveTaughtClasses = (
             if (normalizeClass(schedule.class) !== normalizeClass(schoolClass)) return;
         }
 
-        // Match subject (Normalized)
+        // Match subject (Normalized) and sum durations
         if (schedule.items) {
-            const count = schedule.items.filter((item: any) => normalizeStr(item.subject) === normalizeStr(subjectName)).length;
-            if (count > 0) {
-                scheduleMap[schedule.dayOfWeek] = count;
+            let dailyTotal = 0;
+            schedule.items.forEach((item: any) => {
+                if (normalizeStr(item.subject) === normalizeStr(subjectName)) {
+                    dailyTotal += getDurationInHours(item.startTime, item.endTime);
+                }
+            });
+
+            if (dailyTotal > 0) {
+                scheduleMap[schedule.dayOfWeek] = dailyTotal;
                 hasSchedule = true;
             }
         }
@@ -273,4 +290,39 @@ export const isClassScheduled = (
     // Check if subject exists in items (Normalized)
     const hasSubject = daySchedule.items.some((item: any) => normalizeStr(item.subject) === normalizeStr(subjectName));
     return hasSubject;
+};
+
+/**
+ * Gets the duration in hours for a specific subject on a specific date,
+ * weighted by lessonCount if provided.
+ */
+export const getSubjectDurationForDay = (
+    dateStr: string,
+    subjectName: string,
+    classSchedules: any[],
+    lessonCount: number = 1,
+    gradeLevel?: string,
+    schoolClass?: string
+): number => {
+    const date = new Date(dateStr + 'T00:00:00');
+    const weekDay = date.getDay();
+
+    const daySchedule = classSchedules.find((s: any) => {
+        if (s.dayOfWeek !== weekDay) return false;
+        if (gradeLevel && parseGradeLevel(s.grade).grade !== parseGradeLevel(gradeLevel).grade) return false;
+        if (schoolClass && normalizeClass(s.class) !== normalizeClass(schoolClass)) return false;
+        return true;
+    });
+
+    if (!daySchedule || !daySchedule.items) return lessonCount; // Fallback to 1h per lesson
+
+    const subjectItems = daySchedule.items.filter((item: any) => normalizeStr(item.subject) === normalizeStr(subjectName));
+    if (subjectItems.length === 0) return lessonCount;
+
+    // Calculate total duration and session count
+    const totalDuration = subjectItems.reduce((sum: number, item: any) => sum + getDurationInHours(item.startTime, item.endTime), 0);
+    const totalSessions = subjectItems.length;
+
+    // Weight: (Average Duration) * (Number of Lessons Missed)
+    return (totalDuration / totalSessions) * lessonCount;
 };

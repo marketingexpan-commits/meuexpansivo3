@@ -8,7 +8,7 @@
 import { CURRICULUM_MATRIX } from "../constants";
 import { AttendanceStatus } from "../types";
 import type { GradeEntry, AttendanceRecord, AcademicSubject, AcademicSettings } from "../types";
-import { getCurrentSchoolYear, getDynamicBimester, calculateSchoolDays, calculateEffectiveTaughtClasses } from "./academicUtils";
+import { getCurrentSchoolYear, getDynamicBimester, calculateSchoolDays, calculateEffectiveTaughtClasses, getSubjectDurationForDay } from "./academicUtils";
 
 /**
  * Calculates the number of taught classes for a given period and subject.
@@ -250,6 +250,10 @@ export const calculateGeneralFrequency = (
         if (record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT) {
             const individualCount = record.studentAbsenceCount?.[studentId];
             const weight = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
+
+            if (classSchedules && classSchedules.length > 0) {
+                return acc + getSubjectDurationForDay(record.date, record.discipline, classSchedules, weight, gradeLevel, schoolClass);
+            }
             return acc + weight;
         }
         return acc;
@@ -331,6 +335,10 @@ export const calculateBimesterGeneralFrequency = (
         if (rYear === currentYear && rBim === bimester && record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT) {
             const individualCount = record.studentAbsenceCount?.[studentId];
             const weight = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
+
+            if (classSchedules && classSchedules.length > 0) {
+                return acc + getSubjectDurationForDay(record.date, record.discipline, classSchedules, weight, gradeLevel, schoolClass);
+            }
             return acc + weight;
         }
         return acc;

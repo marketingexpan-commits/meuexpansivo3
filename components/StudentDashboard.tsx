@@ -3,7 +3,7 @@ import { useAcademicData } from '../hooks/useAcademicData';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
 import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial, Occurrence, DailyAgenda, ExamGuide, CalendarEvent, AcademicSubject } from '../types';
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
-import { getBimesterFromDate, getDynamicBimester, normalizeClass, parseGradeLevel, calculateSchoolDays, isClassScheduled, calculateEffectiveTaughtClasses } from '../src/utils/academicUtils';
+import { getBimesterFromDate, getDynamicBimester, normalizeClass, parseGradeLevel, calculateSchoolDays, isClassScheduled, calculateEffectiveTaughtClasses, getSubjectDurationForDay } from '../src/utils/academicUtils';
 import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects, MOCK_CALENDAR_EVENTS } from '../constants'; // Import Sync Fix
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency, calculateBimesterGeneralFrequency, calculateTaughtClasses } from '../utils/frequency';
 import { getStudyTips } from '../services/geminiService';
@@ -151,6 +151,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     calendarEvents = [],
     classSchedules = []
 }) => {
+    // Helper to format workload hours
+    const formatWorkload = (hours: number) => {
+        if (hours === 0) return '-';
+        // Standard mathematical rounding to 1 decimal place
+        const rounded = Math.round(hours * 10) / 10;
+        return `${rounded.toString().replace('.', ',')} h`;
+    };
+
     const { subjects: academicSubjects } = useAcademicData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState({ title: '', tip: '' });
@@ -1556,10 +1564,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 return (
                                                                     <>
                                                                         <td className="px-1 py-2 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-12 font-medium bg-gray-50/30">
-                                                                            {annualWorkload > 0 ? `${annualWorkload} h` : '-'}
+                                                                            {formatWorkload(annualWorkload)}
                                                                         </td>
                                                                         <td className="px-1 py-2 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-12 font-medium bg-gray-50/30">
-                                                                            {ministradaWorkload > 0 ? `${ministradaWorkload} h` : '-'}
+                                                                            {formatWorkload(ministradaWorkload)}
                                                                         </td>
                                                                     </>
                                                                 );
@@ -1577,7 +1585,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                                 if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass)) return acc;
                                                                             }
                                                                             const individualCount = att.studentAbsenceCount?.[student.id];
-                                                                            return acc + (individualCount !== undefined ? individualCount : (att.lessonCount || 1));
+                                                                            const lessonCount = individualCount !== undefined ? individualCount : (att.lessonCount || 1);
+
+                                                                            if (classSchedules && classSchedules.length > 0) {
+                                                                                return acc + getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass);
+                                                                            }
+                                                                            return acc + lessonCount;
                                                                         }
                                                                     }
                                                                     return acc;
@@ -1602,7 +1615,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                         </td>
                                                                         <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs w-8 md:w-10">{(bData.isNotaApproved !== false && bData.isRecuperacaoApproved !== false) ? formatGrade(bData.media) : '-'}</td>
                                                                         <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-8 md:w-10">
-                                                                            {currentAbsences}
+                                                                            {Math.round(currentAbsences)}
                                                                         </td>
                                                                         {(() => {
                                                                             // Calculate F(h) per bimester
@@ -1655,10 +1668,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                                 <>
 
                                                                                     <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs w-10 md:w-12 ${isLowFreq ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência">
-                                                                                        {isBimesterStarted ? (<div className="flex flex-col items-center"><span>{freqPercent !== null ? `${freqPercent}%` : '100%'}</span>{isFreqEstimated && <span className="text-[8px] text-amber-600">⚠ Est.</span>}</div>) : '-'}
+                                                                                        {isBimesterStarted ? (<div className="flex flex-col items-center"><span>{freqPercent !== null ? `${Math.round(freqPercent)}%` : '100%'}</span>{isFreqEstimated && <span className="text-[8px] text-amber-600">⚠ Est.</span>}</div>) : '-'}
                                                                                     </td>
                                                                                     <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-[9px] border-r border-gray-300 w-10 md:w-12 bg-gray-50/50">
-                                                                                        {bMin > 0 ? `${bMin} h` : '-'}
+                                                                                        {formatWorkload(bMin)}
                                                                                     </td>
                                                                                 </>
                                                                             );
@@ -1686,7 +1699,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                                     if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass)) return acc;
                                                                                 }
                                                                                 const individualCount = att.studentAbsenceCount?.[student.id];
-                                                                                return acc + (individualCount !== undefined ? individualCount : (att.lessonCount || 1));
+                                                                                const lessonCount = individualCount !== undefined ? individualCount : (att.lessonCount || 1);
+
+                                                                                if (classSchedules && classSchedules.length > 0) {
+                                                                                    return acc + getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass);
+                                                                                }
+                                                                                return acc + lessonCount;
                                                                             }
                                                                         }
                                                                         return acc;
@@ -1722,10 +1740,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 return (
                                                                     <>
                                                                         <td className="px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs text-gray-500">
-                                                                            {totalAbsences}
+                                                                            {Math.round(totalAbsences)}
                                                                         </td>
                                                                         <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs ${isCritical ? 'text-red-600 bg-red-50' : 'text-gray-600'}`}>
-                                                                            <div className="flex flex-col items-center"><span>{annualFreq !== null ? `${annualFreq}%` : '100%'}</span>{isAnnualEstimated && <span className="text-[8px] text-amber-600">⚠ Est.</span>}</div>
+                                                                            <div className="flex flex-col items-center"><span>{annualFreq !== null ? `${Math.round(annualFreq)}%` : '100%'}</span>{isAnnualEstimated && <span className="text-[8px] text-amber-600">⚠ Est.</span>}</div>
                                                                         </td>
                                                                     </>
                                                                 );
