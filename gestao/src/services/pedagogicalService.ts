@@ -98,5 +98,72 @@ export const pedagogicalService = {
             console.error("Erro ao atualizar nota:", error);
             throw error;
         }
+    },
+
+    // Deletar uma nota específica
+    async deleteGrade(gradeId: string) {
+        try {
+            const { deleteDoc } = await import('firebase/firestore');
+            const docRef = doc(db, GRADES_COLLECTION, gradeId);
+            await deleteDoc(docRef);
+        } catch (error) {
+            console.error("Erro ao deletar nota:", error);
+            throw error;
+        }
+    },
+
+    // Deletar notas em lote (Firestore Batch - Limite 500 por transação)
+    async deleteGradesBatch(gradeIds: string[]) {
+        try {
+            const { writeBatch } = await import('firebase/firestore');
+            const batchSize = 500;
+
+            for (let i = 0; i < gradeIds.length; i += batchSize) {
+                const batch = writeBatch(db);
+                const chunk = gradeIds.slice(i, i + batchSize);
+
+                chunk.forEach(id => {
+                    batch.delete(doc(db, GRADES_COLLECTION, id));
+                });
+
+                await batch.commit();
+            }
+        } catch (error) {
+            console.error("Erro ao deletar notas em lote:", error);
+            throw error;
+        }
+    },
+
+    // Buscar todas as grades horárias
+    async getAllSchedules() {
+        try {
+            const snap = await getDocs(collection(db, 'class_schedules'));
+            return snap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+        } catch (error) {
+            console.error("Erro ao buscar grades horárias:", error);
+            throw error;
+        }
+    },
+
+    // Deletar grades horárias em lote
+    async deleteSchedulesBatch(scheduleIds: string[]) {
+        try {
+            const { writeBatch } = await import('firebase/firestore');
+            const batchSize = 500;
+
+            for (let i = 0; i < scheduleIds.length; i += batchSize) {
+                const batch = writeBatch(db);
+                const chunk = scheduleIds.slice(i, i + batchSize);
+
+                chunk.forEach(id => {
+                    batch.delete(doc(db, 'class_schedules', id));
+                });
+
+                await batch.commit();
+            }
+        } catch (error) {
+            console.error("Erro ao deletar grades em lote:", error);
+            throw error;
+        }
     }
 };

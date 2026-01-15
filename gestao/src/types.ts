@@ -140,6 +140,7 @@ export interface BimesterData {
 export interface GradeEntry {
   id: string;
   studentId: string;
+  teacherId?: string; // ID do professor que lançou a nota
   subject: string;
   bimesters: {
     bimester1: BimesterData;
