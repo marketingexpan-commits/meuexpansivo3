@@ -242,6 +242,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     // State for the Informational Banner visibility
     const [isBannerOpen, setIsBannerOpen] = useState(false);
 
+    // State for Support Center Bimester Filter
+    const [selectedSupportBimester, setSelectedSupportBimester] = useState<number>(1);
+
 
     const MONTH_NAMES = [
         "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -450,20 +453,20 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         }, 100);
     };
 
-    // CORREÇÃO: Adicionar verificação de segurança para bimesters
+
+
+    // CORREÇÃO: Adicionar verificação de segurança para bimesters e filtrar por bimestre selecionado
     const supportNeededGrades = studentGrades.filter(g => {
-        if (!g.bimesters) return false; // Verificação de segurança
+        if (!g.bimesters) return false;
 
         const media = g.mediaAnual || 0;
-        const isLowGrade = media < 7.0 && g.situacaoFinal !== 'Aprovado';
-        const isWarningGrade = media >= 7.0 && media <= 8.5;
-        const isHighGrade = media > 8.5;
-        // FIX: Explicitly type 'b' to resolve 'unknown' type from Object.values
-        const hasDifficulty = Object.values(g.bimesters).some((b: BimesterData) =>
-            b && b.difficultyTopic && b.difficultyTopic.trim().length > 5
-        );
+        // Check ONLY the selected bimester for difficulty
+        const key = `bimester${selectedSupportBimester}`;
+        const bData = (g.bimesters as any)[key] as BimesterData;
 
-        return isLowGrade || isWarningGrade || isHighGrade || hasDifficulty;
+        const hasDifficulty = bData && bData.difficultyTopic && bData.difficultyTopic.trim().length > 5;
+        // Only show if difficulty is explicitly identified by the teacher
+        return hasDifficulty;
     });
 
     const getStatusBadge = (status: CompetencyStatus | null) => {
@@ -1791,94 +1794,99 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         </div>
                     )}
 
-                    {currentView === 'support' && supportNeededGrades.length > 0 && (
+
+
+
+
+                    {currentView === 'support' && (
                         <div className="mt-8 print:hidden animate-fade-in-up">
                             <h3 className="text-xl font-bold mb-4 text-gray-800 border-b border-gray-200 pb-2 flex items-center gap-2">
                                 <LifeBuoy className="w-6 h-6 text-blue-950" />
                                 Centro de Suporte ao Aluno
                             </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {supportNeededGrades.map((grade) => {
-                                    const teacherPhone = getTeacherPhone(grade.subject);
-                                    const media = grade.mediaAnual || 0;
-                                    const isLowGrade = media < 7.0 && grade.situacaoFinal !== 'Aprovado';
 
-                                    const difficulties = grade.bimesters ? Object.entries(grade.bimesters)
-                                        .map(([key, data]) => {
-                                            const bimesterNumber = key.replace('bimester', '');
-                                            return {
-                                                bimester: `${bimesterNumber}º Bimestre`,
-                                                topic: (data as BimesterData).difficultyTopic,
+                            {/* Bimester Selector */}
+                            <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+                                {[1, 2, 3, 4].map((bim) => (
+                                    <button
+                                        key={bim}
+                                        onClick={() => setSelectedSupportBimester(bim)}
+                                        className={`px-4 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap ${selectedSupportBimester === bim
+                                            ? 'bg-blue-900 text-white shadow-md transform scale-105'
+                                            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                                            }`}
+                                    >
+                                        {bim}º Bimestre
+                                    </button>
+                                ))}
+                            </div>
+
+                            {supportNeededGrades.length === 0 ? (
+                                <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-100">
+                                    <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <LifeBuoy className="w-8 h-8 text-blue-300" />
+                                    </div>
+                                    <h3 className="text-lg font-bold text-gray-700 mb-2">Tudo certo por aqui!</h3>
+                                    <p className="text-gray-500 max-w-md mx-auto">
+                                        Nenhuma dificuldade foi apontada pelos professores para o {selectedSupportBimester}º Bimestre.
+                                        Continue se dedicando aos estudos! 🚀
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {supportNeededGrades.map((grade) => {
+                                        const teacherPhone = getTeacherPhone(grade.subject);
+                                        const media = grade.mediaAnual || 0;
+                                        const isLowGrade = media < 7.0 && grade.situacaoFinal !== 'Aprovado';
+
+                                        // Get specific bimester data
+                                        const bKey = `bimester${selectedSupportBimester}`;
+                                        const bData = (grade.bimesters as any)[bKey] as BimesterData;
+                                        const difficultyTopic = bData?.difficultyTopic;
+
+                                        let statusConfig = {
+                                            color: 'border-l-blue-950', // Default color
+                                            badge: '',
+                                            badgeColor: '',
+                                            message: '',
+                                            showContactButton: false
+                                        };
+
+                                        // Status logic based on bimester media (if available) or annual
+                                        if (bData && bData.media !== undefined && bData.media !== null && bData.media !== -1) {
+                                            if (bData.media < 7.0) {
+                                                statusConfig = { color: 'border-l-red-500', badge: 'Atenção', badgeColor: 'bg-red-100 text-red-800', message: 'Nota abaixo da média. Recomendamos reforço.', showContactButton: true };
+                                            } else if (bData.media >= 7.0) {
+                                                statusConfig = { color: 'border-l-blue-500', badge: 'Bom', badgeColor: 'bg-blue-100 text-blue-800', message: '', showContactButton: false };
                                             }
-                                        })
-                                        .filter(d => d.topic && d.topic.trim().length > 5) : [];
+                                        } else if (isLowGrade) {
+                                            statusConfig = { color: 'border-l-red-500', badge: 'Atenção', badgeColor: 'bg-red-100 text-red-800', message: 'Nota abaixo da média. Recomendamos reforço.', showContactButton: true };
+                                        }
 
-                                    let statusConfig = {
-                                        color: 'border-l-gray-300',
-                                        badge: '',
-                                        badgeColor: '',
-                                        message: '',
-                                        showContactButton: false
-                                    };
+                                        const waPhone = teacherPhone ? teacherPhone.replace(/\D/g, '') : '';
 
-                                    if (isLowGrade) {
-                                        statusConfig = { color: 'border-l-red-500', badge: 'Atenção', badgeColor: 'bg-red-100 text-red-800', message: 'Nota abaixo da média. Recomendamos reforço.', showContactButton: true };
-                                    } else if (media >= 7.0 && media <= 8.5) {
-                                        statusConfig = { color: 'border-l-slate-400', badge: 'Bom', badgeColor: 'bg-slate-100 text-slate-800', message: 'Bom trabalho! Você atingiu a média e pode evoluir ainda mais. 🚀', showContactButton: false };
-                                    } else if (media > 8.5) {
-                                        statusConfig = { color: 'border-l-blue-950', badge: 'Excelente', badgeColor: 'bg-blue-50 text-blue-950', message: 'Uau! Resultado extraordinário! Sua dedicação está fazendo toda a diferença. 🏆', showContactButton: false };
-                                    }
+                                        return (
+                                            <div key={grade.id} className={`p-5 border-l-4 rounded-lg bg-white shadow-md transition-shadow hover:shadow-lg ${statusConfig.color} flex flex-col`}>
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <h4 className="text-lg font-bold text-gray-800">{grade.subject}</h4>
+                                                    {statusConfig.badge && <span className={`${statusConfig.badgeColor} text-xs font-bold px-2 py-1 rounded`}>{statusConfig.badge}</span>}
+                                                </div>
 
-                                    const waPhone = teacherPhone ? teacherPhone.replace(/\D/g, '') : '';
+                                                <div className="mb-3">
+                                                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                                                        Referência: <span className="text-gray-700">{selectedSupportBimester}º Bimestre</span>
+                                                    </span>
+                                                </div>
 
-                                    return (
-                                        <div key={grade.id} className={`p-5 border-l-4 rounded-lg bg-white shadow-md transition-shadow hover:shadow-lg ${statusConfig.color} flex flex-col`}>
-                                            <div className="flex justify-between items-start mb-3">
-                                                <h4 className="text-lg font-bold text-gray-800">{grade.subject}</h4>
-                                                {statusConfig.badge && <span className={`${statusConfig.badgeColor} text-xs font-bold px-2 py-1 rounded`}>{statusConfig.badge}</span>}
-                                            </div>
-
-                                            {(() => {
-                                                if (difficulties.length > 0) return null;
-                                                const relevantBimesters = grade.bimesters ? Object.entries(grade.bimesters)
-                                                    .filter(([key, data]) => {
-                                                        const bData = data as BimesterData;
-                                                        // Prioritize persisted 'faltas' from sync, fallback to dynamic
-                                                        if (bData.media === undefined || bData.media === null) return false;
-
-                                                        // Filter based on the status category
-                                                        if (isLowGrade) return bData.media < 7.0 && bData.isApproved !== false;
-                                                        if (media >= 7.0 && media <= 8.5) return bData.media >= 7.0 && bData.media <= 8.5 && bData.isApproved !== false;
-                                                        if (media > 8.5) return bData.media > 8.5 && bData.isApproved !== false;
-
-                                                        return false;
-                                                    })
-                                                    .map(([key]) => key.replace('bimester', ''))
-                                                    .sort() : [];
-
-                                                if (relevantBimesters.length === 0) return null;
-
-                                                const lastBimester = relevantBimesters[relevantBimesters.length - 1];
-
-                                                return (
-                                                    <div className="mb-3">
-                                                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider bg-gray-50 px-2 py-1 rounded border border-gray-100">
-                                                            Referência: <span className="text-gray-700">{lastBimester}º Bimestre</span>
-                                                        </span>
-                                                    </div>
-                                                );
-                                            })()}
-
-                                            <div className="mb-4 space-y-3 flex-grow">
-                                                {difficulties.map(d => (
-                                                    <div key={d.bimester} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                                <div className="mb-4 space-y-3 flex-grow">
+                                                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
                                                         <p className="font-bold text-gray-700 block mb-2 text-sm">
-                                                            🔍 Dificuldade Identificada ({d.bimester}):
+                                                            🔍 Dificuldade Identificada:
                                                         </p>
-                                                        <p className="text-sm text-gray-600 italic pl-2 border-l-2 border-gray-300">"{d.topic}"</p>
+                                                        <p className="text-sm text-gray-600 italic pl-2 border-l-2 border-gray-300">"{difficultyTopic}"</p>
                                                         <div className="mt-3">
                                                             <button
-                                                                onClick={() => handleGetHelp(grade.subject as Subject, d.topic!)}
+                                                                onClick={() => handleGetHelp(grade.subject as Subject, difficultyTopic!)}
                                                                 className="w-full bg-gradient-to-r from-blue-950 to-slate-900 text-white hover:from-blue-900 hover:to-slate-800 py-2 rounded-lg text-xs font-bold flex items-center justify-center transition-all shadow-sm hover:shadow-md transform active:scale-95"
                                                             >
                                                                 <Bot className="w-4 h-4 mr-2" />
@@ -1886,13 +1894,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             </button>
                                                         </div>
                                                     </div>
-                                                ))}
 
-                                                {statusConfig.message && <p className="text-sm text-gray-500 italic font-medium pt-2">{statusConfig.message}</p>}
-                                            </div>
+                                                    {statusConfig.message && <p className="text-sm text-gray-500 italic font-medium pt-2">{statusConfig.message}</p>}
+                                                </div>
 
-                                            <div className="mt-auto border-t border-gray-100 pt-4">
-                                                {statusConfig.showContactButton && (
+                                                <div className="mt-auto border-t border-gray-100 pt-4">
                                                     <button
                                                         onClick={() => handleOpenTicketModal(grade.subject)}
                                                         className="w-full bg-blue-600 text-white hover:bg-blue-700 py-2.5 rounded-md text-sm font-bold flex items-center justify-center transition-colors shadow-sm"
@@ -1900,12 +1906,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                         <Mail className="w-4 h-4 mr-2" />
                                                         Enviar Dúvida ao Professor
                                                     </button>
-                                                )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     )}
 
