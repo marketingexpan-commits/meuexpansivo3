@@ -23,7 +23,8 @@ import {
     Trash2,
     Filter,
     Calendar as CalendarIcon,
-    Printer
+    Printer,
+    Loader2
 } from 'lucide-react';
 
 
@@ -58,10 +59,13 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
 
     // --- STATE ---
 
-    const [quickClassFilter, setQuickClassFilter] = useState<string>('all'); // NEW: Quick Filter
-    const [quickGradeFilter, setQuickGradeFilter] = useState<string>('all'); // NEW: Filter by Grade
-    const [quickShiftFilter, setQuickShiftFilter] = useState<string>('all'); // NEW: Filter by Shift
-    const [quickSubjectFilter, setQuickSubjectFilter] = useState<string>('all'); // NEW: Filter by Subject
+    const [quickClassFilter, setQuickClassFilter] = useState<string>('all');
+    const [quickGradeFilter, setQuickGradeFilter] = useState<string>('all');
+    const [quickShiftFilter, setQuickShiftFilter] = useState<string>('all');
+    const [quickSubjectFilter, setQuickSubjectFilter] = useState<string>('all');
+
+    // NEW: Navigation State
+    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'attendance' | 'calendar'>('menu');
     // --- OCCURRENCE HISTORY STATE ---
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [historyOccurrences, setHistoryOccurrences] = useState<Occurrence[]>([]);
@@ -106,13 +110,13 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
 
     // --- ATTENDANCE MANAGEMENT STATE ---
     const [isAttendanceManageModalOpen, setIsAttendanceManageModalOpen] = useState(false);
-    const [manageAttendanceStep, setManageAttendanceStep] = useState<'filters' | 'form'>('filters');
+    const [manageAttendanceStep, setManageAttendanceStep] = useState<'filters' | 'list'>('filters');
     const [manageFilters, setManageFilters] = useState({
         date: new Date().toLocaleDateString('en-CA'),
         grade: '',
         class: 'A',
         shift: 'Matutino',
-        subject: '',
+        subjectId: '',
         lessonCount: 1
     });
     const [manageStudents, setManageStudents] = useState<Student[]>([]);
@@ -539,25 +543,155 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
         );
     }, [historyOccurrences, historyFilterTerm]);
 
+    // --- ATTENDANCE MANAGEMENT LOGIC ---
+    const handleFetchAttendanceForManagement = async () => {
+        if (!manageFilters.grade || !manageFilters.class || !manageFilters.shift || !manageFilters.date) {
+            alert("Preencha todos os campos obrigatórios.");
+            return;
+        }
+
+        setIsLoadingManageAttendance(true);
+        try {
+            // 1. Fetch Students
+            const studentsSnap = await db.collection('students')
+                .where('unit', '==', coordinator.unit)
+                .where('schoolClass', '==', manageFilters.class)
+                .get();
+
+            let students = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Student[];
+
+            // Filter by shift/grade in memory
+            students = students.filter(s => {
+                const dbGrade = (s.gradeLevel || '').trim();
+                const filterGrade = manageFilters.grade.trim();
+                return s.shift === manageFilters.shift && (dbGrade === filterGrade || dbGrade.startsWith(filterGrade));
+            });
+
+            if (students.length === 0) {
+                alert("Nenhum aluno encontrado.");
+                setIsLoadingManageAttendance(false);
+                return;
+            }
+
+            // 2. Fetch Existing Attendance
+            const attendanceSnap = await db.collection('attendance')
+                .where('unit', '==', coordinator.unit)
+                .where('date', '==', manageFilters.date)
+                .where('schoolClass', '==', manageFilters.class)
+                .get();
+
+            const existingAttendance = attendanceSnap.docs.map(d => d.data());
+            const statusMap: Record<string, AttendanceStatus> = {};
+            const overrideMap: Record<string, number> = {};
+
+            students.forEach(s => {
+                const record = existingAttendance.find((r: any) => r.studentId === s.id);
+                if (record) {
+                    statusMap[s.id] = record.status as AttendanceStatus;
+                    // If there's an override logic in future, handle here
+                } else {
+                    statusMap[s.id] = AttendanceStatus.PRESENT; // Default
+                }
+            });
+
+            setManageStudents(students);
+            setManageStatuses(statusMap);
+            setManageAttendanceStep('list'); // Switch to list view (step 2)
+
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao buscar dados de frequência.");
+        } finally {
+            setIsLoadingManageAttendance(false);
+        }
+    };
+
+    const handleSaveAttendanceManagement = async () => {
+        if (!confirm("Confirma o salvamento da chamada?")) return;
+        setIsSavingAttendance(true);
+        try {
+            const batch = db.batch();
+
+            for (const student of manageStudents) {
+                const status = manageStatuses[student.id];
+
+                // Construct ID (assuming unique per student per date/class/subject? or just date/student)
+                // If subjectId is present, we might want to include it, but typically attendance IS daily.
+                // If subjectId provided, it's specific.
+                const docId = `${manageFilters.date}_${student.id}${manageFilters.subjectId ? `_${manageFilters.subjectId}` : ''}`;
+                const docRef = db.collection('attendance').doc(docId);
+
+                const data: any = {
+                    date: manageFilters.date,
+                    studentId: student.id,
+                    studentName: student.name,
+                    schoolClass: manageFilters.class,
+                    gradeLevel: manageFilters.grade,
+                    shift: manageFilters.shift,
+                    unit: coordinator.unit,
+                    status: status,
+                    lessonCount: manageFilters.lessonCount,
+                    recordedBy: manageTeacherName || coordinator.name,
+                    timestamp: new Date().toISOString()
+                };
+
+                if (manageFilters.subjectId) {
+                    // find subject name
+                    const subj = academicSubjects.find(s => s.id === manageFilters.subjectId);
+                    data.subject = subj?.name || '';
+                    data.subjectId = manageFilters.subjectId;
+                }
+
+                batch.set(docRef, data, { merge: true });
+            }
+
+            await batch.commit();
+            alert("Chamada salva com sucesso!");
+            setManageAttendanceStep('filters');
+            setManageStudents([]);
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao salvar chamada.");
+        } finally {
+            setIsSavingAttendance(false);
+        }
+    };
+
+
+
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans">
-            <div className="w-full max-w-7xl bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col">
+            <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${activeTab === 'menu' ? 'max-w-2xl' :
+                (activeTab === 'occurrences' || activeTab === 'attendance') ? 'max-w-3xl' :
+                    'max-w-5xl'
+                }`}>
 
                 {/* MAIN CONTENT */}
                 <main className="flex-1 w-full p-4 md:p-8 bg-gray-50/50 overflow-y-auto">
 
                     {/* Welcome Card with inline header info */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-blue-100 p-6 mb-8">
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-6">
                         {/* Compact top bar with logout */}
-                        <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
-                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                                <span className="font-medium text-gray-800">{coordinator.name}</span>
-                                <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                                <span className="text-xs">{coordinator.unit}</span>
+                        <div className="flex justify-between items-center mb-3 pb-2 border-b border-gray-100">
+                            <div className="flex items-center gap-2 text-base text-gray-600">
+                                {activeTab !== 'menu' && (
+                                    <button
+                                        onClick={() => setActiveTab('menu')}
+                                        className="p-1.5 hover:bg-gray-100 rounded-full transition-colors text-gray-600 -ml-1 mr-1"
+                                        title="Voltar ao Menu"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                                        </svg>
+                                    </button>
+                                )}
+                                <span className="font-bold text-gray-800">{coordinator.name}</span>
+                                <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+                                <span className="text-gray-500">{coordinator.unit}</span>
                                 {coordinator.segment && (
                                     <>
-                                        <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                                        <span className="text-xs text-gray-500">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+                                        <span className="text-gray-500">
                                             {coordinator.segment === CoordinationSegment.INFANTIL_FUND1 ? 'Infantil & Fund. I' :
                                                 coordinator.segment === CoordinationSegment.FUND2_MEDIO ? 'Fund. II & Médio' : 'Geral'}
                                         </span>
@@ -565,42 +699,6 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                 )}
                             </div>
                             <div className="flex items-center gap-3">
-
-                                <Button
-                                    variant="primary"
-                                    onClick={() => setIsOccModalOpen(true)}
-                                    className="text-sm font-semibold py-1.5 px-4 !bg-blue-950 hover:!bg-blue-900 flex items-center gap-2"
-                                >
-                                    <ClipboardList className="w-4 h-4" />
-                                    Postar Ocorrência
-                                </Button>
-                                <Button
-                                    variant="primary"
-                                    onClick={() => setIsAttendanceManageModalOpen(true)}
-                                    className="text-sm font-semibold py-1.5 px-4 !bg-emerald-600 hover:!bg-emerald-700 flex items-center gap-2 text-white shadow-sm"
-                                >
-                                    <ClipboardList className="w-4 h-4" />
-                                    Gerenciar Chamadas
-                                </Button>
-                                <Button
-                                    variant="primary"
-                                    onClick={() => { setIsHistoryModalOpen(true); handleFetchOccurrenceHistory(); }}
-                                    className="text-sm font-semibold py-1.5 px-4 flex items-center gap-2 shadow-sm hover:opacity-90 transition-opacity"
-                                    style={{ backgroundColor: '#020617', color: '#FFFFFF' }}
-                                >
-                                    <ClipboardList className="w-4 h-4" />
-                                    Gerenciar Ocorrências
-                                </Button>
-                                <Button
-                                    variant="primary"
-                                    onClick={() => setIsCalendarModalOpen(true)}
-                                    className="text-sm font-semibold py-1.5 px-4 flex items-center gap-2 shadow-sm hover:opacity-90 transition-opacity"
-                                    style={{ backgroundColor: '#1e3a8a', color: '#FFFFFF' }}
-                                >
-                                    <CalendarIcon className="w-4 h-4" />
-                                    Calendário
-                                </Button>
-
                                 <Button
                                     variant="secondary"
                                     onClick={onLogout}
@@ -613,41 +711,98 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
 
                         {/* Welcome Message */}
                         <div className="flex flex-col items-start text-left">
-                            <div className="flex items-center gap-2 mt-6 mb-8 pl-1">
-                                <div className="h-10 w-auto shrink-0">
-                                    <SchoolLogo className="!h-full w-auto" />
+                            {activeTab === 'menu' && (
+                                <div className="flex items-center gap-2 mt-4 mb-6 pl-1">
+                                    <div className="h-10 w-auto shrink-0">
+                                        <SchoolLogo className="!h-full w-auto" />
+                                    </div>
+                                    <div className="flex flex-col justify-center">
+                                        <span className="text-[9px] text-orange-600 font-bold uppercase tracking-[0.15em] leading-none mb-1">Aplicativo</span>
+                                        <h1 className="text-lg font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
+                                        <span className="text-[9px] text-blue-950/60 font-bold uppercase tracking-wider leading-none mt-1">Portal do Coordenador</span>
+                                    </div>
                                 </div>
-                                <div className="flex flex-col justify-center">
-                                    <span className="text-[9px] text-orange-600 font-bold uppercase tracking-[0.15em] leading-none mb-1">Aplicativo</span>
-                                    <h1 className="text-lg font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
-                                    <span className="text-[9px] text-blue-950/60 font-bold uppercase tracking-wider leading-none mt-1">Gestão Pedagógica</span>
-                                </div>
-                            </div>
+                            )}
                             <p className="text-gray-600 max-w-2xl">
-                                Utilize os filtros abaixo para localizar turmas e aprovar notas ou alterações pendentes de professores.
-                                Este ambiente é focado exclusivamente em rotinas pedagógicas.
+                                {activeTab === 'menu'
+                                    ? "Selecione uma opção para gerenciar as atividades pedagógicas da unidade."
+                                    : activeTab === 'approvals'
+                                        ? "Utilize os filtros abaixo para localizar e aprovar notas pendentes."
+                                        : activeTab === 'occurrences'
+                                            ? "Gerencie o histórico e registre novas ocorrências disciplinares."
+                                            : activeTab === 'attendance'
+                                                ? "Controle e lançamentos manuais de frequência diária."
+                                                : "Calendário letivo da unidade."
+                                }
                             </p>
                         </div>
                     </div>
 
-                    {/* FILTERS CARD */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8">
-
-                        <div className="w-full">
-                            <Button
-                                onClick={handleFetchPendingGrades}
-                                disabled={loading}
-                                className="w-full py-4 text-lg !bg-blue-950 hover:!bg-black shadow-xl text-white font-bold rounded-xl transition-all transform hover:scale-[1.01]"
+                    {/* MENU GRID (activeTab === 'menu') */}
+                    {activeTab === 'menu' && (
+                        <div className="animate-fade-in-up grid grid-cols-2 gap-4 mb-8">
+                            <button
+                                onClick={() => setActiveTab('approvals')}
+                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
                             >
-                                {loading ? 'Carregando...' : '🔍 Buscar Todas as Pendências'}
-                            </Button>
+                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                    <Search className="w-6 h-6 text-blue-950" />
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-sm text-center">Pendências de Notas</h3>
+                            </button>
+
+                            <button
+                                onClick={() => { setActiveTab('occurrences'); /* Prepare Occurrences? */ }}
+                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                            >
+                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                    <ClipboardList className="w-6 h-6 text-blue-950" />
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-sm text-center">Ocorrências</h3>
+                            </button>
+
+                            <button
+                                onClick={() => setActiveTab('attendance')}
+                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                            >
+                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                    <CheckCircle2 className="w-6 h-6 text-blue-950" />
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-sm text-center">Gestão de Chamadas</h3>
+                            </button>
+
+                            <button
+                                onClick={() => setActiveTab('calendar')}
+                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                            >
+                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                    <CalendarIcon className="w-6 h-6 text-blue-950" />
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-sm text-center">Calendário Escolar</h3>
+                            </button>
                         </div>
+                    )}
 
-                    </div>
+                    {/* APPROVALS VIEW (activeTab === 'approvals') */}
+                    {activeTab === 'approvals' && (
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8 animate-fade-in-up">
 
-                    {/* RESULTS AREA */}
-                    {pendingGradesStudents.length === 0 && !loading && (
-                        <div className="text-center py-12 bg-white rounded-2xl border border-gray-200 border-dashed">
+                            <div className="w-full">
+                                <Button
+                                    onClick={handleFetchPendingGrades}
+                                    disabled={loading}
+                                    className="w-full py-4 text-lg !bg-blue-950 hover:!bg-black shadow-xl text-white font-bold rounded-xl transition-all transform hover:scale-[1.01]"
+                                >
+                                    {loading ? 'Carregando...' : '🔍 Buscar Todas as Pendências'}
+                                </Button>
+                            </div>
+
+                        </div>
+                    )}
+
+                    {/* RESULTS AREA (Only for Approvals) */}
+                    {activeTab === 'approvals' && pendingGradesStudents.length === 0 && !loading && (
+                        <div className="text-center py-12 bg-white rounded-2xl border border-gray-200 border-dashed animate-fade-in-up">
                             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-950/10 text-blue-950 mb-4">
                                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             </div>
@@ -656,9 +811,9 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                         </div>
                     )}
 
-                    {/* QUICK FILTERS BAR */}
-                    {pendingGradesStudents.length > 0 && (
-                        <div className="mb-6 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+                    {/* QUICK FILTERS BAR (Only for Approvals) */}
+                    {activeTab === 'approvals' && pendingGradesStudents.length > 0 && (
+                        <div className="mb-6 bg-gray-50/50 p-4 rounded-xl border border-gray-100 animate-fade-in-up">
                             <div className="flex flex-wrap gap-4 items-end">
 
                                 {/* CLASS FILTER (Turma) */}
@@ -741,962 +896,838 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                         </div>
                     )}
 
-                    {/* EMPTY STATE FOR FILTER */}
-                    {filteredDisplayStudents.length === 0 && pendingGradesStudents.length > 0 && (
-                        <div className="text-center py-12 bg-gray-50 rounded-xl border border-gray-200 border-dashed mb-6">
+                    {/* EMPTY STATE FOR FILTER (Only for Approvals) */}
+                    {activeTab === 'approvals' && filteredDisplayStudents.length === 0 && pendingGradesStudents.length > 0 && (
+                        <div className="text-center py-12 bg-gray-50 rounded-xl border border-gray-200 border-dashed mb-6 animate-fade-in-up">
                             <p className="text-gray-500 italic">Nenhum aluno encontrado com os filtros selecionados.</p>
                             <button onClick={() => { setQuickClassFilter('all'); setQuickGradeFilter('all'); setQuickShiftFilter('all'); setQuickSubjectFilter('all'); }} className="text-blue-950 font-bold text-sm mt-2 hover:underline">Limpar filtros</button>
                         </div>
                     )}
 
-                    <div className="space-y-6">
-                        {filteredDisplayStudents.map((student: any) => {
-                            let grades = pendingGradesMap[student.id] || [];
-                            if (quickSubjectFilter !== 'all') {
-                                grades = grades.filter(g => g.subject === quickSubjectFilter);
-                            }
-                            if (grades.length === 0) return null;
+                    {activeTab === 'approvals' && (
+                        <div className="space-y-6">
+                            {filteredDisplayStudents.map((student: any) => {
+                                let grades = pendingGradesMap[student.id] || [];
+                                if (quickSubjectFilter !== 'all') {
+                                    grades = grades.filter(g => g.subject === quickSubjectFilter);
+                                }
+                                if (grades.length === 0) return null;
 
-                            return (
-                                <div key={student.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden animate-fade-in-up">
-                                    <div className="p-4 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-blue-200 flex items-center justify-center text-blue-950 font-bold text-sm">
-                                                {student.name.substring(0, 2).toUpperCase()}
-                                            </div>
-                                            <div>
-                                                <h3 className="font-bold text-gray-800">{student.name}</h3>
-                                                <div className="flex gap-2 text-xs text-gray-600">
-                                                    <span className="bg-white px-2 py-0.5 rounded border border-gray-200">{student.code}</span>
-                                                    <span className="bg-white px-2 py-0.5 rounded border border-gray-200">{student.gradeLevel}</span>
-                                                    <span className="bg-white px-2 py-0.5 rounded border border-gray-200">{student.schoolClass}</span>
+                                return (
+                                    <div key={student.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden animate-fade-in-up">
+                                        <div className="p-4 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-blue-200 flex items-center justify-center text-blue-950 font-bold text-sm">
+                                                    {student.name.substring(0, 2).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-bold text-gray-800">{student.name}</h3>
+                                                    <div className="flex gap-2 text-xs text-gray-600">
+                                                        <span className="bg-white px-2 py-0.5 rounded border border-gray-200">{student.code}</span>
+                                                        <span className="bg-white px-2 py-0.5 rounded border border-gray-200">{student.gradeLevel}</span>
+                                                        <span className="bg-white px-2 py-0.5 rounded border border-gray-200">{student.schoolClass}</span>
+                                                    </div>
                                                 </div>
                                             </div>
+                                            <div className="text-xs font-bold text-blue-950 bg-blue-100 px-3 py-1 rounded-full">
+                                                {grades.length} Pendência(s)
+                                            </div>
                                         </div>
-                                        <div className="text-xs font-bold text-blue-950 bg-blue-100 px-3 py-1 rounded-full">
-                                            {grades.length} Pendência(s)
+                                        <div className="p-0">
+                                            <div className="overflow-x-auto pb-2">
+                                                <table className="w-full text-[11px] md:text-xs text-left border-collapse border border-gray-200">
+                                                    <thead className="bg-gray-50 text-gray-500 border-b border-gray-300">
+                                                        <tr>
+                                                            <th rowSpan={2} className="px-2 py-2 font-bold uppercase border-r border-gray-300 w-32 sticky left-0 bg-gray-50 z-10 shadow-sm">Disciplina</th>
+                                                            {[1, 2, 3, 4].map(num => (
+                                                                <th key={num} colSpan={5} className="px-1 py-1 text-center font-bold uppercase border-r border-gray-300">
+                                                                    {num}º Bim
+                                                                </th>
+                                                            ))}
+                                                            <th rowSpan={2} className="px-1 py-1 text-center font-bold uppercase border-r border-gray-300">Média<br />Anual</th>
+                                                            <th rowSpan={2} className="px-1 py-1 text-center font-bold text-amber-700 uppercase border-r border-gray-300 bg-amber-50">Prova<br />Final</th>
+                                                            <th rowSpan={2} className="px-1 py-1 text-center font-bold text-blue-900 uppercase border-r border-gray-300 bg-blue-50">Média<br />Final</th>
+                                                            <th rowSpan={2} className="px-1 py-1 text-center font-bold uppercase border-r border-gray-300">%<br />Tot</th>
+                                                            <th rowSpan={2} className="px-1 py-1 text-center font-bold uppercase">Situação</th>
+                                                            <th rowSpan={2} className="px-2 py-2 text-center font-bold uppercase w-20 bg-gray-100">Ação</th>
+                                                        </tr>
+                                                        <tr className="bg-gray-100 text-[10px]">
+                                                            {[1, 2, 3, 4].map(num => (
+                                                                <React.Fragment key={num}>
+                                                                    <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold w-8 md:w-10" title="Nota">N</th>
+                                                                    <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold w-8 md:w-10" title="Recuperação">R</th>
+                                                                    <th className="px-1 py-1 text-center border-r border-gray-300 font-bold bg-gray-200 w-8 md:w-10" title="Média">M</th>
+                                                                    <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold w-8 md:w-10" title="Faltas">F</th>
+                                                                    <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold w-10 md:w-12" title="Frequência">%</th>
+                                                                </React.Fragment>
+                                                            ))}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {(() => {
+                                                            const subjectsInCurriculum = getCurriculumSubjects(student.gradeLevel || "");
+
+                                                            // 1. Matérias existentes
+                                                            const existingGrades = (grades || [])
+                                                                .filter(g => subjectsInCurriculum.length === 0 || subjectsInCurriculum.includes(g.subject))
+                                                                .map(grade => {
+                                                                    const calculatedBimesters = {
+                                                                        bimester1: calculateBimesterMedia(grade.bimesters.bimester1),
+                                                                        bimester2: calculateBimesterMedia(grade.bimesters.bimester2),
+                                                                        bimester3: calculateBimesterMedia(grade.bimesters.bimester3),
+                                                                        bimester4: calculateBimesterMedia(grade.bimesters.bimester4),
+                                                                    };
+                                                                    const finalData = calculateFinalData(calculatedBimesters, grade.recuperacaoFinal, isYearFinished);
+                                                                    return { ...grade, bimesters: calculatedBimesters, ...finalData };
+                                                                });
+
+                                                            // 2. Apenas ordenar os existentes (não preencher faltantes)
+                                                            let finalGrades: any[] = [...existingGrades];
+                                                            if (subjectsInCurriculum.length > 0) {
+                                                                finalGrades.sort((a, b) => subjectsInCurriculum.indexOf(a.subject) - subjectsInCurriculum.indexOf(b.subject));
+                                                            }
+
+                                                            return (
+                                                                <>
+                                                                    {finalGrades.map(grade => {
+                                                                        const isRecFinalPending = grade.recuperacaoFinalApproved === false;
+
+                                                                        // Resolve teacher Name
+                                                                        const tName = teachersMap[grade.teacherId || ''] || grade.teacherName || 'N/A';
+
+                                                                        return (
+                                                                            <tr key={grade.id} className="hover:bg-blue-50 transition-colors border-b last:border-0 border-gray-200">
+                                                                                <td className="px-2 py-2 border-r border-gray-300 sticky left-0 bg-white z-10 shadow-sm">
+                                                                                    <div className="font-bold text-gray-700">{grade.subject}</div>
+                                                                                    <div className="text-[9px] text-gray-400 mt-0.5">{tName}</div>
+                                                                                </td>
+
+                                                                                {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
+                                                                                    const bData = grade.bimesters[key as keyof typeof grade.bimesters];
+                                                                                    const isNotaPending = bData.isNotaApproved === false || (bData.isApproved === false && bData.nota !== null && bData.recuperacao === null);
+                                                                                    const isRecPending = bData.isRecuperacaoApproved === false || (bData.isApproved === false && bData.recuperacao !== null);
+
+                                                                                    const cellClass = (pending: boolean) =>
+                                                                                        `px-1 py-2 text-center border-r border-gray-300 relative ${pending ? 'bg-yellow-100 font-bold text-yellow-900 ring-1 ring-inset ring-yellow-300' : ''}`;
+
+                                                                                    return (
+                                                                                        <React.Fragment key={key}>
+                                                                                            <td className={cellClass(isNotaPending) + " w-8 md:w-10"}>
+                                                                                                {formatGrade(bData.nota)}
+                                                                                                {isNotaPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-orange-600 rounded-full animate-pulse" title="Nota Alterada"></span>}
+                                                                                            </td>
+                                                                                            <td className={cellClass(isRecPending) + " w-8 md:w-10"}>
+                                                                                                {formatGrade(bData.recuperacao)}
+                                                                                                {isRecPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-orange-600 rounded-full animate-pulse" title="Recuperação Alterada"></span>}
+                                                                                            </td>
+                                                                                            <td className="px-1 py-2 text-center font-bold bg-gray-50 border-r border-gray-300 w-8 md:w-10">
+                                                                                                {formatGrade(bData.media)}
+                                                                                            </td>
+                                                                                            <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300 w-8 md:w-10">
+                                                                                                {bData.faltas ?? '-'}
+                                                                                            </td>
+                                                                                            {(() => {
+                                                                                                const freqResult = calculateAttendancePercentage(grade.subject, bData.faltas || 0, student.gradeLevel || "");
+                                                                                                const freqPercent = freqResult ? freqResult.percent : null;
+
+                                                                                                // Só exibe a porcentagem se houver pelo menos uma falta
+                                                                                                const hasAbsence = (bData.faltas || 0) > 0;
+                                                                                                const isLowFreq = hasAbsence && freqPercent !== null && freqPercent < 75;
+
+                                                                                                return (
+                                                                                                    <td className={`px-1 py-2 text-center font-bold border-r border-gray-300 text-[10px] w-10 md:w-12 ${isLowFreq ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência">
+                                                                                                        {hasAbsence && freqPercent !== null ? `${freqPercent}%` : '-'}
+                                                                                                    </td>
+                                                                                                );
+                                                                                            })()}
+                                                                                        </React.Fragment>
+                                                                                    );
+                                                                                })}
+
+                                                                                <td className="px-1 py-2 text-center font-bold text-gray-700 bg-gray-50 border-r border-gray-300">
+                                                                                    {grade.mediaAnual >= 0 ? formatGrade(grade.mediaAnual) : '-'}
+                                                                                </td>
+
+                                                                                <td className={`px-1 py-2 text-center font-bold text-red-600 border-r border-gray-300 ${isRecFinalPending ? 'bg-yellow-100 ring-inset ring-2 ring-yellow-300' : ''}`}>
+                                                                                    {grade.recuperacaoFinalApproved !== false ? formatGrade(grade.recuperacaoFinal) : '-'}
+                                                                                    {isRecFinalPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-orange-600 rounded-full animate-pulse" title="Prova Final Pendente"></span>}
+                                                                                </td>
+
+                                                                                <td className="px-1 py-2 text-center font-extrabold text-blue-900 bg-blue-50 border-r border-gray-300">
+                                                                                    {grade.mediaFinal >= 0 ? formatGrade(grade.mediaFinal) : '-'}
+                                                                                </td>
+                                                                                {(() => {
+                                                                                    const totalAbsences = [grade.bimesters.bimester1, grade.bimesters.bimester2, grade.bimesters.bimester3, grade.bimesters.bimester4].reduce((sum, b, idx) => {
+                                                                                        const bNum = (idx + 1) as 1 | 2 | 3 | 4;
+                                                                                        const studentAbsSnapshot = attendanceRecords.filter(att =>
+                                                                                            att.discipline === grade.subject &&
+                                                                                            att.studentStatus[student.id] === AttendanceStatus.ABSENT
+                                                                                        ).filter(att => {
+                                                                                            const d = new Date(att.date + 'T00:00:00');
+                                                                                            const bTarget = getDynamicBimester(att.date, academicSettings);
+                                                                                            const [y] = att.date.split('-');
+                                                                                            if (bTarget === bNum && Number(y) === new Date().getFullYear()) return true;
+                                                                                            return false;
+                                                                                        }).length;
+
+                                                                                        return sum + studentAbsSnapshot;
+                                                                                    }, 0);
+
+                                                                                    const annualFreqResult = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel || "", 4, academicSubjects, academicSettings);
+                                                                                    const annualFreq = annualFreqResult ? annualFreqResult.percent : null;
+                                                                                    const isCritical = annualFreq !== null && annualFreq < 75;
+                                                                                    const hasAbsenceTotal = totalAbsences > 0;
+
+                                                                                    return (
+                                                                                        <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] ${isCritical ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência Anual">
+                                                                                            {hasAbsenceTotal && annualFreq !== null ? `${annualFreq}%` : '-'}
+                                                                                        </td>
+                                                                                    );
+                                                                                })()}
+
+                                                                                <td className="px-2 py-2 text-center align-middle border-r border-gray-300">
+                                                                                    <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                                                        grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                                                                            (grade.situacaoFinal === 'Cursando' || grade.situacaoFinal === 'Pendente') ? 'bg-gray-50 text-gray-500 border-gray-200' :
+                                                                                                'bg-red-50 text-red-700 border-red-200'
+                                                                                        }`}>
+                                                                                        {grade.situacaoFinal}
+                                                                                    </span>
+                                                                                </td>
+
+                                                                                <td className="px-2 py-2 text-center bg-gray-50">
+                                                                                    <button
+                                                                                        onClick={() => handleApproveGrade(grade)}
+                                                                                        className="bg-green-600 hover:bg-green-700 text-white p-1.5 rounded shadow-sm hover:scale-105 transition-all w-full flex items-center justify-center gap-1"
+                                                                                        title="Aprovar alterações desta disciplina"
+                                                                                    >
+                                                                                        <span className="text-xs">✅</span> <span className="text-[10px] font-bold uppercase hidden md:inline">Aprovar</span>
+                                                                                    </button>
+                                                                                </td>
+                                                                            </tr>
+                                                                        );
+                                                                    })}
+                                                                    {(() => {
+                                                                        // Use ALL grades for this student to calculate general frequency correctly
+                                                                        const allStudentGrades = allStudentGradesMap[student.id] || [];
+                                                                        const generalFreq = calculateGeneralFrequency(allStudentGrades, attendanceRecords, student.id, student.gradeLevel || "", academicSubjects, academicSettings);
+                                                                        return (
+                                                                            <tr className="bg-gray-100/80 font-bold border-t-2 border-gray-400">
+                                                                                <td colSpan={26} className="px-4 py-2 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[10px]">
+                                                                                    FREQUÊNCIA GERAL NO ANO LETIVO:
+                                                                                </td>
+                                                                                <td className="px-1 py-1 text-center text-blue-900 font-extrabold text-[10px] md:text-sm bg-blue-50/50 border-r border-gray-300">
+                                                                                    {generalFreq}
+                                                                                </td>
+
+                                                                            </tr>
+                                                                        );
+                                                                    })()}
+                                                                </>
+                                                            );
+                                                        })()}
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="p-0">
-                                        <div className="overflow-x-auto pb-2">
-                                            <table className="w-full text-[11px] md:text-xs text-left border-collapse border border-gray-200">
-                                                <thead className="bg-gray-50 text-gray-500 border-b border-gray-300">
-                                                    <tr>
-                                                        <th rowSpan={2} className="px-2 py-2 font-bold uppercase border-r border-gray-300 w-32 sticky left-0 bg-gray-50 z-10 shadow-sm">Disciplina</th>
-                                                        {[1, 2, 3, 4].map(num => (
-                                                            <th key={num} colSpan={5} className="px-1 py-1 text-center font-bold uppercase border-r border-gray-300">
-                                                                {num}º Bim
-                                                            </th>
-                                                        ))}
-                                                        <th rowSpan={2} className="px-1 py-1 text-center font-bold uppercase border-r border-gray-300">Média<br />Anual</th>
-                                                        <th rowSpan={2} className="px-1 py-1 text-center font-bold text-amber-700 uppercase border-r border-gray-300 bg-amber-50">Prova<br />Final</th>
-                                                        <th rowSpan={2} className="px-1 py-1 text-center font-bold text-blue-900 uppercase border-r border-gray-300 bg-blue-50">Média<br />Final</th>
-                                                        <th rowSpan={2} className="px-1 py-1 text-center font-bold uppercase border-r border-gray-300">%<br />Tot</th>
-                                                        <th rowSpan={2} className="px-1 py-1 text-center font-bold uppercase">Situação</th>
-                                                        <th rowSpan={2} className="px-2 py-2 text-center font-bold uppercase w-20 bg-gray-100">Ação</th>
-                                                    </tr>
-                                                    <tr className="bg-gray-100 text-[10px]">
-                                                        {[1, 2, 3, 4].map(num => (
-                                                            <React.Fragment key={num}>
-                                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold w-8 md:w-10" title="Nota">N</th>
-                                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold w-8 md:w-10" title="Recuperação">R</th>
-                                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-bold bg-gray-200 w-8 md:w-10" title="Média">M</th>
-                                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold w-8 md:w-10" title="Faltas">F</th>
-                                                                <th className="px-1 py-1 text-center border-r border-gray-300 font-semibold w-10 md:w-12" title="Frequência">%</th>
-                                                            </React.Fragment>
-                                                        ))}
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {(() => {
-                                                        const subjectsInCurriculum = getCurriculumSubjects(student.gradeLevel || "");
-
-                                                        // 1. Matérias existentes
-                                                        const existingGrades = (grades || [])
-                                                            .filter(g => subjectsInCurriculum.length === 0 || subjectsInCurriculum.includes(g.subject))
-                                                            .map(grade => {
-                                                                const calculatedBimesters = {
-                                                                    bimester1: calculateBimesterMedia(grade.bimesters.bimester1),
-                                                                    bimester2: calculateBimesterMedia(grade.bimesters.bimester2),
-                                                                    bimester3: calculateBimesterMedia(grade.bimesters.bimester3),
-                                                                    bimester4: calculateBimesterMedia(grade.bimesters.bimester4),
-                                                                };
-                                                                const finalData = calculateFinalData(calculatedBimesters, grade.recuperacaoFinal, isYearFinished);
-                                                                return { ...grade, bimesters: calculatedBimesters, ...finalData };
-                                                            });
-
-                                                        // 2. Apenas ordenar os existentes (não preencher faltantes)
-                                                        let finalGrades: any[] = [...existingGrades];
-                                                        if (subjectsInCurriculum.length > 0) {
-                                                            finalGrades.sort((a, b) => subjectsInCurriculum.indexOf(a.subject) - subjectsInCurriculum.indexOf(b.subject));
-                                                        }
-
-                                                        return (
-                                                            <>
-                                                                {finalGrades.map(grade => {
-                                                                    const isRecFinalPending = grade.recuperacaoFinalApproved === false;
-
-                                                                    // Resolve teacher Name
-                                                                    const tName = teachersMap[grade.teacherId || ''] || grade.teacherName || 'N/A';
-
-                                                                    return (
-                                                                        <tr key={grade.id} className="hover:bg-blue-50 transition-colors border-b last:border-0 border-gray-200">
-                                                                            <td className="px-2 py-2 border-r border-gray-300 sticky left-0 bg-white z-10 shadow-sm">
-                                                                                <div className="font-bold text-gray-700">{grade.subject}</div>
-                                                                                <div className="text-[9px] text-gray-400 mt-0.5">{tName}</div>
-                                                                            </td>
-
-                                                                            {['bimester1', 'bimester2', 'bimester3', 'bimester4'].map((key) => {
-                                                                                const bData = grade.bimesters[key as keyof typeof grade.bimesters];
-                                                                                const isNotaPending = bData.isNotaApproved === false || (bData.isApproved === false && bData.nota !== null && bData.recuperacao === null);
-                                                                                const isRecPending = bData.isRecuperacaoApproved === false || (bData.isApproved === false && bData.recuperacao !== null);
-
-                                                                                const cellClass = (pending: boolean) =>
-                                                                                    `px-1 py-2 text-center border-r border-gray-300 relative ${pending ? 'bg-yellow-100 font-bold text-yellow-900 ring-1 ring-inset ring-yellow-300' : ''}`;
-
-                                                                                return (
-                                                                                    <React.Fragment key={key}>
-                                                                                        <td className={cellClass(isNotaPending) + " w-8 md:w-10"}>
-                                                                                            {formatGrade(bData.nota)}
-                                                                                            {isNotaPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-orange-600 rounded-full animate-pulse" title="Nota Alterada"></span>}
-                                                                                        </td>
-                                                                                        <td className={cellClass(isRecPending) + " w-8 md:w-10"}>
-                                                                                            {formatGrade(bData.recuperacao)}
-                                                                                            {isRecPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-orange-600 rounded-full animate-pulse" title="Recuperação Alterada"></span>}
-                                                                                        </td>
-                                                                                        <td className="px-1 py-2 text-center font-bold bg-gray-50 border-r border-gray-300 w-8 md:w-10">
-                                                                                            {formatGrade(bData.media)}
-                                                                                        </td>
-                                                                                        <td className="px-1 py-2 text-center text-gray-500 border-r border-gray-300 w-8 md:w-10">
-                                                                                            {bData.faltas ?? '-'}
-                                                                                        </td>
-                                                                                        {(() => {
-                                                                                            const freqResult = calculateAttendancePercentage(grade.subject, bData.faltas || 0, student.gradeLevel || "");
-                                                                                            const freqPercent = freqResult ? freqResult.percent : null;
-
-                                                                                            // Só exibe a porcentagem se houver pelo menos uma falta
-                                                                                            const hasAbsence = (bData.faltas || 0) > 0;
-                                                                                            const isLowFreq = hasAbsence && freqPercent !== null && freqPercent < 75;
-
-                                                                                            return (
-                                                                                                <td className={`px-1 py-2 text-center font-bold border-r border-gray-300 text-[10px] w-10 md:w-12 ${isLowFreq ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência">
-                                                                                                    {hasAbsence && freqPercent !== null ? `${freqPercent}%` : '-'}
-                                                                                                </td>
-                                                                                            );
-                                                                                        })()}
-                                                                                    </React.Fragment>
-                                                                                );
-                                                                            })}
-
-                                                                            <td className="px-1 py-2 text-center font-bold text-gray-700 bg-gray-50 border-r border-gray-300">
-                                                                                {grade.mediaAnual >= 0 ? formatGrade(grade.mediaAnual) : '-'}
-                                                                            </td>
-
-                                                                            <td className={`px-1 py-2 text-center font-bold text-red-600 border-r border-gray-300 ${isRecFinalPending ? 'bg-yellow-100 ring-inset ring-2 ring-yellow-300' : ''}`}>
-                                                                                {grade.recuperacaoFinalApproved !== false ? formatGrade(grade.recuperacaoFinal) : '-'}
-                                                                                {isRecFinalPending && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-orange-600 rounded-full animate-pulse" title="Prova Final Pendente"></span>}
-                                                                            </td>
-
-                                                                            <td className="px-1 py-2 text-center font-extrabold text-blue-900 bg-blue-50 border-r border-gray-300">
-                                                                                {grade.mediaFinal >= 0 ? formatGrade(grade.mediaFinal) : '-'}
-                                                                            </td>
-                                                                            {(() => {
-                                                                                const totalAbsences = [grade.bimesters.bimester1, grade.bimesters.bimester2, grade.bimesters.bimester3, grade.bimesters.bimester4].reduce((sum, b, idx) => {
-                                                                                    const bNum = (idx + 1) as 1 | 2 | 3 | 4;
-                                                                                    const studentAbsSnapshot = attendanceRecords.filter(att =>
-                                                                                        att.discipline === grade.subject &&
-                                                                                        att.studentStatus[student.id] === AttendanceStatus.ABSENT
-                                                                                    ).filter(att => {
-                                                                                        const d = new Date(att.date + 'T00:00:00');
-                                                                                        const bTarget = getDynamicBimester(att.date, academicSettings);
-                                                                                        const [y] = att.date.split('-');
-                                                                                        if (bTarget === bNum && Number(y) === new Date().getFullYear()) return true;
-                                                                                        return false;
-                                                                                    }).length;
-
-                                                                                    return sum + studentAbsSnapshot;
-                                                                                }, 0);
-
-                                                                                const annualFreqResult = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel || "", 4, academicSubjects, academicSettings);
-                                                                                const annualFreq = annualFreqResult ? annualFreqResult.percent : null;
-                                                                                const isCritical = annualFreq !== null && annualFreq < 75;
-                                                                                const hasAbsenceTotal = totalAbsences > 0;
-
-                                                                                return (
-                                                                                    <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] ${isCritical ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência Anual">
-                                                                                        {hasAbsenceTotal && annualFreq !== null ? `${annualFreq}%` : '-'}
-                                                                                    </td>
-                                                                                );
-                                                                            })()}
-
-                                                                            <td className="px-2 py-2 text-center align-middle border-r border-gray-300">
-                                                                                <span className={`inline-block w-full py-0.5 rounded text-[9px] uppercase font-bold border ${grade.situacaoFinal === 'Aprovado' ? 'bg-green-50 text-green-700 border-green-200' :
-                                                                                    grade.situacaoFinal === 'Recuperação' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                                                                        (grade.situacaoFinal === 'Cursando' || grade.situacaoFinal === 'Pendente') ? 'bg-gray-50 text-gray-500 border-gray-200' :
-                                                                                            'bg-red-50 text-red-700 border-red-200'
-                                                                                    }`}>
-                                                                                    {grade.situacaoFinal}
-                                                                                </span>
-                                                                            </td>
-
-                                                                            <td className="px-2 py-2 text-center bg-gray-50">
-                                                                                <button
-                                                                                    onClick={() => handleApproveGrade(grade)}
-                                                                                    className="bg-green-600 hover:bg-green-700 text-white p-1.5 rounded shadow-sm hover:scale-105 transition-all w-full flex items-center justify-center gap-1"
-                                                                                    title="Aprovar alterações desta disciplina"
-                                                                                >
-                                                                                    <span className="text-xs">✅</span> <span className="text-[10px] font-bold uppercase hidden md:inline">Aprovar</span>
-                                                                                </button>
-                                                                            </td>
-                                                                        </tr>
-                                                                    );
-                                                                })}
-                                                                {(() => {
-                                                                    // Use ALL grades for this student to calculate general frequency correctly
-                                                                    const allStudentGrades = allStudentGradesMap[student.id] || [];
-                                                                    const generalFreq = calculateGeneralFrequency(allStudentGrades, attendanceRecords, student.id, student.gradeLevel || "", academicSubjects, academicSettings);
-                                                                    return (
-                                                                        <tr className="bg-gray-100/80 font-bold border-t-2 border-gray-400">
-                                                                            <td colSpan={26} className="px-4 py-2 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[10px]">
-                                                                                FREQUÊNCIA GERAL NO ANO LETIVO:
-                                                                            </td>
-                                                                            <td className="px-1 py-1 text-center text-blue-900 font-extrabold text-[10px] md:text-sm bg-blue-50/50 border-r border-gray-300">
-                                                                                {generalFreq}
-                                                                            </td>
-
-                                                                        </tr>
-                                                                    );
-                                                                })()}
-                                                            </>
-                                                        );
-                                                    })()}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                </main>
-            </div>
-
-            {/* OCCURRENCE MODAL */}
-            {isOccModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
-                        {/* Header */}
-                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-red-50/50">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-red-100 text-red-600 rounded-xl">
-                                    <ClipboardList className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <h2 className="text-xl font-black text-gray-900 leading-tight">Postar Ocorrência</h2>
-                                    <p className="text-xs text-gray-500 font-medium">Registro oficial de acompanhamento do aluno</p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => setIsOccModalOpen(false)}
-                                className="p-2 hover:bg-white rounded-full transition-colors text-gray-400 hover:text-gray-600 shadow-sm"
-                            >
-                                <X className="w-6 h-6" />
-                            </button>
+                                );
+                            })}
                         </div>
+                    )}
+                    {/* OCCURRENCES VIEW (activeTab === 'occurrences') */}
+                    {activeTab === 'occurrences' && (
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-0 md:p-6 mb-8 animate-fade-in-up flex flex-col h-full">
 
-                        {/* Content */}
-                        <div className="flex-1 overflow-y-auto p-6">
-                            {/* Steps Indicator */}
-                            <div className="flex items-center justify-between mb-8 px-4">
-                                {[
-                                    { step: 'filters', label: 'Filtros' },
-                                    { step: 'select_student', label: 'Seleção' },
-                                    { step: 'form', label: 'Detalhes' }
-                                ].map((s, idx) => (
-                                    <React.Fragment key={s.step}>
-                                        <div className="flex flex-col items-center gap-2">
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${occStep === s.step ? 'bg-red-600 text-white shadow-lg shadow-red-200' :
-                                                (occStep === 'select_student' && idx === 0) || (occStep === 'form' && idx <= 1) ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'
-                                                }`}>
-                                                {(occStep === 'select_student' && idx === 0) || (occStep === 'form' && idx <= 1) ? <CheckCircle2 className="w-5 h-5" /> : idx + 1}
-                                            </div>
-                                            <span className={`text-[10px] font-bold uppercase tracking-wider ${occStep === s.step ? 'text-red-600' : 'text-gray-400'}`}>
-                                                {s.label}
-                                            </span>
-                                        </div>
-                                        {idx < 2 && <div className={`flex-1 h-0.5 mx-4 ${(occStep === 'select_student' && idx === 0) || (occStep === 'form' && idx <= 1) ? 'bg-green-500' : 'bg-gray-100'}`}></div>}
-                                    </React.Fragment>
-                                ))}
+                            {/* View Switcher (New vs History) */}
+                            <div className="flex gap-4 border-b border-gray-100 pb-4 px-4 md:px-0 mb-6">
+                                <button
+                                    onClick={() => { setIsHistoryModalOpen(false); /* Logic to show form */ }}
+                                    className={`text-sm font-bold uppercase tracking-wider pb-2 border-b-2 transition-colors ${!isHistoryModalOpen ? 'border-red-600 text-red-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                                >
+                                    Nova Ocorrência
+                                </button>
+                                <button
+                                    onClick={() => { setIsHistoryModalOpen(true); handleFetchOccurrenceHistory(); }}
+                                    className={`text-sm font-bold uppercase tracking-wider pb-2 border-b-2 transition-colors ${isHistoryModalOpen ? 'border-blue-950 text-blue-950' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                                >
+                                    Histórico
+                                </button>
                             </div>
 
-                            {/* Step 1: Filters */}
-                            {occStep === 'filters' && (
-                                <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Nível de Ensino</label>
-                                            <select
-                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-red-500 transition-all"
-                                                value={occFilters.level}
-                                                onChange={(e) => setOccFilters({ ...occFilters, level: e.target.value, grade: '' })}
-                                            >
-                                                <option value="">Selecione o nível</option>
-                                                {academicSegments.map(s => (
-                                                    <option key={s.id} value={s.name}>{s.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Série/Ano</label>
-                                            <select
-                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-red-500 transition-all disabled:opacity-50"
-                                                value={occFilters.grade}
-                                                disabled={!occFilters.level}
-                                                onChange={(e) => setOccFilters({ ...occFilters, grade: e.target.value })}
-                                            >
-                                                <option value="">Selecione a série</option>
-                                                {occFilters.level && academicGrades.filter(g => {
-                                                    const segment = academicSegments.find(s => s.name === occFilters.level);
-                                                    return segment && g.segmentId === segment.id;
-                                                }).map(grade => (
-                                                    <option key={grade.id} value={grade.name}>{grade.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Turma</label>
-                                            <select
-                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-red-500 transition-all"
-                                                value={occFilters.class}
-                                                onChange={(e) => setOccFilters({ ...occFilters, class: (e.target.value as SchoolClass) })}
-                                            >
-                                                <option value="">Selecione a turma</option>
-                                                {SCHOOL_CLASSES_OPTIONS.map(opt => (
-                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Turno</label>
-                                            <select
-                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-red-500 transition-all"
-                                                value={occFilters.shift}
-                                                onChange={(e) => setOccFilters({ ...occFilters, shift: (e.target.value as SchoolShift) })}
-                                            >
-                                                <option value="">Selecione o turno</option>
-                                                {SCHOOL_SHIFTS.map(opt => (
-                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <Button
-                                        onClick={handleOccurrencesFetchStudents}
-                                        disabled={loading}
-                                        className="w-full py-4 text-base !bg-red-600 hover:!bg-red-700 shadow-lg text-white font-bold rounded-xl transition-all"
-                                    >
-                                        {loading ? 'Buscando...' : '🔍 Buscar Alunos'}
-                                    </Button>
-                                </div>
-                            )}
-
-                            {/* Step 2: Select Student */}
-                            {occStep === 'select_student' && (
-                                <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider">Escolha o Aluno ({occStudents.length})</h3>
-                                        <button onClick={() => setOccStep('filters')} className="text-xs text-red-600 font-bold hover:underline">Alterar Filtros</button>
-                                    </div>
-                                    <div className="mb-4 relative">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                        <input
-                                            type="text"
-                                            placeholder="Buscar por nome ou RM..."
-                                            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-red-500 outline-none transition-all"
-                                            value={studentSearchTerm}
-                                            onChange={(e) => setStudentSearchTerm(e.target.value)}
-                                            autoFocus
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-2">
-                                        {occStudents.filter(s =>
-                                            s.name.toLowerCase().includes(studentSearchTerm.toLowerCase()) ||
-                                            (s.code && s.code.toLowerCase().includes(studentSearchTerm.toLowerCase()))
-                                        ).map(student => (
-                                            <button
-                                                key={student.id}
-                                                onClick={() => {
-                                                    setSelectedOccStudent(student);
-                                                    setOccStep('form');
-                                                }}
-                                                className="flex items-center justify-between p-4 rounded-xl border border-gray-100 hover:border-red-200 hover:bg-red-50 transition-all group text-left"
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-red-100 group-hover:text-red-500 transition-colors">
-                                                        <User className="w-5 h-5" />
+                            {!isHistoryModalOpen ? (
+                                // RECORD NEW OCCURRENCE FORM
+                                <div className="flex-1 overflow-y-auto">
+                                    <div className="flex-1 p-0 md:p-4">
+                                        {/* Steps Indicator */}
+                                        <div className="flex items-center justify-between mb-8 px-4">
+                                            {[
+                                                { step: 'filters', label: 'Filtros' },
+                                                { step: 'select_student', label: 'Seleção' },
+                                                { step: 'form', label: 'Detalhes' }
+                                            ].map((s, idx) => (
+                                                <React.Fragment key={s.step}>
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${occStep === s.step ? 'bg-red-600 text-white shadow-lg shadow-red-200' :
+                                                            (occStep === 'select_student' && idx === 0) || (occStep === 'form' && idx <= 1) ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'
+                                                            }`}>
+                                                            {(occStep === 'select_student' && idx === 0) || (occStep === 'form' && idx <= 1) ? <CheckCircle2 className="w-5 h-5" /> : idx + 1}
+                                                        </div>
+                                                        <span className={`text-[10px] font-bold uppercase tracking-wider ${occStep === s.step ? 'text-red-600' : 'text-gray-400'}`}>
+                                                            {s.label}
+                                                        </span>
                                                     </div>
-                                                    <div>
-                                                        <p className="font-bold text-gray-900 leading-tight">{student.name}</p>
-                                                        <p className="text-[10px] text-gray-500 font-medium uppercase tracking-tighter mt-0.5">RM: {student.code}</p>
-                                                    </div>
-                                                </div>
-                                                <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-red-500 transition-colors" />
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Step 3: Occurrence Form */}
-                            {occStep === 'form' && selectedOccStudent && (
-                                <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-                                    <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-red-600 shadow-sm">
-                                                <User className="w-5 h-5" />
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-1">Aluno Selecionado</p>
-                                                <p className="font-bold text-gray-900">{selectedOccStudent.name}</p>
-                                            </div>
-                                        </div>
-                                        <button onClick={() => setOccStep('select_student')} className="text-xs text-red-600 font-bold hover:underline px-3 py-1 bg-white rounded-lg shadow-sm">Trocar</button>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Categoria</label>
-                                            <select
-                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-red-500"
-                                                value={occData.category}
-                                                onChange={(e) => setOccData({ ...occData, category: (e.target.value as OccurrenceCategory) })}
-                                            >
-                                                {Object.entries(OccurrenceCategory).map(([key, value]) => (
-                                                    <option key={key} value={value}>{value}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Data do Ocorrido</label>
-                                            <input
-                                                type="date"
-                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-red-500"
-                                                value={occData.date}
-                                                onChange={(e) => setOccData({ ...occData, date: e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex justify-between">
-                                            <span>Título da Ocorrência</span>
-                                            <span className="text-[10px] text-gray-400 capitalize">Modelos disponíveis abaixo</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            placeholder="Ex: Falta de material, Comportamento..."
-                                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-red-500 placeholder:text-gray-300"
-                                            value={occData.title}
-                                            onChange={(e) => setOccData({ ...occData, title: e.target.value })}
-                                        />
-
-                                        {/* Templates */}
-                                        <div className="flex flex-wrap gap-2 pt-1">
-                                            {(coordinator.segment ? OCCURRENCE_TEMPLATES[coordinator.segment] : []).map(template => (
-                                                <button
-                                                    key={template}
-                                                    onClick={() => setOccData({ ...occData, title: template })}
-                                                    className="px-3 py-1.5 bg-white border border-gray-100 rounded-full text-[10px] font-bold text-gray-500 hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-all shadow-sm"
-                                                >
-                                                    + {template}
-                                                </button>
+                                                    {idx < 2 && <div className={`flex-1 h-0.5 mx-4 ${(occStep === 'select_student' && idx === 0) || (occStep === 'form' && idx <= 1) ? 'bg-green-500' : 'bg-gray-100'}`}></div>}
+                                                </React.Fragment>
                                             ))}
                                         </div>
-                                    </div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Descrição Detalhada</label>
-                                        <textarea
-                                            rows={4}
-                                            placeholder="Descreva o ocorrido com detalhes para registro no prontuário do aluno..."
-                                            className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl font-medium text-gray-700 outline-none focus:ring-2 focus:ring-red-500 placeholder:text-gray-300 resize-none"
-                                            value={occData.description}
-                                            onChange={(e) => setOccData({ ...occData, description: e.target.value })}
-                                        />
-                                    </div>
-
-                                    <Button
-                                        onClick={handleSaveOccurrence}
-                                        disabled={isSavingOcc}
-                                        className="w-full py-4 text-base !bg-green-600 hover:!bg-green-700 shadow-xl text-white font-black rounded-xl transition-all"
-                                    >
-                                        {isSavingOcc ? 'Salvando Ocorrência...' : '💾 Confirmar e Registrar'}
-                                    </Button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* OCCURRENCE HISTORY MODAL */}
-            {isHistoryModalOpen && (
-                <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-                        {/* Header */}
-                        <div className="flex justify-between items-center p-6 bg-white border-b border-gray-100 rounded-t-3xl">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-blue-50 rounded-xl">
-                                    <ClipboardList className="w-6 h-6 text-blue-600" />
-                                </div>
-                                <div>
-                                    <h2 className="text-xl font-black tracking-tight leading-none text-gray-900">Gerenciar Ocorrências</h2>
-                                    <p className="text-xs text-gray-500 font-medium opacity-90 mt-1">Histórico e Exclusão</p>
-                                </div>
-                            </div>
-                            <button onClick={() => setIsHistoryModalOpen(false)} className="text-gray-400 hover:text-red-500 hover:bg-gray-100 p-2 rounded-full transition-colors">
-                                <X className="w-6 h-6" />
-                            </button>
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 overflow-hidden flex flex-col bg-gray-50">
-                            {/* Filter Bar */}
-                            <div className="p-4 bg-white border-b border-gray-100 flex gap-4 items-center">
-                                <div className="relative flex-1">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                    <input
-                                        type="text"
-                                        placeholder="Filtrar por aluno, turma, série..."
-                                        className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                        value={historyFilterTerm}
-                                        onChange={(e) => setHistoryFilterTerm(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* List */}
-                            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                                {historyLoading ? (
-                                    <div className="text-center py-10 text-gray-400">Carregando histórico...</div>
-                                ) : filteredHistory.length === 0 ? (
-                                    <div className="text-center py-10 text-gray-400">Nenhuma ocorrência encontrada.</div>
-                                ) : (
-                                    filteredHistory.map(occ => (
-                                        <div key={occ.id} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between gap-4 group hover:border-blue-200 transition-colors">
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${occ.category === OccurrenceCategory.DISCIPLINARY ? 'bg-red-100 text-red-600' :
-                                                        occ.category === OccurrenceCategory.POSITIVE ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'
-                                                        }`}>
-                                                        {occ.category}
-                                                    </span>
-                                                    <span className="text-xs text-gray-400 font-medium">{new Date(occ.date).toLocaleDateString()}</span>
-                                                </div>
-                                                <h4 className="font-bold text-gray-900">{occ.title}</h4>
-                                                <p className="text-sm text-gray-600 mt-1 line-clamp-2">{occ.description}</p>
-
-                                                <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-50">
-                                                    <div className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded">
-                                                        <User className="w-3 h-3" />
-                                                        <span className="font-bold">{occ.studentName}</span>
+                                        {/* Step 1: Filters */}
+                                        {occStep === 'filters' && (
+                                            <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Nível de Ensino</label>
+                                                        <select
+                                                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-red-500 transition-all"
+                                                            value={occFilters.level}
+                                                            onChange={(e) => setOccFilters({ ...occFilters, level: e.target.value, grade: '' })}
+                                                        >
+                                                            <option value="">Selecione o nível</option>
+                                                            {academicSegments.map(s => (
+                                                                <option key={s.id} value={s.name}>{s.name}</option>
+                                                            ))}
+                                                        </select>
                                                     </div>
-                                                    <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded border border-gray-100">{occ.gradeLevel}</span>
-                                                    <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded border border-gray-100">{occ.schoolClass}</span>
-                                                    <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded border border-gray-100">{occ.shift}</span>
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Série/Ano</label>
+                                                        <select
+                                                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-red-500 transition-all disabled:opacity-50"
+                                                            value={occFilters.grade}
+                                                            disabled={!occFilters.level}
+                                                            onChange={(e) => setOccFilters({ ...occFilters, grade: e.target.value })}
+                                                        >
+                                                            <option value="">Selecione a série</option>
+                                                            {occFilters.level && academicGrades.filter(g => {
+                                                                const segment = academicSegments.find(s => s.name === occFilters.level);
+                                                                return segment && g.segmentId === segment.id;
+                                                            }).map(grade => (
+                                                                <option key={grade.id} value={grade.name}>{grade.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Turma</label>
+                                                        <select
+                                                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-red-500 transition-all"
+                                                            value={occFilters.class}
+                                                            onChange={(e) => setOccFilters({ ...occFilters, class: (e.target.value as SchoolClass) })}
+                                                        >
+                                                            <option value="">Selecione a turma</option>
+                                                            {SCHOOL_CLASSES_OPTIONS.map(opt => (
+                                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Turno</label>
+                                                        <select
+                                                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-red-500 transition-all"
+                                                            value={occFilters.shift}
+                                                            onChange={(e) => setOccFilters({ ...occFilters, shift: (e.target.value as SchoolShift) })}
+                                                        >
+                                                            {SCHOOL_SHIFTS.map(opt => (
+                                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <Button
+                                                    onClick={handleOccurrencesFetchStudents}
+                                                    disabled={loading}
+                                                    className="w-full py-4 text-base !bg-red-600 hover:!bg-red-700 shadow-lg text-white font-bold rounded-xl transition-all"
+                                                >
+                                                    {loading ? 'Buscando...' : '🔍 Buscar Alunos'}
+                                                </Button>
+                                            </div>
+                                        )}
+
+                                        {/* Step 2: Select Student */}
+                                        {occStep === 'select_student' && (
+                                            <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <button
+                                                        onClick={() => setOccStep('filters')}
+                                                        className="p-1.5 hover:bg-gray-100 rounded-full transition-colors text-gray-600"
+                                                        title="Voltar aos Filtros"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                                                        </svg>
+                                                    </button>
+                                                    <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider">Escolha o Aluno ({occStudents.length})</h3>
+                                                </div>
+                                                <div className="mb-4 relative">
+                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Buscar por nome ou RM..."
+                                                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                                                        value={studentSearchTerm}
+                                                        onChange={(e) => setStudentSearchTerm(e.target.value)}
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                                <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-2">
+                                                    {occStudents.filter(s =>
+                                                        s.name.toLowerCase().includes(studentSearchTerm.toLowerCase()) ||
+                                                        (s.code && s.code.toLowerCase().includes(studentSearchTerm.toLowerCase()))
+                                                    ).map(student => (
+                                                        <button
+                                                            key={student.id}
+                                                            onClick={() => {
+                                                                setSelectedOccStudent(student);
+                                                                setOccStep('form');
+                                                            }}
+                                                            className="flex items-center justify-between p-4 rounded-xl border border-gray-100 hover:border-red-200 hover:bg-red-50 transition-all group text-left"
+                                                        >
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-red-100 group-hover:text-red-500 transition-colors">
+                                                                    <User className="w-5 h-5" />
+                                                                </div>
+                                                                <div>
+                                                                    <p className="font-bold text-gray-900 leading-tight">{student.name}</p>
+                                                                    <p className="text-[10px] text-gray-500 font-medium uppercase tracking-tighter mt-0.5">RM: {student.code}</p>
+                                                                </div>
+                                                            </div>
+                                                            <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-red-500 transition-colors" />
+                                                        </button>
+                                                    ))}
                                                 </div>
                                             </div>
+                                        )}
 
-                                            <div className="flex items-center justify-end">
-                                                <button
-                                                    onClick={() => handleDeleteOccurrence(occ.id)}
-                                                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                    title="Excluir Ocorrência"
+                                        {/* Step 3: Form */}
+                                        {occStep === 'form' && selectedOccStudent && (
+                                            <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                                                <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-red-600 shadow-sm">
+                                                            <User className="w-5 h-5" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-1">Aluno Selecionado</p>
+                                                            <p className="font-bold text-gray-900">{selectedOccStudent.name}</p>
+                                                        </div>
+                                                    </div>
+                                                    <button onClick={() => setOccStep('select_student')} className="text-xs text-red-600 font-bold hover:underline px-3 py-1 bg-white rounded-lg shadow-sm">Trocar</button>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Categoria</label>
+                                                        <select
+                                                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-red-500"
+                                                            value={occData.category}
+                                                            onChange={(e) => setOccData({ ...occData, category: (e.target.value as OccurrenceCategory) })}
+                                                        >
+                                                            {Object.entries(OccurrenceCategory).map(([key, value]) => (
+                                                                <option key={key} value={value}>{value}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Data do Ocorrido</label>
+                                                        <input
+                                                            type="date"
+                                                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-red-500"
+                                                            value={occData.date}
+                                                            onChange={(e) => setOccData({ ...occData, date: e.target.value })}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex justify-between">
+                                                        <span>Título da Ocorrência</span>
+                                                        <span className="text-[10px] text-gray-400 capitalize">Modelos disponíveis abaixo</span>
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Ex: Falta de material, Comportamento..."
+                                                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-red-500 placeholder:text-gray-300"
+                                                        value={occData.title}
+                                                        onChange={(e) => setOccData({ ...occData, title: e.target.value })}
+                                                    />
+
+                                                    {/* Templates */}
+                                                    <div className="flex flex-wrap gap-2 pt-1">
+                                                        {(coordinator.segment ? OCCURRENCE_TEMPLATES[coordinator.segment] : []).map(template => (
+                                                            <button
+                                                                key={template}
+                                                                onClick={() => setOccData({ ...occData, title: template })}
+                                                                className="px-3 py-1.5 bg-white border border-gray-100 rounded-full text-[10px] font-bold text-gray-500 hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-all shadow-sm"
+                                                            >
+                                                                + {template}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Descrição Detalhada</label>
+                                                    <textarea
+                                                        rows={4}
+                                                        placeholder="Descreva o ocorrido com detalhes para registro no prontuário do aluno..."
+                                                        className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl font-medium text-gray-700 outline-none focus:ring-2 focus:ring-red-500 placeholder:text-gray-300 resize-none"
+                                                        value={occData.description}
+                                                        onChange={(e) => setOccData({ ...occData, description: e.target.value })}
+                                                    />
+                                                </div>
+
+                                                <Button
+                                                    onClick={handleSaveOccurrence}
+                                                    disabled={isSavingOcc}
+                                                    className="w-full py-4 text-base !bg-green-600 hover:!bg-green-700 shadow-xl text-white font-black rounded-xl transition-all"
                                                 >
-                                                    <Trash2 className="w-5 h-5" />
-                                                </button>
+                                                    {isSavingOcc ? 'Salvando...' : '💾 Confirmar e Registrar'}
+                                                </Button>
                                             </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ATTENDANCE MANAGEMENT MODAL */}
-            {isAttendanceManageModalOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
-                        {/* Header */}
-                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-blue-50/50">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-blue-100 text-blue-600 rounded-xl">
-                                    <ClipboardList className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <h2 className="text-xl font-black text-gray-900 leading-tight">Gerenciamento de Chamada Manual</h2>
-                                    <p className="text-xs text-gray-500 font-medium">Localização e criação de registros de presença</p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => { setIsAttendanceManageModalOpen(false); setManageAttendanceStep('filters'); }}
-                                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600"
-                            >
-                                <X className="w-6 h-6" />
-                            </button>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-6">
-                            {manageAttendanceStep === 'filters' ? (
-                                <div className="space-y-6">
-                                    <p className="text-gray-600">Selecione os dados para localizar ou criar a chamada. Esta ferramenta permite ignorar as restrições de calendário.</p>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block ml-1">Data</label>
-                                            <input
-                                                type="date"
-                                                value={manageFilters.date}
-                                                onChange={e => setManageFilters(prev => ({ ...prev, date: e.target.value }))}
-                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-300 shadow-sm"
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block ml-1">Turno</label>
-                                            <select
-                                                value={manageFilters.shift}
-                                                onChange={e => setManageFilters(prev => ({ ...prev, shift: e.target.value }))}
-                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
-                                            >
-                                                <option value="Matutino">Matutino</option>
-                                                <option value="Vespertino">Vespertino</option>
-                                            </select>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block ml-1">Série/Ano</label>
-                                            <select
-                                                value={manageFilters.grade}
-                                                onChange={e => setManageFilters(prev => ({ ...prev, grade: e.target.value }))}
-                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
-                                            >
-                                                <option value="">Selecione...</option>
-                                                {academicGrades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
-                                            </select>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block ml-1">Turma</label>
-                                            <select
-                                                value={manageFilters.class}
-                                                onChange={e => setManageFilters(prev => ({ ...prev, class: e.target.value as SchoolClass }))}
-                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
-                                            >
-                                                {SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
-                                            </select>
-                                        </div>
-                                        <div className="md:col-span-2 space-y-1.5">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block ml-1">Disciplina</label>
-                                            <select
-                                                value={manageFilters.subject}
-                                                onChange={e => setManageFilters(prev => ({ ...prev, subject: e.target.value }))}
-                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
-                                            >
-                                                <option value="">Selecione...</option>
-                                                {academicSubjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                                            </select>
-                                        </div>
-                                        <div className="md:col-span-2 space-y-1.5">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block ml-1">Nº de Aulas (Peso)</label>
-                                            <select
-                                                value={manageFilters.lessonCount}
-                                                onChange={e => setManageFilters(prev => ({ ...prev, lessonCount: Number(e.target.value) }))}
-                                                className="w-full p-3 bg-gray-100 border border-blue-100 rounded-xl font-black text-blue-900 outline-none transition-all shadow-sm"
-                                            >
-                                                <option value={1}>1 Aula</option>
-                                                <option value={2}>2 Aulas</option>
-                                                <option value={3}>3 Aulas</option>
-                                                <option value={4}>4 Aulas</option>
-                                            </select>
-                                        </div>
+                                        )}
                                     </div>
-                                    <Button
-                                        className="w-full py-4 text-base !bg-blue-950 hover:!bg-black shadow-xl text-white font-black rounded-xl transition-all h-auto mt-4"
-                                        disabled={!manageFilters.grade || !manageFilters.subject || isLoadingManageAttendance}
-                                        onClick={async () => {
-                                            setIsLoadingManageAttendance(true);
-                                            try {
-                                                // 1. Load Students
-                                                const studentSnap = await db.collection('students')
-                                                    .where('unit', '==', coordinator.unit)
-                                                    .where('schoolClass', '==', manageFilters.class)
-                                                    .where('shift', '==', manageFilters.shift)
-                                                    .get();
-
-                                                let students = studentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
-                                                students = students.filter(s => s.gradeLevel === manageFilters.grade || s.gradeLevel.startsWith(manageFilters.grade));
-
-                                                if (students.length === 0) {
-                                                    alert(`Nenhum aluno encontrado para os critérios selecionados (${manageFilters.shift}).`);
-                                                    return;
-                                                }
-                                                setManageStudents(students);
-
-                                                // 2. Load Existing Record (if any)
-                                                const recordId = `${manageFilters.date}_${coordinator.unit}_${manageFilters.grade}_${manageFilters.class}_${manageFilters.shift}_${manageFilters.subject}`;
-                                                const recDoc = await db.collection('attendance').doc(recordId).get();
-
-                                                if (recDoc.exists) {
-                                                    const data = recDoc.data() as AttendanceRecord;
-                                                    setManageStatuses(data.studentStatus);
-                                                    setManageFilters(prev => ({ ...prev, lessonCount: data.lessonCount || 1 }));
-                                                    setManageAbsenceOverrides(data.studentAbsenceCount || {});
-                                                    setManageTeacherName(data.teacherName || 'Manual');
-                                                } else {
-                                                    const defaultStatuses: Record<string, AttendanceStatus> = {};
-                                                    students.forEach(s => { defaultStatuses[s.id] = AttendanceStatus.PRESENT; });
-                                                    setManageStatuses(defaultStatuses);
-                                                    setManageAbsenceOverrides({});
-                                                    setManageTeacherName('Coordenador (Manual)');
-                                                }
-                                                setManageAttendanceStep('form');
-                                            } catch (err) {
-                                                console.error(err);
-                                                alert("Erro ao buscar dados da chamada.");
-                                            } finally {
-                                                setIsLoadingManageAttendance(false);
-                                            }
-                                        }}
-                                    >
-                                        {isLoadingManageAttendance ? 'Buscando...' : 'Localizar / Criar Chamada'}
-                                    </Button>
                                 </div>
                             ) : (
-                                <div className="space-y-6">
-                                    <div className="flex justify-between items-center bg-gray-50 p-6 rounded-2xl border border-gray-100 shadow-sm">
-                                        <div>
-                                            <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest leading-none mb-1">Chamada para:</p>
-                                            <p className="font-black text-lg text-blue-950 leading-tight">{manageFilters.subject}</p>
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded">
-                                                    {manageFilters.grade} ({manageFilters.class}) • {manageFilters.shift}
-                                                </span>
-                                                <span className="text-xs text-gray-500 font-medium">
-                                                    {new Date(manageFilters.date + 'T12:00:00').toLocaleDateString('pt-BR')} • {manageFilters.lessonCount} Aula(s)
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest leading-none mb-1">Responsável:</p>
-                                            <p className="font-bold text-gray-700 bg-white px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm italic text-sm">{manageTeacherName}</p>
+                                // HISTORY VIEW
+                                <div className="flex-1 overflow-hidden flex flex-col bg-gray-50 rounded-xl border border-gray-100">
+                                    {/* Filter Bar */}
+                                    <div className="p-4 bg-white border-b border-gray-100 flex gap-4 items-center">
+                                        <div className="relative flex-1">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                            <input
+                                                type="text"
+                                                placeholder="Filtrar por aluno, turma, série..."
+                                                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                                value={historyFilterTerm}
+                                                onChange={(e) => setHistoryFilterTerm(e.target.value)}
+                                            />
                                         </div>
                                     </div>
-
-                                    <div className="border rounded-xl overflow-hidden shadow-sm bg-white">
-                                        <table className="w-full text-sm">
-                                            <thead className="bg-gray-50 border-b">
-                                                <tr>
-                                                    <th className="text-left py-3 px-4 font-bold text-gray-700">Aluno</th>
-                                                    <th className="text-center py-3 px-4 font-bold text-gray-700">Status</th>
-                                                    <th className="text-center py-3 px-4 font-bold text-gray-700">Qtd. Faltas</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y">
-                                                {manageStudents.sort((a, b) => a.name.localeCompare(b.name)).map(student => (
-                                                    <tr key={student.id} className="hover:bg-gray-50 transition-colors">
-                                                        <td className="py-3 px-4 font-medium text-gray-800">{student.name}</td>
-                                                        <td className="py-3 px-4 text-center">
-                                                            <div className="flex justify-center gap-2">
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setManageStatuses(prev => ({ ...prev, [student.id]: AttendanceStatus.PRESENT }));
-                                                                        setManageAbsenceOverrides(prev => {
-                                                                            const next = { ...prev };
-                                                                            delete next[student.id];
-                                                                            return next;
-                                                                        });
-                                                                    }}
-                                                                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${manageStatuses[student.id] === AttendanceStatus.PRESENT ? 'bg-emerald-500 text-white shadow-lg' : 'bg-gray-100 text-gray-400'}`}
-                                                                >
-                                                                    PRESENTE
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setManageStatuses(prev => ({ ...prev, [student.id]: AttendanceStatus.ABSENT }));
-                                                                    }}
-                                                                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${manageStatuses[student.id] === AttendanceStatus.ABSENT ? 'bg-rose-500 text-white shadow-lg' : 'bg-gray-100 text-gray-400'}`}
-                                                                >
-                                                                    FALTOU
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-3 px-4 text-center">
-                                                            {manageStatuses[student.id] === AttendanceStatus.ABSENT ? (
-                                                                <div className="flex justify-center gap-1">
-                                                                    {[1, 2, 3, 4].map(num => (
-                                                                        <button
-                                                                            key={num}
-                                                                            onClick={() => setManageAbsenceOverrides(prev => ({ ...prev, [student.id]: num }))}
-                                                                            className={`w-7 h-7 rounded-lg text-[10px] font-black border transition-all ${(manageAbsenceOverrides[student.id] === num || (!manageAbsenceOverrides[student.id] && manageFilters.lessonCount === num))
-                                                                                ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-110'
-                                                                                : 'bg-white text-gray-400 border-gray-200'
-                                                                                }`}
-                                                                        >
-                                                                            {num}
-                                                                        </button>
-                                                                    ))}
-                                                                </div>
-                                                            ) : (
-                                                                <span className="text-gray-300 font-bold">-</span>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-
-                                    <div className="flex gap-4 pt-4 border-t border-gray-100">
-                                        <Button
-                                            variant="secondary"
-                                            className="flex-1 py-4 text-sm font-bold text-gray-500 hover:text-gray-700 rounded-xl"
-                                            onClick={() => setManageAttendanceStep('filters')}
-                                        >
-                                            Voltar aos Filtros
-                                        </Button>
-                                        <Button
-                                            className="flex-[2] py-4 text-base !bg-emerald-600 hover:!bg-emerald-700 shadow-xl text-white font-black rounded-xl transition-all h-auto"
-                                            disabled={isSavingAttendance}
-                                            onClick={async () => {
-                                                setIsSavingAttendance(true);
-                                                try {
-                                                    const recordId = `${manageFilters.date}_${coordinator.unit}_${manageFilters.grade}_${manageFilters.class}_${manageFilters.shift}_${manageFilters.subject}`;
-                                                    const record: AttendanceRecord = {
-                                                        id: recordId,
-                                                        date: manageFilters.date,
-                                                        unit: coordinator.unit,
-                                                        gradeLevel: manageFilters.grade,
-                                                        schoolClass: manageFilters.class as SchoolClass,
-                                                        shift: manageFilters.shift,
-                                                        teacherId: coordinator.id,
-                                                        teacherName: manageTeacherName,
-                                                        discipline: manageFilters.subject,
-                                                        studentStatus: manageStatuses,
-                                                        lessonCount: manageFilters.lessonCount,
-                                                        studentAbsenceCount: manageAbsenceOverrides
-                                                    };
-
-                                                    // 1. Save Attendance Record
-                                                    await db.collection('attendance').doc(recordId).set(record);
-
-                                                    // 2. Sync to Grades (Manual Trigger)
-                                                    const [yStr] = manageFilters.date.split('-');
-                                                    const targetBimester = getDynamicBimester(manageFilters.date, academicSettings);
-
-                                                    if (targetBimester) {
-                                                        const bimesterKey = `bimester${targetBimester}`;
-
-                                                        // Get ALL records for this student/subject to calculate total absences
-                                                        // For simplicity and safety, we fetch and recalculate
-                                                        for (const student of manageStudents) {
-                                                            const snapshot = await db.collection('attendance')
-                                                                .where('discipline', '==', manageFilters.subject)
-                                                                .where('unit', '==', coordinator.unit)
-                                                                // Note: grade/class might have changed for the student across records,
-                                                                // but here we filter by discipline and unit, then manually check studentStatus in memory.
-                                                                .get();
-
-                                                            const allRecs = snapshot.docs.map(d => d.data() as AttendanceRecord);
-
-                                                            let totalAbsences = 0;
-                                                            allRecs.forEach(r => {
-                                                                if (r.studentStatus[student.id] === AttendanceStatus.ABSENT) {
-                                                                    if (getDynamicBimester(r.date, academicSettings) === targetBimester) {
-                                                                        const indWeight = r.studentAbsenceCount?.[student.id];
-                                                                        totalAbsences += indWeight !== undefined ? indWeight : (r.lessonCount || 1);
-                                                                    }
-                                                                }
-                                                            });
-
-                                                            const gradeId = `grade_${student.id}_${manageFilters.subject.replace(/\s+/g, '_')}_${yStr}`;
-                                                            const gradeDoc = await db.collection('grades').doc(gradeId).get();
-
-                                                            if (gradeDoc.exists) {
-                                                                const gData = gradeDoc.data();
-                                                                const updatedBimesters = { ...gData?.bimesters };
-                                                                if (updatedBimesters[bimesterKey]) {
-                                                                    updatedBimesters[bimesterKey].faltas = totalAbsences;
-                                                                    // Recalculate if needed, but usually bimesters is already formed
-                                                                    await db.collection('grades').doc(gradeId).update({
-                                                                        bimesters: updatedBimesters,
-                                                                        lastUpdated: new Date().toISOString()
-                                                                    });
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-
-                                                    alert("Chamada salva e boletins sincronizados!");
-                                                    setIsAttendanceManageModalOpen(false);
-                                                    setManageAttendanceStep('filters');
-                                                } catch (err) {
-                                                    console.error(err);
-                                                    alert("Erro ao salvar chamada.");
-                                                } finally {
-                                                    setIsSavingAttendance(false);
-                                                }
-                                            }}
-                                        >
-                                            {isSavingAttendance ? 'Salvando...' : 'Salvar Alterações e Atualizar Boletins'}
-                                        </Button>
+                                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                                        {historyLoading ? (
+                                            <div className="text-center py-10 text-gray-400">Carregando histórico...</div>
+                                        ) : filteredHistory.length === 0 ? (
+                                            <div className="text-center py-10 text-gray-400">Nenhuma ocorrência encontrada.</div>
+                                        ) : (
+                                            filteredHistory.map(occ => (
+                                                <div key={occ.id} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between gap-4 group hover:border-blue-200 transition-colors">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${occ.category === OccurrenceCategory.DISCIPLINARY ? 'bg-red-100 text-red-600' :
+                                                                occ.category === OccurrenceCategory.POSITIVE ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'
+                                                                }`}>
+                                                                {occ.category}
+                                                            </span>
+                                                            <span className="text-[10px] text-gray-400 font-medium flex items-center gap-1">
+                                                                <Clock className="w-3 h-3" />
+                                                                {new Date(occ.timestamp).toLocaleDateString()}
+                                                            </span>
+                                                        </div>
+                                                        <h4 className="font-bold text-gray-900 leading-tight mb-1">{occ.title}</h4>
+                                                        <p className="text-xs text-gray-600 leading-relaxed line-clamp-2">{occ.description}</p>
+                                                        <div className="mt-2 flex items-center gap-2 text-[10px] text-gray-400">
+                                                            <span className="font-bold text-gray-500">{occ.studentName}</span> • <span>{occ.gradeLevel} - {occ.schoolClass}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex flex-row md:flex-col items-center justify-center gap-2 border-t md:border-t-0 md:border-l border-gray-100 pt-3 md:pt-0 md:pl-4">
+                                                        <button
+                                                            onClick={() => handleDeleteOccurrence(occ.id)}
+                                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                            title="Excluir Ocorrência"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
                                     </div>
                                 </div>
                             )}
                         </div>
-                    </div>
-                </div>
-            )}
-            {/* SCHOOL CALENDAR MODAL */}
-            {isCalendarModalOpen && (
-                <div className="fixed inset-0 z-[100] bg-gray-900/70 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-white w-full max-w-5xl max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
-                        {/* Header */}
-                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-blue-50/30">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-blue-50 rounded-xl text-blue-950">
-                                    <CalendarIcon className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <h2 className="text-xl font-black text-gray-900 tracking-tight leading-none">Calendário Escolar</h2>
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Consulta de Eventos e Atividades Letivas</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <button
-                                    onClick={handlePrintCalendar}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-gray-500 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-gray-50 hover:text-blue-950 transition-all shadow-sm active:scale-95 cursor-pointer"
-                                >
-                                    <Printer className="w-3.5 h-3.5" />
-                                    Imprimir
-                                </button>
-                                <button
-                                    onClick={() => setIsCalendarModalOpen(false)}
-                                    className="text-gray-400 hover:text-red-500 p-2 rounded-full hover:bg-gray-100 transition-colors"
-                                >
-                                    <X className="w-6 h-6" />
-                                </button>
-                            </div>
-                        </div>
+                    )}
 
-                        {/* Content */}
-                        <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-50/20">
-                            <div className="max-w-5xl mx-auto">
-                                <SchoolCalendar events={calendarEvents} />
+
+                    {/* ATTENDANCE MANAGEMENT VIEW (activeTab === 'attendance') */}
+                    {activeTab === 'attendance' && (
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-0 md:p-6 mb-8 animate-fade-in-up flex flex-col h-full">
+
+                            {/* Content */}
+                            <div className="flex-1 overflow-y-auto p-0 md:p-4">
+                                {/* Steps */}
+                                <div className="flex items-center justify-between mb-8 px-4">
+                                    {[
+                                        { step: 'filters', label: 'Filtros' },
+                                        { step: 'list', label: 'Chamada' }
+                                    ].map((s, idx) => (
+                                        <React.Fragment key={s.step}>
+                                            <div className="flex flex-col items-center gap-2">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${manageAttendanceStep === s.step ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' :
+                                                    (manageAttendanceStep === 'list' && idx === 0) ? 'bg-emerald-600/30 text-emerald-800' : 'bg-gray-100 text-gray-400'
+                                                    }`}>
+                                                    {(manageAttendanceStep === 'list' && idx === 0) ? <CheckCircle2 className="w-5 h-5" /> : idx + 1}
+                                                </div>
+                                                <span className={`text-[10px] font-bold uppercase tracking-wider ${manageAttendanceStep === s.step ? 'text-emerald-700' : 'text-gray-400'}`}>
+                                                    {s.label}
+                                                </span>
+                                            </div>
+                                            {idx < 1 && <div className={`flex-1 h-0.5 mx-4 ${(manageAttendanceStep === 'list' && idx === 0) ? 'bg-emerald-500' : 'bg-gray-100'}`}></div>}
+                                        </React.Fragment>
+                                    ))}
+                                </div>
+
+                                {/* Step 1: Filters */}
+                                {manageAttendanceStep === 'filters' && (
+                                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Data da Chamada</label>
+                                                <input
+                                                    type="date"
+                                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-emerald-500"
+                                                    value={manageFilters.date}
+                                                    onChange={(e) => setManageFilters({ ...manageFilters, date: e.target.value })}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Série/Ano</label>
+                                                <select
+                                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-emerald-500"
+                                                    value={manageFilters.grade}
+                                                    onChange={(e) => setManageFilters({ ...manageFilters, grade: e.target.value, subjectId: '' })}
+                                                >
+                                                    <option value="">Selecione</option>
+                                                    {academicGrades.map(g => (
+                                                        <option key={g.id} value={g.name}>{g.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Turma</label>
+                                                <select
+                                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-emerald-500"
+                                                    value={manageFilters.class}
+                                                    onChange={(e) => setManageFilters({ ...manageFilters, class: (e.target.value as SchoolClass) })}
+                                                >
+                                                    <option value="">Selecione</option>
+                                                    {SCHOOL_CLASSES_OPTIONS.map(opt => (
+                                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Turno</label>
+                                                <select
+                                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-emerald-500"
+                                                    value={manageFilters.shift}
+                                                    onChange={(e) => setManageFilters({ ...manageFilters, shift: (e.target.value as SchoolShift) })}
+                                                >
+                                                    {SCHOOL_SHIFTS.map(opt => (
+                                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Disciplina (Opcional)</label>
+                                            <select
+                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-emerald-500"
+                                                value={manageFilters.subjectId}
+                                                onChange={(e) => setManageFilters({ ...manageFilters, subjectId: e.target.value })}
+                                            >
+                                                <option value="">Geral / Apenas Presença Diária</option>
+                                                {manageFilters.grade && academicSubjects
+                                                    .filter(s => s.gradeId === academicGrades.find(g => g.name === manageFilters.grade)?.id)
+                                                    .map(subj => (
+                                                        <option key={subj.id} value={subj.id}>{subj.name}</option>
+                                                    ))}
+                                            </select>
+                                            <p className="text-[10px] text-gray-500">* Se não selecionar disciplina, será considerada falta GLOBAL no dia.</p>
+                                        </div>
+
+                                        <div className="flex justify-end pt-4">
+                                            <Button
+                                                onClick={handleFetchAttendanceForManagement}
+                                                disabled={!manageFilters.date || !manageFilters.grade || !manageFilters.class || isLoadingManageAttendance}
+                                                className="w-full md:w-auto py-3 px-8 text-sm !bg-emerald-600 hover:!bg-emerald-700 shadow-lg text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                                            >
+                                                {isLoadingManageAttendance ? 'Carregando...' : (
+                                                    <>
+                                                        <Search className="w-4 h-4" />
+                                                        Buscar Lista de Chamada
+                                                    </>
+                                                )}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Step 2: List */}
+                                {
+                                    manageAttendanceStep === 'list' && (
+                                        <div className="flex flex-col h-full animate-in slide-in-from-right-4 duration-300">
+                                            {/* Info Bar */}
+                                            <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100 mb-4 flex flex-wrap gap-4 items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <button
+                                                        onClick={() => { setManageStudents([]); setManageStatuses({}); setManageAbsenceOverrides({}); setManageTeacherName(''); setManageAttendanceStep('filters'); }}
+                                                        className="p-1.5 hover:bg-white rounded-full transition-colors text-emerald-700 shadow-sm bg-white"
+                                                        title="Voltar aos Filtros"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                                                        </svg>
+                                                    </button>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-white rounded-lg text-emerald-600 shadow-sm">
+                                                            <CalendarIcon className="w-5 h-5" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Data Selecionada</p>
+                                                            <p className="font-bold text-gray-800">{new Date(manageFilters.date + 'T12:00:00').toLocaleDateString()}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {isLoadingManageAttendance ? (
+                                                <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
+                                                    <Loader2 className="w-8 h-8 animate-spin mb-2" />
+                                                    <span className="text-xs font-medium">Processando dados...</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                                                    {/* TEACHER OVERRIDE (Optional) */}
+                                                    <div className="bg-white p-4 rounded-xl border border-gray-200 mb-4">
+                                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Professor Responsável (Registro)</label>
+                                                        <input
+                                                            type="text"
+                                                            placeholder={`Ex: ${coordinator.name} (Coordenação)`}
+                                                            className="w-full p-2.5 border border-gray-200 rounded-lg text-sm"
+                                                            value={manageTeacherName}
+                                                            onChange={(e) => setManageTeacherName(e.target.value)}
+                                                        />
+                                                        <p className="text-[10px] text-gray-400 mt-1">* Deixe em branco para usar seu nome automaticamente.</p>
+                                                    </div>
+
+                                                    {manageStudents.map(student => {
+                                                        const status = manageStatuses[student.id]; // 'present' | 'absent' | undefined
+                                                        const isOverride = manageAbsenceOverrides[student.id];
+
+                                                        return (
+                                                            <div key={student.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${status === 'absent' ? 'bg-red-50 border-red-200' :
+                                                                status === 'present' ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-gray-100'
+                                                                }`}>
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${status === 'absent' ? 'bg-red-100 text-red-600' :
+                                                                        status === 'present' ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-400'
+                                                                        }`}>
+                                                                        {student.name.charAt(0)}
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className={`text-sm font-bold ${status === 'absent' ? 'text-red-700' : 'text-gray-800'}`}>{student.name}</p>
+                                                                        <p className="text-[10px] text-gray-400">RM: {student.code}</p>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="flex gap-2">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setManageStatuses(prev => ({ ...prev, [student.id]: 'present' }));
+                                                                            // If it was override, keep it or logic? For simplicity, present is just present.
+                                                                            setManageAbsenceOverrides(prev => { const n = { ...prev }; delete n[student.id]; return n; });
+                                                                        }}
+                                                                        className={`p-2 rounded-lg transition-colors flex items-center gap-1 ${status === 'present' ? 'bg-emerald-600 text-white shadow-md' : 'bg-gray-100 text-gray-400 hover:bg-emerald-50 hover:text-emerald-600'}`}
+                                                                    >
+                                                                        <CheckCircle2 className="w-4 h-4" />
+                                                                        <span className="text-xs font-bold hidden md:inline">Presente</span>
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setManageStatuses(prev => ({ ...prev, [student.id]: 'absent' }));
+                                                                        }}
+                                                                        className={`p-2 rounded-lg transition-colors flex items-center gap-1 ${status === 'absent' ? 'bg-red-600 text-white shadow-md' : 'bg-gray-100 text-gray-400 hover:bg-red-50 hover:text-red-600'}`}
+                                                                    >
+                                                                        <X className="w-4 h-4" />
+                                                                        <span className="text-xs font-bold hidden md:inline">Falta</span>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+
+                                            <div className="pt-4 border-t border-gray-100 mt-2">
+                                                <div className="flex justify-between items-center mb-4 text-xs font-bold text-gray-500">
+                                                    <span>Total: {manageStudents.length}</span>
+                                                    <div className="flex gap-3">
+                                                        <span className="text-emerald-600">Presentes: {Object.values(manageStatuses).filter(s => s === 'present').length}</span>
+                                                        <span className="text-red-600">Faltas: {Object.values(manageStatuses).filter(s => s === 'absent').length}</span>
+                                                    </div>
+                                                </div>
+                                                {isSavingAttendance && (
+                                                    <div className="mb-2 w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                                        <div className="bg-emerald-500 h-full animate-progress-indeterminate"></div>
+                                                    </div>
+                                                )}
+                                                <Button
+                                                    onClick={handleSaveAttendanceManagement}
+                                                    disabled={isSavingAttendance || manageStudents.length === 0}
+                                                    className="w-full py-3.5 text-base !bg-blue-950 hover:!bg-black shadow-xl text-white font-bold rounded-xl transition-all"
+                                                >
+                                                    {isSavingAttendance ? 'Salvando Registros...' : '💾 Confirmar Chamada'}
+                                                </Button>
+                                                {!manageFilters.subjectId && (
+                                                    <p className="text-[10px] text-center text-gray-400 mt-2">
+                                                        * Modo Global: A falta será aplicada para TODAS as aulas do dia (Configuração: {academicSettings?.dailyShiftClasses || 5} aulas).
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )
+                                }
+
                             </div>
                         </div>
-                    </div>
-                </div>
-            )}
-        </div>
+                    )}
+
+                    {/* CALENDAR VIEW (activeTab === 'calendar') */}
+                    {
+                        activeTab === 'calendar' && (
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-0 md:p-6 mb-8 animate-fade-in-up flex flex-col h-full">
+                                {/* Header */}
+                                <div className="flex justify-end mb-4 px-4 md:px-0">
+                                    <button
+                                        onClick={handlePrintCalendar}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-gray-500 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-gray-50 hover:text-blue-950 transition-all shadow-sm active:scale-95 cursor-pointer"
+                                    >
+                                        <Printer className="w-3.5 h-3.5" />
+                                        Imprimir
+                                    </button>
+                                </div>
+
+                                {/* Content */}
+                                <div className="flex-1 overflow-y-auto p-0 md:p-4 bg-gray-50/20">
+                                    <div className="max-w-5xl mx-auto">
+                                        <SchoolCalendar events={calendarEvents} />
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    }
+
+                </main >
+            </div >
+        </div >
     );
 };
