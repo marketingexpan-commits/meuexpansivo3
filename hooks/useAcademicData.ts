@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebaseConfig';
-import { collection, getDocs } from 'firebase/firestore';
 import { AcademicSegment, AcademicGrade, AcademicSubject, ClassSchedule } from '../types';
 import { EDUCATION_LEVELS, GRADES_BY_LEVEL, DEFAULT_SUBJECTS } from '../src/utils/academicDefaults';
 
@@ -20,7 +19,7 @@ export function useAcademicData() {
                 let subjectsData: AcademicSubject[] = [];
 
                 // Fetch Segments
-                const segSnap = await getDocs(collection(db, 'academic_segments'));
+                const segSnap = await db.collection('academic_segments').get();
                 if (segSnap.empty) {
                     segmentsData = EDUCATION_LEVELS.map((levelName, index) => ({
                         id: `fallback_seg_${index}`,
@@ -35,7 +34,7 @@ export function useAcademicData() {
                 setSegments(segmentsData);
 
                 // Fetch Grades
-                const gradeSnap = await getDocs(collection(db, 'academic_grades'));
+                const gradeSnap = await db.collection('academic_grades').get();
                 if (gradeSnap.empty) {
                     // Reconstruct from GRADES_BY_LEVEL
                     EDUCATION_LEVELS.forEach((levelName, sIdx) => {
@@ -69,7 +68,7 @@ export function useAcademicData() {
                 setGrades(gradesData);
 
                 // Fetch Subjects
-                const subSnap = await getDocs(collection(db, 'academic_subjects'));
+                const subSnap = await db.collection('academic_subjects').get();
                 if (subSnap.empty) {
                     subjectsData = DEFAULT_SUBJECTS.map((name, index) => ({
                         id: `fallback_sub_${index}`,
@@ -85,7 +84,7 @@ export function useAcademicData() {
                 setSubjects(subjectsData);
 
                 // Fetch Class Schedules (NEW)
-                const scheduleSnap = await getDocs(collection(db, 'class_schedules'));
+                const scheduleSnap = await db.collection('class_schedules').get();
                 if (!scheduleSnap.empty) {
                     const schedulesData = scheduleSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ClassSchedule));
                     setSchedules(schedulesData);

@@ -347,7 +347,16 @@ const AppContent: React.FC = () => {
           setInitialLoad(prev => ({ ...prev, calendarEvents: true }));
         }));
 
-      setInitialLoad(prev => ({ ...prev, teachers: true, admins: true, messages: true, mensalidades: true, academicSettings: true, classSchedules: true }));
+      // Class Schedules (Unit) - ADDED FOR TEACHER
+      unsubs.push(db.collection('class_schedules').where('schoolId', '==', userUnit).onSnapshot(snap => {
+        setClassSchedules(snap.docs.map(doc => ({ ...doc.data() as ClassSchedule, id: doc.id })));
+        setInitialLoad(prev => ({ ...prev, classSchedules: true }));
+      }, (err) => {
+        console.error("Class Schedules (Teacher) listen error:", err);
+        setInitialLoad(prev => ({ ...prev, classSchedules: true }));
+      }));
+
+      setInitialLoad(prev => ({ ...prev, teachers: true, admins: true, messages: true, mensalidades: true, academicSettings: true }));
 
     } else if (session.role === UserRole.ADMIN) {
       const isGeneral = !userUnit;
@@ -1332,6 +1341,7 @@ const AppContent: React.FC = () => {
           agendas={dailyAgendas}
           examGuides={examGuides}
           tickets={tickets}
+          classSchedules={classSchedules}
         />
         <BackToTopButton />
       </>
