@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { db } from '../firebaseConfig';
-import { UnitContact, SchoolUnit, CoordinationSegment, Subject, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student } from '../types';
+import { UnitContact, SchoolUnit, CoordinationSegment, Subject, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket } from '../types';
 import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, CURRICULUM_MATRIX, getCurriculumSubjects, calculateBimesterMedia, calculateFinalData, SCHOOL_CLASSES_OPTIONS, SCHOOL_SHIFTS } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency } from '../utils/frequency';
 import { getDynamicBimester } from '../src/utils/academicUtils';
@@ -51,9 +51,10 @@ interface CoordinatorDashboardProps {
     onLogout: () => void;
     onCreateNotification?: (title: string, message: string, studentId?: string, teacherId?: string) => Promise<void>;
     academicSettings?: any;
+    tickets?: Ticket[];
 }
 
-export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coordinator, onLogout, onCreateNotification, academicSettings }) => {
+export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coordinator, onLogout, onCreateNotification, academicSettings, tickets = [] }) => {
     // --- ACADEMIC DATA ---
     const { segments: academicSegments, grades: academicGrades, subjects: academicSubjects, loading: loadingAcademic } = useAcademicData();
 

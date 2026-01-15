@@ -178,8 +178,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const studentTickets = useMemo(() => {
         if (!propsTickets) return [];
         return propsTickets
-            .filter(t => t.studentId === student.id)
-            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+            .filter(t => t && t.studentId === student.id)
+            .sort((a, b) => {
+                const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+                const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+                return timeB - timeA;
+            });
     }, [propsTickets, student.id]);
 
     const studentMaterials = useMemo(() => {
@@ -230,7 +234,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const unreadNotifications = (notifications || []).filter(n => n && !n.read).length;
 
     const answeredTicketsCount = useMemo(() => {
-        return notifications.filter(n => !n.read && (n.title.toLowerCase().includes('dúvida respondida') || n.title.toLowerCase().includes('ticket respondido'))).length;
+        return (notifications || []).filter(n => n && !n.read && (n.title?.toLowerCase().includes('dúvida respondida') || n.title?.toLowerCase().includes('ticket respondido'))).length;
     }, [notifications]);
 
     // Estado para controle do semestre do relatório infantil
@@ -258,9 +262,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     // Dynamic detection of elapsed bimesters
     const calendarBim = getDynamicBimester(new Date().toLocaleDateString('en-CA'), academicSettings);
     const maxDataBim = (attendanceRecords || []).reduce((max, record) => {
-        const rYear = parseInt(record.date.split('-')[0], 10);
+        const rYear = record?.date ? parseInt(record.date.split('-')[0], 10) : 0;
         if (rYear !== currentYear) return max;
-        if (!record.studentStatus || !record.studentStatus[student.id]) return max;
+        if (!record?.studentStatus || !record.studentStatus[student.id]) return max;
         const b = getDynamicBimester(record.date, academicSettings);
         return b > max ? b : max;
     }, 1);
@@ -286,11 +290,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             .filter(g => {
                 // Filtra apenas matérias que pertencem à grade curricular do nível do aluno
                 if (subjectsInCurriculum.length > 0) {
-                    return subjectsInCurriculum.includes(g.subject);
+                    return subjectsInCurriculum.includes(g?.subject);
                 }
                 return true;
             })
             .map(grade => {
+                if (!grade?.bimesters) return grade;
                 const calculatedBimesters = {
                     bimester1: calculateBimesterMedia(grade.bimesters.bimester1),
                     bimester2: calculateBimesterMedia(grade.bimesters.bimester2),
@@ -373,7 +378,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
     const studentAttendance = useMemo(() => {
         let records = (attendanceRecords || [])
-            .filter(record => record && record.studentStatus && record.studentStatus[student.id]);
+            .filter(record => record?.studentStatus && record.studentStatus[student.id]);
 
         // FIX: Remove phantom absence for Thiago Quintiliano (11111) in 4th Bimester for Biologia
         if (student.code === '11111' || (student.name && student.name.toLowerCase().includes('thiago quintiliano'))) {
@@ -395,8 +400,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
     const absencesThisYear = useMemo(() => {
         return studentAttendance.reduce((acc, record) => {
+            if (!record?.date) return acc;
             const recordDate = new Date(record.date + 'T00:00:00');
-            if (recordDate.getFullYear() === currentYear && record.studentStatus[student.id] === AttendanceStatus.ABSENT) {
+            if (recordDate.getFullYear() === currentYear && record.studentStatus?.[student.id] === AttendanceStatus.ABSENT) {
                 const individualCount = record.studentAbsenceCount?.[student.id];
                 return acc + (individualCount !== undefined ? individualCount : (record.lessonCount || 1));
             }

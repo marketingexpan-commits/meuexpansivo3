@@ -22,7 +22,15 @@ import { StudentDashboardSkeleton, TeacherDashboardSkeleton, AdminDashboardSkele
 // Extracted Main Application Logic (formerly App)
 // Extracted Main Application Logic (formerly App)
 const AppContent: React.FC = () => {
-  const [session, setSession] = useState<UserSession>({ role: UserRole.NONE, user: null });
+  const [session, setSession] = useState<UserSession>(() => {
+    try {
+      const saved = localStorage.getItem('app_session');
+      return saved ? JSON.parse(saved) : { role: UserRole.NONE, user: null };
+    } catch (e) {
+      console.error("Failed to load session from storage:", e);
+      return { role: UserRole.NONE, user: null };
+    }
+  });
 
   const [grades, setGrades] = useState<GradeEntry[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -151,7 +159,9 @@ const AppContent: React.FC = () => {
         data.sort((a: any, b: any) => {
           const dateA = a.timestamp?.toDate ? a.timestamp.toDate() : (a.timestamp ? new Date(a.timestamp) : new Date(0));
           const dateB = b.timestamp?.toDate ? b.timestamp.toDate() : (b.timestamp ? new Date(b.timestamp) : new Date(0));
-          return dateB.getTime() - dateA.getTime();
+          const timeA = isNaN(dateA.getTime()) ? 0 : dateA.getTime();
+          const timeB = isNaN(dateB.getTime()) ? 0 : dateB.getTime();
+          return timeB - timeA;
         });
         setNotifications(data);
         setInitialLoad(prev => ({ ...prev, notifications: true }));
@@ -295,7 +305,13 @@ const AppContent: React.FC = () => {
       // Load teacher notifications
       unsubs.push(db.collection('notifications').where('teacherId', '==', userId).onSnapshot(snap => {
         const data = snap.docs.map(doc => ({ ...doc.data() as AppNotification, id: doc.id }));
-        data.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        data.sort((a: any, b: any) => {
+          const dateA = a.timestamp?.toDate ? a.timestamp.toDate() : (a.timestamp ? new Date(a.timestamp) : new Date(0));
+          const dateB = b.timestamp?.toDate ? b.timestamp.toDate() : (b.timestamp ? new Date(b.timestamp) : new Date(0));
+          const timeA = isNaN(dateA.getTime()) ? 0 : dateA.getTime();
+          const timeB = isNaN(dateB.getTime()) ? 0 : dateB.getTime();
+          return timeB - timeA;
+        });
         setNotifications(data);
         setInitialLoad(prev => ({ ...prev, notifications: true }));
       }, (err) => {
@@ -704,7 +720,18 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handleLogout = () => { setSession({ role: UserRole.NONE, user: null }); setLoginError(''); };
+  const handleLogout = () => {
+    setSession({ role: UserRole.NONE, user: null });
+    setLoginError('');
+    localStorage.removeItem('app_session');
+  };
+
+  // 3. Persist Session
+  useEffect(() => {
+    if (session.role !== UserRole.NONE) {
+      localStorage.setItem('app_session', JSON.stringify(session));
+    }
+  }, [session]);
 
   // Helper para criar notificação interna
   const createNotification = async (title: string, message: string, studentId?: string, teacherId?: string) => {

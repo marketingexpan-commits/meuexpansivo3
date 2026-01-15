@@ -88,5 +88,16 @@ export const subscribeToAcademicSettings = (year: number, callback: (settings: A
                 const doc = snapshot.docs[0];
                 callback({ id: doc.id, ...doc.data() } as AcademicSettings);
             }
+        }, (error) => {
+            console.error("Error in academicSettings subscription:", error);
+            // Fallback to local defaults if subscription fails to prevent infinite loading
+            callback({
+                id: 'temp-fallback',
+                year,
+                unit,
+                bimesters: DEFAULT_BIMESTERS,
+                currentBimester: 1,
+                updatedAt: new Date().toISOString()
+            });
         });
 };

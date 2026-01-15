@@ -17,6 +17,9 @@
     "isolatedModules": true,
     "moduleDetection": "force",
     "allowJs": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
     "jsx": "react-jsx",
     "paths": {
       "@/*": [
