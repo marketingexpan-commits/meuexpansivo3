@@ -185,7 +185,7 @@ export const calculateBimesterMedia = (bData: BimesterData): BimesterData => {
   return { ...bData, media: parseFloat(media.toFixed(1)) };
 };
 
-export const calculateFinalData = (bimesters: GradeEntry['bimesters'], recFinal?: number | null, isYearFinished: boolean = false): Pick<GradeEntry, 'mediaAnual' | 'mediaFinal' | 'situacaoFinal'> => {
+export const calculateFinalData = (bimesters: GradeEntry['bimesters'], recFinal?: number | null, isYearFinished: boolean = false): Pick<GradeEntry, 'mediaAnual' | 'mediaFinal' | 'situacaoFinal' | 'mediaAnualApproved'> => {
   const bimesterMedias = [
     bimesters.bimester1.media,
     bimesters.bimester2.media,
@@ -237,10 +237,21 @@ export const calculateFinalData = (bimesters: GradeEntry['bimesters'], recFinal?
   const finalMediaAnual = showAverages ? mediaAnual : -1;
   const finalMediaFinal = (showAverages && (mediaAnual >= 7.0 || (recFinal !== undefined && recFinal !== null))) ? mediaFinal : -1;
 
+  // STRICT APPROVAL CHECK: Annual average is approved ONLY if all component bimesters are fully approved by coordinator.
+  const allBimestersApproved = [
+    bimesters.bimester1,
+    bimesters.bimester2,
+    bimesters.bimester3,
+    bimesters.bimester4
+  ].every(b => b.isNotaApproved !== false && b.isRecuperacaoApproved !== false);
+
+  const mediaAnualApproved = showAverages && allBimestersApproved;
+
   return {
     mediaAnual: finalMediaAnual,
     mediaFinal: finalMediaFinal,
-    situacaoFinal
+    situacaoFinal,
+    mediaAnualApproved // Automatically calculated based on bimester approvals
   };
 }
 

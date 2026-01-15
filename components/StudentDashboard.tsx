@@ -1683,7 +1683,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 );
                                                             })}
                                                             <td className="px-1 py-2 text-center font-bold text-gray-700 border-r border-gray-300 bg-gray-50 text-sm">
-                                                                {grade.mediaAnual >= 0 ? formatGrade(grade.mediaAnual) : '-'}
+                                                                {(grade.mediaAnualApproved === true && grade.mediaAnual >= 0) ? formatGrade(grade.mediaAnual) : '-'}
                                                             </td>
                                                             <td className={`px-1 py-1 text-center font-bold text-amber-600 text-[10px] md:text-xs border-r border-gray-300 ${grade.recuperacaoFinalApproved === false ? 'bg-yellow-100' : 'bg-amber-50/30'}`}>
                                                                 {grade.recuperacaoFinalApproved !== false ? formatGrade(grade.recuperacaoFinal) : <span className="text-gray-300">-</span>}

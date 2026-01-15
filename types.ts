@@ -138,6 +138,7 @@ export interface GradeEntry {
   };
   recuperacaoFinal?: number | null;
   recuperacaoFinalApproved?: boolean; // Novo: Indica se a recuperação final foi aprovada
+  mediaAnualApproved?: boolean; // Novo: Controle de exibição da Média Anual
   mediaAnual: number;
   mediaFinal: number;
   situacaoFinal: 'Aprovado' | 'Recuperação' | 'Reprovado' | 'Cursando' | 'Pendente';
