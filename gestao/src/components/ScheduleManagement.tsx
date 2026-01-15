@@ -5,6 +5,7 @@ import {
     doc,
     getDocs,
     setDoc,
+    deleteDoc,
     query,
     where,
     writeBatch
@@ -123,19 +124,21 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
             const scheduleId = `${unit}_${selectedGrade}_${selectedClass}_${selectedShift}_${selectedDay}`;
             const scheduleRef = doc(db, 'class_schedules', scheduleId);
 
-            const sortedItems = [...newItems].sort((a, b) => a.startTime.localeCompare(b.startTime));
-
-            await setDoc(scheduleRef, {
-                schoolId: unit,
-                grade: selectedGrade,
-                class: selectedClass,
-                shift: selectedShift,
-                dayOfWeek: selectedDay,
-                items: sortedItems,
-                lastUpdated: new Date().toISOString()
-            });
-
-            setItems(sortedItems);
+            if (newItems.length === 0) {
+                await deleteDoc(scheduleRef);
+            } else {
+                const sortedItems = [...newItems].sort((a, b) => a.startTime.localeCompare(b.startTime));
+                await setDoc(scheduleRef, {
+                    schoolId: unit,
+                    grade: selectedGrade,
+                    class: selectedClass,
+                    shift: selectedShift,
+                    dayOfWeek: selectedDay,
+                    items: sortedItems,
+                    lastUpdated: new Date().toISOString()
+                });
+                setItems(sortedItems);
+            }
             // Optional: alert("Horário removido com sucesso!");
         } catch (error) {
             console.error("Error saving schedule after removal:", error);
@@ -158,21 +161,25 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
             const scheduleId = `${unit}_${selectedGrade}_${selectedClass}_${selectedShift}_${selectedDay}`;
             const scheduleRef = doc(db, 'class_schedules', scheduleId);
 
-            // Sort items by start time before saving
-            const sortedItems = [...items].sort((a, b) => a.startTime.localeCompare(b.startTime));
+            if (items.length === 0) {
+                await deleteDoc(scheduleRef);
+                alert("Grade vazia detectada. Registro removido do banco de dados.");
+            } else {
+                // Sort items by start time before saving
+                const sortedItems = [...items].sort((a, b) => a.startTime.localeCompare(b.startTime));
 
-            await setDoc(scheduleRef, {
-                schoolId: unit,
-                grade: selectedGrade,
-                class: selectedClass,
-                shift: selectedShift,
-                dayOfWeek: selectedDay,
-                items: sortedItems,
-                lastUpdated: new Date().toISOString()
-            });
-
-            setItems(sortedItems);
-            alert("Grade salva com sucesso!");
+                await setDoc(scheduleRef, {
+                    schoolId: unit,
+                    grade: selectedGrade,
+                    class: selectedClass,
+                    shift: selectedShift,
+                    dayOfWeek: selectedDay,
+                    items: sortedItems,
+                    lastUpdated: new Date().toISOString()
+                });
+                setItems(sortedItems);
+                alert("Grade salva com sucesso!");
+            }
         } catch (error) {
             console.error("Error saving schedule:", error);
             alert("Erro ao salvar a grade.");

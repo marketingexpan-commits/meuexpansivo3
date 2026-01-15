@@ -227,7 +227,8 @@ export const DatabaseCleanupTool = () => {
             const allSchedules = await pedagogicalService.getAllSchedules();
             const filtered = allSchedules.filter(s =>
                 s.schoolId === selectedUnit &&
-                (selectedGrade === '' || s.grade === selectedGrade)
+                (selectedGrade === '' || s.grade === selectedGrade) &&
+                (!s.items || s.items.length === 0)
             );
             setGhostSchedules(filtered);
             setSelectedSchedules([]);
