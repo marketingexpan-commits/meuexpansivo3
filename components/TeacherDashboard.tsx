@@ -2686,10 +2686,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
                                                 {
                                                     ticket.response && (
-                                                        <div className="bg-orange-50 p-4 rounded-lg border border-orange-200 mb-4 ml-4 shadow-sm">
-                                                            <p className="text-xs font-bold text-orange-600 mb-1 uppercase tracking-wide">Sua Resposta</p>
+                                                        <div className="bg-orange-100 p-4 rounded-lg border border-orange-200 mb-4 ml-4 shadow-sm">
+                                                            <p className="text-xs font-bold text-orange-800 mb-1 uppercase tracking-wide">Sua Resposta</p>
                                                             <p className="text-blue-950 whitespace-pre-wrap">{ticket.response}</p>
-                                                            <p className="text-[10px] text-gray-400 mt-2 text-right">Enviada em {new Date(ticket.responseTimestamp!).toLocaleDateString()}</p>
+                                                            <p className="text-[10px] text-orange-800/60 mt-2 text-right">Enviada em {new Date(ticket.responseTimestamp!).toLocaleDateString()}</p>
                                                         </div>
                                                     )
                                                 }

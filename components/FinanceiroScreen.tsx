@@ -96,7 +96,7 @@ class BrickErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBounda
     render() {
         if (this.state.hasError) {
             return (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                <div className="p-4 bg-orange-100 border border-orange-200 rounded-lg text-orange-800 text-sm">
                     <p className="font-bold">Ocorreu um erro ao carregar o módulo de pagamento.</p>
                     <p>{this.state.error?.message}</p>
                     <button
@@ -225,7 +225,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
         switch (status) {
             case 'Pago': return 'bg-green-100 text-green-800 border-green-200';
             case 'Pendente': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-            case 'Atrasado': return 'bg-red-100 text-red-800 border-red-200';
+            case 'Atrasado': return 'bg-orange-100 text-orange-800 border-orange-200';
             default: return 'bg-gray-100 text-gray-800 border-gray-200';
         }
     };
@@ -282,7 +282,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
 
         // Se já passou da data de vencimento
         if (today > dueDate) {
-            return { label: 'ATRASADO', color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' };
+            return { label: 'ATRASADO', color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' };
         }
 
         // Se ainda não venceu
@@ -811,8 +811,8 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                             <span>Isento de pagamento de mensalidades regulares.</span>
                                                         </div>
                                                     )}
-                                                    <div className="text-xs text-orange-700 bg-orange-50 border border-orange-100 p-2 rounded flex items-center gap-2">
-                                                        <Lock className="w-4 h-4 text-orange-700" />
+                                                    <div className="text-xs text-orange-800 bg-orange-100 border border-orange-200 p-2 rounded flex items-center gap-2">
+                                                        <Lock className="w-4 h-4 text-orange-800" />
                                                         <span>Pagamento Cronológico: Você deve quitar a mensalidade mais antiga antes de avançar para as próximas.</span>
                                                     </div>
                                                 </div>
@@ -1395,8 +1395,8 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                         )}
                                         {paymentResult.status === 'rejected' && (
                                             <>
-                                                <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-3xl">❌</div>
-                                                <h3 className="text-xl font-bold text-red-700">Pagamento Recusado</h3>
+                                                <div className="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto text-3xl">❌</div>
+                                                <h3 className="text-xl font-bold text-orange-700">Pagamento Recusado</h3>
                                                 <p className="text-gray-600">{paymentResult.status_detail || 'Ocorreu um erro com seu pagamento.'}</p>
                                                 <Button onClick={() => setPaymentResult(null)} variant="outline" className="w-full">Tentar Novamente</Button>
                                             </>
@@ -1508,13 +1508,13 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                 return (
                                     <>
                                         {totalFine > 0 && (
-                                            <div className="flex justify-between items-center text-xs text-red-600 font-bold bg-red-50 p-2 rounded border border-red-100 mb-1">
+                                            <div className="flex justify-between items-center text-xs text-orange-800 font-bold bg-orange-100 p-2 rounded border border-orange-200 mb-1">
                                                 <span>Multa (2%):</span>
                                                 <span>+ R$ {totalFine.toFixed(2).replace('.', ',')}</span>
                                             </div>
                                         )}
                                         {totalInterest > 0 && (
-                                            <div className="flex justify-between items-center text-xs text-red-600 font-bold bg-red-50 p-2 rounded border border-red-100">
+                                            <div className="flex justify-between items-center text-xs text-orange-800 font-bold bg-orange-100 p-2 rounded border border-orange-200">
                                                 <span>Juros (Diário):</span>
                                                 <span>+ R$ {totalInterest.toFixed(2).replace('.', ',')}</span>
                                             </div>
