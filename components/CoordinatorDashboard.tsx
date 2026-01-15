@@ -160,6 +160,38 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
         return Array.from(subjects).sort();
     }, [pendingGradesMap]);
 
+    const filteredAttendanceGrades = useMemo(() => {
+        if (!coordinator.segment || coordinator.segment === CoordinationSegment.GERAL) {
+            return academicGrades;
+        }
+
+        const seg = coordinator.segment;
+
+        return academicGrades.filter(grade => {
+            const segment = academicSegments.find(s => s.id === grade.segmentId);
+            if (!segment) return false;
+            const name = segment.name.toLowerCase();
+
+            if (seg === CoordinationSegment.INFANTIL_FUND1) {
+                // Check: Infantil OR Fundamental I (excluding II/Finals)
+                const isInfantil = name.includes('infantil');
+                const isFund = name.includes('fundamental');
+                const isFund2 = name.includes('ii') || name.includes(' 2') || name.includes('final') || name.includes('finais');
+
+                return isInfantil || (isFund && !isFund2);
+            }
+
+            if (seg === CoordinationSegment.FUND2_MEDIO) {
+                // Check: Médio OR Fundamental II
+                const isMedio = name.includes('médio') || name.includes('medio');
+                const isFund2 = name.includes('fundamental') && (name.includes('ii') || name.includes(' 2') || name.includes('final') || name.includes('finais'));
+                return isMedio || isFund2;
+            }
+
+            return true;
+        });
+    }, [academicGrades, academicSegments, coordinator.segment]);
+
     const filteredDisplayStudents = useMemo(() => {
         return pendingGradesStudents.filter(s => {
             const matchesClass = quickClassFilter === 'all' || s.schoolClass === quickClassFilter;
@@ -1508,7 +1540,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                     onChange={(e) => setManageFilters({ ...manageFilters, grade: e.target.value, subjectId: '' })}
                                                 >
                                                     <option value="">Selecione</option>
-                                                    {academicGrades.map(g => (
+                                                    {filteredAttendanceGrades.map(g => (
                                                         <option key={g.id} value={g.name}>{g.name}</option>
                                                     ))}
                                                 </select>
