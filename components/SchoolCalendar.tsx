@@ -140,29 +140,25 @@ export const SchoolCalendar: React.FC<SchoolCalendarProps> = ({ events }) => {
                 }
             });
         }
-        // If no day selected, show all events for the current month
-        const startOfMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-01`;
-        const endOfMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${daysInMonth}`;
+
+        // If no day selected, show all events for the current YEAR
+        const year = currentDate.getFullYear();
+        const startOfYear = `${year}-01-01`;
+        const endOfYear = `${year}-12-31`;
 
         return events.filter(e => {
-            // Event starts within month OR event ends within month OR event spans entire month
             const eStart = e.startDate;
             const eEnd = e.endDate || e.startDate;
-            return (eStart >= startOfMonth && eStart <= endOfMonth) ||
-                (eEnd >= startOfMonth && eEnd <= endOfMonth) ||
-                (eStart <= startOfMonth && eEnd >= endOfMonth);
+
+            // Overlap check with the year
+            return (eStart <= endOfYear && eEnd >= startOfYear);
         }).sort((a, b) => a.startDate.localeCompare(b.startDate));
-    }, [selectedDate, events, currentDate, daysInMonth]);
+    }, [selectedDate, events, currentDate]);
 
 
     return (
         <div className="flex flex-col gap-6 animate-fade-in-up">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                    <CalendarIcon className="w-8 h-8 text-blue-950" />
-                    Calendário Escolar
-                </h3>
-            </div>
+
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* CALENDAR GRID */}
@@ -287,14 +283,24 @@ export const SchoolCalendar: React.FC<SchoolCalendarProps> = ({ events }) => {
                 {/* EVENTS LIST (Sidebar) */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col h-full lg:max-h-[600px] overflow-hidden">
                     <h3 className="font-bold text-gray-800 mb-4 flex items-center justify-between">
-                        <span>Eventos</span>
+                        <div className="flex flex-col">
+                            <span>Eventos</span>
+                            {!selectedDate && (
+                                <button
+                                    onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+                                    className="text-[10px] text-blue-600 hover:text-blue-800 font-bold uppercase tracking-widest mt-0.5 text-left"
+                                >
+                                    ← Voltar ao Mês
+                                </button>
+                            )}
+                        </div>
                         {selectedDate ? (
                             <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
                                 {new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR')}
                             </span>
                         ) : (
                             <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded font-medium">
-                                Este Mês
+                                Todo o Ano
                             </span>
                         )}
                     </h3>
@@ -312,8 +318,7 @@ export const SchoolCalendar: React.FC<SchoolCalendarProps> = ({ events }) => {
                                         </span>
                                         {!selectedDate && (
                                             <span className="text-xs font-bold text-gray-500">
-                                                {new Date(ev.startDate + 'T00:00:00').getDate()}
-                                                {ev.endDate ? ` - ${new Date(ev.endDate + 'T00:00:00').getDate()}` : ''}
+                                                {new Date(ev.startDate + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                                             </span>
                                         )}
                                     </div>
@@ -335,7 +340,7 @@ export const SchoolCalendar: React.FC<SchoolCalendarProps> = ({ events }) => {
                             onClick={() => setSelectedDate(null)}
                             className="w-full mt-4 py-2 border border-blue-200 text-blue-600 rounded-lg text-sm font-bold hover:bg-blue-50 transition-colors"
                         >
-                            Ver Todos do Mês
+                            Ver Todos do Ano
                         </button>
                     )}
                 </div>

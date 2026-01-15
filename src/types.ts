@@ -158,7 +158,11 @@ export interface AttendanceRecord {
   schoolClass: SchoolClass;
   teacherId: string;
   teacherName: string;
+  discipline: string;
+  shift?: string;
   studentStatus: Record<string, AttendanceStatus>; // studentId -> status
+  lessonCount?: number;
+  studentAbsenceCount?: Record<string, number>;
 }
 
 export interface EarlyChildhoodReport {

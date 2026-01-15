@@ -485,6 +485,7 @@ export interface AttendanceRecord {
   discipline: string; // Disciplina da chamada to allow subject-specific absences
   studentStatus: Record<string, AttendanceStatus>; // studentId -> status
   lessonCount?: number; // Quantidade de aulas (ex: 2 para aula geminada)
+  shift?: string; // Turno da chamada
   studentAbsenceCount?: Record<string, number>; // studentId -> número de faltas (sobrescreve padrão se houver)
 }
 

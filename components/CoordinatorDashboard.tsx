@@ -7,6 +7,9 @@ import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, cal
 import { getDynamicBimester } from '../src/utils/academicUtils';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
+import { SchoolCalendar } from './SchoolCalendar';
+import { generateSchoolCalendar } from '../utils/calendarGenerator';
+import { CalendarEvent } from '../types';
 import {
     AlertCircle,
     X,
@@ -18,7 +21,9 @@ import {
     User,
     CheckCircle2,
     Trash2,
-    Filter
+    Filter,
+    Calendar as CalendarIcon,
+    Printer
 } from 'lucide-react';
 
 
@@ -61,6 +66,28 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [historyOccurrences, setHistoryOccurrences] = useState<Occurrence[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
+
+    // Calendar State
+    const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
+    const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+
+    useEffect(() => {
+        const fetchCalendarEvents = async () => {
+            try {
+                const snapshot = await db.collection('calendar_events')
+                    .where('units', 'array-contains-any', [coordinator.unit, 'all'])
+                    .get();
+                setCalendarEvents(snapshot.docs.map(doc => ({ ...doc.data() as CalendarEvent, id: doc.id })));
+            } catch (error) {
+                console.error("Erro ao buscar eventos do calendário:", error);
+            }
+        };
+        fetchCalendarEvents();
+    }, [coordinator.unit]);
+
+    const handlePrintCalendar = () => {
+        generateSchoolCalendar(calendarEvents, academicSettings, coordinator.unit);
+    };
     const [historyFilterTerm, setHistoryFilterTerm] = useState('');
     const [studentSearchTerm, setStudentSearchTerm] = useState(''); // NEW: Search for students in occurrence modal
 
@@ -84,6 +111,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
         date: new Date().toLocaleDateString('en-CA'),
         grade: '',
         class: 'A',
+        shift: 'Matutino',
         subject: '',
         lessonCount: 1
     });
@@ -563,6 +591,16 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                     <ClipboardList className="w-4 h-4" />
                                     Gerenciar Ocorrências
                                 </Button>
+                                <Button
+                                    variant="primary"
+                                    onClick={() => setIsCalendarModalOpen(true)}
+                                    className="text-sm font-semibold py-1.5 px-4 flex items-center gap-2 shadow-sm hover:opacity-90 transition-opacity"
+                                    style={{ backgroundColor: '#1e3a8a', color: '#FFFFFF' }}
+                                >
+                                    <CalendarIcon className="w-4 h-4" />
+                                    Calendário
+                                </Button>
+
                                 <Button
                                     variant="secondary"
                                     onClick={onLogout}
@@ -1290,14 +1328,23 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
 
             {/* ATTENDANCE MANAGEMENT MODAL */}
             {isAttendanceManageModalOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-                        <div className="p-4 bg-blue-950 text-white flex justify-between items-center">
-                            <h3 className="font-bold flex items-center gap-2">
-                                <ClipboardList className="w-5 h-5" />
-                                Gerenciamento de Chamada Manual
-                            </h3>
-                            <button onClick={() => { setIsAttendanceManageModalOpen(false); setManageAttendanceStep('filters'); }} className="hover:bg-white/10 p-1 rounded transition-colors">
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+                        {/* Header */}
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-blue-50/50">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-blue-100 text-blue-600 rounded-xl">
+                                    <ClipboardList className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-black text-gray-900 leading-tight">Gerenciamento de Chamada Manual</h2>
+                                    <p className="text-xs text-gray-500 font-medium">Localização e criação de registros de presença</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => { setIsAttendanceManageModalOpen(false); setManageAttendanceStep('filters'); }}
+                                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600"
+                            >
                                 <X className="w-6 h-6" />
                             </button>
                         </div>
@@ -1307,53 +1354,64 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                 <div className="space-y-6">
                                     <p className="text-gray-600">Selecione os dados para localizar ou criar a chamada. Esta ferramenta permite ignorar as restrições de calendário.</p>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="text-sm font-bold text-gray-700 mb-1 block">Data</label>
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block ml-1">Data</label>
                                             <input
                                                 type="date"
                                                 value={manageFilters.date}
                                                 onChange={e => setManageFilters(prev => ({ ...prev, date: e.target.value }))}
-                                                className="w-full p-2 border rounded"
+                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-300 shadow-sm"
                                             />
                                         </div>
-                                        <div>
-                                            <label className="text-sm font-bold text-gray-700 mb-1 block">Série/Ano</label>
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block ml-1">Turno</label>
+                                            <select
+                                                value={manageFilters.shift}
+                                                onChange={e => setManageFilters(prev => ({ ...prev, shift: e.target.value }))}
+                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
+                                            >
+                                                <option value="Matutino">Matutino</option>
+                                                <option value="Vespertino">Vespertino</option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block ml-1">Série/Ano</label>
                                             <select
                                                 value={manageFilters.grade}
                                                 onChange={e => setManageFilters(prev => ({ ...prev, grade: e.target.value }))}
-                                                className="w-full p-2 border rounded"
+                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
                                             >
                                                 <option value="">Selecione...</option>
                                                 {academicGrades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
                                             </select>
                                         </div>
-                                        <div>
-                                            <label className="text-sm font-bold text-gray-700 mb-1 block">Turma</label>
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block ml-1">Turma</label>
                                             <select
                                                 value={manageFilters.class}
                                                 onChange={e => setManageFilters(prev => ({ ...prev, class: e.target.value as SchoolClass }))}
-                                                className="w-full p-2 border rounded"
+                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
                                             >
                                                 {SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
                                             </select>
                                         </div>
-                                        <div>
-                                            <label className="text-sm font-bold text-gray-700 mb-1 block">Disciplina</label>
+                                        <div className="md:col-span-2 space-y-1.5">
+                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block ml-1">Disciplina</label>
                                             <select
                                                 value={manageFilters.subject}
                                                 onChange={e => setManageFilters(prev => ({ ...prev, subject: e.target.value }))}
-                                                className="w-full p-2 border rounded"
+                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
                                             >
                                                 <option value="">Selecione...</option>
                                                 {academicSubjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                                             </select>
                                         </div>
-                                        <div className="md:col-span-2">
-                                            <label className="text-sm font-bold text-gray-700 mb-1 block">Nº de Aulas (Peso)</label>
+                                        <div className="md:col-span-2 space-y-1.5">
+                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block ml-1">Nº de Aulas (Peso)</label>
                                             <select
                                                 value={manageFilters.lessonCount}
                                                 onChange={e => setManageFilters(prev => ({ ...prev, lessonCount: Number(e.target.value) }))}
-                                                className="w-full p-2 border rounded font-bold text-blue-900"
+                                                className="w-full p-3 bg-gray-100 border border-blue-100 rounded-xl font-black text-blue-900 outline-none transition-all shadow-sm"
                                             >
                                                 <option value={1}>1 Aula</option>
                                                 <option value={2}>2 Aulas</option>
@@ -1363,7 +1421,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                         </div>
                                     </div>
                                     <Button
-                                        className="w-full py-3 !bg-blue-950 hover:!bg-black text-white"
+                                        className="w-full py-4 text-base !bg-blue-950 hover:!bg-black shadow-xl text-white font-black rounded-xl transition-all h-auto mt-4"
                                         disabled={!manageFilters.grade || !manageFilters.subject || isLoadingManageAttendance}
                                         onClick={async () => {
                                             setIsLoadingManageAttendance(true);
@@ -1372,19 +1430,20 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                 const studentSnap = await db.collection('students')
                                                     .where('unit', '==', coordinator.unit)
                                                     .where('schoolClass', '==', manageFilters.class)
+                                                    .where('shift', '==', manageFilters.shift)
                                                     .get();
 
                                                 let students = studentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
                                                 students = students.filter(s => s.gradeLevel === manageFilters.grade || s.gradeLevel.startsWith(manageFilters.grade));
 
                                                 if (students.length === 0) {
-                                                    alert("Nenhum aluno encontrado para os critérios selecionados.");
+                                                    alert(`Nenhum aluno encontrado para os critérios selecionados (${manageFilters.shift}).`);
                                                     return;
                                                 }
                                                 setManageStudents(students);
 
                                                 // 2. Load Existing Record (if any)
-                                                const recordId = `${manageFilters.date}_${coordinator.unit}_${manageFilters.grade}_${manageFilters.class}_${manageFilters.subject}`;
+                                                const recordId = `${manageFilters.date}_${coordinator.unit}_${manageFilters.grade}_${manageFilters.class}_${manageFilters.shift}_${manageFilters.subject}`;
                                                 const recDoc = await db.collection('attendance').doc(recordId).get();
 
                                                 if (recDoc.exists) {
@@ -1414,15 +1473,22 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                 </div>
                             ) : (
                                 <div className="space-y-6">
-                                    <div className="flex justify-between items-center bg-gray-50 p-4 rounded-lg border">
+                                    <div className="flex justify-between items-center bg-gray-50 p-6 rounded-2xl border border-gray-100 shadow-sm">
                                         <div>
-                                            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Chamada para:</p>
-                                            <p className="font-bold text-blue-950">{manageFilters.subject} - {manageFilters.grade} ({manageFilters.class})</p>
-                                            <p className="text-sm text-gray-600">{new Date(manageFilters.date + 'T12:00:00').toLocaleDateString('pt-BR')} • {manageFilters.lessonCount} Aula(s)</p>
+                                            <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest leading-none mb-1">Chamada para:</p>
+                                            <p className="font-black text-lg text-blue-950 leading-tight">{manageFilters.subject}</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded">
+                                                    {manageFilters.grade} ({manageFilters.class}) • {manageFilters.shift}
+                                                </span>
+                                                <span className="text-xs text-gray-500 font-medium">
+                                                    {new Date(manageFilters.date + 'T12:00:00').toLocaleDateString('pt-BR')} • {manageFilters.lessonCount} Aula(s)
+                                                </span>
+                                            </div>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Responsável:</p>
-                                            <p className="font-medium text-gray-800 italic">{manageTeacherName}</p>
+                                            <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest leading-none mb-1">Responsável:</p>
+                                            <p className="font-bold text-gray-700 bg-white px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm italic text-sm">{manageTeacherName}</p>
                                         </div>
                                     </div>
 
@@ -1490,23 +1556,28 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                         </table>
                                     </div>
 
-                                    <div className="flex gap-4 pt-4 border-t">
-                                        <Button variant="secondary" className="flex-1" onClick={() => setManageAttendanceStep('filters')}>
+                                    <div className="flex gap-4 pt-4 border-t border-gray-100">
+                                        <Button
+                                            variant="secondary"
+                                            className="flex-1 py-4 text-sm font-bold text-gray-500 hover:text-gray-700 rounded-xl"
+                                            onClick={() => setManageAttendanceStep('filters')}
+                                        >
                                             Voltar aos Filtros
                                         </Button>
                                         <Button
-                                            className="flex-[2] !bg-emerald-600 hover:!bg-emerald-700 text-white font-bold py-3"
+                                            className="flex-[2] py-4 text-base !bg-emerald-600 hover:!bg-emerald-700 shadow-xl text-white font-black rounded-xl transition-all h-auto"
                                             disabled={isSavingAttendance}
                                             onClick={async () => {
                                                 setIsSavingAttendance(true);
                                                 try {
-                                                    const recordId = `${manageFilters.date}_${coordinator.unit}_${manageFilters.grade}_${manageFilters.class}_${manageFilters.subject}`;
+                                                    const recordId = `${manageFilters.date}_${coordinator.unit}_${manageFilters.grade}_${manageFilters.class}_${manageFilters.shift}_${manageFilters.subject}`;
                                                     const record: AttendanceRecord = {
                                                         id: recordId,
                                                         date: manageFilters.date,
                                                         unit: coordinator.unit,
                                                         gradeLevel: manageFilters.grade,
                                                         schoolClass: manageFilters.class as SchoolClass,
+                                                        shift: manageFilters.shift,
                                                         teacherId: coordinator.id,
                                                         teacherName: manageTeacherName,
                                                         discipline: manageFilters.subject,
@@ -1581,6 +1652,47 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                     </div>
                                 </div>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* SCHOOL CALENDAR MODAL */}
+            {isCalendarModalOpen && (
+                <div className="fixed inset-0 z-[100] bg-gray-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-5xl max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-blue-50/30">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-blue-50 rounded-xl text-blue-950">
+                                    <CalendarIcon className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-black text-gray-900 tracking-tight leading-none">Calendário Escolar</h2>
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Consulta de Eventos e Atividades Letivas</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={handlePrintCalendar}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-gray-500 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-gray-50 hover:text-blue-950 transition-all shadow-sm active:scale-95 cursor-pointer"
+                                >
+                                    <Printer className="w-3.5 h-3.5" />
+                                    Imprimir
+                                </button>
+                                <button
+                                    onClick={() => setIsCalendarModalOpen(false)}
+                                    className="text-gray-400 hover:text-red-500 p-2 rounded-full hover:bg-gray-100 transition-colors"
+                                >
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-50/20">
+                            <div className="max-w-5xl mx-auto">
+                                <SchoolCalendar events={calendarEvents} />
+                            </div>
                         </div>
                     </div>
                 </div>
