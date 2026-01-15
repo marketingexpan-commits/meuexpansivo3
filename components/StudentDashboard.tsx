@@ -1574,7 +1574,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                     if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
                                                                         if (getDynamicBimester(att.date, academicSettings) === bimesterNum) {
                                                                             if (classSchedules && classSchedules.length > 0) {
-                                                                                if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit)) return acc;
+                                                                                if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass)) return acc;
                                                                             }
                                                                             const individualCount = att.studentAbsenceCount?.[student.id];
                                                                             return acc + (individualCount !== undefined ? individualCount : (att.lessonCount || 1));
