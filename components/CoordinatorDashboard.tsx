@@ -1237,6 +1237,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                                             value={occFilters.shift}
                                                             onChange={(e) => setOccFilters({ ...occFilters, shift: (e.target.value as SchoolShift) })}
                                                         >
+                                                            <option value="">Selecione o turno</option>
                                                             {SCHOOL_SHIFTS.map(opt => (
                                                                 <option key={opt.value} value={opt.value}>{opt.label}</option>
                                                             ))}
