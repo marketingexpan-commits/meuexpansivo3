@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Smartphone, Save, AlertCircle, CheckCircle } from 'lucide-react';
+import { Smartphone, Save, AlertCircle, CheckCircle, Plus } from 'lucide-react';
 import { db } from '../firebaseConfig';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { MuralDigital } from './MuralDigital'; // Assuming a named export or default fallback
@@ -19,15 +19,26 @@ interface SchoolConfigData {
     accentColor: string; // Cor de Destaque (Laranja)
     maintenanceMode: boolean;
     units: UnitContact[];
+    contactMessage: string;
+    developerMessage: string;
     copyrightText: string;
     developerName: string;
     developerUrl: string;
+
+    // Admin System Config
+    adminLogoUrl: string;
+    adminPrimaryColor: string;
+    adminSystemTitle: string;
+    adminSystemSubtitle: string;
+    adminSystemLabel: string;
+    adminFooterText: string;
+    adminCopyright: string;
 }
 
 const DEFAULT_CONFIG: SchoolConfigData = {
     appName: 'Meu Expansivo',
     appSubtitle: 'APLICATIVO',
-    logoUrl: '',
+    logoUrl: 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png',
     instagramUrl: 'https://www.instagram.com/redeexpansivo',
     primaryColor: '#172554', // blue-950
     accentColor: '#ea580c', // orange-600
@@ -54,9 +65,20 @@ const DEFAULT_CONFIG: SchoolConfigData = {
             whatsapp: '5584999540167'
         }
     ],
+    contactMessage: 'Olá, gostaria de informações sobre a escola.',
+    developerMessage: 'Olá, preciso de suporte no App do Aluno.',
     copyrightText: '© 2026 Expansivo Rede de Ensino. Todos os direitos reservados.',
     developerName: 'HC Apps | 84988739180',
-    developerUrl: 'https://wa.me/5584988739180'
+    developerUrl: 'https://wa.me/5584988739180',
+
+    // Admin Defaults
+    adminLogoUrl: 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png',
+    adminPrimaryColor: '#172554', // blue-950
+    adminSystemTitle: 'Meu Expansivo',
+    adminSystemLabel: 'SISTEMA',
+    adminSystemSubtitle: 'Gestão Escolar',
+    adminFooterText: 'Sistema Meu Expansivo - Gestão Escolar v1.0',
+    adminCopyright: '© 2026 Expansivo Rede de Ensino. Todos os direitos reservados.'
 };
 
 export const SchoolConfig = () => {
@@ -64,7 +86,7 @@ export const SchoolConfig = () => {
     const [saving, setSaving] = useState(false);
     const [config, setConfig] = useState<SchoolConfigData>(DEFAULT_CONFIG);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-    const [activeTab, setActiveTab] = useState<'general' | 'mural'>('general');
+    const [activeTab, setActiveTab] = useState<'general' | 'admin' | 'mural'>('general');
 
     useEffect(() => {
         fetchConfig();
@@ -78,9 +100,14 @@ export const SchoolConfig = () => {
 
             if (docSnap.exists()) {
                 const data = docSnap.data() as SchoolConfigData;
-                // Force default units if none are saved or array is empty (fix for missing initial data)
+                // Force default units if none are saved or array is empty
                 const units = (data.units && data.units.length > 0) ? data.units : DEFAULT_CONFIG.units;
-                setConfig({ ...DEFAULT_CONFIG, ...data, units });
+
+                // Force default images if empty
+                const logoUrl = data.logoUrl || DEFAULT_CONFIG.logoUrl;
+                const adminLogoUrl = data.adminLogoUrl || DEFAULT_CONFIG.adminLogoUrl;
+
+                setConfig({ ...DEFAULT_CONFIG, ...data, units, logoUrl, adminLogoUrl });
             }
         } catch (error) {
             console.error("Erro ao carregar configurações:", error);
@@ -146,6 +173,15 @@ export const SchoolConfig = () => {
                     Configurações Gerais
                 </button>
                 <button
+                    onClick={() => setActiveTab('admin')}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'admin'
+                        ? 'bg-white text-blue-950 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                >
+                    Sistema Gestão
+                </button>
+                <button
                     onClick={() => setActiveTab('mural')}
                     className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'mural'
                         ? 'bg-white text-blue-950 shadow-sm'
@@ -197,18 +233,25 @@ export const SchoolConfig = () => {
 
                                 <div className="md:col-span-2">
                                     <label className="block text-sm font-semibold text-slate-700 mb-2">URL da Logo (Imagem)</label>
-                                    <input
-                                        type="text"
-                                        value={config.logoUrl}
-                                        onChange={e => setConfig({ ...config, logoUrl: e.target.value })}
-                                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
-                                        placeholder="https://..."
-                                    />
-                                    {config.logoUrl && (
-                                        <div className="mt-3 p-2 border border-slate-100 rounded-lg w-fit bg-slate-50">
-                                            <img src={config.logoUrl} alt="Preview" className="h-12 object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                                    <div className="flex gap-4 items-start">
+                                        <div className="w-20 h-20 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+                                            {config.logoUrl ? (
+                                                <img src={config.logoUrl} alt="Logo App" className="w-full h-full object-contain p-2" />
+                                            ) : (
+                                                <Smartphone className="w-8 h-8 text-slate-300" />
+                                            )}
                                         </div>
-                                    )}
+                                        <div className="flex-1">
+                                            <input
+                                                type="text"
+                                                value={config.logoUrl}
+                                                onChange={e => setConfig({ ...config, logoUrl: e.target.value })}
+                                                className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                                placeholder="https://..."
+                                            />
+                                            <p className="text-xs text-slate-500 mt-2">Recomendado: Imagem PNG com fundo transparente do App.</p>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div>
@@ -266,90 +309,108 @@ export const SchoolConfig = () => {
                                         placeholder="https://instagram.com/..."
                                     />
                                 </div>
+
                             </div>
                         </div>
 
                         {/* Contatos das Unidades */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                            <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-100">
-                                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                    Contatos das Unidades
-                                </h2>
+                        {/* Contatos das Unidades */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-xl font-bold text-slate-800">Contatos das Unidades</h2>
                                 <button
                                     type="button"
                                     onClick={() => setConfig({ ...config, units: [...(config.units || []), { name: '', address: '', whatsapp: '' }] })}
-                                    className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors flex items-center gap-1"
+                                    className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors flex items-center"
                                 >
-                                    + Adicionar Unidade
+                                    <Plus className="w-4 h-4 mr-1.5" /> Adicionar Unidade
                                 </button>
                             </div>
 
-                            <div className="space-y-4">
-                                {(!config.units || config.units.length === 0) && (
-                                    <p className="text-slate-500 text-sm italic text-center py-4 bg-slate-50 rounded-lg border border-slate-100 border-dashed">
-                                        Nenhuma unidade cadastrada. Adicione para exibir no 'Fale Conosco'.
-                                    </p>
-                                )}
-                                {config.units?.map((unit, index) => (
-                                    <div key={index} className="p-4 bg-slate-50 rounded-xl border border-slate-200 relative group">
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                const newUnits = config.units.filter((_, i) => i !== index);
-                                                setConfig({ ...config, units: newUnits });
-                                            }}
-                                            className="absolute top-2 right-2 text-slate-400 hover:text-red-500 p-1"
-                                            title="Remover Unidade"
-                                        >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                        </button>
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <div className="md:col-span-1">
-                                                <label className="block text-xs font-semibold text-slate-500 mb-1">Nome da Unidade</label>
-                                                <input
-                                                    type="text"
-                                                    value={unit.name}
-                                                    onChange={e => {
-                                                        const newUnits = [...config.units];
-                                                        newUnits[index] = { ...unit, name: e.target.value };
-                                                        setConfig({ ...config, units: newUnits });
-                                                    }}
-                                                    className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none text-sm font-semibold"
-                                                    placeholder="Ex: Expansivo Zona Norte"
-                                                />
-                                            </div>
-                                            <div className="md:col-span-1">
-                                                <label className="block text-xs font-semibold text-slate-500 mb-1">WhatsApp (apenas números)</label>
-                                                <input
-                                                    type="text"
-                                                    value={unit.whatsapp}
-                                                    onChange={e => {
-                                                        const newUnits = [...config.units];
-                                                        newUnits[index] = { ...unit, whatsapp: e.target.value };
-                                                        setConfig({ ...config, units: newUnits });
-                                                    }}
-                                                    className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none text-sm"
-                                                    placeholder="Ex: 5584999999999"
-                                                />
-                                            </div>
-                                            <div className="md:col-span-3">
-                                                <label className="block text-xs font-semibold text-slate-500 mb-1">Endereço</label>
-                                                <input
-                                                    type="text"
-                                                    value={unit.address}
-                                                    onChange={e => {
-                                                        const newUnits = [...config.units];
-                                                        newUnits[index] = { ...unit, address: e.target.value };
-                                                        setConfig({ ...config, units: newUnits });
-                                                    }}
-                                                    className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none text-sm"
-                                                    placeholder="Ex: Av. Boa Sorte, 265..."
-                                                />
+                            <div className="mb-6">
+                                <label className="block text-sm font-medium text-slate-700 mb-1">
+                                    Mensagem Automática (Fale Conosco)
+                                </label>
+                                <input
+                                    type="text"
+                                    value={config.contactMessage}
+                                    onChange={(e) => setConfig({ ...config, contactMessage: e.target.value })}
+                                    className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-600"
+                                    placeholder="Ex: Olá, gostaria de informações sobre a escola."
+                                />
+                                <div className="mt-2 text-xs text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                    <span className="font-semibold text-slate-700">Prévia da mensagem: </span>
+                                    "{config.contactMessage || 'Olá, gostaria de informações.'}"
+                                </div>
+                            </div>
+
+                            {(!config.units || config.units.length === 0) ? (
+                                <p className="text-slate-500 text-sm italic text-center py-4 bg-slate-50 rounded-lg border border-slate-100 border-dashed">
+                                    Nenhuma unidade cadastrada. Adicione para exibir no 'Fale Conosco'.
+                                </p>
+                            ) : (
+                                <div className="space-y-4">
+                                    {config.units.map((unit, index) => (
+                                        <div key={index} className="p-4 bg-slate-50 rounded-xl border border-slate-200 relative group">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const newUnits = config.units.filter((_, i) => i !== index);
+                                                    setConfig({ ...config, units: newUnits });
+                                                }}
+                                                className="absolute top-2 right-2 text-slate-400 hover:text-red-500 p-1"
+                                                title="Remover Unidade"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                            </button>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div className="md:col-span-1">
+                                                    <label className="block text-xs font-semibold text-slate-500 mb-1">Nome da Unidade</label>
+                                                    <input
+                                                        type="text"
+                                                        value={unit.name}
+                                                        onChange={e => {
+                                                            const newUnits = [...config.units];
+                                                            newUnits[index] = { ...unit, name: e.target.value };
+                                                            setConfig({ ...config, units: newUnits });
+                                                        }}
+                                                        className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none text-sm font-semibold"
+                                                        placeholder="Ex: Expansivo Zona Norte"
+                                                    />
+                                                </div>
+                                                <div className="md:col-span-1">
+                                                    <label className="block text-xs font-semibold text-slate-500 mb-1">WhatsApp (apenas números)</label>
+                                                    <input
+                                                        type="text"
+                                                        value={unit.whatsapp}
+                                                        onChange={e => {
+                                                            const newUnits = [...config.units];
+                                                            newUnits[index] = { ...unit, whatsapp: e.target.value };
+                                                            setConfig({ ...config, units: newUnits });
+                                                        }}
+                                                        className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none text-sm"
+                                                        placeholder="Ex: 5584999999999"
+                                                    />
+                                                </div>
+                                                <div className="md:col-span-3">
+                                                    <label className="block text-xs font-semibold text-slate-500 mb-1">Endereço</label>
+                                                    <input
+                                                        type="text"
+                                                        value={unit.address}
+                                                        onChange={e => {
+                                                            const newUnits = [...config.units];
+                                                            newUnits[index] = { ...unit, address: e.target.value };
+                                                            setConfig({ ...config, units: newUnits });
+                                                        }}
+                                                        className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none text-sm"
+                                                        placeholder="Ex: Av. Boa Sorte, 265..."
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* Rodapé e Créditos */}
@@ -387,6 +448,20 @@ export const SchoolConfig = () => {
                                         className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
                                         placeholder="https://..."
                                     />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Mensagem do Desenvolvedor</label>
+                                    <input
+                                        type="text"
+                                        value={config.developerMessage}
+                                        onChange={e => setConfig({ ...config, developerMessage: e.target.value })}
+                                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                        placeholder="Ex: Olá, preciso de suporte no App."
+                                    />
+                                    <div className="mt-2 text-xs text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                        <span className="font-semibold text-slate-700">Prévia da mensagem: </span>
+                                        "{config.developerMessage || 'Olá, preciso de suporte.'}"
+                                    </div>
                                 </div>
                             </div>
                         </div >
@@ -430,8 +505,178 @@ export const SchoolConfig = () => {
                         </div>
                     </form>
                 </>
-            )
-            }
+            )}
+
+            {activeTab === 'admin' && (
+                <>
+                    {message && (
+                        <div className={`p-4 rounded-xl mb-6 flex items-center ${message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+                            }`}>
+                            {message.type === 'success' ? <CheckCircle className="w-5 h-5 mr-2" /> : <AlertCircle className="w-5 h-5 mr-2" />}
+                            {message.text}
+                        </div>
+                    )}
+                    <form onSubmit={handleSave} className="space-y-6">
+                        {/* Identidade Visual do Sistema */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                            <h2 className="text-lg font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
+                                Identidade Visual do Sistema
+                            </h2>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Logo do Sistema (URL)</label>
+                                    <div className="flex gap-4 items-start">
+                                        <div className="w-20 h-20 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+                                            {config.adminLogoUrl ? (
+                                                <img src={config.adminLogoUrl} alt="Logo Admin" className="w-full h-full object-contain p-2" />
+                                            ) : (
+                                                <Smartphone className="w-8 h-8 text-slate-300" />
+                                            )}
+                                        </div>
+                                        <div className="flex-1">
+                                            <input
+                                                type="text"
+                                                value={config.adminLogoUrl}
+                                                onChange={e => setConfig({ ...config, adminLogoUrl: e.target.value })}
+                                                className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                                placeholder="https://..."
+                                            />
+                                            <p className="text-xs text-slate-500 mt-2">Recomendado: Imagem PNG com fundo transparente.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-700 mb-2">Pré-Título</label>
+                                        <input
+                                            type="text"
+                                            value={config.adminSystemLabel}
+                                            onChange={e => setConfig({ ...config, adminSystemLabel: e.target.value })}
+                                            className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all uppercase"
+                                            placeholder="Ex: SISTEMA"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-700 mb-2">Título do Sistema</label>
+                                        <input
+                                            type="text"
+                                            value={config.adminSystemTitle}
+                                            onChange={e => setConfig({ ...config, adminSystemTitle: e.target.value })}
+                                            className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                            placeholder="Ex: Meu Expansivo"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="col-span-1">
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Subtítulo</label>
+                                    <input
+                                        type="text"
+                                        value={config.adminSystemSubtitle}
+                                        onChange={e => setConfig({ ...config, adminSystemSubtitle: e.target.value })}
+                                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                        placeholder="Ex: Gestão Escolar"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Cores e Estilo */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                            <h2 className="text-lg font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
+                                Cores e Estilo
+                            </h2>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Cor Principal (Admin)</label>
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            type="color"
+                                            value={config.adminPrimaryColor}
+                                            onChange={e => setConfig({ ...config, adminPrimaryColor: e.target.value })}
+                                            className="w-12 h-12 rounded-lg cursor-pointer border-0 p-0 shadow-sm"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={config.adminPrimaryColor}
+                                            onChange={e => setConfig({ ...config, adminPrimaryColor: e.target.value })}
+                                            className="flex-1 p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none uppercase"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Rodapé do Sistema */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                            <h2 className="text-lg font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
+                                Roda­pé e Créditos
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Texto de Rodapé (Versão)</label>
+                                    <input
+                                        type="text"
+                                        value={config.adminFooterText}
+                                        onChange={e => setConfig({ ...config, adminFooterText: e.target.value })}
+                                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                        placeholder="Ex: Sistema de Gestão Escolar v1.0"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Texto de Copyright</label>
+                                    <input
+                                        type="text"
+                                        value={config.adminCopyright}
+                                        onChange={e => setConfig({ ...config, adminCopyright: e.target.value })}
+                                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                        placeholder="© 2026..."
+                                    />
+                                </div>
+                            </div>
+
+                            <h3 className="text-sm font-bold text-slate-600 mb-3 border-t border-slate-100 pt-4">Desenvolvedor</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Nome do Desenvolvedor</label>
+                                    <input
+                                        type="text"
+                                        value={config.developerName}
+                                        onChange={e => setConfig({ ...config, developerName: e.target.value })}
+                                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                        placeholder="HC Apps"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Link do Desenvolvedor</label>
+                                    <input
+                                        type="text"
+                                        value={config.developerUrl}
+                                        onChange={e => setConfig({ ...config, developerUrl: e.target.value })}
+                                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                        placeholder="https://..."
+                                    />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Mensagem do Desenvolvedor</label>
+                                    <input
+                                        type="text"
+                                        value={config.developerMessage}
+                                        onChange={e => setConfig({ ...config, developerMessage: e.target.value })}
+                                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                        placeholder="Ex: Olá, preciso de suporte no App."
+                                    />
+                                    <div className="mt-2 text-xs text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                        <span className="font-semibold text-slate-700">Prévia da mensagem: </span>
+                                        "{config.developerMessage || 'Olá, preciso de suporte.'}"
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </>
+            )}
 
             {
                 activeTab === 'mural' && (

@@ -591,7 +591,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
             <p className="text-[10px] text-gray-500 mt-1">
               <span>Desenvolvido por: </span>
               <a
-                href={config.developerUrl}
+                href={`${config.developerUrl}?text=${encodeURIComponent(config.developerMessage || 'Olá, preciso de suporte.')}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-gray-600 hover:underline transition-colors font-medium"
