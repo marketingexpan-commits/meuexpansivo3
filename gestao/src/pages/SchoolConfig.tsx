@@ -170,7 +170,7 @@ export const SchoolConfig = () => {
                         : 'text-slate-500 hover:text-slate-700'
                         }`}
                 >
-                    Configurações Gerais
+                    App do Aluno
                 </button>
                 <button
                     onClick={() => setActiveTab('admin')}
