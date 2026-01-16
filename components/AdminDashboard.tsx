@@ -13,6 +13,7 @@ import { Rematricula } from './Rematricula';
 import { TableSkeleton } from './Skeleton';
 import { CoordinationTab } from './Admin/CoordinationTab';
 import { FinancialTab } from './Admin/FinancialTab';
+import { MuralTab } from './Admin/MuralTab';
 import { Sidebar, SidebarToggle } from './Sidebar';
 import { SidebarCategory } from './SidebarCategory';
 import { SidebarItem } from './SidebarItem';
@@ -44,7 +45,8 @@ import {
     Brain,
     Search,
     Pencil,
-    Trash2
+    Trash2,
+    Image
 } from 'lucide-react';
 import { maskCPF, sanitizePhone } from '../utils/formattingUtils';
 import { calculateFinancials } from '../utils/financialUtils';
@@ -120,7 +122,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     academicSettings
 }) => {
     const { grades: academicGrades, subjects: academicSubjects, loading: loadingAcademic } = useAcademicData();
-    const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'admins' | 'messages' | 'attendance' | 'contacts' | 'rematricula' | 'financial' | 'tickets' | 'coordination' | 'schedule'>('students');
+    const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'admins' | 'messages' | 'attendance' | 'contacts' | 'rematricula' | 'financial' | 'tickets' | 'coordination' | 'schedule' | 'mural'>('students');
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -1178,6 +1180,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 label="Logs de Acesso"
                                 onClick={() => { handleOpenLogModal(); setIsSidebarOpen(false); }}
                             />
+                            <SidebarItem
+                                icon={<Image size={18} />}
+                                label="Mural Digital (App)"
+                                isActive={activeTab === 'mural'}
+                                onClick={() => { setActiveTab('mural'); setIsSidebarOpen(false); }}
+                            />
                         </SidebarCategory>
                     )}
                 </Sidebar>
@@ -1589,6 +1597,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     <ScheduleManagement unit={(isGeneralAdmin ? undefined : adminUnit) as any} />
                                 </div>
                             </div>
+                        )}
+
+                        {activeTab === 'mural' && (
+                            <MuralTab isGeneralAdmin={isGeneralAdmin} />
                         )}
 
 

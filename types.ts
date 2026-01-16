@@ -484,6 +484,18 @@ export interface ExamGuide {
   timestamp: string;
   unit: SchoolUnit;
 }
+
+export interface MuralItem {
+  id: string;
+  type: 'flyer' | 'file'; // flyer = imagem destaqye, file = download
+  title: string;
+  url: string;
+  date?: string; // Para arquivos (ex: 10/12/2024)
+  size?: string; // Para arquivos (ex: 450 KB)
+  order: number;
+  isActive: boolean;
+  createdAt: string;
+}
 // End of types definitions
 
 export type EventType =

@@ -19,7 +19,8 @@ import {
     Settings,
     FileBarChart,
     Building2,
-    UserCheck
+    UserCheck,
+    Image,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -309,6 +310,7 @@ export function Sidebar() {
                             <SidebarItem icon={UserCheck} label="Coordenadores" path="/config/coordenadores" collapsed={collapsed} />
                             <SidebarItem icon={Users} label="Professores" path="/config/professores" collapsed={collapsed} />
                             <SidebarItem icon={Building2} label="Unidades" path="/config/unidades" collapsed={collapsed} />
+                            <SidebarItem icon={Image} label="Mural Digital (App)" path="/config/mural-digital" collapsed={collapsed} />
                         </div>
                     )}
                 </div>

@@ -4,7 +4,7 @@ import { db } from '../firebaseConfig';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 import { SCHOOL_UNITS_LIST, ALLOW_MOCK_LOGIN, UNITS_CONTACT_INFO, SCHOOL_LOGO_URL, SCHOOL_LOGO_WHITE_URL } from '../constants';
-import { Admin, SchoolUnit } from '../types';
+import { Admin, SchoolUnit, MuralItem } from '../types';
 
 interface LoginProps {
   onLoginStudent: (code: string, pass: string) => void;
@@ -162,18 +162,24 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
     };
   }, []);
 
-  const MURAL_ITEMS = [
-    { id: 3, type: 'flyer', title: 'Comunicado de Férias', url: 'https://i.postimg.cc/xTZgfGfv/Férias_layout_App_Meu_Ex_Prancheta_1.png' },
-    { id: 1, type: 'flyer', title: 'Matrículas 2026 Abertas', url: 'https://i.postimg.cc/9X6vmqWW/Foco-Disciplina-Meu-Ex-Prancheta-1-copia-3.png' },
-    { id: 2, type: 'flyer', title: 'Feliz Natal!', url: 'https://i.postimg.cc/nzktjFTd/expanzinho-Flyer-Natal-02.png' }
-  ];
+  const [muralItems, setMuralItems] = useState<MuralItem[]>([]);
+  const [downloadLinks, setDownloadLinks] = useState<MuralItem[]>([]);
 
-  const DOWNLOAD_LINKS = [
-    { id: 4, title: 'Manual do Aluno', date: '16/12/2025', size: '4.0 MB', url: '/manual_do_aluno.pdf' },
-    { id: 2, title: 'Lista de Livros - Fundamental I', date: '10/12/2024', size: '450 KB', url: '/lista_livros_f1.pdf' },
-    { id: 3, title: 'Lista de Livros - Fundamental II', date: '10/12/2024', size: '480 KB', url: '/lista_livros_f2.pdf' },
-    { id: 1, title: 'Calendário Acadêmico 2024 (Antigo)', date: '01/01/2024', size: '1.2 MB', url: '/calendario_2024.pdf' },
-  ];
+  useEffect(() => {
+    // Removed orderBy('createdAt', 'desc') to avoid missing index error
+    const unsubscribe = db.collection('mural_items')
+      .where('isActive', '==', true)
+      .onSnapshot(snapshot => {
+        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MuralItem));
+
+        // Sort client-side
+        items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+        setMuralItems(items.filter(i => i.type === 'flyer'));
+        setDownloadLinks(items.filter(i => i.type === 'file'));
+      }, err => console.error("Error fetching mural", err));
+    return () => unsubscribe();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -620,7 +626,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                     </h3>
                     <p className="text-xs text-gray-500 mb-4 italic">Clique na imagem para ampliar.</p>
                     <div className="space-y-6 overflow-y-auto pr-2">
-                      {MURAL_ITEMS.map(item => (
+                      {muralItems.length === 0 && <p className="text-gray-400 italic text-center py-4">Nenhum destaque no momento.</p>}
+                      {muralItems.map(item => (
                         <button
                           key={item.id}
                           type="button"
@@ -646,7 +653,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                     </h3>
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex-1">
                       <ul className="divide-y divide-gray-100">
-                        {DOWNLOAD_LINKS.map(link => (
+                        {downloadLinks.length === 0 && <p className="text-gray-400 italic text-center py-4">Nenhum arquivo disponível.</p>}
+                        {downloadLinks.map(link => (
                           <li key={link.id} className="hover:bg-blue-50 transition-colors group cursor-pointer relative">
                             <a
                               href={link.url}

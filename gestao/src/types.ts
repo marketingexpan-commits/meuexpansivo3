@@ -647,3 +647,15 @@ export interface AcademicSettings {
   bimesters: BimesterConfig[];
   updatedAt?: string;
 }
+
+export interface MuralItem {
+  id: string;
+  type: 'flyer' | 'file'; // flyer = imagem destaqye, file = download
+  title: string;
+  url: string;
+  date?: string; // Para arquivos (ex: 10/12/2024)
+  size?: string; // Para arquivos (ex: 450 KB)
+  order: number;
+  isActive: boolean;
+  createdAt: string;
+}

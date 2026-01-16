@@ -11,6 +11,7 @@ import AcademicConfig from './pages/AcademicConfig';
 import Unidades from './pages/Unidades';
 import { Professores } from './pages/Professores';
 import { Coordenadores } from './pages/Coordenadores';
+import { MuralDigital } from './pages/MuralDigital';
 
 
 
@@ -34,6 +35,7 @@ function App() {
           <Route path="/config/coordenadores" element={<Coordenadores />} />
           <Route path="/config/professores" element={<Professores />} />
           <Route path="/config/unidades" element={<Unidades />} />
+          <Route path="/config/mural-digital" element={<MuralDigital />} />
 
         </Route>
 
