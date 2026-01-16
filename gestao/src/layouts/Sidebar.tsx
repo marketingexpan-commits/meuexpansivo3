@@ -20,7 +20,7 @@ import {
     FileBarChart,
     Building2,
     UserCheck,
-    Image,
+    Smartphone,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -80,6 +80,9 @@ export function Sidebar() {
     const [isArquivosOpen, setIsArquivosOpen] = useState(true);
     const [isFinanceiroOpen, setIsFinanceiroOpen] = useState(true);
     const [isConfigOpen, setIsConfigOpen] = useState(true);
+
+    const userUnit = localStorage.getItem('userUnit');
+    const isAdmin = userUnit === 'admin_geral';
 
     const handleLogout = () => {
         // Clear auth data
@@ -310,7 +313,9 @@ export function Sidebar() {
                             <SidebarItem icon={UserCheck} label="Coordenadores" path="/config/coordenadores" collapsed={collapsed} />
                             <SidebarItem icon={Users} label="Professores" path="/config/professores" collapsed={collapsed} />
                             <SidebarItem icon={Building2} label="Unidades" path="/config/unidades" collapsed={collapsed} />
-                            <SidebarItem icon={Image} label="Mural Digital (App)" path="/config/mural-digital" collapsed={collapsed} />
+                            {isAdmin && (
+                                <SidebarItem icon={Smartphone} label="Config. App" path="/config/escola" collapsed={collapsed} />
+                            )}
                         </div>
                     )}
                 </div>

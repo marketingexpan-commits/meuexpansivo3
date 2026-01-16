@@ -16,7 +16,10 @@ interface LoginProps {
   adminsList?: Admin[];
 }
 
+import { useSchoolConfig } from '../src/hooks/useSchoolConfig';
+
 export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, onLoginAdmin, onLoginCoordinator, onResetSystem, error, adminsList }) => {
+  const { config } = useSchoolConfig();
   // --- SPLASH SCREEN STATE ---
   // --- SPLASH SCREEN STATE ---
   const [showSplash, setShowSplash] = useState(true);
@@ -267,8 +270,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
             <SchoolLogo className="!h-full w-auto" />
           </div>
           <div className="flex flex-col justify-center">
-            <span className="text-xs text-orange-600 font-semibold uppercase tracking-[0.15em] leading-none mb-1">Aplicativo</span>
-            <h1 className="text-2xl md:text-3xl font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
+            <span className="text-xs font-semibold uppercase tracking-[0.15em] leading-none mb-1" style={{ color: config.accentColor }}>{config.appSubtitle}</span>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight leading-none" style={{ color: config.primaryColor }}>{config.appName}</h1>
           </div>
         </div>
 
@@ -536,7 +539,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                 {/* Botão Acessar Portal */}
                 <button
                   type="submit"
-                  className="w-full py-4 text-lg font-bold text-white rounded-xl transition-all transform active:scale-95 bg-orange-600 hover:bg-orange-700"
+                  className="w-full py-4 text-lg font-bold text-white rounded-xl transition-all transform active:scale-95 hover:opacity-90"
+                  style={{ backgroundColor: config.accentColor }}
                 >
                   Acessar
                 </button>
@@ -559,7 +563,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
               </button>
 
               <a
-                href="https://www.instagram.com/redeexpansivo"
+                href={config.instagramUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="py-3 px-4 bg-gray-200 hover:bg-gray-300 text-blue-950 border border-gray-300 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 text-sm transform active:scale-95 group"
@@ -573,7 +577,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
             <button
               type="button"
               onClick={() => setIsMuralOpen(true)}
-              className="w-full py-3 px-4 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2 text-sm bg-blue-950 hover:bg-blue-900 shadow-sm"
+              className="w-full py-3 px-4 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2 text-sm shadow-sm hover:opacity-90"
+              style={{ backgroundColor: config.primaryColor }}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
               <span>Mural Digital</span>
@@ -582,16 +587,16 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
           {/* CRÉDITOS DO DESENVOLVEDOR */}
           <div className="mt-6 text-center">
-            <p className="text-[10px] text-gray-500">© 2026 Expansivo Rede de Ensino. Todos os direitos reservados.</p>
+            <p className="text-[10px] text-gray-500">{config.copyrightText}</p>
             <p className="text-[10px] text-gray-500 mt-1">
               <span>Desenvolvido por: </span>
               <a
-                href="https://wa.me/5584988739180"
+                href={config.developerUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-gray-600 hover:underline transition-colors font-medium"
               >
-                HC Apps | 84988739180
+                {config.developerName}
               </a>
             </p>
           </div>
@@ -714,7 +719,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                 Precisa de ajuda? Entre em contato com a secretaria da sua unidade via WhatsApp:
               </p>
               <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
-                {UNITS_CONTACT_INFO.map(unit => (
+                {(config.units && config.units.length > 0 ? config.units : UNITS_CONTACT_INFO).map(unit => (
                   <div key={unit.name} className="p-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-blue-50 hover:border-blue-200 transition-colors group">
                     <h3 className="font-bold text-blue-950 mb-1">{unit.name}</h3>
                     <p className="text-xs text-gray-500 mb-3">{unit.address}</p>

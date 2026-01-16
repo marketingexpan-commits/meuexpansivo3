@@ -12,6 +12,7 @@ import Unidades from './pages/Unidades';
 import { Professores } from './pages/Professores';
 import { Coordenadores } from './pages/Coordenadores';
 import { MuralDigital } from './pages/MuralDigital';
+import { SchoolConfig } from './pages/SchoolConfig';
 
 
 
@@ -36,6 +37,7 @@ function App() {
           <Route path="/config/professores" element={<Professores />} />
           <Route path="/config/unidades" element={<Unidades />} />
           <Route path="/config/mural-digital" element={<MuralDigital />} />
+          <Route path="/config/escola" element={<SchoolConfig />} />
 
         </Route>
 

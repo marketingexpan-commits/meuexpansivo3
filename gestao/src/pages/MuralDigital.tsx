@@ -174,13 +174,8 @@ export function MuralDigital() {
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-blue-950">Mural Digital (App)</h1>
-                    <p className="text-slate-500">Gerencie, os banners e arquivos exibidos na tela de login do App.</p>
-                </div>
-            </div>
+        <div className="animate-fade-in-up">
+            {/* Header removed for embedding */}
 
             <div className="flex space-x-1 bg-slate-100 p-1 rounded-lg w-fit">
                 <button
