@@ -1,7 +1,7 @@
 
 import { db } from '../firebaseConfig';
 import { collection, getDocs, query, where, doc, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
-import type { Mensalidade, Student } from '../types';
+import type { Mensalidade, Student, EventoFinanceiro } from '../types';
 
 const MENSALIDADES_COLLECTION = 'mensalidades';
 
@@ -497,6 +497,89 @@ export const financialService = {
             return result;
         } catch (error) {
             console.error("Erro na service generateBoleto:", error);
+            throw error;
+        }
+    },
+
+    // --- MÉTODOS DE EVENTOS (EVENTOS & EXTRAS) ---
+
+    async getEventos(filters: { unit?: string | null, status?: string, studentId?: string }) {
+        try {
+            let q = query(collection(db, 'eventos_escola'));
+
+            if (filters.status && filters.status !== 'Todos') {
+                q = query(q, where('status', '==', filters.status));
+            }
+
+            if (filters.studentId) {
+                q = query(q, where('studentId', '==', filters.studentId));
+            }
+
+            const snap = await getDocs(q);
+            let results = snap.docs.map(d => ({ id: d.id, ...d.data() })) as EventoFinanceiro[];
+
+            if (filters.unit && !filters.studentId) {
+                const studentsRef = collection(db, 'students');
+                const qStudents = query(studentsRef, where('unit', '==', filters.unit));
+                const studentSnap = await getDocs(qStudents);
+                const unitStudentIds = new Set(studentSnap.docs.map(d => d.id));
+
+                results = results.filter(e => unitStudentIds.has(e.studentId));
+            }
+
+            return results;
+        } catch (error) {
+            console.error("Erro ao buscar eventos:", error);
+            throw error;
+        }
+    },
+
+    async createMassEvents(data: {
+        studentIds: string[],
+        description: string,
+        value: number,
+        dueDate: string,
+        type: 'Evento' | 'Extra'
+    }) {
+        try {
+            const BATCH_LIMIT = 500;
+            let count = 0;
+
+            // Processar em chunks para respeitar o limite do Firestore Batch (500)
+            for (let i = 0; i < data.studentIds.length; i += BATCH_LIMIT) {
+                const batch = writeBatch(db);
+                const chunk = data.studentIds.slice(i, i + BATCH_LIMIT);
+
+                chunk.forEach(studentId => {
+                    const newDocRef = doc(collection(db, 'eventos_escola'));
+                    batch.set(newDocRef, {
+                        studentId,
+                        description: data.description,
+                        value: data.value,
+                        dueDate: data.dueDate,
+                        status: 'Pendente',
+                        type: data.type,
+                        lastUpdated: new Date().toISOString()
+                    });
+                    count++;
+                });
+
+                await batch.commit();
+            }
+
+            return count;
+        } catch (error) {
+            console.error("Erro ao criar eventos em massa:", error);
+            throw error;
+        }
+    },
+
+    async deleteEvento(id: string) {
+        try {
+            const docRef = doc(db, 'eventos_escola', id);
+            await deleteDoc(docRef);
+        } catch (error) {
+            console.error("Erro ao deletar evento:", error);
             throw error;
         }
     }

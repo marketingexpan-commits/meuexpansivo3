@@ -433,6 +433,7 @@ export interface Student {
   photoUrl?: string; // Base64 or URL for 3x4 student photo
   status?: 'CURSANDO' | 'TRANSFERIDO' | 'EVADIDO' | 'TRANCADO' | 'RESERVADO' | 'REPROVADO' | 'APROVADO' | 'ATIVO' | 'INATIVO' | 'CONCLUÍDO';
   nis?: string; // NIS for Bolsa Família
+  segment?: string; // NOVO: Segmento acadêmico (Infantil, Fundamental I, etc)
 }
 
 

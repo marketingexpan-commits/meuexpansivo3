@@ -30,6 +30,7 @@ function App() {
           <Route path="/financeiro/receitas" element={<Financeiro />} />
           <Route path="/financeiro/pagamentos" element={<Financeiro />} />
           <Route path="/financeiro/fluxo" element={<Financeiro />} />
+          <Route path="/financeiro/eventos" element={<Financeiro />} />
           <Route path="/financeiro/config" element={<FinanceiroConfig />} />
           <Route path="/grade-horaria" element={<GradeHoraria />} />
           <Route path="/config/disciplinas" element={<Disciplinas />} />

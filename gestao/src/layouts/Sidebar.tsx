@@ -271,6 +271,7 @@ export function Sidebar() {
                             <SidebarItem icon={FileText} label="Receitas" path="/financeiro/receitas" collapsed={collapsed} />
                             <SidebarItem icon={FileCheck} label="Pagamentos" path="/financeiro/pagamentos" collapsed={collapsed} />
                             <SidebarItem icon={BarChart3} label="Fluxo de Caixa" path="/financeiro/fluxo" collapsed={collapsed} />
+                            <SidebarItem icon={Layers} label="Eventos & Extras" path="/financeiro/eventos" collapsed={collapsed} />
                             <SidebarItem icon={UserCog} label="Responsável Financeiro" path="/financeiro/config" collapsed={collapsed} />
                         </div>
                     )}

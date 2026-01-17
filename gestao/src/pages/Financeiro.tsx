@@ -24,6 +24,8 @@ import {
     PieChart as PieChartIcon,
     BarChart as BarChartIcon,
     Barcode,
+    Layers,
+    Users,
 } from 'lucide-react';
 import {
     BarChart,
@@ -42,7 +44,7 @@ import { financialService } from '../services/financialService';
 import { studentService } from '../services/studentService';
 import { generateReceipt } from '../utils/receiptGenerator';
 import { useSchoolUnits } from '../hooks/useSchoolUnits';
-import type { Student, Expense, Mensalidade } from '../types';
+import type { Student, Expense, Mensalidade, EventoFinanceiro } from '../types';
 
 interface EnrichedMensalidade {
     id: string;
@@ -71,10 +73,19 @@ interface EnrichedMensalidade {
     receiptId?: string;
 }
 
+interface EnrichedEvento extends EventoFinanceiro {
+    studentName: string;
+    studentCode: string;
+    studentGrade: string;
+    studentClass: string;
+    studentShift: string;
+    studentUnit: string;
+}
+
 export function Financeiro() {
     const location = useLocation();
 
-    const [activeTab, setActiveTab] = useState<'recebimentos' | 'pagamentos' | 'fluxo'>('recebimentos');
+    const [activeTab, setActiveTab] = useState<'recebimentos' | 'pagamentos' | 'fluxo' | 'eventos'>('recebimentos');
 
     // Sincronizar URL com a aba ativa
     useEffect(() => {
@@ -84,10 +95,13 @@ export function Financeiro() {
             setActiveTab('pagamentos');
         } else if (location.pathname.includes('/fluxo')) {
             setActiveTab('fluxo');
+        } else if (location.pathname.includes('/eventos')) {
+            setActiveTab('eventos');
         }
     }, [location.pathname]);
     const [isLoading, setIsLoading] = useState(true);
     const [mensalidades, setMensalidades] = useState<EnrichedMensalidade[]>([]);
+    const [eventos, setEventos] = useState<EnrichedEvento[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [students, setStudents] = useState<Student[]>([]);
     const { getUnitById } = useSchoolUnits();
@@ -110,6 +124,24 @@ export function Financeiro() {
         dueDate: new Date().toISOString().split('T')[0],
         status: 'Pendente'
     });
+
+    const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+    const [newEvent, setNewEvent] = useState({
+        description: '',
+        value: 0,
+        dueDate: new Date().toISOString().split('T')[0],
+        type: 'Evento' as 'Evento' | 'Extra'
+    });
+
+    const [eventTarget, setEventTarget] = useState({
+        unit: 'all',
+        segment: 'all',
+        grade: 'all',
+        schoolClass: 'all',
+        studentId: 'all'
+    });
+
+    const [isCreatingEvent, setIsCreatingEvent] = useState(false);
 
     const [isInstallmentModalOpen, setIsInstallmentModalOpen] = useState(false);
     const [installmentParams, setInstallmentParams] = useState({
@@ -179,6 +211,7 @@ export function Financeiro() {
                 studentService.getStudents(unitFilter)
             ];
 
+            // Mensalidades
             if (activeTab === 'recebimentos' || activeTab === 'fluxo') {
                 promises.push(financialService.getMensalidades({
                     unit: unitFilter,
@@ -190,6 +223,7 @@ export function Financeiro() {
                 promises.push(Promise.resolve([]));
             }
 
+            // Despesas
             if (activeTab === 'pagamentos' || activeTab === 'fluxo') {
                 promises.push(financialService.getExpenses({
                     unit: unitFilter,
@@ -199,10 +233,22 @@ export function Financeiro() {
                 promises.push(Promise.resolve([]));
             }
 
+            // Eventos
+            if (activeTab === 'eventos' || activeTab === 'fluxo') {
+                promises.push(financialService.getEventos({
+                    unit: unitFilter,
+                    status: filterStatus !== 'Todos' ? filterStatus : undefined,
+                    studentId: selectedStudentId || undefined
+                }));
+            } else {
+                promises.push(Promise.resolve([]));
+            }
+
             const results = await Promise.all(promises) as any[];
             const studentsData = results[0];
-            const mensalidadesData = results[1] as any[];
-            const expensesData = results[2] as any[];
+            const mensalidadesData = results[1] as any[] || [];
+            const expensesData = results[2] as any[] || [];
+            const eventosData = results[3] as any[] || [];
 
             setStudents(studentsData);
 
@@ -214,7 +260,7 @@ export function Financeiro() {
             if (mensalidadesData) {
                 const enrichedData: EnrichedMensalidade[] = mensalidadesData.map((m: any) => ({
                     ...m,
-                    studentName: studentsMap.get(m.studentId)?.name || 'Aluno Não Encontrado',
+                    studentName: studentsMap.get(m.studentId)?.name || 'Aluno Removido',
                     studentCode: studentsMap.get(m.studentId)?.code || '-',
                     studentGrade: studentsMap.get(m.studentId)?.gradeLevel || '-',
                     studentClass: studentsMap.get(m.studentId)?.schoolClass || '-',
@@ -260,6 +306,22 @@ export function Financeiro() {
                     paidValue: enrichedData.filter((m: EnrichedMensalidade) => m.status === 'Pago').reduce((acc: number, curr: EnrichedMensalidade) => acc + (curr.value || 0), 0),
                     totalValue: enrichedData.reduce((acc: number, curr: EnrichedMensalidade) => acc + (curr.value || 0), 0)
                 });
+            }
+
+            // 3. Processar Eventos
+            if (eventosData) {
+                const enrichedEventos: EnrichedEvento[] = eventosData.map((e: any) => ({
+                    ...e,
+                    studentName: studentsMap.get(e.studentId)?.name || 'Aluno Removido',
+                    studentCode: studentsMap.get(e.studentId)?.code || '-',
+                    studentGrade: studentsMap.get(e.studentId)?.gradeLevel || '-',
+                    studentClass: studentsMap.get(e.studentId)?.schoolClass || '-',
+                    studentShift: studentsMap.get(e.studentId)?.shift || '-',
+                    studentUnit: studentsMap.get(e.studentId)?.unit || '-',
+                }));
+
+                enrichedEventos.sort((a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime());
+                setEventos(enrichedEventos);
             }
 
             // 3. Processar Despesas
@@ -561,6 +623,73 @@ export function Financeiro() {
         }
     };
 
+    const handleLaunchEvent = async () => {
+        if (!newEvent.description || newEvent.value <= 0) {
+            return alert("Por favor, preencha a descrição e um valor válido.");
+        }
+
+        try {
+            setIsCreatingEvent(true);
+
+            // Filtrar alunos destinatários baseados no targeting
+            let targetStudentIds: string[] = [];
+
+            if (eventTarget.studentId !== 'all') {
+                targetStudentIds = [eventTarget.studentId];
+            } else {
+                targetStudentIds = students
+                    .filter(s =>
+                        (eventTarget.unit === 'all' || s.unit === eventTarget.unit) &&
+                        (eventTarget.segment === 'all' || s.segment === eventTarget.segment) &&
+                        (eventTarget.grade === 'all' || s.gradeLevel === eventTarget.grade) &&
+                        (eventTarget.schoolClass === 'all' || s.schoolClass === eventTarget.schoolClass)
+                    )
+                    .map(s => s.id);
+            }
+
+            if (targetStudentIds.length === 0) {
+                return alert("Nenhum aluno encontrado com os filtros selecionados.");
+            }
+
+            if (!confirm(`Deseja lançar este ${newEvent.type} para ${targetStudentIds.length} aluno(s)?`)) {
+                return;
+            }
+
+            const createdCount = await financialService.createMassEvents({
+                studentIds: targetStudentIds,
+                description: newEvent.description,
+                value: newEvent.value,
+                dueDate: newEvent.dueDate,
+                type: newEvent.type
+            });
+
+            alert(`${createdCount} lançamentos realizados com sucesso!`);
+            setIsEventModalOpen(false);
+
+            // Reset modal state
+            setNewEvent({
+                description: '',
+                value: 0,
+                dueDate: new Date().toISOString().split('T')[0],
+                type: 'Evento'
+            });
+            setEventTarget({
+                unit: 'all',
+                segment: 'all',
+                grade: 'all',
+                schoolClass: 'all',
+                studentId: 'all'
+            });
+
+            loadData();
+        } catch (error) {
+            console.error("Erro ao lançar eventos:", error);
+            alert("Ocorreu um erro ao realizar os lançamentos.");
+        } finally {
+            setIsCreatingEvent(false);
+        }
+    };
+
     const recalculateValues = (inst: EnrichedMensalidade | Mensalidade, payDate: string) => {
         const originalVal = inst.value;
         const dueDate = new Date(inst.dueDate);
@@ -641,10 +770,10 @@ export function Financeiro() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-800 tracking-tight">
-                        {activeTab === 'recebimentos' ? 'Gestão de Receitas' : activeTab === 'pagamentos' ? 'Contas a Pagar' : 'Fluxo de Caixa'}
+                        {activeTab === 'recebimentos' ? 'Gestão de Receitas' : activeTab === 'pagamentos' ? 'Contas a Pagar' : activeTab === 'eventos' ? 'Eventos & Extras' : 'Fluxo de Caixa'}
                     </h2>
                     <p className="text-slate-500 text-sm font-medium">
-                        {activeTab === 'recebimentos' ? 'Controle de mensalidades e recebíveis' : activeTab === 'pagamentos' ? 'Gestão de despesas e custos da unidade' : 'Visão consolidada da saúde financeira'}
+                        {activeTab === 'recebimentos' ? 'Controle de mensalidades e recebíveis' : activeTab === 'pagamentos' ? 'Gestão de despesas e custos da unidade' : activeTab === 'eventos' ? 'Gestão de eventos escolares e extras' : 'Visão consolidada da saúde financeira'}
                     </p>
                 </div>
                 <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -674,6 +803,15 @@ export function Financeiro() {
                         >
                             <Plus className="w-5 h-5 mr-2" />
                             Nova Despesa
+                        </Button>
+                    )}
+                    {activeTab === 'eventos' && (
+                        <Button
+                            onClick={() => setIsEventModalOpen(true)}
+                            className="flex-1 sm:flex-none"
+                        >
+                            <Plus className="w-5 h-5 mr-2" />
+                            Novo Evento
                         </Button>
                     )}
                     <Button
@@ -1146,6 +1284,151 @@ export function Financeiro() {
             }
 
             {
+                activeTab === 'eventos' && (
+                    <>
+                        {/* Grid de Resumo - Eventos */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <Card className="bg-white border-slate-200 shadow-sm overflow-hidden border-l-4 border-l-blue-950">
+                                <CardContent className="p-5 flex items-center gap-4">
+                                    <div className="p-3 bg-blue-50 text-blue-950 rounded-xl">
+                                        <Layers className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Total Lançado</p>
+                                        <h3 className="text-xl font-bold text-slate-800">
+                                            R$ {eventos.reduce((acc, curr) => acc + (curr.value || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                        </h3>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="bg-white border-slate-200 shadow-sm overflow-hidden border-l-4 border-l-blue-950">
+                                <CardContent className="p-5 flex items-center gap-4">
+                                    <div className="p-3 bg-blue-50 text-blue-950 rounded-xl">
+                                        <CheckCircle2 className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Pagos</p>
+                                        <h3 className="text-xl font-bold text-slate-800">
+                                            {eventos.filter(e => e.status === 'Pago').length}
+                                        </h3>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="bg-white border-slate-200 shadow-sm overflow-hidden border-l-4 border-l-orange-600">
+                                <CardContent className="p-5 flex items-center gap-4">
+                                    <div className="p-3 bg-orange-100/30 text-orange-600 rounded-xl">
+                                        <Clock className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Pendentes</p>
+                                        <h3 className="text-xl font-bold text-slate-800">
+                                            {eventos.filter(e => e.status !== 'Pago').length}
+                                        </h3>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="bg-white border-slate-200 shadow-sm overflow-hidden border-l-4 border-l-blue-950">
+                                <CardContent className="p-5 flex items-center gap-4">
+                                    <div className="p-3 bg-blue-50 text-blue-950 rounded-xl">
+                                        <Users className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Alunos Atendidos</p>
+                                        <h3 className="text-xl font-bold text-slate-800">
+                                            {new Set(eventos.map(e => e.studentId)).size}
+                                        </h3>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        {/* Tabela de Eventos */}
+                        <Card className="border-slate-200 overflow-hidden shadow-sm">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-100">
+                                        <tr>
+                                            <th className="px-6 py-4">Descrição</th>
+                                            <th className="px-6 py-4">Aluno</th>
+                                            <th className="px-6 py-4">Tipo</th>
+                                            <th className="px-6 py-4">Vencimento</th>
+                                            <th className="px-6 py-4">Valor</th>
+                                            <th className="px-6 py-4">Status</th>
+                                            <th className="px-6 py-4 text-right">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {isLoading ? (
+                                            <tr>
+                                                <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
+                                                    <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-blue-950" />
+                                                    Carregando eventos...
+                                                </td>
+                                            </tr>
+                                        ) : eventos.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={7} className="px-6 py-12 text-center text-slate-400 italic">
+                                                    Nenhum evento ou extra lançado.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            eventos.map((e) => (
+                                                <tr key={e.id} className="hover:bg-slate-50/50 transition-colors group text-slate-700">
+                                                    <td className="px-6 py-4 font-bold">{e.description}</td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex flex-col">
+                                                            <span className="font-semibold text-slate-800">{e.studentName}</span>
+                                                            <span className="text-[10px] text-slate-400 uppercase tracking-wider">{e.studentGrade} • {e.studentUnit}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`px-2 py-1 rounded-xl text-[10px] uppercase font-bold tracking-tight ${e.type === 'Evento' ? 'bg-blue-50 text-blue-950' : 'bg-slate-100 text-slate-600'}`}>
+                                                            {e.type}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-slate-500">{new Date(e.dueDate).toLocaleDateString('pt-BR')}</td>
+                                                    <td className="px-6 py-4 font-extrabold text-slate-900">
+                                                        R$ {e.value?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`px-2 py-0.5 rounded-xl text-[10px] font-bold uppercase tracking-tighter border ${e.status === 'Pago'
+                                                            ? 'bg-blue-50 text-blue-950 border-blue-200/50'
+                                                            : 'bg-orange-50 text-orange-600 border-orange-200/50'
+                                                            }`}>
+                                                            {e.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <Button
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            title="Excluir"
+                                                            className="h-9 w-9 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 bg-slate-50/30 transition-all"
+                                                            onClick={async () => {
+                                                                if (confirm("Tem certeza que deseja excluir este lançamento?")) {
+                                                                    await financialService.deleteEvento(e.id!);
+                                                                    loadData();
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Trash2 className="w-5 h-5" />
+                                                        </Button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </Card>
+                    </>
+                )
+            }
+
+            {
                 activeTab === 'fluxo' && (
                     <div className="space-y-6">
                         {/* Resumo Consolidado */}
@@ -1578,6 +1861,148 @@ export function Financeiro() {
                             className="bg-blue-950 hover:bg-black text-white"
                         >
                             Gerar Parcelas
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal de Lançamento de Eventos */}
+            <Modal
+                isOpen={isEventModalOpen}
+                onClose={() => setIsEventModalOpen(false)}
+                title="Lançar Novo Evento ou Extra"
+                maxWidth="max-w-2xl"
+            >
+                <div className="space-y-4 max-h-[80vh] overflow-y-auto p-1">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500 uppercase ml-1">Tipo de Lançamento</label>
+                            <div className="flex bg-slate-100 p-1 rounded-xl">
+                                <button
+                                    onClick={() => setNewEvent({ ...newEvent, type: 'Evento' })}
+                                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${newEvent.type === 'Evento' ? 'bg-white text-blue-950 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                >
+                                    Evento
+                                </button>
+                                <button
+                                    onClick={() => setNewEvent({ ...newEvent, type: 'Extra' })}
+                                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${newEvent.type === 'Extra' ? 'bg-white text-blue-950 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                >
+                                    Extra
+                                </button>
+                            </div>
+                        </div>
+                        <Input
+                            label="Data de Vencimento"
+                            type="date"
+                            value={newEvent.dueDate}
+                            onChange={(e) => setNewEvent({ ...newEvent, dueDate: e.target.value })}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="md:col-span-2">
+                            <Input
+                                label="Descrição do Evento"
+                                placeholder="Ex: Festa Junina 2024..."
+                                value={newEvent.description}
+                                onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                            />
+                        </div>
+                        <Input
+                            label="Valor (R$)"
+                            type="number"
+                            placeholder="0,00"
+                            value={newEvent.value.toString()}
+                            onChange={(e) => setNewEvent({ ...newEvent, value: parseFloat(e.target.value) || 0 })}
+                        />
+                    </div>
+
+                    <div className="p-3 bg-blue-50/50 rounded-2xl border border-blue-100/50 space-y-3">
+                        <div className="flex items-center gap-2 mb-1">
+                            <div className="w-6 h-6 rounded-full bg-blue-950 text-white flex items-center justify-center">
+                                <Search className="w-3 h-3" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-blue-950">Destinatários</h4>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <Select
+                                label="Unidade"
+                                value={eventTarget.unit}
+                                onChange={(e) => setEventTarget({ ...eventTarget, unit: e.target.value, segment: 'all', grade: 'all', schoolClass: 'all', studentId: 'all' })}
+                                options={[
+                                    { label: 'Todas', value: 'all' },
+                                    { label: 'Zona Norte', value: 'Zona Norte' },
+                                    { label: 'Extremoz', value: 'Extremoz' },
+                                    { label: 'Quintas', value: 'Quintas' },
+                                    { label: 'Boa Sorte', value: 'Boa Sorte' }
+                                ]}
+                            />
+                            <Select
+                                label="Segmento"
+                                value={eventTarget.segment}
+                                onChange={(e) => setEventTarget({ ...eventTarget, segment: e.target.value, grade: 'all', schoolClass: 'all', studentId: 'all' })}
+                                options={[
+                                    { label: 'Todos', value: 'all' },
+                                    ...Array.from(new Set(students.map(s => s.segment))).filter((s): s is string => !!s).sort().map(s => ({ label: s, value: s }))
+                                ]}
+                            />
+                            <Select
+                                label="Série"
+                                value={eventTarget.grade}
+                                onChange={(e) => setEventTarget({ ...eventTarget, grade: e.target.value, schoolClass: 'all', studentId: 'all' })}
+                                options={[
+                                    { label: 'Todas', value: 'all' },
+                                    ...Array.from(new Set(students.filter(s => eventTarget.segment === 'all' || s.segment === eventTarget.segment).map(s => s.gradeLevel))).filter((s) => !!s).sort().map(s => ({ label: s, value: s }))
+                                ]}
+                            />
+                            <Select
+                                label="Turma"
+                                value={eventTarget.schoolClass}
+                                onChange={(e) => setEventTarget({ ...eventTarget, schoolClass: e.target.value, studentId: 'all' })}
+                                options={[
+                                    { label: 'Todas', value: 'all' },
+                                    ...Array.from(new Set(students.filter(s => (eventTarget.grade === 'all' || s.gradeLevel === eventTarget.grade) && (eventTarget.unit === 'all' || s.unit === eventTarget.unit)).map(s => s.schoolClass))).filter((s) => !!s).sort().map(s => ({ label: s, value: s }))
+                                ]}
+                            />
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Aluno Específico</label>
+                            <select
+                                className="w-full h-9 px-3 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-900/10 focus:border-blue-950 transition-all outline-none appearance-none"
+                                value={eventTarget.studentId}
+                                onChange={(e) => setEventTarget({ ...eventTarget, studentId: e.target.value })}
+                            >
+                                <option value="all">Todos do grupo acima</option>
+                                {students
+                                    .filter(s =>
+                                        (eventTarget.unit === 'all' || s.unit === eventTarget.unit) &&
+                                        (eventTarget.segment === 'all' || s.segment === eventTarget.segment) &&
+                                        (eventTarget.grade === 'all' || s.gradeLevel === eventTarget.grade) &&
+                                        (eventTarget.schoolClass === 'all' || s.schoolClass === eventTarget.schoolClass)
+                                    )
+                                    .sort((a, b) => a.name.localeCompare(b.name))
+                                    .map(s => (
+                                        <option key={s.id} value={s.id}>{s.name} ({s.code})</option>
+                                    ))
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                        <Button variant="ghost" onClick={() => setIsEventModalOpen(false)}>Cancelar</Button>
+                        <Button
+                            onClick={handleLaunchEvent}
+                            isLoading={isCreatingEvent}
+                            disabled={!newEvent.description || newEvent.value <= 0}
+                            className="bg-blue-950 hover:bg-black text-white px-6"
+                        >
+                            Confirmar
                         </Button>
                     </div>
                 </div>
