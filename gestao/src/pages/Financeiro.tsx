@@ -141,7 +141,67 @@ export function Financeiro() {
         studentId: 'all'
     });
 
+    // Auto-select unit based on user login
+    useEffect(() => {
+        const userUnit = localStorage.getItem('userUnit');
+        const unitMapping: Record<string, string> = {
+            'unit_zn': 'Zona Norte',
+            'unit_ext': 'Extremoz',
+            'unit_qui': 'Quintas',
+            'unit_bs': 'Boa Sorte'
+        };
+
+        if (userUnit && userUnit !== 'admin_geral' && unitMapping[userUnit]) {
+            setEventTarget(prev => ({ ...prev, unit: unitMapping[userUnit] }));
+        }
+    }, [isEventModalOpen]);
+
     const [isCreatingEvent, setIsCreatingEvent] = useState(false);
+
+    // Mapeamento de Séries por Segmento
+    const segmentGrades: Record<string, string[]> = {
+        'Educação Infantil': ['Berçário', 'Nível I', 'Nível II', 'Nível III', 'Nível IV', 'Nível V'],
+        'Fundamental I': ['1º Ano', '2º Ano', '3º Ano', '4º Ano', '5º Ano'],
+        'Fundamental II': ['6º Ano', '7º Ano', '8º Ano', '9º Ano'],
+        'Ensino Médio': ['1ª Série', '2ª Série', '3ª Série']
+    };
+
+    // Helpers de Ordenação
+    const getGradeWeight = (grade: string) => {
+        const normalized = grade.toLowerCase();
+        // Check order strictly to avoid substring overlaps (e.g., 'i' is inside 'ii', 'iii', 'iv')
+        if (normalized.includes('berçário')) return 0;
+        if (normalized.includes('nível v')) return 5;
+        if (normalized.includes('nível iv')) return 4;
+        if (normalized.includes('nível iii')) return 3;
+        if (normalized.includes('nível ii')) return 2;
+        if (normalized.includes('nível i')) return 1;
+
+        if (normalized.includes('1º ano')) return 11;
+        if (normalized.includes('2º ano')) return 12;
+        if (normalized.includes('3º ano')) return 13;
+        if (normalized.includes('4º ano')) return 14;
+        if (normalized.includes('5º ano')) return 15;
+        if (normalized.includes('6º ano')) return 16;
+        if (normalized.includes('7º ano')) return 17;
+        if (normalized.includes('8º ano')) return 18;
+        if (normalized.includes('9º ano')) return 19;
+
+        if (normalized.includes('1ª série')) return 21;
+        if (normalized.includes('2ª série')) return 22;
+        if (normalized.includes('3ª série')) return 23;
+
+        return 99;
+    };
+
+    const getSegmentWeight = (segment: string) => {
+        const normalized = segment.toLowerCase();
+        if (normalized.includes('infantil')) return 1;
+        if (normalized.includes('fundamental i') && !normalized.includes('ii')) return 2;
+        if (normalized.includes('fundamental ii')) return 3;
+        if (normalized.includes('médio')) return 4;
+        return 99;
+    };
 
     const [isInstallmentModalOpen, setIsInstallmentModalOpen] = useState(false);
     const [installmentParams, setInstallmentParams] = useState({
@@ -1685,7 +1745,7 @@ export function Financeiro() {
             >
                 <div className="space-y-6">
                     {/* Área de Busca */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-blue-950/5 p-4 rounded-xl">
+                    <div className="grid grid-cols-1 md:col-span-4 gap-4 items-end bg-blue-950/5 p-4 rounded-xl">
                         <div className="md:col-span-1">
                             <Input
                                 label="Código de Baixa"
@@ -1874,24 +1934,7 @@ export function Financeiro() {
                 maxWidth="max-w-2xl"
             >
                 <div className="space-y-4 max-h-[80vh] overflow-y-auto p-1">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-500 uppercase ml-1">Tipo de Lançamento</label>
-                            <div className="flex bg-slate-100 p-1 rounded-xl">
-                                <button
-                                    onClick={() => setNewEvent({ ...newEvent, type: 'Evento' })}
-                                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${newEvent.type === 'Evento' ? 'bg-white text-blue-950 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                                >
-                                    Evento
-                                </button>
-                                <button
-                                    onClick={() => setNewEvent({ ...newEvent, type: 'Extra' })}
-                                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${newEvent.type === 'Extra' ? 'bg-white text-blue-950 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                                >
-                                    Extra
-                                </button>
-                            </div>
-                        </div>
+                    <div className="space-y-4">
                         <Input
                             label="Data de Vencimento"
                             type="date"
@@ -1933,6 +1976,7 @@ export function Financeiro() {
                                 label="Unidade"
                                 value={eventTarget.unit}
                                 onChange={(e) => setEventTarget({ ...eventTarget, unit: e.target.value, segment: 'all', grade: 'all', schoolClass: 'all', studentId: 'all' })}
+                                disabled={localStorage.getItem('userUnit') !== 'admin_geral' && !!localStorage.getItem('userUnit')}
                                 options={[
                                     { label: 'Todas', value: 'all' },
                                     { label: 'Zona Norte', value: 'Zona Norte' },
@@ -1947,7 +1991,16 @@ export function Financeiro() {
                                 onChange={(e) => setEventTarget({ ...eventTarget, segment: e.target.value, grade: 'all', schoolClass: 'all', studentId: 'all' })}
                                 options={[
                                     { label: 'Todos', value: 'all' },
-                                    ...Array.from(new Set(students.map(s => s.segment))).filter((s): s is string => !!s).sort().map(s => ({ label: s, value: s }))
+                                    ...Array.from(new Set([
+                                        'Educação Infantil',
+                                        'Fundamental I',
+                                        'Fundamental II',
+                                        'Ensino Médio',
+                                        ...students.map(s => s.segment)
+                                    ]))
+                                        .filter((s): s is string => !!s)
+                                        .sort((a, b) => getSegmentWeight(a) - getSegmentWeight(b))
+                                        .map(s => ({ label: s, value: s }))
                                 ]}
                             />
                             <Select
@@ -1956,7 +2009,13 @@ export function Financeiro() {
                                 onChange={(e) => setEventTarget({ ...eventTarget, grade: e.target.value, schoolClass: 'all', studentId: 'all' })}
                                 options={[
                                     { label: 'Todas', value: 'all' },
-                                    ...Array.from(new Set(students.filter(s => eventTarget.segment === 'all' || s.segment === eventTarget.segment).map(s => s.gradeLevel))).filter((s) => !!s).sort().map(s => ({ label: s, value: s }))
+                                    ...Array.from(new Set([
+                                        ...(eventTarget.segment !== 'all' && segmentGrades[eventTarget.segment] ? segmentGrades[eventTarget.segment] : []),
+                                        ...students.filter(s => eventTarget.segment === 'all' || s.segment === eventTarget.segment).map(s => s.gradeLevel)
+                                    ]))
+                                        .filter((s): s is string => !!s)
+                                        .sort((a, b) => getGradeWeight(a) - getGradeWeight(b))
+                                        .map(s => ({ label: s, value: s }))
                                 ]}
                             />
                             <Select
@@ -1965,7 +2024,13 @@ export function Financeiro() {
                                 onChange={(e) => setEventTarget({ ...eventTarget, schoolClass: e.target.value, studentId: 'all' })}
                                 options={[
                                     { label: 'Todas', value: 'all' },
-                                    ...Array.from(new Set(students.filter(s => (eventTarget.grade === 'all' || s.gradeLevel === eventTarget.grade) && (eventTarget.unit === 'all' || s.unit === eventTarget.unit)).map(s => s.schoolClass))).filter((s) => !!s).sort().map(s => ({ label: s, value: s }))
+                                    ...Array.from(new Set([
+                                        'A', 'B', 'C', 'D', 'E',
+                                        ...students.filter(s => (eventTarget.grade === 'all' || s.gradeLevel === eventTarget.grade) && (eventTarget.unit === 'all' || s.unit === eventTarget.unit)).map(s => s.schoolClass)
+                                    ]))
+                                        .filter((s) => !!s)
+                                        .sort()
+                                        .map(s => ({ label: s, value: s }))
                                 ]}
                             />
                         </div>
