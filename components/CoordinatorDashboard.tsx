@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { db } from '../firebaseConfig';
-import { UnitContact, SchoolUnit, CoordinationSegment, Subject, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket } from '../types';
+import { UnitContact, SchoolUnit, CoordinationSegment, Subject, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket, SchoolMessage, MessageRecipient } from '../types';
 import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, CURRICULUM_MATRIX, getCurriculumSubjects, calculateBimesterMedia, calculateFinalData, SCHOOL_CLASSES_OPTIONS, SCHOOL_SHIFTS } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency } from '../utils/frequency';
 import { getDynamicBimester } from '../src/utils/academicUtils';
@@ -24,7 +24,13 @@ import {
     Filter,
     Calendar as CalendarIcon,
     Printer,
-    Loader2
+    Loader2,
+    MessageSquare,
+    Reply,
+    CheckCircle,
+    ChevronDown,
+    ChevronUp,
+    Bell
 } from 'lucide-react';
 
 
@@ -66,7 +72,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
     const [quickSubjectFilter, setQuickSubjectFilter] = useState<string>('all');
 
     // NEW: Navigation State
-    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'attendance' | 'calendar'>('menu');
+    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'attendance' | 'calendar' | 'messages'>('menu');
     // --- OCCURRENCE HISTORY STATE ---
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [historyOccurrences, setHistoryOccurrences] = useState<Occurrence[]>([]);
@@ -90,6 +96,40 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
         fetchCalendarEvents();
     }, [coordinator.unit]);
 
+    // Dynamic Listener for Messages
+    useEffect(() => {
+        if (!coordinator.unit) return;
+
+        const unsubscribe = db.collection('schoolMessages')
+            .where('unit', '==', coordinator.unit)
+            .where('recipient', '==', MessageRecipient.COORDINATION)
+            .orderBy('timestamp', 'desc')
+            .onSnapshot(snapshot => {
+                let msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SchoolMessage));
+
+                // Client-side sort to be resilient to missing composite indexes
+                msgs.sort((a, b) => {
+                    const timeA = new Date(a.timestamp || 0).getTime();
+                    const timeB = new Date(b.timestamp || 0).getTime();
+                    return timeB - timeA;
+                });
+
+                // Client-side filter for specific coordinator messages if using the [PARA: Name] pattern
+                const filteredMsgs = msgs.filter(m => {
+                    if (m.content.startsWith('[PARA:')) {
+                        return m.content.includes(`[PARA: ${coordinator.name?.trim()}]`);
+                    }
+                    return true; // General coordination messages
+                });
+
+                setMessages(filteredMsgs);
+            }, error => {
+                console.error("Error listening to messages:", error);
+            });
+
+        return () => unsubscribe();
+    }, [activeTab, coordinator.unit, coordinator.name]);
+
     const handlePrintCalendar = () => {
         generateSchoolCalendar(calendarEvents, academicSettings, coordinator.unit);
     };
@@ -108,6 +148,14 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
     const [pendingGradesMap, setPendingGradesMap] = useState<Record<string, GradeEntry[]>>({});
     const [allStudentGradesMap, setAllStudentGradesMap] = useState<Record<string, GradeEntry[]>>({}); // NEW: Holds ALL grades for frequency calc
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]); // Added for frequency calc
+
+    // --- MESSAGES STATE ---
+    const [messages, setMessages] = useState<SchoolMessage[]>([]);
+    const [messageFilter, setMessageFilter] = useState<'all' | 'new' | 'read'>('all');
+    const [replyingTo, setReplyingTo] = useState<string | null>(null);
+    const [replyText, setReplyText] = useState('');
+    const [isSendingReply, setIsSendingReply] = useState(false);
+    const [showNotifications, setShowNotifications] = useState(false);
 
     // --- ATTENDANCE MANAGEMENT STATE ---
     const [isAttendanceManageModalOpen, setIsAttendanceManageModalOpen] = useState(false);
@@ -690,12 +738,69 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
         }
     };
 
+    const handleMarkAsRead = async (messageId: string) => {
+        try {
+            await db.collection('schoolMessages').doc(messageId).update({
+                status: 'read'
+            });
+        } catch (error) {
+            console.error("Error marking as read:", error);
+            alert("Erro ao marcar como lida.");
+        }
+    };
+
+    const handleSendReply = async (message: SchoolMessage) => {
+        const responseToSave = String(replyText).trim();
+        if (!responseToSave) {
+            alert("Por favor, escreva uma mensagem antes de enviar.");
+            return;
+        }
+
+        setIsSendingReply(true);
+        console.log("Enviando resposta:", { msgId: message.id, response: responseToSave });
+
+        try {
+            await db.collection('schoolMessages').doc(message.id).update({
+                status: 'read',
+                response: responseToSave,
+                responseTimestamp: new Date().toISOString()
+            });
+
+            if (onCreateNotification) {
+                console.log("Calling onCreateNotification for studentId:", message.studentId);
+                await onCreateNotification(
+                    "Nova Resposta da Coordenação",
+                    `Sua mensagem sobre "${message.messageType}" foi respondida.`,
+                    message.studentId
+                );
+            } else {
+                console.error("onCreateNotification prop is MISSING in CoordinatorDashboard!");
+                alert("DEBUG: onCreateNotification is missing! Notification won't be sent.");
+            }
+
+            setReplyingTo(null);
+            setReplyText('');
+            alert(`Resposta enviada com sucesso! (Notificação enviada para ID: ${message.studentId})`);
+        } catch (error) {
+            console.error("Erro ao enviar resposta:", error);
+            alert("Erro ao enviar resposta. Verifique os logs.");
+        } finally {
+            setIsSendingReply(false);
+        }
+    };
+
+    const filteredMessages = messages.filter(m => {
+        if (messageFilter === 'new') return m.status === 'new';
+        if (messageFilter === 'read') return m.status === 'read';
+        return true;
+    });
+
 
 
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans">
             <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${activeTab === 'menu' ? 'max-w-2xl' :
-                (activeTab === 'occurrences' || activeTab === 'attendance') ? 'max-w-3xl' :
+                (activeTab === 'occurrences' || activeTab === 'attendance' || activeTab === 'messages') ? 'max-w-3xl' :
                     'max-w-5xl'
                 }`}>
 
@@ -731,7 +836,73 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                     </>
                                 )}
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 relative">
+                                {/* NOTIFICATION BELL */}
+                                <button
+                                    onClick={() => setShowNotifications(!showNotifications)}
+                                    className="p-2 text-gray-400 hover:text-blue-950 hover:bg-blue-50 transition-colors relative rounded-full"
+                                    title="Notificações de Mensagens"
+                                >
+                                    <Bell className="w-5 h-5" />
+                                    {messages.filter(m => m.status === 'new').length > 0 && (
+                                        <span className="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-bold min-w-[16px] h-[16px] px-0.5 flex items-center justify-center rounded-full border-2 border-white shadow-sm">
+                                            {messages.filter(m => m.status === 'new').length}
+                                        </span>
+                                    )}
+                                </button>
+
+                                {showNotifications && (
+                                    <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden ring-1 ring-black ring-opacity-5 animate-in fade-in zoom-in-95 duration-200">
+                                        <div className="p-3 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
+                                            <h4 className="font-bold text-blue-950 text-xs uppercase tracking-wider">Notificações</h4>
+                                            <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-blue-800">
+                                                <ChevronUp className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        <div className="max-h-64 overflow-y-auto">
+                                            {messages.filter(m => m.status === 'new').length > 0 ? (
+                                                messages.filter(m => m.status === 'new').map(msg => (
+                                                    <div
+                                                        key={msg.id}
+                                                        className="p-3 border-b border-gray-50 hover:bg-blue-50/50 cursor-pointer transition-colors"
+                                                        onClick={() => {
+                                                            setActiveTab('messages');
+                                                            setMessageFilter('new');
+                                                            setShowNotifications(false);
+                                                        }}
+                                                    >
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
+                                                                <User className="w-3 h-3" />
+                                                            </div>
+                                                            <span className="font-bold text-xs text-gray-700 truncate flex-1">{msg.studentName}</span>
+                                                            <span className="text-[9px] text-gray-400 whitespace-nowrap">{new Date(msg.timestamp).toLocaleDateString()}</span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-500 line-clamp-2 pl-8">
+                                                            {msg.content && msg.content.includes(']') ? msg.content.substring(msg.content.indexOf(']') + 1).trim() : (msg.content || '(Sem conteúdo)')}
+                                                        </p>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="p-8 text-center text-gray-400 text-xs italic">
+                                                    Nenhuma mensagem nova.
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="p-2 bg-gray-50 border-t border-gray-100 text-center">
+                                            <button
+                                                className="text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-wider"
+                                                onClick={() => {
+                                                    setActiveTab('messages');
+                                                    setShowNotifications(false);
+                                                }}
+                                            >
+                                                Ver Todas as Mensagens
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <Button
                                     variant="secondary"
                                     onClick={onLogout}
@@ -765,7 +936,9 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                             ? "Gerencie o histórico e registre novas ocorrências disciplinares."
                                             : activeTab === 'attendance'
                                                 ? "Controle e lançamentos manuais de frequência diária."
-                                                : "Calendário letivo da unidade."
+                                                : activeTab === 'messages'
+                                                    ? "Gerencie as mensagens e feedbacks enviados pelos alunos."
+                                                    : "Calendário letivo da unidade."
                                 }
                             </p>
                         </div>
@@ -794,15 +967,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                 <h3 className="font-bold text-gray-800 text-sm text-center">Ocorrências</h3>
                             </button>
 
-                            <button
-                                onClick={() => setActiveTab('attendance')}
-                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
-                            >
-                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                                    <CheckCircle2 className="w-6 h-6 text-blue-950" />
-                                </div>
-                                <h3 className="font-bold text-gray-800 text-sm text-center">Gestão de Chamadas</h3>
-                            </button>
+
 
                             <button
                                 onClick={() => setActiveTab('calendar')}
@@ -812,6 +977,22 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                     <CalendarIcon className="w-6 h-6 text-blue-950" />
                                 </div>
                                 <h3 className="font-bold text-gray-800 text-sm text-center">Calendário Escolar</h3>
+                            </button>
+
+                            {/* STUDENT MESSAGES CARD */}
+                            <button
+                                onClick={() => setActiveTab('messages')}
+                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square relative"
+                            >
+                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                    <MessageSquare className="w-6 h-6 text-blue-950" />
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-sm text-center">Mensagens do Aluno</h3>
+                                {messages.filter(m => m.status === 'new').length > 0 && (
+                                    <span className="absolute top-4 right-4 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg animate-pulse">
+                                        {messages.filter(m => m.status === 'new').length}
+                                    </span>
+                                )}
                             </button>
                         </div>
                     )}
@@ -1759,6 +1940,167 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                             </div>
                         )
                     }
+
+                    {/* MESSAGES VIEW (activeTab === 'messages') */}
+                    {activeTab === 'messages' && (
+                        <div className="space-y-6 animate-fade-in-up">
+                            {/* Messages Filter & Stats */}
+                            <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-2">
+                                <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
+                                    {['all', 'new', 'read'].map((filter) => (
+                                        <button
+                                            key={filter}
+                                            onClick={() => setMessageFilter(filter as any)}
+                                            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${messageFilter === filter ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-500 hover:bg-gray-50'}`}
+                                        >
+                                            {filter === 'all' ? 'Todas' : filter === 'new' ? `Novas (${messages.filter(m => m.status === 'new').length})` : 'Lidas/Respondidas'}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {filteredMessages.length === 0 ? (
+                                <div className="text-center py-16 bg-white rounded-2xl border border-gray-200 border-dashed">
+                                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-50 text-slate-300 mb-4">
+                                        <MessageSquare className="w-8 h-8" />
+                                    </div>
+                                    <h3 className="text-lg font-medium text-gray-900">Nenhuma mensagem</h3>
+                                    <p className="text-gray-500 mt-1">Não há mensagens para exibir com este filtro.</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 gap-6">
+                                    {filteredMessages.map((msg) => (
+                                        <div key={msg.id} className={`bg-white rounded-2xl shadow-sm border overflow-hidden transition-all duration-300 ${msg.status === 'new' ? 'border-blue-200 ring-4 ring-blue-50/50' : 'border-gray-200'}`}>
+                                            <div className="p-6">
+                                                {/* Header: Student Info & Metadata */}
+                                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-4 border-b border-gray-50">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 border border-slate-200 shadow-sm">
+                                                            <User className="w-6 h-6" />
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-bold text-gray-900 text-base">{msg.studentName}</h4>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">{msg.unit}</span>
+                                                                <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                                                                <span className="text-[10px] text-gray-400 font-bold flex items-center gap-1">
+                                                                    <Clock className="w-3 h-3" />
+                                                                    {new Date(msg.timestamp).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border shadow-sm ${msg.messageType === 'Elogio' ? 'bg-green-50 text-green-600 border-green-100' :
+                                                            msg.messageType === 'Sugestão' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                                'bg-red-50 text-red-600 border-red-100'
+                                                            }`}>
+                                                            {msg.messageType}
+                                                        </span>
+                                                        {msg.status === 'read' && (
+                                                            <span className="text-[10px] font-black uppercase px-3 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
+                                                                Lida
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Body: Message Content */}
+                                                <div className="space-y-4">
+                                                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 relative group">
+                                                        <div className="absolute -top-3 left-4 bg-white px-2 py-0.5 rounded text-[10px] font-bold text-slate-400 border border-slate-100 shadow-sm">
+                                                            MENSAGEM DO ALUNO
+                                                        </div>
+                                                        <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap pt-8">
+                                                            {msg.content && msg.content.includes(']') ? msg.content.substring(msg.content.indexOf(']') + 1).trim() : (msg.content || '(Sem conteúdo)')}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Existing Response */}
+                                                    {msg.response && (
+                                                        <div className="bg-blue-50/30 p-5 rounded-2xl border border-blue-100/50 relative">
+                                                            <div className="absolute -top-3 left-4 bg-white px-2 py-0.5 rounded text-[10px] font-bold text-blue-400 border border-blue-100 shadow-sm flex items-center gap-1">
+                                                                <Reply className="w-3 h-3" />
+                                                                SUA RESPOSTA
+                                                            </div>
+                                                            <p className="text-slate-700 text-sm font-medium leading-relaxed italic">
+                                                                "{msg.response}"
+                                                            </p>
+                                                            <div className="mt-3 text-[9px] text-blue-300 font-bold uppercase tracking-widest text-right">
+                                                                Respondido em {new Date(msg.responseTimestamp!).toLocaleString('pt-BR')}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Reply Input Form */}
+                                                    {replyingTo === msg.id && (
+                                                        <div className="mt-6 space-y-4 animate-in slide-in-from-top-4 duration-300">
+                                                            <div className="relative">
+                                                                <textarea
+                                                                    value={replyText}
+                                                                    onChange={e => setReplyText(e.target.value)}
+                                                                    placeholder="Escreva sua resposta atenciosa para o aluno..."
+                                                                    className="w-full p-5 bg-white border-2 border-blue-100 rounded-2xl outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 text-sm min-h-[120px] shadow-sm transition-all"
+                                                                    autoFocus
+                                                                />
+                                                                <div className="absolute bottom-4 right-4 text-[10px] font-bold text-slate-300 pointer-events-none">
+                                                                    Pressione Enviar para responder
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex justify-end items-center gap-3">
+                                                                <button
+                                                                    onClick={() => setReplyingTo(null)}
+                                                                    className="px-6 py-2.5 text-xs font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all"
+                                                                >
+                                                                    Cancelar
+                                                                </button>
+                                                                <Button
+                                                                    onClick={() => handleSendReply(msg)}
+                                                                    disabled={isSendingReply || !replyText.trim()}
+                                                                    className="px-8 !py-2.5 !bg-blue-600 hover:!bg-blue-700 text-white shadow-lg shadow-blue-200 flex items-center gap-2"
+                                                                >
+                                                                    {isSendingReply ? 'Enviando...' : 'Enviar Resposta'}
+                                                                    <Reply className="w-4 h-4" />
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Footer: Quick Actions */}
+                                                {!replyingTo && (
+                                                    <div className="mt-8 pt-6 border-t border-gray-50 flex flex-wrap justify-end gap-3">
+                                                        {msg.status === 'new' && (
+                                                            <button
+                                                                onClick={() => handleMarkAsRead(msg.id)}
+                                                                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2"
+                                                            >
+                                                                <CheckCircle2 className="w-4 h-4" />
+                                                                Marcar como Lida
+                                                            </button>
+                                                        )}
+                                                        {!msg.response && (
+                                                            <Button
+                                                                onClick={() => {
+                                                                    setReplyingTo(msg.id);
+                                                                    setReplyText('');
+                                                                }}
+                                                                className="px-8 !py-2.5 !bg-blue-950 hover:!bg-black text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-gray-200"
+                                                            >
+                                                                <Reply className="w-4 h-4" />
+                                                                Responder Aluno
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                 </main >
             </div >

@@ -111,6 +111,8 @@ export interface SchoolMessage {
   content: string;
   timestamp: string; // ISO String for Firebase compatibility
   status: 'new' | 'read';
+  response?: string;
+  responseTimestamp?: string;
 }
 
 

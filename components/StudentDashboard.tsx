@@ -99,6 +99,7 @@ interface StudentDashboardProps {
     tickets?: Ticket[];
     calendarEvents?: CalendarEvent[];
     classSchedules?: any[]; // ClassSchedule[]
+    schoolMessages?: SchoolMessage[];
     onCreateNotification?: (title: string, message: string, studentId?: string, teacherId?: string) => Promise<void>;
     [key: string]: any;
 }
@@ -149,7 +150,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     examGuides: propsExamGuides = [],
     tickets: propsTickets = [],
     calendarEvents = [],
-    classSchedules = []
+    classSchedules = [],
+    schoolMessages = []
 }) => {
     // Helper to format workload hours
     const formatWorkload = (hours: number) => {
@@ -795,6 +797,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                         setCurrentView('financeiro');
                                                                     } else if (titleNorm.includes('material') || titleNorm.includes('conteudo') || titleNorm.includes('aula')) {
                                                                         setCurrentView('materials');
+                                                                    } else if (titleNorm.includes('coordenacao') || titleNorm.includes('coordenação') || titleNorm.includes('escola')) {
+                                                                        setCurrentView('messages');
                                                                     } else {
                                                                         setCurrentView('tickets');
                                                                     }
@@ -1943,8 +1947,77 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     )}
 
                     {currentView === 'messages' && (
-                        <div className="animate-fade-in-up">
+                        <div className="animate-fade-in-up space-y-8">
                             <MessageBox student={student} onSendMessage={onSendMessage} unitContacts={unitContacts || []} teachers={teachers} />
+
+                            <div>
+                                <h3 className="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2 border-b border-gray-100 pb-2">
+                                    <MessageCircle className="w-6 h-6 text-blue-950" />
+                                    Minhas Mensagens e Respostas
+                                </h3>
+
+                                {schoolMessages.length === 0 ? (
+                                    <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-100">
+                                        <p className="text-gray-400 italic">Você ainda não possui histórico de mensagens com a escola.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {schoolMessages.map(msg => (
+                                            <div key={msg.id} className="bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                                                <div className="p-5">
+                                                    <div className="flex justify-between items-start mb-3">
+                                                        <div>
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-black border ${msg.messageType === 'Elogio' ? 'bg-green-50 text-green-600 border-green-100' :
+                                                                    msg.messageType === 'Sugestão' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                                        'bg-red-50 text-red-600 border-red-100'
+                                                                    }`}>
+                                                                    {msg.messageType}
+                                                                </span>
+                                                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                                                                    Para: {msg.recipient}
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-[10px] text-gray-400 font-medium">
+                                                                {new Date(msg.timestamp).toLocaleDateString('pt-BR')} às {new Date(msg.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                            </p>
+                                                        </div>
+                                                        <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide ${msg.status === 'new' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500'}`}>
+                                                            {msg.status === 'new' ? 'Aguardando Leitura' : 'Lida pela Escola'}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-700 border border-gray-100 whitespace-pre-wrap">
+                                                        {msg.content && msg.content.includes(']') ? msg.content.substring(msg.content.indexOf(']') + 1).trim() : (msg.content || '(Sem conteúdo)')}
+                                                    </div>
+
+                                                    {msg.response ? (
+                                                        <div className="mt-4 bg-blue-50 border border-blue-100 p-4 rounded-lg relative">
+                                                            <div className="absolute -top-3 left-4 bg-white px-2 py-0.5 rounded text-[9px] font-black text-blue-500 border border-blue-100 shadow-sm flex items-center gap-1">
+                                                                <Mail className="w-3 h-3" />
+                                                                RESPOSTA DA COORDENAÇÃO
+                                                            </div>
+                                                            <div className="bg-white/40 p-4 rounded-xl border border-blue-200/50 mt-2 shadow-sm">
+                                                                <p className="text-gray-900 text-sm font-semibold leading-relaxed">
+                                                                    {msg.response}
+                                                                </p>
+                                                            </div>
+                                                            <p className="text-[10px] text-blue-400 mt-2 text-right font-bold uppercase tracking-wider">
+                                                                Respondido em {new Date(msg.responseTimestamp!).toLocaleDateString('pt-BR')}
+                                                            </p>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50/50 p-2 rounded-lg border border-dashed border-gray-200 justify-center">
+                                                            <Clock className="w-3 h-3" />
+                                                            Aguardando resposta da equipe pedagógica
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
 

@@ -263,6 +263,17 @@ const AppContent: React.FC = () => {
         setInitialLoad(prev => ({ ...prev, classSchedules: true }));
       }));
 
+      // Real-time School Messages (Fale com a Escola) for the student
+      unsubs.push(db.collection('schoolMessages').where('studentId', '==', userId).onSnapshot(snap => {
+        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as SchoolMessage));
+        data.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        setSchoolMessages(data);
+        setInitialLoad(prev => ({ ...prev, messages: true }));
+      }, (err) => {
+        console.error("Student Messages listen error:", err);
+        setInitialLoad(prev => ({ ...prev, messages: true }));
+      }));
+
       // Set others to ready for students
       setInitialLoad(prev => ({ ...prev, students: true, admins: true, messages: true }));
 
@@ -1340,6 +1351,7 @@ const AppContent: React.FC = () => {
           examGuides={examGuides}
           tickets={tickets}
           classSchedules={classSchedules}
+          schoolMessages={schoolMessages}
         />
         <BackToTopButton />
       </>
