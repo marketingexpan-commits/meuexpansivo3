@@ -108,12 +108,12 @@ export function HistorySearchModal({ onClose }: HistorySearchModalProps) {
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className={`bg-white w-full ${step === 'EDITOR' ? 'max-w-4xl h-[85vh]' : 'max-w-md'} rounded-3xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 animate-in zoom-in-95`}>
+            <div className={`bg-white w-full ${step === 'EDITOR' ? 'max-w-4xl h-[85vh]' : 'max-w-md'} rounded-xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 animate-in zoom-in-95`}>
 
                 {/* Header */}
                 <div className="bg-slate-50 border-b border-slate-100 p-6 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 bg-blue-950/10 text-blue-950 rounded-2xl flex items-center justify-center shadow-sm`}>
+                        <div className={`w-12 h-12 bg-blue-950/10 text-blue-950 rounded-xl flex items-center justify-center shadow-sm`}>
                             <Clock className="w-6 h-6" />
                         </div>
                         <div>
@@ -125,7 +125,7 @@ export function HistorySearchModal({ onClose }: HistorySearchModalProps) {
                             </p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-200/50 rounded-full transition-colors">
+                    <button onClick={onClose} className="p-2 hover:bg-slate-200/50 rounded-xl transition-colors">
                         <X className="w-6 h-6 text-slate-400" />
                     </button>
                 </div>
@@ -159,7 +159,7 @@ export function HistorySearchModal({ onClose }: HistorySearchModalProps) {
                             <Button
                                 onClick={handleSearch}
                                 disabled={isLoading}
-                                className="w-full py-7 font-bold text-base shadow-xl shadow-blue-950/20 rounded-2xl transition-all"
+                                className="w-full py-7 font-bold text-base shadow-xl shadow-blue-950/20 rounded-xl transition-all"
                             >
                                 {isLoading ? (
                                     <><Loader2 className="w-5 h-5 mr-3 animate-spin" /> Buscando...</>

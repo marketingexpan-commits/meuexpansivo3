@@ -195,7 +195,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
 
     return (
         <div className="fixed inset-0 bg-gray-900/75 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                 {/* Header */}
                 <div className="flex justify-between items-center p-6 border-b border-gray-100">
                     <div className="flex items-center gap-3">
@@ -223,7 +223,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                     <div className="flex items-center gap-2 ml-4 pl-4 border-l border-gray-200">
                                         <Globe className="w-3.5 h-3.5 text-blue-500" />
                                         <select
-                                            className="text-[10px] font-black uppercase tracking-widest text-blue-900 bg-blue-50/50 border-none rounded-lg py-1 px-2 outline-none cursor-pointer hover:bg-blue-100 transition-colors"
+                                            className="text-[10px] font-black uppercase tracking-widest text-blue-900 bg-blue-50/50 border-none rounded-xl py-1 px-2 outline-none cursor-pointer hover:bg-blue-100 transition-colors"
                                             value={filterUnit}
                                             onChange={(e) => setFilterUnit(e.target.value)}
                                         >
@@ -236,7 +236,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                 )}
                                 <button
                                     onClick={() => generateSchoolCalendar(events, academicSettings, filterUnit)}
-                                    className="flex items-center gap-1.5 ml-4 px-3 py-1 bg-white border border-gray-200 text-gray-500 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-gray-50 hover:text-blue-950 transition-all shadow-sm active:scale-95 cursor-pointer"
+                                    className="flex items-center gap-1.5 ml-4 px-3 py-1 bg-white border border-gray-200 text-gray-500 rounded-xl text-[10px] font-bold uppercase tracking-wider hover:bg-gray-50 hover:text-blue-950 transition-all shadow-sm active:scale-95 cursor-pointer"
                                     title="Imprimir Calendário Escolar"
                                 >
                                     <Printer className="w-3 h-3" />
@@ -245,7 +245,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                             </div>
                         </div>
                     </div>
-                    <button onClick={onClose} className="text-gray-400 hover:text-red-500 p-2 rounded-full hover:bg-gray-100 transition-colors">
+                    <button onClick={onClose} className="text-gray-400 hover:text-red-500 p-2 rounded-xl hover:bg-gray-100 transition-colors">
                         <X className="w-6 h-6" />
                     </button>
                 </div>
@@ -310,13 +310,13 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                 {loading ? (
                                     <div className="text-center py-12 text-gray-400">Carregando eventos...</div>
                                 ) : events.length === 0 ? (
-                                    <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+                                    <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-gray-200">
                                         <p className="text-gray-500 italic">Nenhum evento cadastrado para {filterUnit === 'all' ? 'estas unidades' : filterUnit}.</p>
                                     </div>
                                 ) : (
                                     <div className="space-y-3">
                                         {events.map(event => (
-                                            <div key={event.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between group hover:border-blue-950/30 transition-all">
+                                            <div key={event.id} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between group hover:border-blue-950/30 transition-all">
                                                 <div className="flex items-center gap-4">
                                                     <div className="flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-gray-50 text-gray-600 group-hover:bg-blue-50 group-hover:text-blue-950 transition-colors">
                                                         <span className="text-[10px] font-black uppercase leading-none">{new Date(event.startDate + 'T00:00:00').toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</span>
@@ -324,10 +324,10 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                                     </div>
                                                     <div>
                                                         <div className="flex items-center gap-2 mb-1">
-                                                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${event.type === 'holiday_national' || event.type === 'holiday_state' || event.type === 'holiday_municipal' ? 'bg-red-100 text-red-600' :
+                                                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-xl uppercase tracking-wider ${event.type === 'holiday_national' || event.type === 'holiday_state' || event.type === 'holiday_municipal' ? 'bg-red-100 text-red-600' :
                                                                 event.type === 'exam' ? 'bg-orange-100 text-orange-600' :
                                                                     event.type === 'meeting' ? 'bg-gray-100 text-gray-600' :
-                                                                        event.type === 'school_day' ? 'bg-green-100 text-green-600' :
+                                                                        event.type === 'school_day' ? 'bg-blue-100 text-blue-600' :
                                                                             event.type === 'substitution' ? 'bg-purple-100 text-purple-600' :
                                                                                 event.type === 'vacation' ? 'bg-yellow-100 text-yellow-600' :
                                                                                     event.type === 'recess' ? 'bg-orange-50 text-orange-500' :
@@ -346,13 +346,13 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                                             {isAdmin && (
                                                                 <div className="flex flex-wrap gap-1">
                                                                     {event.units?.includes('all') ? (
-                                                                        <span className="text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider bg-blue-950/10 text-blue-950 flex items-center gap-1">
+                                                                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-xl uppercase tracking-wider bg-blue-950/10 text-blue-950 flex items-center gap-1">
                                                                             <Globe className="w-2.5 h-2.5" />
                                                                             Toda Rede
                                                                         </span>
                                                                     ) : (
                                                                         event.units?.map(u => (
-                                                                            <span key={u} className="text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider bg-blue-950/10 text-blue-950">
+                                                                            <span key={u} className="text-[9px] font-bold px-2 py-0.5 rounded-xl uppercase tracking-wider bg-blue-950/10 text-blue-950">
                                                                                 {u}
                                                                             </span>
                                                                         ))
@@ -370,14 +370,14 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button
                                                         onClick={() => { setEditingEvent(event); setIsFormOpen(true); }}
-                                                        className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-blue-950 bg-blue-50 hover:bg-blue-100 rounded-lg transition-all"
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-blue-950 bg-blue-50 hover:bg-blue-100 rounded-xl transition-all"
                                                     >
                                                         <Edit2 className="w-3.5 h-3.5" />
                                                         Editar
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(event.id)}
-                                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                                                     >
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>
@@ -406,7 +406,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                             <input
                                                 type="text"
                                                 placeholder="Ex: Início das Aulas"
-                                                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-950 outline-none"
+                                                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-950 outline-none"
                                                 value={editingEvent?.title || ''}
                                                 onChange={e => setEditingEvent({ ...editingEvent, title: e.target.value })}
                                                 required
@@ -462,7 +462,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Data Início</label>
                                                 <input
                                                     type="date"
-                                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold focus:ring-2 focus:ring-blue-950 outline-none"
+                                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-blue-950 outline-none"
                                                     value={editingEvent?.startDate || ''}
                                                     onChange={e => setEditingEvent({ ...editingEvent, startDate: e.target.value })}
                                                     required
@@ -472,7 +472,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Data Fim (Op.)</label>
                                                 <input
                                                     type="date"
-                                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold focus:ring-2 focus:ring-blue-950 outline-none"
+                                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-blue-950 outline-none"
                                                     value={editingEvent?.endDate || ''}
                                                     onChange={e => setEditingEvent({ ...editingEvent, endDate: e.target.value })}
                                                 />
@@ -482,7 +482,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                         <div>
                                             <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Tipo de Evento</label>
                                             <select
-                                                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-950 outline-none"
+                                                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-950 outline-none"
                                                 value={editingEvent?.type || 'event'}
                                                 onChange={e => setEditingEvent({ ...editingEvent, type: e.target.value as EventType })}
                                                 required
@@ -505,7 +505,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                             <textarea
                                                 rows={3}
                                                 placeholder="Detalhes adicionais..."
-                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-950 resize-none"
+                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-950 resize-none"
                                                 value={editingEvent?.description || ''}
                                                 onChange={e => setEditingEvent({ ...editingEvent, description: e.target.value })}
                                             />
@@ -535,7 +535,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                         <div className="flex-1 overflow-y-auto p-8 bg-white">
                             <div className="max-w-2xl mx-auto">
                                 <div className="flex items-center gap-3 mb-8">
-                                    <div className="p-3 bg-blue-50 rounded-2xl text-blue-950">
+                                    <div className="p-3 bg-blue-50 rounded-xl text-blue-950">
                                         <Settings className="w-6 h-6" />
                                     </div>
                                     <div>
@@ -548,10 +548,10 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                     <div className="space-y-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             {academicSettings.bimesters.map((bim, idx) => (
-                                                <div key={bim.number} className="p-5 rounded-2xl bg-gray-50 border border-gray-100 space-y-4">
+                                                <div key={bim.number} className="p-5 rounded-xl bg-gray-50 border border-gray-100 space-y-4">
                                                     <div className="flex items-center justify-between">
                                                         <h4 className="font-black text-blue-950 uppercase tracking-wider text-sm">{bim.label}</h4>
-                                                        <div className={`p-1.5 rounded-lg ${academicSettings.currentBimester === bim.number ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-400 cursor-pointer hover:bg-blue-50 hover:text-blue-600 transition-colors'}`}
+                                                        <div className={`p-1.5 rounded-xl ${academicSettings.currentBimester === bim.number ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-400 cursor-pointer hover:bg-blue-50 hover:text-blue-600 transition-colors'}`}
                                                             onClick={() => updateAcademicSettings(academicSettings.id, { currentBimester: bim.number }, academicSettings.unit, academicSettings.year)}
                                                         >
                                                             <Save className="w-4 h-4" />
@@ -563,7 +563,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                                             <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Início</label>
                                                             <input
                                                                 type="date"
-                                                                className="w-full p-2.5 bg-white border border-gray-200 rounded-lg text-xs font-bold focus:ring-2 focus:ring-blue-950 outline-none"
+                                                                className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-blue-950 outline-none"
                                                                 value={bim.startDate}
                                                                 onChange={e => {
                                                                     const newBimesters = [...academicSettings.bimesters];
@@ -576,7 +576,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                                             <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Fim</label>
                                                             <input
                                                                 type="date"
-                                                                className="w-full p-2.5 bg-white border border-gray-200 rounded-lg text-xs font-bold focus:ring-2 focus:ring-blue-950 outline-none"
+                                                                className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-blue-950 outline-none"
                                                                 value={bim.endDate}
                                                                 onChange={e => {
                                                                     const newBimesters = [...academicSettings.bimesters];
@@ -590,7 +590,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                             ))}
                                         </div>
 
-                                        <div className="p-4 bg-orange-50 border border-orange-100 rounded-2xl flex gap-3 text-orange-800">
+                                        <div className="p-4 bg-orange-50 border border-orange-100 rounded-xl flex gap-3 text-orange-800">
                                             <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
                                             <div className="text-xs leading-relaxed">
                                                 <p className="font-bold mb-1 uppercase tracking-tight">Nota Importante</p>

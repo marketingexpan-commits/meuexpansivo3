@@ -273,7 +273,7 @@ export default function AcademicConfig() {
                                                         <td className="px-4 py-3 font-mono text-slate-400">{grade.order}</td>
                                                         <td className="px-4 py-3 font-medium text-slate-700">{grade.name}</td>
                                                         <td className="px-4 py-3">
-                                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${grade.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-xl ${grade.isActive ? 'bg-blue-100/50 text-blue-950' : 'bg-slate-100 text-slate-500'}`}>
                                                                 {grade.isActive ? 'Ativa' : 'Inativa'}
                                                             </span>
                                                         </td>
@@ -306,7 +306,7 @@ export default function AcademicConfig() {
                 ))}
 
                 {segments.length === 0 && !loading && (
-                    <div className="py-20 text-center bg-white rounded-2xl border-2 border-dashed border-slate-200">
+                    <div className="py-20 text-center bg-white rounded-xl border-2 border-dashed border-slate-200">
                         <Layers className="w-12 h-12 text-slate-300 mx-auto mb-4" />
                         <h3 className="text-lg font-bold text-slate-400">Nenhum segmento configurado</h3>
                         <p className="text-slate-400 mb-6">Importe os padrões ou crie o seu primeiro segmento acima.</p>
@@ -321,7 +321,7 @@ export default function AcademicConfig() {
             {/* Segment Modal */}
             {isSegmentModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-blue-950/40 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-6 border-b border-slate-100">
                             <h2 className="text-xl font-bold text-blue-950">
                                 {editingSegment ? 'Editar Segmento' : 'Novo Segmento'}
@@ -369,7 +369,7 @@ export default function AcademicConfig() {
             {/* Grade Modal */}
             {isGradeModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-blue-950/40 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-6 border-b border-slate-100">
                             <h2 className="text-xl font-bold text-blue-950">
                                 {editingGrade ? 'Editar Série' : 'Nova Série'}
@@ -380,7 +380,7 @@ export default function AcademicConfig() {
                                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Segmento</label>
                                 <select
                                     disabled={!!gradeForm.segmentId}
-                                    className="w-full h-11 px-3 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
+                                    className="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
                                     value={gradeForm.segmentId}
                                     onChange={e => setGradeForm({ ...gradeForm, segmentId: e.target.value })}
                                 >

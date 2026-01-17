@@ -461,7 +461,8 @@ export interface Admin {
   username: string;
   password: string;
   name: string;
-  unit?: SchoolUnit;
+  unit?: SchoolUnit | 'admin_geral';
+  roleType?: 'gestao' | 'student_app'; // New field to distinguish admin type
 }
 
 export interface UserSession {

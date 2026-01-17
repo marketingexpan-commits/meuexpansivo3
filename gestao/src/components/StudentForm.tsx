@@ -717,7 +717,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                         <h2 className="text-xl font-bold text-gray-900">{student ? 'Editar Matrícula' : 'Nova Matrícula'}</h2>
                         <p className="text-sm text-gray-500">{student ? 'Edite os dados do aluno.' : 'Preencha os dados do aluno para realizar a matrícula.'}</p>
                     </div>
-                    <button onClick={() => onClose()} className="p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer">
+                    <button onClick={() => onClose()} className="p-2 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer">
                         <X className="w-5 h-5 text-gray-500" />
                     </button>
                 </div>
@@ -752,7 +752,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                             <div className="md:col-span-2 lg:col-span-1 flex flex-col items-center">
                                 <label className="text-sm font-medium text-gray-700 mb-2 block w-full text-center md:text-left">Foto 3x4</label>
                                 <div className="relative group">
-                                    <div className="w-32 h-40 bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg overflow-hidden flex flex-col items-center justify-center transition-all group-hover:border-blue-950/40 group-hover:bg-blue-950/5">
+                                    <div className="w-32 h-40 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl overflow-hidden flex flex-col items-center justify-center transition-all group-hover:border-blue-950/40 group-hover:bg-blue-950/5">
                                         {formData.photoUrl ? (
                                             <img src={formData.photoUrl} alt="Preview" className="w-full h-full object-cover" />
                                         ) : (
@@ -780,7 +780,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                         <button
                                             type="button"
                                             onClick={() => setFormData((prev: any) => ({ ...prev, photoUrl: '' }))}
-                                            className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-lg hover:bg-red-600 transition-colors z-10"
+                                            className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-xl shadow-lg hover:bg-red-600 transition-colors z-10"
                                             title="Remover foto"
                                         >
                                             <X className="w-3 h-3" />
@@ -983,7 +983,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
 
                             <div>
                                 <label className="text-sm font-medium text-gray-700 mb-1 block">Status de Acesso</label>
-                                <label className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer h-[42px] ${formData.isBlocked ? 'border-red-200 bg-red-50' : 'border-emerald-100 bg-emerald-50 hover:bg-emerald-100'}`}>
+                                <label className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer h-[42px] ${formData.isBlocked ? 'border-red-200 bg-red-50' : 'border-blue-100 bg-blue-50 hover:bg-blue-100'}`}>
                                     <div className="flex items-center h-5">
                                         <input
                                             type="checkbox"
@@ -994,7 +994,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                         />
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className={`text-xs font-bold flex items-center gap-1.5 ${formData.isBlocked ? 'text-red-700' : 'text-emerald-700'}`}>
+                                        <span className={`text-xs font-bold flex items-center gap-1.5 ${formData.isBlocked ? 'text-red-700' : 'text-blue-700'}`}>
                                             {formData.isBlocked ? (
                                                 <><ShieldAlert className="w-3.5 h-3.5" /> Acesso Bloqueado</>
                                             ) : (
@@ -1087,7 +1087,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
 
                     {activeTab === 'family' && (
                         <div className="space-y-6">
-                            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-start gap-3">
+                            <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 flex items-start gap-3">
                                 <Users className="w-4 h-4 text-orange-600 mt-1 flex-shrink-0" />
                                 <p className="text-sm text-orange-900 leading-relaxed">
                                     <strong>Atenção:</strong> Esta aba é exclusiva para o <strong>Responsável Financeiro e Pedagógico</strong> (quem assina o contrato).
@@ -1338,7 +1338,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
 
                     {activeTab === 'documents' && (
                         <div className="space-y-6">
-                            <div className="bg-blue-950/5 border border-blue-950/10 rounded-lg p-4 mb-2">
+                            <div className="bg-blue-950/5 border border-blue-950/10 rounded-xl p-4 mb-2">
                                 <h3 className="text-sm font-semibold text-blue-950 mb-1">Checklist de Documentos ✅</h3>
                                 <p className="text-xs text-blue-950/80">
                                     Marque os documentos que já foram entregues fisicamente na secretaria.
@@ -1366,7 +1366,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                 </div>
                             </div>
 
-                            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
                                 <p className="text-xs text-slate-500 italic">
                                     ⚠️ Para documentos digitalizados, utilize a aba "Acadêmico" ou procure o campo específico se disponível. Esta aba foca no controle de entrega física.
                                 </p>
@@ -1376,7 +1376,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
 
                     {activeTab === 'observations' && (
                         <div className="space-y-4">
-                            <div className="bg-blue-950/5 border border-blue-950/10 rounded-lg p-4 mb-4">
+                            <div className="bg-blue-950/5 border border-blue-950/10 rounded-xl p-4 mb-4">
                                 <h3 className="text-sm font-semibold text-blue-950 mb-1">Anotações Gerais</h3>
                                 <p className="text-xs text-blue-950/80">
                                     Utilize este espaço para registrar informações importantes que não se enquadram nos outros campos.
@@ -1387,7 +1387,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                 name="observacoes_gerais"
                                 value={formData.observacoes_gerais || ''}
                                 onChange={(e) => setFormData((prev: any) => ({ ...prev, observacoes_gerais: e.target.value }))}
-                                className="w-full h-64 p-4 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-950 focus:border-transparent resize-none text-sm leading-relaxed"
+                                className="w-full h-64 p-4 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-950 focus:border-transparent resize-none text-sm leading-relaxed"
                                 placeholder="Digite aqui as observações sobre o aluno..."
                             />
                         </div>

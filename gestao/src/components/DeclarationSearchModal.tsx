@@ -107,7 +107,7 @@ export function DeclarationSearchModal({ onClose }: DeclarationSearchModalProps)
             title: 'Bolsa Família',
             description: `Modelo específico (Freq: ${studentFrequency.toFixed(1)}%).`,
             icon: <Percent className="w-5 h-5" />,
-            color: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+            color: 'bg-blue-50 text-blue-600 border-blue-100',
             disabled: studentFrequency < 75
         },
         {
@@ -136,12 +136,12 @@ export function DeclarationSearchModal({ onClose }: DeclarationSearchModalProps)
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className={`bg-white w-full ${step === 'SELECTION' ? 'max-w-2xl' : 'max-w-md'} rounded-3xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 animate-in zoom-in-95`}>
+            <div className={`bg-white w-full ${step === 'SELECTION' ? 'max-w-2xl' : 'max-w-md'} rounded-xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 animate-in zoom-in-95`}>
 
                 {/* Header */}
                 <div className="bg-slate-50 border-b border-slate-100 p-6 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 ${step === 'SELECTION' ? 'bg-blue-950 text-white' : 'bg-blue-950/10 text-blue-950'} rounded-2xl flex items-center justify-center shadow-sm`}>
+                        <div className={`w-12 h-12 ${step === 'SELECTION' ? 'bg-blue-950 text-white' : 'bg-blue-950/10 text-blue-950'} rounded-xl flex items-center justify-center shadow-sm`}>
                             <FileText className="w-6 h-6" />
                         </div>
                         <div>
@@ -153,7 +153,7 @@ export function DeclarationSearchModal({ onClose }: DeclarationSearchModalProps)
                             </p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-200/50 rounded-full transition-colors">
+                    <button onClick={onClose} className="p-2 hover:bg-slate-200/50 rounded-xl transition-colors">
                         <X className="w-6 h-6 text-slate-400" />
                     </button>
                 </div>
@@ -187,7 +187,7 @@ export function DeclarationSearchModal({ onClose }: DeclarationSearchModalProps)
                             <Button
                                 onClick={handleSearch}
                                 disabled={isLoading}
-                                className="w-full py-7 font-bold text-base shadow-xl shadow-blue-950/20 rounded-2xl transition-all"
+                                className="w-full py-7 font-bold text-base shadow-xl shadow-blue-950/20 rounded-xl transition-all"
                             >
                                 {isLoading ? (
                                     <><Loader2 className="w-5 h-5 mr-3 animate-spin" /> Verificando dados...</>
@@ -217,7 +217,7 @@ export function DeclarationSearchModal({ onClose }: DeclarationSearchModalProps)
                                     onClick={() => handlePrint(opt.id)}
                                     disabled={opt.disabled}
                                     className={`
-                                        flex items-center gap-4 p-4 rounded-2xl border-2 text-left transition-all
+                                        flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all
                                         ${opt.disabled ? 'opacity-50 cursor-not-allowed bg-slate-50 border-slate-100' : 'hover:scale-[1.02] hover:shadow-md cursor-pointer'}
                                         ${opt.color}
                                     `}
@@ -234,7 +234,7 @@ export function DeclarationSearchModal({ onClose }: DeclarationSearchModalProps)
                             ))}
                         </div>
 
-                        <div className="mt-8 flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        <div className="mt-8 flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-100">
                             <div className="text-xs text-slate-400">
                                 <p>Todos os documentos são gerados em papel timbrado oficial.</p>
                             </div>

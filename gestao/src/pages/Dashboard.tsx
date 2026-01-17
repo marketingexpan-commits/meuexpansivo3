@@ -126,11 +126,11 @@ export function Dashboard() {
                                 { title: 'Censo Escolar', date: '15 Jan', desc: 'Data limite para atualização de CPFs dos responsáveis.', color: 'bg-blue-950' },
                             ].map((item, i) => (
                                 <div key={i} className="flex items-start p-4 hover:bg-slate-50 transition-colors">
-                                    <div className={`w-2 h-2 mt-2 rounded-full ${item.color} mr-4 shrink-0`}></div>
+                                    <div className={`w-2 h-2 mt-2 rounded-xl ${item.color} mr-4 shrink-0`}></div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between mb-0.5">
                                             <h4 className="text-sm font-semibold text-slate-800 truncate">{item.title}</h4>
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase bg-slate-100 px-1.5 py-0.5 rounded ml-2">{item.date}</span>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase bg-slate-100 px-1.5 py-0.5 rounded-xl ml-2">{item.date}</span>
                                         </div>
                                         <p className="text-xs text-slate-500 leading-relaxed">{item.desc}</p>
                                     </div>

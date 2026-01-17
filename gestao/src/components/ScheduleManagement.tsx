@@ -291,7 +291,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                     <select
                         value={selectedGrade}
                         onChange={(e) => setSelectedGrade(e.target.value)}
-                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950/20 outline-none"
+                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950/20 outline-none"
                     >
                         {grades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
                     </select>
@@ -301,7 +301,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                     <select
                         value={selectedClass}
                         onChange={(e) => setSelectedClass(e.target.value as SchoolClass)}
-                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950/20 outline-none"
+                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950/20 outline-none"
                     >
                         {SCHOOL_CLASSES_LIST.map((c: string) => <option key={c} value={c as SchoolClass}>{c}</option>)}
                     </select>
@@ -311,7 +311,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                     <select
                         value={selectedShift}
                         onChange={(e) => setSelectedShift(e.target.value)}
-                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950/20 outline-none"
+                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950/20 outline-none"
                     >
                         {SCHOOL_SHIFTS_LIST.map((s: string) => <option key={s} value={s}>{s}</option>)}
                     </select>
@@ -320,7 +320,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                     <button
                         onClick={() => setIsCopyModalOpen(true)}
                         disabled={isReadOnly || loading || saving}
-                        className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-orange-50 text-orange-600 border border-orange-100 rounded-lg text-sm font-bold hover:bg-orange-100 transition-colors disabled:opacity-50"
+                        className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-orange-50 text-orange-600 border border-orange-100 rounded-xl text-sm font-bold hover:bg-orange-100 transition-colors disabled:opacity-50"
                     >
                         <Copy className="w-4 h-4" />
                         Copiar
@@ -328,7 +328,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                     <button
                         onClick={handlePrintAllDays}
                         disabled={loading || saving}
-                        className="flex items-center justify-center p-2.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors disabled:opacity-50"
+                        className="flex items-center justify-center p-2.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-xl text-sm font-bold hover:bg-blue-100 transition-colors disabled:opacity-50"
                         title="Imprimir Grade Completa"
                     >
                         <Printer className="w-5 h-5" />
@@ -336,7 +336,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                     <button
                         onClick={handlePrintAllDays}
                         disabled={loading || saving}
-                        className="flex items-center justify-center p-2.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-sm font-bold hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                        className="flex items-center justify-center p-2.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors disabled:opacity-50"
                         title="Baixar PDF (via Impressora)"
                     >
                         <FileText className="w-5 h-5" />
@@ -350,7 +350,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                     <button
                         key={day.id}
                         onClick={() => setSelectedDay(day.id)}
-                        className={`flex-1 min-w-[100px] py-2 px-4 rounded-lg text-xs font-bold transition-all ${selectedDay === day.id
+                        className={`flex-1 min-w-[100px] py-2 px-4 rounded-xl text-xs font-bold transition-all ${selectedDay === day.id
                             ? 'bg-blue-950 text-white shadow-md shadow-blue-950/20'
                             : 'text-gray-500 hover:bg-white/60'
                             }`}
@@ -361,7 +361,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
             </div>
 
             {/* Schedule Items */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-[400px]">
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden min-h-[400px]">
                 <div className="p-4 border-b border-gray-50 bg-gray-50/30 flex justify-between items-center">
                     <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-blue-950" />
@@ -371,7 +371,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                         <button
                             onClick={handleAddItem}
                             disabled={loading || saving}
-                            className="flex items-center gap-1 px-3 py-1.5 bg-blue-950 text-white rounded-lg text-xs font-bold hover:bg-black transition-colors"
+                            className="flex items-center gap-1 px-3 py-1.5 bg-blue-950 text-white rounded-xl text-xs font-bold hover:bg-black transition-colors"
                         >
                             <Plus className="w-3.5 h-3.5" />
                             Nova Aula
@@ -403,7 +403,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                                             value={item.startTime}
                                             onChange={(e) => handleItemChange(index, 'startTime', e.target.value)}
                                             readOnly={isReadOnly}
-                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950/10 outline-none"
+                                            className="w-full p-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950/10 outline-none"
                                         />
                                     </div>
                                     <div className="w-full md:w-32">
@@ -415,7 +415,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                                             value={item.endTime}
                                             onChange={(e) => handleItemChange(index, 'endTime', e.target.value)}
                                             readOnly={isReadOnly}
-                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950/10 outline-none"
+                                            className="w-full p-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950/10 outline-none"
                                         />
                                     </div>
                                     <div className="flex-1 min-w-[200px]">
@@ -426,7 +426,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                                             value={item.subject}
                                             onChange={(e) => handleItemChange(index, 'subject', e.target.value)}
                                             disabled={isReadOnly}
-                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950/10 outline-none"
+                                            className="w-full p-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950/10 outline-none"
                                         >
                                             <option value="">Selecione...</option>
                                             {subjects.filter(s => s.isActive).map(s => (
@@ -442,7 +442,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                                         <div className="flex items-end self-end md:self-center">
                                             <button
                                                 onClick={() => handleRemoveItem(index)}
-                                                className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                className="p-2 text-red-500 hover:text-red-700 hover:bg-slate-100 rounded-xl transition-colors"
                                                 title="Remover aula"
                                             >
                                                 <Trash2 className="w-5 h-5" />
@@ -472,7 +472,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
             {/* Copy Modal */}
             {isCopyModalOpen && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-fade-in-up">
+                    <div className="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden animate-fade-in-up">
                         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                             <div className="flex items-center gap-2">
                                 <Copy className="w-5 h-5 text-orange-600" />
@@ -483,8 +483,8 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                             </button>
                         </div>
                         <div className="p-6 space-y-4">
-                            <div className="p-3 bg-orange-50 text-orange-700 text-xs rounded-lg border border-orange-100 flex gap-3">
-                                <AlertCircle className="w-5 h-5 shrink-0" />
+                            <div className="p-3 bg-slate-50 text-slate-600 text-xs rounded-xl border border-slate-200 flex gap-3">
+                                <AlertCircle className="w-5 h-5 shrink-0 text-orange-600" />
                                 <p>Isso copiará os horários de Segunda a Sábado da turma selecionada para a turma atual.</p>
                             </div>
 
@@ -493,7 +493,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                                 <select
                                     value={copySourceGrade}
                                     onChange={(e) => setCopySourceGrade(e.target.value)}
-                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700"
+                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700"
                                 >
                                     {grades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
                                 </select>
@@ -503,7 +503,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                                 <select
                                     value={copySourceClass}
                                     onChange={(e) => setCopySourceClass(e.target.value as SchoolClass)}
-                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700"
+                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700"
                                 >
                                     {SCHOOL_CLASSES_LIST.map((c: string) => <option key={c} value={c as SchoolClass}>{c}</option>)}
                                 </select>
@@ -513,7 +513,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                                 <select
                                     value={copySourceShift}
                                     onChange={(e) => setCopySourceShift(e.target.value)}
-                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700"
+                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700"
                                 >
                                     {SCHOOL_SHIFTS_LIST.map((s: string) => <option key={s} value={s}>{s}</option>)}
                                 </select>
@@ -532,20 +532,14 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                 </div>
             )}
 
-            {/* Print-only View */}
             {fullScheduleForPrint && (
-                <div className="hidden print:block fixed inset-0 bg-white z-[200] p-4 text-left">
-                    <div className="flex justify-between items-center mb-6 border-b-2 border-blue-900 pb-4">
-                        <div>
-                            <h1 className="text-2xl font-black text-blue-900 uppercase tracking-tighter">Grade Horária</h1>
-                            <p className="text-sm font-bold text-gray-600">
-                                {selectedGrade} - Turma {selectedClass} ({selectedShift})
-                            </p>
-                            <p className="text-xs text-gray-400 font-medium">Unidade: {unit}</p>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Documento Oficial</p>
-                            <p className="text-xs font-bold text-gray-900">{new Date().toLocaleDateString()} {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                <div className="fixed inset-0 bg-white z-[200] p-8 overflow-y-auto print:p-0">
+                    <div className="mb-8 text-center border-b-2 border-blue-900 pb-4">
+                        <h2 className="text-xl font-black text-blue-900 uppercase tracking-tighter">Horário Escolar - Grade Completa</h2>
+                        <div className="flex justify-center gap-4 mt-2 text-[10px] font-bold text-gray-500 uppercase">
+                            <span>{selectedGrade}</span>
+                            <span>Turma {selectedClass}</span>
+                            <span>Turno {selectedShift}</span>
                         </div>
                     </div>
 
@@ -553,14 +547,14 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                         {DAYS_OF_WEEK.map(day => {
                             const daySchedule = fullScheduleForPrint.find(s => s.dayOfWeek === day.id);
                             return (
-                                <div key={day.id} className="flex flex-col border border-gray-100 rounded-lg overflow-hidden">
+                                <div key={day.id} className="flex flex-col border border-gray-100 rounded-xl overflow-hidden">
                                     <div className="bg-blue-900 text-white py-1 px-2 text-center text-[10px] font-black uppercase">
                                         {day.label}
                                     </div>
                                     <div className="p-1 space-y-1 bg-white flex-grow">
                                         {daySchedule?.items && daySchedule.items.length > 0 ? (
                                             daySchedule.items.map((item, idx) => (
-                                                <div key={idx} className="bg-gray-50/50 border border-gray-100 p-1.5 rounded-md">
+                                                <div key={idx} className="bg-gray-50/50 border border-gray-100 p-1.5 rounded-xl">
                                                     <div className="font-black text-blue-900 text-[8px] mb-0.5">{item.startTime} - {item.endTime}</div>
                                                     <div className="font-bold text-gray-800 leading-tight uppercase text-[9px] break-words">{item.subject}</div>
                                                 </div>
@@ -579,7 +573,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                             Rede de Ensino Expansivo - Excelência em Educação<br />
                             Este documento é para fins informativos e pode sofrer alterações.
                         </div>
-                        <div className="w-32 h-1 bg-blue-900/10 rounded-full"></div>
+                        <div className="w-32 h-1 bg-blue-900/10 rounded-xl"></div>
                     </div>
                 </div>
             )}

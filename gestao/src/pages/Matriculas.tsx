@@ -412,11 +412,11 @@ export function Matriculas() {
                         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Gestão de Matrículas</h1>
                         {students.length > 0 && (
                             <div className="flex items-center gap-2">
-                                <span className="bg-blue-950/10 text-blue-950 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border border-blue-950/20 shadow-sm">
+                                <span className="bg-blue-950/10 text-blue-950 px-2.5 py-0.5 rounded-xl text-[10px] font-extrabold uppercase tracking-wider border border-blue-950/20 shadow-sm">
                                     {students.length} Alunos
                                 </span>
                                 {hasActiveFilters && filteredStudents.length !== students.length && (
-                                    <span className="bg-blue-950/10 text-blue-950 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border border-blue-950/20 shadow-sm animate-in fade-in slide-in-from-left-2 transition-all">
+                                    <span className="bg-blue-950/10 text-blue-950 px-2.5 py-0.5 rounded-xl text-[10px] font-extrabold uppercase tracking-wider border border-blue-950/20 shadow-sm animate-in fade-in slide-in-from-left-2 transition-all">
                                         {filteredStudents.length} Filtrados
                                     </span>
                                 )}
@@ -507,13 +507,13 @@ export function Matriculas() {
                 hasActiveFilters && filteredStudents.length > 0 && (() => {
                     const missingEnturmacao = filteredStudents.filter(s => !s.schoolClass || !s.shift).length;
                     return (
-                        <div className="flex flex-col sm:flex-row items-center gap-3 justify-center bg-white border border-slate-200 py-3 px-6 rounded-2xl shadow-sm animate-in fade-in slide-in-from-top-2">
+                        <div className="flex flex-col sm:flex-row items-center gap-3 justify-center bg-white border border-slate-200 py-3 px-6 rounded-xl shadow-sm animate-in fade-in slide-in-from-top-2">
                             <div className="flex items-center gap-2 text-slate-700 font-semibold whitespace-nowrap">
-                                <span className="text-blue-950 flex items-center justify-center bg-blue-950/10 w-6 h-6 rounded-full text-xs">
+                                <span className="text-blue-950 flex items-center justify-center bg-blue-950/10 w-6 h-6 rounded-xl text-xs">
                                     <Search className="w-3.5 h-3.5" />
                                 </span>
                                 <span>Resultado da Pesquisa:</span>
-                                <span className="bg-slate-900 text-white px-2.5 py-0.5 rounded-lg font-bold text-xs tabular-nums">
+                                <span className="bg-slate-900 text-white px-2.5 py-0.5 rounded-xl font-bold text-xs tabular-nums">
                                     {filteredStudents.length} {filteredStudents.length === 1 ? 'aluno' : 'alunos'}
                                 </span>
                             </div>
@@ -527,7 +527,7 @@ export function Matriculas() {
                                     <span className="text-slate-900 font-bold tabular-nums">{filteredStudents.length - missingEnturmacao}</span>
                                 </div>
                                 {missingEnturmacao > 0 && (
-                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-50 rounded-lg border border-amber-100">
+                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-50 rounded-xl border border-amber-100">
                                         <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
                                         <span className="text-amber-700 font-medium">Sem Turma/Turno:</span>
                                         <span className="text-amber-900 font-bold tabular-nums">{missingEnturmacao}</span>
@@ -675,11 +675,11 @@ export function Matriculas() {
                                                             <td className="px-6 py-3 text-xs font-mono text-slate-600">{student.code || '-'}</td>
                                                             <td className="px-6 py-3 text-center">
                                                                 <div className="flex flex-col items-center gap-1">
-                                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${(!student.status || student.status === 'CURSANDO' || student.status === 'ATIVO')
-                                                                        ? "bg-blue-50 text-blue-950 border-blue-100"
+                                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-xl text-[10px] font-bold border uppercase ${(!student.status || student.status === 'CURSANDO' || student.status === 'ATIVO')
+                                                                        ? "bg-blue-100/50 text-blue-950 border-blue-200"
                                                                         : (student.status === 'REPROVADO' || student.status === 'EVADIDO' || student.status === 'TRANSFERIDO')
-                                                                            ? "bg-orange-50 text-orange-600 border-orange-100"
-                                                                            : "bg-slate-50 text-slate-600 border-slate-200"
+                                                                            ? "bg-orange-100/50 text-orange-600 border-orange-200"
+                                                                            : "bg-slate-100 text-slate-600 border-slate-200"
                                                                         }`}>
                                                                         {student.status || 'CURSANDO'}
                                                                     </span>
@@ -698,14 +698,14 @@ export function Matriculas() {
                                                                     <Pencil className="w-3 h-3 mr-1.5" />
                                                                     Editar
                                                                 </Button>
-                                                                <Button variant="ghost" size="sm" onClick={() => handlePrintCarne(student)} className="h-8 w-8 p-0 rounded-full hover:bg-blue-50 hover:text-blue-950" title="Imprimir Carnê">
+                                                                <Button variant="ghost" size="sm" onClick={() => handlePrintCarne(student)} className="h-8 w-8 p-0 rounded-xl hover:bg-blue-50 hover:text-blue-950" title="Imprimir Carnê">
                                                                     <Printer className="w-4 h-4" />
                                                                 </Button>
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
                                                                     onClick={() => handleGenerateBoletosForStudent(student)}
-                                                                    className="h-8 w-8 p-0 rounded-full hover:bg-blue-50 text-slate-400 hover:text-blue-950"
+                                                                    className="h-8 w-8 p-0 rounded-xl hover:bg-blue-50 text-slate-400 hover:text-blue-950"
                                                                     title="Gerar Boletos Pendentes"
                                                                     disabled={isGenerating}
                                                                 >
@@ -715,7 +715,7 @@ export function Matriculas() {
                                                                     variant="ghost"
                                                                     size="sm"
                                                                     onClick={() => handleToggleBlock(student)}
-                                                                    className={`h-8 w-8 p-0 rounded-full transition-colors ${student.isBlocked ? 'text-orange-600 hover:bg-orange-50' : 'text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'}`}
+                                                                    className={`h-8 w-8 p-0 rounded-xl transition-colors ${student.isBlocked ? 'text-orange-600 hover:bg-orange-50' : 'text-slate-400 hover:bg-blue-50 hover:text-blue-950'}`}
                                                                     title={student.isBlocked ? "Desbloquear Aluno" : "Bloquear Aluno"}
                                                                 >
                                                                     {student.isBlocked ? <ShieldAlert className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
@@ -724,7 +724,7 @@ export function Matriculas() {
                                                                     variant="ghost"
                                                                     size="sm"
                                                                     onClick={() => handleDelete(student)}
-                                                                    className="h-8 w-8 p-0 rounded-full hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors"
+                                                                    className="h-8 w-8 p-0 rounded-xl hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors"
                                                                     title="Excluir Aluno"
                                                                 >
                                                                     <Trash2 className="w-4 h-4" />

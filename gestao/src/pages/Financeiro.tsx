@@ -631,7 +631,7 @@ export function Financeiro() {
         }
     };
 
-    const COLORS = ['#6366f1', '#f43f5e', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
+    const COLORS = ['#1e1b4b', '#ea580c', '#334155', '#475569', '#64748b', '#94a3b8'];
 
     return (
         <div className="space-y-6">
@@ -742,7 +742,7 @@ export function Financeiro() {
                                 onClick={() => setFilterStatus('Pendente')}
                             >
                                 <CardContent className="p-5 flex items-center gap-4">
-                                    <div className="p-3 bg-orange-50 text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-all duration-300">
+                                    <div className="p-3 bg-orange-100/30 text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-all duration-300">
                                         <Clock className="w-5 h-5" />
                                     </div>
                                     <div>
@@ -924,10 +924,10 @@ export function Financeiro() {
                                                         R$ {m.value?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                     </td>
                                                     <td className="px-6 py-4">
-                                                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-tighter border ${m.status === 'Pago'
+                                                        <span className={`px-2 py-0.5 rounded-xl text-[10px] font-bold uppercase tracking-tighter border ${m.status === 'Pago'
                                                             ? 'bg-blue-50 text-blue-950 border-blue-200/50'
                                                             : m.status === 'Atrasado' || m.status === 'Vencido'
-                                                                ? 'bg-orange-50 text-orange-600 border-orange-200/50'
+                                                                ? 'bg-orange-100/30 text-orange-600 border-orange-200/50'
                                                                 : 'bg-slate-100 text-slate-600 border-slate-200/50'
                                                             }`}>
                                                             {m.status}
@@ -938,7 +938,7 @@ export function Financeiro() {
                                                             <Button
                                                                 size="icon"
                                                                 variant="ghost"
-                                                                className={`h-9 w-9 rounded-lg transition-all ${m.status === 'Pago' ? 'text-blue-950 hover:bg-blue-50 bg-blue-50/30' : 'text-slate-300 bg-slate-50/50 cursor-not-allowed'}`}
+                                                                className={`h-9 w-9 rounded-xl transition-all ${m.status === 'Pago' ? 'text-blue-950 hover:bg-blue-50 bg-blue-50/30' : 'text-slate-300 bg-slate-50/50 cursor-not-allowed'}`}
                                                                 onClick={() => {
                                                                     if (m.status === 'Pago') {
                                                                         const unitDetail = getUnitById(m.studentUnit);
@@ -954,7 +954,7 @@ export function Financeiro() {
                                                             <Button
                                                                 size="icon"
                                                                 variant="ghost"
-                                                                className="h-9 w-9 rounded-lg text-blue-950 hover:bg-blue-50 bg-blue-50/30 transition-all"
+                                                                className="h-9 w-9 rounded-xl text-blue-950 hover:bg-blue-50 bg-blue-50/30 transition-all"
                                                                 onClick={() => sendWhatsAppMessage(m)}
                                                                 title="Cobrança via WhatsApp"
                                                             >
@@ -964,7 +964,7 @@ export function Financeiro() {
                                                                 size="icon"
                                                                 variant="ghost"
                                                                 title={m.status !== 'Pago' ? "Baixa Manual (Calculada)" : "Já Pago"}
-                                                                className={`h-9 w-9 rounded-lg transition-all ${m.status !== 'Pago' ? 'hover:bg-blue-50 text-blue-950 bg-blue-50/30' : 'text-slate-300 bg-slate-50/50 cursor-not-allowed'}`}
+                                                                className={`h-9 w-9 rounded-xl transition-all ${m.status !== 'Pago' ? 'hover:bg-blue-50 text-blue-950 bg-blue-50/30' : 'text-slate-300 bg-slate-50/50 cursor-not-allowed'}`}
                                                                 onClick={() => m.status !== 'Pago' && handleMarkAsPaid(m.id)}
                                                                 disabled={m.status === 'Pago'}
                                                             >
@@ -974,7 +974,7 @@ export function Financeiro() {
                                                                 size="icon"
                                                                 variant="ghost"
                                                                 title="Excluir"
-                                                                className="h-9 w-9 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 bg-slate-50/30 transition-all"
+                                                                className="h-9 w-9 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 bg-slate-50/30 transition-all"
                                                                 onClick={() => handleDeleteFee(m.id)}
                                                             >
                                                                 <Trash2 className="w-5 h-5" />
@@ -1022,7 +1022,7 @@ export function Financeiro() {
 
                             <Card className="bg-white border-slate-200 shadow-sm overflow-hidden border-l-4 border-l-orange-600">
                                 <CardContent className="p-5 flex items-center gap-4">
-                                    <div className="p-3 bg-orange-50 text-orange-600 rounded-xl">
+                                    <div className="p-3 bg-orange-100/30 text-orange-600 rounded-xl">
                                         <Clock className="w-5 h-5" />
                                     </div>
                                     <div>
@@ -1083,7 +1083,7 @@ export function Financeiro() {
                                                 <tr key={e.id} className="hover:bg-slate-50/50 transition-colors group text-slate-700">
                                                     <td className="px-6 py-4 font-bold">{e.description}</td>
                                                     <td className="px-6 py-4">
-                                                        <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-md text-[10px] uppercase font-bold tracking-tight">
+                                                        <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-xl text-[10px] uppercase font-bold tracking-tight">
                                                             {e.category}
                                                         </span>
                                                     </td>
@@ -1092,7 +1092,7 @@ export function Financeiro() {
                                                         R$ {e.value?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                     </td>
                                                     <td className="px-6 py-4">
-                                                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-tighter border ${e.status === 'Pago'
+                                                        <span className={`px-2 py-0.5 rounded-xl text-[10px] font-bold uppercase tracking-tighter border ${e.status === 'Pago'
                                                             ? 'bg-blue-50 text-blue-950 border-blue-200/50'
                                                             : 'bg-orange-50 text-orange-600 border-orange-200/50'
                                                             }`}>
@@ -1105,7 +1105,7 @@ export function Financeiro() {
                                                                 size="icon"
                                                                 variant="ghost"
                                                                 title={e.status !== 'Pago' ? "Marcar como pago" : "Já Pago"}
-                                                                className={`h-9 w-9 rounded-lg transition-all ${e.status !== 'Pago' ? 'hover:bg-blue-50 text-blue-950 bg-blue-50/30' : 'text-slate-300 bg-slate-50/50 cursor-not-allowed'}`}
+                                                                className={`h-9 w-9 rounded-xl transition-all ${e.status !== 'Pago' ? 'hover:bg-blue-50 text-blue-950 bg-blue-50/30' : 'text-slate-300 bg-slate-50/50 cursor-not-allowed'}`}
                                                                 onClick={async () => {
                                                                     if (e.status !== 'Pago' && confirm("Deseja marcar esta despesa como PAGA?")) {
                                                                         await financialService.updateExpense(e.id!, { status: 'Pago', paymentDate: new Date().toISOString() });
@@ -1120,7 +1120,7 @@ export function Financeiro() {
                                                                 size="icon"
                                                                 variant="ghost"
                                                                 title="Excluir"
-                                                                className="h-9 w-9 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 bg-slate-50/30 transition-all"
+                                                                className="h-9 w-9 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 bg-slate-50/30 transition-all"
                                                                 onClick={async () => {
                                                                     if (confirm("Tem certeza que deseja excluir esta despesa?")) {
                                                                         await financialService.deleteExpense(e.id!);
@@ -1203,7 +1203,7 @@ export function Financeiro() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="p-6 bg-white border border-slate-200 rounded-xl">
                                 <h5 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                    <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                                    <div className="w-2 h-2 bg-blue-950 rounded-full"></div>
                                     Detalhamento de Receitas
                                 </h5>
                                 <div className="space-y-4">
@@ -1220,7 +1220,7 @@ export function Financeiro() {
 
                             <div className="p-6 bg-white border border-slate-200 rounded-xl">
                                 <h5 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                    <div className="w-2 h-2 bg-rose-500 rounded-full"></div>
+                                    <div className="w-2 h-2 bg-orange-600 rounded-full"></div>
                                     Detalhamento de Despesas
                                 </h5>
                                 <div className="space-y-4">
@@ -1400,7 +1400,7 @@ export function Financeiro() {
             >
                 <div className="space-y-6">
                     {/* Área de Busca */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-blue-950/5 p-4 rounded-lg">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-blue-950/5 p-4 rounded-xl">
                         <div className="md:col-span-1">
                             <Input
                                 label="Código de Baixa"
@@ -1435,7 +1435,7 @@ export function Financeiro() {
                     </div>
 
                     {foundInstallment && (
-                        <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 animate-in fade-in zoom-in duration-300">
+                        <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 animate-in fade-in zoom-in duration-300">
                             <div className="mb-4">
                                 <label className="text-xs font-bold text-slate-400 uppercase">Aluno / Pagador</label>
                                 <div className="text-lg font-bold text-slate-800">{foundInstallment.studentName}</div>
@@ -1454,7 +1454,7 @@ export function Financeiro() {
                                     <label className="text-xs font-bold text-slate-400 uppercase">Valor Original</label>
                                     <div className="font-semibold text-slate-700">R$ {dischargeDetails.valueOriginal.toFixed(2)}</div>
                                 </div>
-                                <div className="bg-orange-50 p-2 rounded border border-orange-100">
+                                <div className="bg-orange-100/30 p-2 rounded-xl border border-orange-200">
                                     <label className="text-xs font-bold text-orange-600 uppercase">Juros/Multa</label>
                                     <div className="font-bold text-orange-700">
                                         R$ {(dischargeDetails.valuePenalty + dischargeDetails.valueInterest).toFixed(2)}
@@ -1501,7 +1501,7 @@ export function Financeiro() {
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-700">Aluno (Opcional)</label>
                         <select
-                            className="w-full p-2 border border-slate-200 rounded-lg text-sm"
+                            className="w-full p-2 border border-slate-200 rounded-xl text-sm"
                             value={installmentParams.studentId}
                             onChange={(e) => setInstallmentParams({ ...installmentParams, studentId: e.target.value })}
                         >
@@ -1532,7 +1532,7 @@ export function Financeiro() {
                         <div className="space-y-1">
                             <label className="text-sm font-medium text-slate-700">Mês Inicial</label>
                             <select
-                                className="w-full p-2 border border-slate-200 rounded-lg text-sm"
+                                className="w-full p-2 border border-slate-200 rounded-xl text-sm"
                                 value={installmentParams.startMonth}
                                 onChange={(e) => setInstallmentParams({ ...installmentParams, startMonth: e.target.value })}
                             >
@@ -1544,7 +1544,7 @@ export function Financeiro() {
                         <div className="space-y-1">
                             <label className="text-sm font-medium text-slate-700">Mês Final</label>
                             <select
-                                className="w-full p-2 border border-slate-200 rounded-lg text-sm"
+                                className="w-full p-2 border border-slate-200 rounded-xl text-sm"
                                 value={installmentParams.endMonth}
                                 onChange={(e) => setInstallmentParams({ ...installmentParams, endMonth: e.target.value })}
                             >
@@ -1555,7 +1555,7 @@ export function Financeiro() {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-xl border border-blue-100">
                         <input
                             type="checkbox"
                             id="withBoletos"

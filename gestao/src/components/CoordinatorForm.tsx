@@ -95,7 +95,7 @@ export function CoordinatorForm({ onClose, coordinator }: CoordinatorFormProps) 
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden border border-slate-200">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden border border-slate-200">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
                     <div className="flex items-center gap-3">
@@ -113,7 +113,7 @@ export function CoordinatorForm({ onClose, coordinator }: CoordinatorFormProps) 
                     </div>
                     <button
                         onClick={() => onClose()}
-                        className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+                        className="p-2 hover:bg-slate-200 rounded-xl transition-colors text-slate-400 hover:text-slate-600"
                     >
                         <X className="w-6 h-6" />
                     </button>

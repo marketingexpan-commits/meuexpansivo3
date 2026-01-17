@@ -281,7 +281,7 @@ export const DatabaseCleanupTool = () => {
 
     if (!isOpen) {
         return (
-            <div className="mt-8 p-6 bg-blue-900 text-white border border-blue-950 rounded-2xl shadow-2xl transition-all hover:scale-[1.01] hover:shadow-xl group relative overflow-hidden">
+            <div className="mt-8 p-6 bg-blue-900 text-white border border-blue-950 rounded-xl shadow-2xl transition-all hover:scale-[1.01] hover:shadow-xl group relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-125 transition-transform">
                     <Database className="w-24 h-24" />
                 </div>
@@ -305,11 +305,11 @@ export const DatabaseCleanupTool = () => {
 
     return (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90vh] flex flex-col">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90vh] flex flex-col">
                 {/* Header */}
                 <div className="p-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-blue-950 text-white rounded-2xl flex items-center justify-center shadow-lg transform -rotate-1">
+                        <div className="w-12 h-12 bg-blue-950 text-white rounded-xl flex items-center justify-center shadow-lg transform -rotate-1">
                             <Database className="w-6 h-6" />
                         </div>
                         <div>
@@ -319,7 +319,7 @@ export const DatabaseCleanupTool = () => {
                             </p>
                         </div>
                     </div>
-                    <button onClick={() => setIsOpen(false)} className="p-3 hover:bg-slate-200/50 rounded-full transition-colors">
+                    <button onClick={() => setIsOpen(false)} className="p-3 hover:bg-slate-200/50 rounded-xl transition-colors">
                         <X className="w-6 h-6 text-slate-400" />
                     </button>
                 </div>
@@ -350,7 +350,7 @@ export const DatabaseCleanupTool = () => {
                 <div className="p-6 overflow-y-auto grow bg-slate-50/30">
                     {activeTab === 'SYNC_ABSENCES' && (
                         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-6">
+                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-6">
                                 <h4 className="font-bold text-slate-800 mb-2">Sincronizador de Faltas (Ghost Absences)</h4>
                                 <p className="text-sm text-slate-500 mb-6 font-medium">Compara as faltas salvas no boletim com os registros reais na coleção 'attendance'. Corrige discrepâncias causadas por edições manuais ou erros de importação.</p>
 
@@ -407,7 +407,7 @@ export const DatabaseCleanupTool = () => {
                                                             <td className="p-3">{d.subject}</td>
                                                             <td className="p-3 text-center">{d.bimester}º</td>
                                                             <td className="p-3 text-center text-red-500 font-bold">{d.gradeValue}</td>
-                                                            <td className="p-3 text-center text-green-600 font-bold">{d.actualValue}</td>
+                                                            <td className="p-3 text-center text-blue-600 font-bold">{d.actualValue}</td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -416,7 +416,7 @@ export const DatabaseCleanupTool = () => {
                                         <Button
                                             onClick={fixAbsences}
                                             disabled={loading || selectedDiscrepancies.length === 0}
-                                            className={`w-full py-6 text-lg font-black ${selectedDiscrepancies.length > 0 ? 'bg-green-600 hover:bg-green-700 shadow-lg shadow-green-500/20' : 'bg-slate-300 cursor-not-allowed shadow-none'}`}
+                                            className={`w-full py-6 text-lg font-black ${selectedDiscrepancies.length > 0 ? 'bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/20' : 'bg-slate-300 cursor-not-allowed shadow-none'}`}
                                         >
                                             {loading ? <Loader2 className="animate-spin mr-2" /> : <ShieldCheck className="mr-2" />}
                                             Sincronizar {selectedDiscrepancies.length} Registros Selecionados
@@ -429,7 +429,7 @@ export const DatabaseCleanupTool = () => {
 
                     {activeTab === 'GHOST_GRADES' && (
                         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-6">
+                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-6">
                                 <h4 className="font-bold text-slate-800 mb-2">Exclusão de Notas Fantasmas</h4>
                                 <p className="text-sm text-slate-500 mb-6 font-medium">Localiza registros de notas na coleção 'grades' que pertencem a alunos excluídos ou que foram criadas via importação (sem ID de professor).</p>
 
@@ -483,7 +483,7 @@ export const DatabaseCleanupTool = () => {
                                                             <td className="p-3 font-medium">{g.studentName}</td>
                                                             <td className="p-3">{g.subject}</td>
                                                             <td className="p-3">
-                                                                <span className="bg-red-50 text-red-600 px-2 py-0.5 rounded-full font-bold">
+                                                                <span className="bg-red-50 text-red-600 px-2 py-0.5 rounded-xl font-bold">
                                                                     {g.reason}
                                                                 </span>
                                                             </td>
@@ -508,7 +508,7 @@ export const DatabaseCleanupTool = () => {
 
                     {activeTab === 'GHOST_SCHEDULES' && (
                         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-6">
+                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-6">
                                 <h4 className="font-bold text-slate-800 mb-2">Exclusão de Grades Horárias Fantasmas</h4>
                                 <p className="text-sm text-slate-500 mb-6 font-medium">Remove registros de grade horária para uma unidade e série específica. Útil para limpar dados corrompidos que geram cálculos de C.H. Min. errados.</p>
 
@@ -594,8 +594,8 @@ export const DatabaseCleanupTool = () => {
                                                             <td className="p-3 text-slate-500 font-medium">{s.shift}</td>
                                                             <td className="p-3 text-slate-500 font-medium">{s.dayOfWeek}º dia</td>
                                                             <td className="p-3">
-                                                                <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-bold">
-                                                                    {(s.items || []).length} aulas
+                                                                <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-xl font-bold">
+                                                                    {s.items?.length || 0} aulas
                                                                 </span>
                                                             </td>
                                                         </tr>
@@ -619,8 +619,8 @@ export const DatabaseCleanupTool = () => {
 
                     {activeTab === 'GLOBAL_RESET' && (
                         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                            <div className="bg-red-50 p-8 rounded-3xl border-2 border-dashed border-red-200 text-center">
-                                <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                            <div className="bg-red-50 p-8 rounded-xl border-2 border-dashed border-red-200 text-center">
+                                <div className="w-20 h-20 bg-red-100 text-red-600 rounded-xl flex items-center justify-center mx-auto mb-6 shadow-inner">
                                     <AlertTriangle className="w-10 h-10" />
                                 </div>
                                 <h4 className="text-2xl font-black text-red-900 mb-3">RESET GLOBAL DE BOLETINS</h4>
@@ -630,7 +630,7 @@ export const DatabaseCleanupTool = () => {
                                     <span className="font-bold underline">Não afeta os dados de presença diária (attendance)</span>, apenas o que foi consolidado no boletim.
                                 </p>
 
-                                <Button onClick={runGlobalReset} disabled={loading} className="bg-red-600 hover:bg-red-700 text-white px-12 py-4 rounded-2xl text-xl font-black shadow-xl shadow-red-500/20">
+                                <Button onClick={runGlobalReset} disabled={loading} className="bg-red-600 hover:bg-red-700 text-white px-12 py-4 rounded-xl text-xl font-black shadow-xl shadow-red-500/20">
                                     {loading ? <Loader2 className="animate-spin mr-2" /> : <Database className="mr-2" />}
                                     Zerar Todo o Banco de Dados
                                 </Button>

@@ -177,10 +177,10 @@ export function MuralDigital() {
         <div className="animate-fade-in-up">
             {/* Header removed for embedding */}
 
-            <div className="flex space-x-1 bg-slate-100 p-1 rounded-lg w-fit">
+            <div className="flex space-x-1 bg-slate-100 p-1 rounded-xl w-fit">
                 <button
                     onClick={() => setActiveTab('flyers')}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'flyers'
+                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${activeTab === 'flyers'
                         ? 'bg-white text-blue-950 shadow-sm'
                         : 'text-slate-500 hover:text-slate-700'
                         }`}
@@ -192,7 +192,7 @@ export function MuralDigital() {
                 </button>
                 <button
                     onClick={() => setActiveTab('files')}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'files'
+                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${activeTab === 'files'
                         ? 'bg-white text-blue-950 shadow-sm'
                         : 'text-slate-500 hover:text-slate-700'
                         }`}
@@ -228,7 +228,7 @@ export function MuralDigital() {
                                 <label className="block text-sm font-medium text-slate-700 mb-1">
                                     {activeTab === 'flyers' ? 'Imagem do Banner' : 'Arquivo PDF'}
                                 </label>
-                                <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center hover:bg-slate-50 transition-colors cursor-pointer relative">
+                                <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:bg-slate-50 transition-colors cursor-pointer relative">
                                     <input
                                         id="mural-file-input"
                                         type="file"
@@ -295,7 +295,7 @@ export function MuralDigital() {
                                         className="flex items-center gap-4 p-4 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors group"
                                     >
                                         {/* THUMBNAIL */}
-                                        <div className="w-16 h-16 shrink-0 bg-slate-200 rounded-lg overflow-hidden flex items-center justify-center">
+                                        <div className="w-16 h-16 shrink-0 bg-slate-200 rounded-xl overflow-hidden flex items-center justify-center">
                                             {item.type === 'flyer' ? (
                                                 <img src={item.url} alt={item.title} className="w-full h-full object-cover" />
                                             ) : (
@@ -329,14 +329,14 @@ export function MuralDigital() {
                                         <div className="flex flex-col gap-2">
                                             <button
                                                 onClick={() => handleEdit(item)}
-                                                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
                                                 title="Editar item"
                                             >
                                                 <Pencil className="w-5 h-5" />
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(item.id)}
-                                                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
                                                 title="Remover item"
                                             >
                                                 <Trash2 className="w-5 h-5" />

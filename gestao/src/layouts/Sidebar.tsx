@@ -48,7 +48,7 @@ function SidebarItem({ icon: Icon, label, path, collapsed }: SidebarItemProps) {
             onClick={() => path && navigate(path)}
             className={twMerge(
                 clsx(
-                    "flex items-center w-full p-3 rounded-lg transition-all duration-200 group relative cursor-pointer",
+                    "flex items-center w-full p-3 rounded-xl transition-all duration-200 group relative cursor-pointer",
                     isActive
                         ? "bg-blue-950/10 text-blue-950 font-medium"
                         : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
@@ -141,7 +141,7 @@ export function Sidebar() {
                     onClick={() => setShowCalendarModal(true)}
                     className={twMerge(
                         clsx(
-                            "flex items-center w-full p-3 rounded-lg transition-all duration-200 group relative cursor-pointer text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                            "flex items-center w-full p-3 rounded-xl transition-all duration-200 group relative cursor-pointer text-slate-600 hover:bg-slate-100 hover:text-slate-900",
                             collapsed && "justify-center"
                         )
                     )}
@@ -170,7 +170,7 @@ export function Sidebar() {
                                     e.stopPropagation();
                                     setIsMatriculasOpen(!isMatriculasOpen);
                                 }}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded text-slate-400"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded-xl text-slate-400"
                             >
                                 <ChevronRight className={clsx("w-3.5 h-3.5 transition-transform", isMatriculasOpen && "rotate-90")} />
                             </button>
@@ -215,21 +215,21 @@ export function Sidebar() {
                         <div className="ml-4 pl-4 border-l border-slate-100 space-y-0.5 animate-in slide-in-from-top-2 duration-200">
                             <button
                                 onClick={() => setShowDeclarationModal(true)}
-                                className="flex items-center w-full p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all text-xs font-medium cursor-pointer"
+                                className="flex items-center w-full p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all text-xs font-medium cursor-pointer"
                             >
                                 <FileCheck className="w-4 h-4 mr-2 text-slate-400" />
                                 Declaração
                             </button>
                             <button
                                 onClick={() => setShowHistoryModal(true)}
-                                className="flex items-center w-full p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all text-xs font-medium cursor-pointer"
+                                className="flex items-center w-full p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all text-xs font-medium cursor-pointer"
                             >
                                 <History className="w-4 h-4 mr-2 text-slate-400" />
                                 Histórico
                             </button>
                             <button
                                 onClick={() => setShowBulletinModal(true)} // Toggle Boletim Modal
-                                className="flex items-center w-full p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all text-xs font-medium cursor-pointer"
+                                className="flex items-center w-full p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all text-xs font-medium cursor-pointer"
                             >
                                 <FileBarChart className="w-4 h-4 mr-2 text-slate-400" />
                                 Boletim
@@ -259,7 +259,7 @@ export function Sidebar() {
                                     e.stopPropagation();
                                     setIsFinanceiroOpen(!isFinanceiroOpen);
                                 }}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded text-slate-400 cursor-pointer"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded-xl text-slate-400 cursor-pointer"
                             >
                                 <ChevronRight className={clsx("w-3.5 h-3.5 transition-transform", isFinanceiroOpen && "rotate-90")} />
                             </button>
@@ -313,8 +313,12 @@ export function Sidebar() {
                             <SidebarItem icon={UserCheck} label="Coordenadores" path="/config/coordenadores" collapsed={collapsed} />
                             <SidebarItem icon={Users} label="Professores" path="/config/professores" collapsed={collapsed} />
                             <SidebarItem icon={Building2} label="Unidades" path="/config/unidades" collapsed={collapsed} />
+
                             {isAdmin && (
-                                <SidebarItem icon={Smartphone} label="Config. App" path="/config/escola" collapsed={collapsed} />
+                                <>
+                                    <SidebarItem icon={UserCheck} label="Admin/Unidades" path="/config/admin-unidades" collapsed={collapsed} />
+                                    <SidebarItem icon={Smartphone} label="Config. App" path="/config/escola" collapsed={collapsed} />
+                                </>
                             )}
                         </div>
                     )}
@@ -325,13 +329,13 @@ export function Sidebar() {
             <div className="p-4 border-t border-slate-100 bg-slate-50/50">
                 <button
                     onClick={() => setCollapsed(!collapsed)}
-                    className="flex items-center justify-center w-full p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors mb-4"
+                    className="flex items-center justify-center w-full p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors mb-4"
                 >
                     <Menu className="w-5 h-5" />
                 </button>
 
                 <div className="flex items-center p-2.5 rounded-xl bg-white border border-slate-200 shadow-sm">
-                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-xs border border-slate-200">
+                    <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-xs border border-slate-200">
                         H
                     </div>
                     {!collapsed && (

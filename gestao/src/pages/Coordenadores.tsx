@@ -98,7 +98,7 @@ export function Coordenadores() {
                         setSelectedCoordinator(null);
                         setIsFormOpen(true);
                     }}
-                    className="bg-blue-950 hover:bg-slate-900 shadow-xl shadow-blue-950/20 px-6 py-6 rounded-2xl flex items-center gap-2 group transition-all"
+                    className="bg-blue-950 hover:bg-slate-900 shadow-xl shadow-blue-950/20 px-6 py-6 rounded-xl flex items-center gap-2 group transition-all"
                 >
                     <UserPlus className="w-5 h-5 group-hover:scale-110 transition-transform" />
                     <span className="font-bold text-lg">Novo Coordenador</span>
@@ -150,7 +150,7 @@ export function Coordenadores() {
                                 <div className="p-6 space-y-4">
                                     <div className="flex items-start justify-between">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-12 h-12 rounded-2xl bg-blue-950/5 flex items-center justify-center text-blue-950 group-hover:bg-blue-950 group-hover:text-white transition-all duration-300 shadow-inner">
+                                            <div className="w-12 h-12 rounded-xl bg-blue-950/5 flex items-center justify-center text-blue-950 group-hover:bg-blue-950 group-hover:text-white transition-all duration-300 shadow-inner">
                                                 <User className="w-6 h-6" />
                                             </div>
                                             <div>
@@ -166,14 +166,14 @@ export function Coordenadores() {
                                         <div className="flex gap-1">
                                             <button
                                                 onClick={() => handleEdit(coord)}
-                                                className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-blue-950 transition-all"
+                                                className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-blue-950 transition-all"
                                                 title="Editar"
                                             >
                                                 <Pencil className="w-4 h-4" />
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(coord)}
-                                                className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-all"
+                                                className="p-2 hover:bg-red-50 rounded-xl text-slate-400 hover:text-red-600 transition-all"
                                                 title="Excluir"
                                             >
                                                 <Trash2 className="w-4 h-4" />
@@ -189,7 +189,7 @@ export function Coordenadores() {
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-2 text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100 group-hover:border-blue-950/10 group-hover:bg-white transition-all">
-                                            <MessagesSquare className="w-4 h-4 text-green-600/50" />
+                                            <MessagesSquare className="w-4 h-4 text-blue-950/50" />
                                             <span className="text-xs font-mono font-bold tracking-tight">
                                                 +{coord.phoneNumber}
                                             </span>
@@ -200,7 +200,7 @@ export function Coordenadores() {
                                         href={`https://wa.me/${coord.phoneNumber}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-green-600 transition-all shadow-lg shadow-slate-900/10 group-hover:translate-y-[-2px] active:translate-y-0"
+                                        className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-blue-950 transition-all shadow-lg shadow-slate-900/10 group-hover:translate-y-[-2px] active:translate-y-0"
                                     >
                                         <MessagesSquare className="w-4 h-4" />
                                         Conversar no WhatsApp
@@ -210,8 +210,8 @@ export function Coordenadores() {
                         </Card>
                     ))
                 ) : (
-                    <div className="col-span-full py-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 gap-4">
-                        <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
+                    <div className="col-span-full py-20 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 gap-4">
+                        <div className="w-16 h-16 rounded-xl bg-slate-100 flex items-center justify-center">
                             <UserPlus className="w-8 h-8 opacity-20" />
                         </div>
                         <div className="text-center">

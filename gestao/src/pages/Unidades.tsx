@@ -150,7 +150,7 @@ export default function Unidades() {
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
-            <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <div className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                 <div>
                     <h1 className="text-2xl font-bold text-blue-950">Gestão de Unidades</h1>
                     <p className="text-slate-500 text-sm mt-1">Configure os dados institucionais de cada unidade escolar.</p>
@@ -176,14 +176,14 @@ export default function Unidades() {
                     <Card key={unit.id} className={`overflow-hidden border-2 transition-all ${unit.isActive ? 'border-transparent hover:border-blue-200' : 'opacity-60 grayscale'}`}>
                         <CardHeader className="bg-slate-50 border-b border-slate-100 pb-3">
                             <div className="flex justify-between items-start">
-                                <div className="p-2 bg-white rounded-lg shadow-sm">
+                                <div className="p-2 bg-white rounded-xl shadow-sm">
                                     <Building2 className="w-5 h-5 text-blue-600" />
                                 </div>
                                 <div className="flex gap-1">
-                                    <button onClick={() => toggleStatus(unit)} className="p-1.5 hover:bg-white rounded-md transition-colors">
-                                        {unit.isActive ? <ToggleRight className="w-5 h-5 text-green-500" /> : <ToggleLeft className="w-5 h-5 text-slate-400" />}
+                                    <button onClick={() => toggleStatus(unit)} className="p-1.5 hover:bg-white rounded-xl transition-colors">
+                                        {unit.isActive ? <ToggleRight className="w-5 h-5 text-blue-950" /> : <ToggleLeft className="w-5 h-5 text-slate-400" />}
                                     </button>
-                                    <button onClick={() => handleEdit(unit)} className="p-1.5 hover:bg-white rounded-md transition-colors text-blue-600">
+                                    <button onClick={() => handleEdit(unit)} className="p-1.5 hover:bg-white rounded-xl transition-colors text-blue-600">
                                         <Edit2 className="w-4 h-4" />
                                     </button>
                                 </div>
@@ -202,7 +202,7 @@ export default function Unidades() {
                                 <span>{unit.phone}</span>
                             </div>
                             <div className="flex items-center gap-2 text-xs text-slate-600">
-                                <MessageCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                                <MessageCircle className="w-3.5 h-3.5 text-blue-950 shrink-0" />
                                 <span>{unit.whatsapp}</span>
                             </div>
                             {unit.email && (

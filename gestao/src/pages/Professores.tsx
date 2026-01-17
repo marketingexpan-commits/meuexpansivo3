@@ -166,13 +166,13 @@ export function Professores() {
                         <p className="font-medium">Carregando professores...</p>
                     </div>
                 ) : filteredTeachers.length === 0 ? (
-                    <div className="text-center py-20 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                    <div className="text-center py-20 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
                         <UserPlus className="w-12 h-12 text-slate-300 mx-auto mb-4" />
                         <h3 className="text-lg font-bold text-slate-900">Nenhum professor encontrado</h3>
                         <p className="text-slate-500 max-w-xs mx-auto mt-1">Ajuste os filtros ou cadastre um novo docente para começar.</p>
                     </div>
                 ) : (
-                    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
@@ -188,7 +188,7 @@ export function Professores() {
                                         <tr key={t.id} className="hover:bg-slate-50/50 transition-colors group">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 font-bold group-hover:border-blue-950/20 group-hover:bg-blue-50/50 transition-all">
+                                                    <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 font-bold group-hover:border-blue-950/20 group-hover:bg-blue-50/50 transition-all">
                                                         {t.name.charAt(0)}
                                                     </div>
                                                     <div>
@@ -205,7 +205,7 @@ export function Professores() {
                                                     </div>
                                                     <button
                                                         onClick={() => handleToggleBlock(t)}
-                                                        className={`flex items-center gap-1.5 text-[10px] font-bold uppercase transition-all px-2 py-0.5 rounded-full border ${t.isBlocked ? 'text-red-600 bg-red-50 border-red-100' : 'text-emerald-600 bg-emerald-50 border-emerald-100'}`}
+                                                        className={`flex items-center gap-1.5 text-[10px] font-bold uppercase transition-all px-2 py-0.5 rounded-xl border ${t.isBlocked ? 'text-red-600 bg-red-50 border-red-100' : 'text-blue-600 bg-blue-50 border-blue-100'}`}
                                                     >
                                                         {t.isBlocked ? <ShieldAlert className="w-3 h-3" /> : <ShieldCheck className="w-3 h-3" />}
                                                         {t.isBlocked ? 'Acesso Bloqueado' : 'Acesso Liberado'}
@@ -215,12 +215,12 @@ export function Professores() {
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-wrap gap-1.5 max-w-[300px]">
                                                     {t.subjects?.slice(0, 3).map(s => (
-                                                        <span key={s} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-bold border border-blue-100 flex items-center gap-1">
+                                                        <span key={s} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-xl text-[10px] font-bold border border-blue-100 flex items-center gap-1">
                                                             <BookOpen className="w-2.5 h-2.5" /> {s}
                                                         </span>
                                                     ))}
                                                     {t.gradeLevels?.slice(0, 2).map(g => (
-                                                        <span key={g} className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-bold border border-slate-200 flex items-center gap-1">
+                                                        <span key={g} className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-bold border border-slate-200 flex items-center gap-1">
                                                             <Layers className="w-2.5 h-2.5" /> {g}
                                                         </span>
                                                     ))}
@@ -236,7 +236,7 @@ export function Professores() {
                                                             href={`https://wa.me/${t.phoneNumber}`}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors border border-transparent hover:border-emerald-100"
+                                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-colors border border-transparent hover:border-blue-100"
                                                             title="WhatsApp"
                                                         >
                                                             <MessagesSquare className="w-4 h-4" />
@@ -244,14 +244,14 @@ export function Professores() {
                                                     )}
                                                     <button
                                                         onClick={() => handleEdit(t)}
-                                                        className="p-2 text-blue-900 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
+                                                        className="p-2 text-blue-900 hover:bg-blue-50 rounded-xl transition-colors border border-transparent hover:border-blue-100"
                                                         title="Editar"
                                                     >
                                                         <Pencil className="w-4 h-4" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(t)}
-                                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                                                        className="p-2 text-red-600 hover:bg-red-50 rounded-xl transition-colors border border-transparent hover:border-red-100"
                                                         title="Excluir"
                                                     >
                                                         <Trash2 className="w-4 h-4" />

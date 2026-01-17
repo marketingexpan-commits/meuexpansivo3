@@ -140,8 +140,8 @@ export function PhotoCaptureModal({ isOpen, onClose, onCapture }: PhotoCaptureMo
                                 />
                                 {/* Overlay Guide */}
                                 <div className="absolute inset-0 border-[40px] border-black/40 pointer-events-none">
-                                    <div className="w-full h-full border-2 border-dashed border-white/60 rounded-lg flex items-center justify-center">
-                                        <div className="w-3/4 h-3/4 border border-white/20 rounded-full opacity-30"></div>
+                                    <div className="w-full h-full border-2 border-dashed border-white/60 rounded-xl flex items-center justify-center">
+                                        <div className="w-3/4 h-3/4 border border-white/20 rounded-xl opacity-30"></div>
                                     </div>
                                 </div>
 
@@ -152,7 +152,7 @@ export function PhotoCaptureModal({ isOpen, onClose, onCapture }: PhotoCaptureMo
                                             setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
                                             setPreviewUrl(null); // Reset preview to trigger effect
                                         }}
-                                        className="p-3 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-colors"
+                                        className="p-3 bg-black/50 hover:bg-black/70 text-white rounded-xl backdrop-blur-sm transition-colors"
                                         title="Alternar Câmera"
                                     >
                                         <RefreshCw className="w-5 h-5" />
@@ -162,9 +162,9 @@ export function PhotoCaptureModal({ isOpen, onClose, onCapture }: PhotoCaptureMo
                                 <div className="absolute bottom-4 left-0 right-0 flex justify-center">
                                     <button
                                         onClick={handleCapture}
-                                        className="w-16 h-16 bg-white rounded-full border-4 border-slate-300 shadow-xl flex items-center justify-center active:scale-95 transition-transform"
+                                        className="w-16 h-16 bg-white rounded-xl border-4 border-slate-300 shadow-xl flex items-center justify-center active:scale-95 transition-transform"
                                     >
-                                        <div className="w-12 h-12 bg-white rounded-full border-2 border-slate-900"></div>
+                                        <div className="w-12 h-12 bg-white rounded-xl border-2 border-slate-900"></div>
                                     </button>
                                 </div>
                             </>

@@ -109,7 +109,7 @@ export function ImageCropperModal({ isOpen, imageSrc, onClose, onCropComplete }:
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Ajustar Foto 3x4" maxWidth="max-w-2xl">
             <div className="flex flex-col gap-4">
-                <div className="relative w-full h-[400px] bg-slate-900 rounded-lg overflow-hidden border border-slate-200">
+                <div className="relative w-full h-[400px] bg-slate-900 rounded-xl overflow-hidden border border-slate-200">
                     {imageSrc && (
                         <Cropper
                             image={imageSrc}
@@ -127,7 +127,7 @@ export function ImageCropperModal({ isOpen, imageSrc, onClose, onCropComplete }:
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex flex-col gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <div className="flex flex-col gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
                         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Zoom</span>
                         <div className="flex items-center gap-3">
                             <ZoomOut className="w-4 h-4 text-slate-400" />
@@ -139,13 +139,13 @@ export function ImageCropperModal({ isOpen, imageSrc, onClose, onCropComplete }:
                                 step={0.1}
                                 aria-label="Zoom"
                                 onChange={(e) => setZoom(Number(e.target.value))}
-                                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-950"
+                                className="w-full h-2 bg-slate-200 rounded-xl appearance-none cursor-pointer accent-blue-950"
                             />
                             <ZoomIn className="w-4 h-4 text-slate-400" />
                         </div>
                     </div>
 
-                    <div className="flex flex-col gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <div className="flex flex-col gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
                         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Rotação</span>
                         <div className="flex items-center gap-3">
                             <RotateCw className="w-4 h-4 text-slate-400" />
@@ -157,7 +157,7 @@ export function ImageCropperModal({ isOpen, imageSrc, onClose, onCropComplete }:
                                 step={1}
                                 aria-label="Rotação"
                                 onChange={(e) => setRotation(Number(e.target.value))}
-                                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-950"
+                                className="w-full h-2 bg-slate-200 rounded-xl appearance-none cursor-pointer accent-blue-950"
                             />
                             <span className="text-xs text-slate-500 w-8 text-right">{rotation}°</span>
                         </div>

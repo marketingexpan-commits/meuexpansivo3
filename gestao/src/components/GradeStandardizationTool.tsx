@@ -110,34 +110,34 @@ export const GradeStandardizationTool = () => {
         <div className="mt-8 p-6 bg-white border border-slate-200 rounded-xl shadow-sm">
             <div className="flex items-center justify-between mb-6">
                 <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-                    <CheckCircle className="w-6 h-6 text-green-600" />
+                    <CheckCircle className="w-6 h-6 text-blue-600" />
                     Padronização de Séries
                 </h3>
-                <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-slate-100 rounded-full">
+                <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-slate-100 rounded-xl">
                     <X className="w-5 h-5 text-slate-500" />
                 </button>
             </div>
 
             <div className="grid grid-cols-4 gap-4 mb-6">
-                <div className="bg-slate-50 p-4 rounded-lg text-center">
+                <div className="bg-slate-50 p-4 rounded-xl text-center">
                     <span className="block text-2xl font-bold text-slate-800">{stats.total}</span>
                     <span className="text-xs text-slate-500 uppercase font-bold">Total Alunos</span>
                 </div>
-                <div className="bg-blue-50 p-4 rounded-lg text-center">
+                <div className="bg-blue-50 p-4 rounded-xl text-center">
                     <span className="block text-2xl font-bold text-blue-800">{stats.scanned}</span>
                     <span className="text-xs text-blue-600 uppercase font-bold">Analisados</span>
                 </div>
-                <div className="bg-green-50 p-4 rounded-lg text-center">
-                    <span className="block text-2xl font-bold text-green-800">{stats.updated}</span>
-                    <span className="text-xs text-green-600 uppercase font-bold">Corrigidos</span>
+                <div className="bg-blue-50 p-4 rounded-xl text-center">
+                    <span className="block text-2xl font-bold text-blue-800">{stats.updated}</span>
+                    <span className="text-xs text-blue-600 uppercase font-bold">Corrigidos</span>
                 </div>
-                <div className="bg-red-50 p-4 rounded-lg text-center">
+                <div className="bg-red-50 p-4 rounded-xl text-center">
                     <span className="block text-2xl font-bold text-red-800">{stats.errors}</span>
                     <span className="text-xs text-red-600 uppercase font-bold">Erros</span>
                 </div>
             </div>
 
-            <div className="bg-slate-900 rounded-lg p-4 h-64 overflow-y-auto mb-6 font-mono text-xs text-green-400">
+            <div className="bg-slate-900 rounded-xl p-4 h-64 overflow-y-auto mb-6 font-mono text-xs text-blue-400">
                 {logs.length === 0 ? (
                     <span className="text-slate-500">Aguardando início...</span>
                 ) : (

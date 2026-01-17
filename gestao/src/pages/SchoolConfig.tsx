@@ -165,7 +165,7 @@ export const SchoolConfig = () => {
             <div className="flex items-center gap-2 mb-8 bg-slate-100 p-1 rounded-xl w-fit">
                 <button
                     onClick={() => setActiveTab('general')}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'general'
+                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'general'
                         ? 'bg-white text-blue-950 shadow-sm'
                         : 'text-slate-500 hover:text-slate-700'
                         }`}
@@ -174,7 +174,7 @@ export const SchoolConfig = () => {
                 </button>
                 <button
                     onClick={() => setActiveTab('admin')}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'admin'
+                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'admin'
                         ? 'bg-white text-blue-950 shadow-sm'
                         : 'text-slate-500 hover:text-slate-700'
                         }`}
@@ -183,7 +183,7 @@ export const SchoolConfig = () => {
                 </button>
                 <button
                     onClick={() => setActiveTab('mural')}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'mural'
+                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'mural'
                         ? 'bg-white text-blue-950 shadow-sm'
                         : 'text-slate-500 hover:text-slate-700'
                         }`}
@@ -195,7 +195,7 @@ export const SchoolConfig = () => {
             {activeTab === 'general' && (
                 <>
                     {message && (
-                        <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+                        <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${message.type === 'success' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-red-50 text-red-700 border border-red-200'
                             }`}>
                             {message.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
                             {message.text}
@@ -203,7 +203,7 @@ export const SchoolConfig = () => {
                     )}
                     <form onSubmit={handleSave} className="space-y-6">
                         {/* Identidade Visual */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                             <h2 className="text-lg font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
                                 Identidade Visual
                             </h2>
@@ -215,7 +215,7 @@ export const SchoolConfig = () => {
                                         type="text"
                                         value={config.appName}
                                         onChange={e => setConfig({ ...config, appName: e.target.value })}
-                                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                        className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
                                         placeholder="Ex: Meu Expansivo"
                                     />
                                 </div>
@@ -226,7 +226,7 @@ export const SchoolConfig = () => {
                                         type="text"
                                         value={config.appSubtitle}
                                         onChange={e => setConfig({ ...config, appSubtitle: e.target.value })}
-                                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all uppercase"
+                                        className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all uppercase"
                                         placeholder="Ex: APLICATIVO"
                                     />
                                 </div>
@@ -234,7 +234,7 @@ export const SchoolConfig = () => {
                                 <div className="md:col-span-2">
                                     <label className="block text-sm font-semibold text-slate-700 mb-2">URL da Logo (Imagem)</label>
                                     <div className="flex gap-4 items-start">
-                                        <div className="w-20 h-20 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+                                        <div className="w-20 h-20 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
                                             {config.logoUrl ? (
                                                 <img src={config.logoUrl} alt="Logo App" className="w-full h-full object-contain p-2" />
                                             ) : (
@@ -246,7 +246,7 @@ export const SchoolConfig = () => {
                                                 type="text"
                                                 value={config.logoUrl}
                                                 onChange={e => setConfig({ ...config, logoUrl: e.target.value })}
-                                                className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                                className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
                                                 placeholder="https://..."
                                             />
                                             <p className="text-xs text-slate-500 mt-2">Recomendado: Imagem PNG com fundo transparente do App.</p>
@@ -267,7 +267,7 @@ export const SchoolConfig = () => {
                                             type="text"
                                             value={config.primaryColor}
                                             onChange={e => setConfig({ ...config, primaryColor: e.target.value })}
-                                            className="flex-1 p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all uppercase font-mono"
+                                            className="flex-1 p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all uppercase font-mono"
                                         />
                                     </div>
                                 </div>
@@ -285,7 +285,7 @@ export const SchoolConfig = () => {
                                             type="text"
                                             value={config.accentColor}
                                             onChange={e => setConfig({ ...config, accentColor: e.target.value })}
-                                            className="flex-1 p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all uppercase font-mono"
+                                            className="flex-1 p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all uppercase font-mono"
                                         />
                                     </div>
                                 </div>
@@ -293,7 +293,7 @@ export const SchoolConfig = () => {
                         </div>
 
                         {/* Contato e Links */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                             <h2 className="text-lg font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
                                 Links e Contato
                             </h2>
@@ -305,7 +305,7 @@ export const SchoolConfig = () => {
                                         type="text"
                                         value={config.instagramUrl}
                                         onChange={e => setConfig({ ...config, instagramUrl: e.target.value })}
-                                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                        className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
                                         placeholder="https://instagram.com/..."
                                     />
                                 </div>
@@ -315,13 +315,13 @@ export const SchoolConfig = () => {
 
                         {/* Contatos das Unidades */}
                         {/* Contatos das Unidades */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                             <div className="flex justify-between items-center mb-6">
                                 <h2 className="text-xl font-bold text-slate-800">Contatos das Unidades</h2>
                                 <button
                                     type="button"
                                     onClick={() => setConfig({ ...config, units: [...(config.units || []), { name: '', address: '', whatsapp: '' }] })}
-                                    className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors flex items-center"
+                                    className="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-100 transition-colors flex items-center"
                                 >
                                     <Plus className="w-4 h-4 mr-1.5" /> Adicionar Unidade
                                 </button>
@@ -338,14 +338,14 @@ export const SchoolConfig = () => {
                                     className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-600"
                                     placeholder="Ex: Olá, gostaria de informações sobre a escola."
                                 />
-                                <div className="mt-2 text-xs text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                <div className="mt-2 text-xs text-slate-500 bg-slate-50 p-2 rounded-xl border border-slate-100">
                                     <span className="font-semibold text-slate-700">Prévia da mensagem: </span>
                                     "{config.contactMessage || 'Olá, gostaria de informações.'}"
                                 </div>
                             </div>
 
                             {(!config.units || config.units.length === 0) ? (
-                                <p className="text-slate-500 text-sm italic text-center py-4 bg-slate-50 rounded-lg border border-slate-100 border-dashed">
+                                <p className="text-slate-500 text-sm italic text-center py-4 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
                                     Nenhuma unidade cadastrada. Adicione para exibir no 'Fale Conosco'.
                                 </p>
                             ) : (
@@ -374,7 +374,7 @@ export const SchoolConfig = () => {
                                                             newUnits[index] = { ...unit, name: e.target.value };
                                                             setConfig({ ...config, units: newUnits });
                                                         }}
-                                                        className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none text-sm font-semibold"
+                                                        className="w-full p-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none text-sm font-semibold"
                                                         placeholder="Ex: Expansivo Zona Norte"
                                                     />
                                                 </div>
@@ -388,7 +388,7 @@ export const SchoolConfig = () => {
                                                             newUnits[index] = { ...unit, whatsapp: e.target.value };
                                                             setConfig({ ...config, units: newUnits });
                                                         }}
-                                                        className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none text-sm"
+                                                        className="w-full p-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none text-sm"
                                                         placeholder="Ex: 5584999999999"
                                                     />
                                                 </div>
@@ -402,7 +402,7 @@ export const SchoolConfig = () => {
                                                             newUnits[index] = { ...unit, address: e.target.value };
                                                             setConfig({ ...config, units: newUnits });
                                                         }}
-                                                        className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none text-sm"
+                                                        className="w-full p-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none text-sm"
                                                         placeholder="Ex: Av. Boa Sorte, 265..."
                                                     />
                                                 </div>
@@ -414,7 +414,7 @@ export const SchoolConfig = () => {
                         </div>
 
                         {/* Rodapé e Créditos */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                             <h2 className="text-lg font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
                                 Rodapé e Créditos
                             </h2>
@@ -425,7 +425,7 @@ export const SchoolConfig = () => {
                                         type="text"
                                         value={config.copyrightText}
                                         onChange={e => setConfig({ ...config, copyrightText: e.target.value })}
-                                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                        className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
                                         placeholder="© 2026 Sua Escola..."
                                     />
                                 </div>
@@ -435,7 +435,7 @@ export const SchoolConfig = () => {
                                         type="text"
                                         value={config.developerName}
                                         onChange={e => setConfig({ ...config, developerName: e.target.value })}
-                                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                        className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
                                         placeholder="HC Apps"
                                     />
                                 </div>
@@ -445,7 +445,7 @@ export const SchoolConfig = () => {
                                         type="text"
                                         value={config.developerUrl}
                                         onChange={e => setConfig({ ...config, developerUrl: e.target.value })}
-                                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                        className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
                                         placeholder="https://..."
                                     />
                                 </div>
@@ -455,10 +455,10 @@ export const SchoolConfig = () => {
                                         type="text"
                                         value={config.developerMessage}
                                         onChange={e => setConfig({ ...config, developerMessage: e.target.value })}
-                                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                        className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
                                         placeholder="Ex: Olá, preciso de suporte no App."
                                     />
-                                    <div className="mt-2 text-xs text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                    <div className="mt-2 text-xs text-slate-500 bg-slate-50 p-2 rounded-xl border border-slate-100">
                                         <span className="font-semibold text-slate-700">Prévia da mensagem: </span>
                                         "{config.developerMessage || 'Olá, preciso de suporte.'}"
                                     </div>
@@ -466,7 +466,7 @@ export const SchoolConfig = () => {
                             </div>
                         </div >
 
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                             <h2 className="text-lg font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
                                 Avançado
                             </h2>
@@ -510,7 +510,7 @@ export const SchoolConfig = () => {
             {activeTab === 'admin' && (
                 <>
                     {message && (
-                        <div className={`p-4 rounded-xl mb-6 flex items-center ${message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+                        <div className={`p-4 rounded-xl mb-6 flex items-center ${message.type === 'success' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-red-50 text-red-700 border border-red-200'
                             }`}>
                             {message.type === 'success' ? <CheckCircle className="w-5 h-5 mr-2" /> : <AlertCircle className="w-5 h-5 mr-2" />}
                             {message.text}
@@ -518,7 +518,7 @@ export const SchoolConfig = () => {
                     )}
                     <form onSubmit={handleSave} className="space-y-6">
                         {/* Identidade Visual do Sistema */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                             <h2 className="text-lg font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
                                 Identidade Visual do Sistema
                             </h2>
@@ -527,7 +527,7 @@ export const SchoolConfig = () => {
                                 <div className="md:col-span-2">
                                     <label className="block text-sm font-semibold text-slate-700 mb-2">Logo do Sistema (URL)</label>
                                     <div className="flex gap-4 items-start">
-                                        <div className="w-20 h-20 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+                                        <div className="w-20 h-20 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
                                             {config.adminLogoUrl ? (
                                                 <img src={config.adminLogoUrl} alt="Logo Admin" className="w-full h-full object-contain p-2" />
                                             ) : (
@@ -539,7 +539,7 @@ export const SchoolConfig = () => {
                                                 type="text"
                                                 value={config.adminLogoUrl}
                                                 onChange={e => setConfig({ ...config, adminLogoUrl: e.target.value })}
-                                                className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                                className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
                                                 placeholder="https://..."
                                             />
                                             <p className="text-xs text-slate-500 mt-2">Recomendado: Imagem PNG com fundo transparente.</p>
@@ -553,7 +553,7 @@ export const SchoolConfig = () => {
                                             type="text"
                                             value={config.adminSystemLabel}
                                             onChange={e => setConfig({ ...config, adminSystemLabel: e.target.value })}
-                                            className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all uppercase"
+                                            className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all uppercase"
                                             placeholder="Ex: SISTEMA"
                                         />
                                     </div>
@@ -563,7 +563,7 @@ export const SchoolConfig = () => {
                                             type="text"
                                             value={config.adminSystemTitle}
                                             onChange={e => setConfig({ ...config, adminSystemTitle: e.target.value })}
-                                            className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                            className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
                                             placeholder="Ex: Meu Expansivo"
                                         />
                                     </div>
@@ -574,7 +574,7 @@ export const SchoolConfig = () => {
                                         type="text"
                                         value={config.adminSystemSubtitle}
                                         onChange={e => setConfig({ ...config, adminSystemSubtitle: e.target.value })}
-                                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                        className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
                                         placeholder="Ex: Gestão Escolar"
                                     />
                                 </div>
@@ -582,7 +582,7 @@ export const SchoolConfig = () => {
                         </div>
 
                         {/* Cores e Estilo */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                             <h2 className="text-lg font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
                                 Cores e Estilo
                             </h2>
@@ -595,13 +595,13 @@ export const SchoolConfig = () => {
                                             type="color"
                                             value={config.adminPrimaryColor}
                                             onChange={e => setConfig({ ...config, adminPrimaryColor: e.target.value })}
-                                            className="w-12 h-12 rounded-lg cursor-pointer border-0 p-0 shadow-sm"
+                                            className="w-12 h-12 rounded-xl cursor-pointer border-0 p-0 shadow-sm"
                                         />
                                         <input
                                             type="text"
                                             value={config.adminPrimaryColor}
                                             onChange={e => setConfig({ ...config, adminPrimaryColor: e.target.value })}
-                                            className="flex-1 p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none uppercase"
+                                            className="flex-1 p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none uppercase"
                                         />
                                     </div>
                                 </div>
@@ -609,7 +609,7 @@ export const SchoolConfig = () => {
                         </div>
 
                         {/* Rodapé do Sistema */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                             <h2 className="text-lg font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
                                 Roda­pé e Créditos
                             </h2>
@@ -620,7 +620,7 @@ export const SchoolConfig = () => {
                                         type="text"
                                         value={config.adminFooterText}
                                         onChange={e => setConfig({ ...config, adminFooterText: e.target.value })}
-                                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                        className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
                                         placeholder="Ex: Sistema de Gestão Escolar v1.0"
                                     />
                                 </div>
@@ -630,7 +630,7 @@ export const SchoolConfig = () => {
                                         type="text"
                                         value={config.adminCopyright}
                                         onChange={e => setConfig({ ...config, adminCopyright: e.target.value })}
-                                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                        className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
                                         placeholder="© 2026..."
                                     />
                                 </div>
@@ -644,7 +644,7 @@ export const SchoolConfig = () => {
                                         type="text"
                                         value={config.developerName}
                                         onChange={e => setConfig({ ...config, developerName: e.target.value })}
-                                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                        className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
                                         placeholder="HC Apps"
                                     />
                                 </div>
@@ -654,7 +654,7 @@ export const SchoolConfig = () => {
                                         type="text"
                                         value={config.developerUrl}
                                         onChange={e => setConfig({ ...config, developerUrl: e.target.value })}
-                                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                        className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
                                         placeholder="https://..."
                                     />
                                 </div>
@@ -664,10 +664,10 @@ export const SchoolConfig = () => {
                                         type="text"
                                         value={config.developerMessage}
                                         onChange={e => setConfig({ ...config, developerMessage: e.target.value })}
-                                        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                        className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
                                         placeholder="Ex: Olá, preciso de suporte no App."
                                     />
-                                    <div className="mt-2 text-xs text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                    <div className="mt-2 text-xs text-slate-500 bg-slate-50 p-2 rounded-xl border border-slate-100">
                                         <span className="font-semibold text-slate-700">Prévia da mensagem: </span>
                                         "{config.developerMessage || 'Olá, preciso de suporte.'}"
                                     </div>

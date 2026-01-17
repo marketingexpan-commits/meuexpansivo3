@@ -284,7 +284,7 @@ export function FinanceiroConfig() {
                                         value={settings.defaultMessage}
                                         onChange={(e) => setSettings({ ...settings, defaultMessage: e.target.value })}
                                         placeholder="Digite a mensagem padrão que aparecerá ao clicar no botão do WhatsApp"
-                                        className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-blue-950 focus:ring-2 focus:ring-blue-950/20 outline-none transition-all text-sm min-h-[100px] resize-y font-medium text-slate-700 bg-slate-50 focus:bg-white"
+                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-950 focus:ring-2 focus:ring-blue-950/20 outline-none transition-all text-sm min-h-[100px] resize-y font-medium text-slate-700 bg-slate-50 focus:bg-white"
                                     />
                                     <p className="text-[10px] text-slate-400 text-right">
                                         Mensagem pré-preenchida no WhatsApp do aluno.

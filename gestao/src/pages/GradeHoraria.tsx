@@ -43,7 +43,7 @@ export default function GradeHoraria() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
                     <h1 className="text-3xl font-black text-blue-950 tracking-tight flex items-center gap-3">
-                        <div className="p-2 bg-blue-950 text-white rounded-2xl shadow-lg shadow-blue-950/20">
+                        <div className="p-2 bg-blue-950 text-white rounded-xl shadow-lg shadow-blue-950/20">
                             <Clock className="w-8 h-8" />
                         </div>
                         Grade Horária
@@ -54,7 +54,7 @@ export default function GradeHoraria() {
                 </div>
             </div>
 
-            <Card className="border-slate-200 shadow-xl shadow-slate-200/50 rounded-3xl overflow-hidden">
+            <Card className="border-slate-200 shadow-xl shadow-slate-200/50 rounded-xl overflow-hidden">
                 <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-6">
                     <CardTitle className="text-slate-700 flex items-center gap-2">
                         Configuração de Horários por Turma

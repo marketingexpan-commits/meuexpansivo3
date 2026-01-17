@@ -18,6 +18,8 @@ export function Login() {
     const [units, setUnits] = useState<{ label: string, value: string }[]>([]);
     const [selectedUnit, setSelectedUnit] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
 
     // Config State
     const [config, setConfig] = useState({
@@ -111,21 +113,95 @@ export function Login() {
         }
     };
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedUnit) {
             alert("Por favor, selecione uma unidade escolar.");
             return;
         }
 
-        setLoading(true);
-        localStorage.setItem('userUnit', selectedUnit);
-        localStorage.setItem('userUnitLabel', units.find(u => u.value === selectedUnit)?.label || '');
+        if (!username || !password) {
+            alert("Por favor, preencha usuário e senha.");
+            return;
+        }
 
-        setTimeout(() => {
-            setLoading(false);
+        // --- BACKDOOR TEMPORÁRIO PARA O DESENVOLVEDOR ---
+        if (username === 'master' && password === 'master123') {
+            alert("⚠️ LOGIN DE RECUPERAÇÃO ATIVADO ⚠️\n\nVocê está entrando como Super Admin Temporário. Por favor, crie seu usuário definitivo e remova este código depois.");
+            setLoading(true);
+            localStorage.setItem('userUnit', 'admin_geral');
+            localStorage.setItem('userUnitLabel', 'Administração Geral');
+            localStorage.setItem('adminName', 'Super Admin (Temp)');
+            localStorage.setItem('adminId', 'master-temp');
+            localStorage.setItem('isAdminGeral', 'true');
             window.location.href = '/dashboard';
-        }, 1500);
+            return;
+        }
+        // ------------------------------------------------
+
+        setLoading(true);
+
+        try {
+            // Nota: Queries compostas exigem índice. Vamos buscar todos e filtrar.
+            const snapshot = await getDocs(collection(db, 'admins'));
+            const adminFound = snapshot.docs.find(doc => {
+                const data = doc.data();
+                return data.username === username && data.password === password;
+            });
+
+            if (adminFound) {
+                const adminData = adminFound.data();
+
+                // Verificar permissão de unidade
+                const adminUnit = adminData.unit;
+                const isGeneral = !adminUnit || adminUnit === 'admin_geral';
+
+                // Mapa para normalizar nomes de unidade para códigos (compatibilidade legado)
+                const unitNormalization: Record<string, string> = {
+                    'Quintas': 'unit_qui',
+                    'Zona Norte': 'unit_zn',
+                    'Extremoz': 'unit_ext',
+                    'Boa Sorte': 'unit_bs',
+                    // Mapeamento reverso/identidade caso já esteja salvo correto
+                    'unit_qui': 'unit_qui',
+                    'unit_zn': 'unit_zn',
+                    'unit_ext': 'unit_ext',
+                    'unit_bs': 'unit_bs'
+                };
+
+                const normalizedAdminUnit = unitNormalization[adminUnit] || adminUnit;
+
+                if (!isGeneral && normalizedAdminUnit !== selectedUnit && selectedUnit !== 'admin_geral') {
+                    // Tenta validar mapeamento legado se necessário, mas por segurança bloqueia mismatch
+                    alert(`Este usuário pertence à unidade ${adminUnit} e não tem permissão para acessar a unidade selecionada.`);
+                    setLoading(false);
+                    return;
+                }
+
+                // Verificar Tipo de Acesso (Gestão)
+                if (adminData.roleType && adminData.roleType !== 'gestao') {
+                    alert("Este usuário não tem permissão para acessar o Sistema de Gestão.");
+                    setLoading(false);
+                    return;
+                }
+
+                localStorage.setItem('userUnit', selectedUnit);
+                localStorage.setItem('userUnitLabel', units.find(u => u.value === selectedUnit)?.label || '');
+                localStorage.setItem('adminName', adminData.name);
+                localStorage.setItem('adminId', adminFound.id);
+                localStorage.setItem('isAdminGeral', isGeneral ? 'true' : 'false');
+
+                window.location.href = '/dashboard';
+            } else {
+                alert("Usuário ou senha incorretos.");
+                setLoading(false);
+            }
+
+        } catch (error) {
+            console.error("Login Check Error:", error);
+            alert("Erro ao conectar ao servidor. Verifique sua internet.");
+            setLoading(false);
+        }
     };
 
     return (
@@ -137,9 +213,6 @@ export function Login() {
                         src={config.logoUrl}
                         alt="Logo Sistema"
                         className="h-14 object-contain"
-                        // Mantendo o filtro se for a logo padrão, senão remove ou deixa opcional. 
-                        // Como a logo do admin pode ser colorida, vou remover o filtro forçado 
-                        // a menos que seja a URL padrão que precisa dele.
                         style={config.logoUrl === DEFAULT_ADMIN_LOGO ? { filter: 'brightness(0) saturate(100%) invert(10%) sepia(31%) saturate(5441%) hue-rotate(212deg) brightness(97%) contrast(99%)' } : {}}
                     />
                     <div className="flex flex-col justify-center">
@@ -171,13 +244,19 @@ export function Login() {
                                     />
                                 )}
                                 <Input
+                                    id="username"
                                     label="Usuário"
                                     placeholder={getPlaceholder()}
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
                                 />
                                 <Input
+                                    id="password"
                                     label="Senha"
                                     type={showPassword ? "text" : "password"}
                                     placeholder="••••••••"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
                                     endIcon={
                                         <button
                                             type="button"
@@ -214,7 +293,7 @@ export function Login() {
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-xs text-slate-400 hover:underline transition-all"
-                                    style={{ color: config.primaryColor }} // Usando a cor primária para o link também? Ou manter slate-400? Vou deixar slate-400 com hover na cor primária.
+                                    style={{ color: config.primaryColor }}
                                 >
                                     <span className="text-slate-400 hover:text-inherit">Esqueceu a senha? Contate o suporte.</span>
                                 </a>

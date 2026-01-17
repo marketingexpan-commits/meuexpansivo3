@@ -214,7 +214,7 @@ export default function Disciplinas() {
             <input
                 type="number"
                 min="0"
-                className="w-14 h-9 text-center rounded-lg border-slate-100 bg-slate-50/50 hover:bg-slate-100 focus:border-blue-500 focus:bg-white transition-all font-bold text-blue-600 focus:ring-4 focus:ring-blue-500/10 outline-none border"
+                className="w-14 h-9 text-center rounded-xl border-slate-100 bg-slate-50/50 hover:bg-slate-100 focus:border-blue-500 focus:bg-white transition-all font-bold text-blue-600 focus:ring-4 focus:ring-blue-500/10 outline-none border"
                 value={localValue}
                 onChange={(e) => setLocalValue(parseInt(e.target.value) || 0)}
                 onBlur={() => {
@@ -265,14 +265,14 @@ export default function Disciplinas() {
                 <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
                     <button
                         onClick={() => setActiveTab('list')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'list' ? 'bg-white text-blue-950 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'list' ? 'bg-white text-blue-950 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                     >
                         <ListIcon className="w-4 h-4" />
                         Lista
                     </button>
                     <button
                         onClick={() => setActiveTab('matrix')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'matrix' ? 'bg-white text-blue-950 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'matrix' ? 'bg-white text-blue-950 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                     >
                         <LayoutGrid className="w-4 h-4" />
                         Matriz Curricular
@@ -357,8 +357,8 @@ export default function Disciplinas() {
                                                     <td className="py-4 px-4">
                                                         <button
                                                             onClick={() => toggleStatus(subject)}
-                                                            className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold transition-all ${subject.isActive
-                                                                ? 'bg-green-100 text-green-700'
+                                                            className={`flex items-center gap-2 px-3 py-1 rounded-xl text-xs font-bold transition-all ${subject.isActive
+                                                                ? 'bg-blue-100/50 text-blue-950'
                                                                 : 'bg-slate-100 text-slate-500'
                                                                 }`}
                                                         >
@@ -380,14 +380,14 @@ export default function Disciplinas() {
                                                                     });
                                                                     setIsModalOpen(true);
                                                                 }}
-                                                                className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg"
+                                                                className="p-2 hover:bg-blue-50 text-blue-600 rounded-xl"
                                                                 title="Editar"
                                                             >
                                                                 <Edit2 className="w-4 h-4" />
                                                             </button>
                                                             <button
                                                                 onClick={() => handleDelete(subject.id)}
-                                                                className="p-2 hover:bg-red-50 text-red-500 rounded-lg"
+                                                                className="p-2 hover:bg-red-50 text-red-500 rounded-xl"
                                                                 title="Excluir"
                                                             >
                                                                 <Trash2 className="w-4 h-4" />
@@ -414,7 +414,7 @@ export default function Disciplinas() {
                                         {grades.map(grade => (
                                             <th key={grade.id} className="py-4 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-tighter text-center border-r border-slate-100 min-w-[100px]">
                                                 <div className="text-slate-600 mb-1">{grade.name}</div>
-                                                <div className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[9px]">
+                                                <div className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-xl text-[9px]">
                                                     {subjects.reduce((sum, s) => sum + (s.isActive ? (s.weeklyHours?.[grade.name] || 0) : 0), 0)} aulas
                                                 </div>
                                             </th>
@@ -440,7 +440,7 @@ export default function Disciplinas() {
             {/* Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-blue-950/40 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-6 border-b border-slate-100">
                             <h2 className="text-xl font-bold text-blue-950">
                                 {editingSubject ? 'Editar Disciplina' : 'Nova Disciplina'}
@@ -495,7 +495,7 @@ export default function Disciplinas() {
                                         <p className="text-xs text-slate-400 italic">Nenhuma série configurada em "Séries e Segmentos".</p>
                                     ) : (
                                         grades.map(grade => (
-                                            <div key={grade.id} className="flex items-center justify-between gap-4 p-2 rounded-lg bg-slate-50 border border-slate-100 transition-colors hover:border-blue-200">
+                                            <div key={grade.id} className="flex items-center justify-between gap-4 p-2 rounded-xl bg-slate-50 border border-slate-100 transition-colors hover:border-blue-200">
                                                 <span className="text-sm font-medium text-blue-950">{grade.name}</span>
                                                 <div className="flex items-center gap-2">
                                                     <input

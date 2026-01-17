@@ -174,7 +174,7 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border border-slate-200">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border border-slate-200">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
                     <div className="flex items-center gap-3">
@@ -192,7 +192,7 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                     </div>
                     <button
                         onClick={() => onClose()}
-                        className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+                        className="p-2 hover:bg-slate-200 rounded-xl transition-colors text-slate-400 hover:text-slate-600"
                     >
                         <X className="w-6 h-6" />
                     </button>
@@ -203,7 +203,7 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                     {/* Basic Info */}
                     <section className="space-y-4">
                         <div className="flex items-center gap-2 mb-2">
-                            <div className="w-1.5 h-6 bg-blue-950 rounded-full" />
+                            <div className="w-1.5 h-6 bg-blue-950 rounded-xl" />
                             <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Dados Básicos</h3>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -293,7 +293,7 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                                 name="isBlocked"
                                 checked={formData.isBlocked}
                                 onChange={handleChange}
-                                className={formData.isBlocked ? "text-red-600" : "text-green-600"}
+                                className={formData.isBlocked ? "text-red-600" : "text-blue-600"}
                             />
                             <p className="text-[10px] text-slate-500 mt-1 ml-7 italic">
                                 {formData.isBlocked
@@ -306,7 +306,7 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                     {/* Competencies (Subjects & Grades) */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
                         {/* Subjects */}
-                        <section className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                        <section className="bg-slate-50 rounded-xl p-6 border border-slate-100">
                             <div className="flex items-center gap-2 mb-4">
                                 <BookOpen className="w-5 h-5 text-blue-950" />
                                 <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Disciplinas</h3>
@@ -321,7 +321,7 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                                             label={sub.name}
                                             checked={formData.subjects?.includes(sub.name)}
                                             onChange={() => handleToggleCollection('subjects', sub.name)}
-                                            className="bg-white p-2 rounded-lg border border-slate-200 hover:border-blue-950/30 transition-all shadow-sm"
+                                            className="bg-white p-2 rounded-xl border border-slate-200 hover:border-blue-950/30 transition-all shadow-sm"
                                         />
                                     ))
                                 )}
@@ -329,7 +329,7 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                         </section>
 
                         {/* Grade Levels */}
-                        <section className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                        <section className="bg-slate-50 rounded-xl p-6 border border-slate-100">
                             <div className="flex items-center gap-2 mb-4">
                                 <Layers className="w-5 h-5 text-blue-950" />
                                 <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Séries de Atuação</h3>
@@ -350,7 +350,7 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                                                             label={grade.name}
                                                             checked={formData.gradeLevels?.includes(grade.name)}
                                                             onChange={() => handleToggleCollection('gradeLevels', grade.name)}
-                                                            className="bg-white p-2 rounded-lg border border-slate-200 hover:border-blue-950/30 transition-all shadow-sm"
+                                                            className="bg-white p-2 rounded-xl border border-slate-200 hover:border-blue-950/30 transition-all shadow-sm"
                                                         />
                                                     ))
                                                 }
@@ -367,7 +367,7 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                         if (!formData.gradeLevels || formData.gradeLevels.length === 0 || !formData.subjects || formData.subjects.length === 0) return null;
 
                         return (
-                            <section className="bg-slate-50 rounded-2xl p-6 border border-slate-100 space-y-4">
+                            <section className="bg-slate-50 rounded-xl p-6 border border-slate-100 space-y-4">
                                 <div className="flex items-center gap-2 mb-2">
                                     <Layers className="w-5 h-5 text-blue-950" />
                                     <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Vínculos de Aula (Matérias por Série)</h3>
@@ -391,7 +391,7 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                                                             key={`${grade}-${subject}`}
                                                             type="button"
                                                             onClick={() => handleToggleAssignment(grade, subject)}
-                                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isLinked
+                                                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${isLinked
                                                                 ? 'bg-blue-950 text-white border-blue-950 shadow-md shadow-blue-950/20'
                                                                 : 'bg-slate-50 text-slate-400 border-slate-100 hover:border-slate-300'
                                                                 }`}
