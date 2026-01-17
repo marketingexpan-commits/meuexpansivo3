@@ -375,7 +375,7 @@ const AppContent: React.FC = () => {
       setInitialLoad(prev => ({ ...prev, teachers: true, admins: true, messages: true, mensalidades: true, academicSettings: true }));
 
     } else if (session.role === UserRole.ADMIN) {
-      const isGeneral = !userUnit;
+      const isGeneral = !userUnit || userUnit === 'admin_geral';
 
       const studentsQuery = isGeneral ? db.collection('students') : db.collection('students').where('unit', '==', userUnit);
       unsubs.push(studentsQuery.onSnapshot(snap => {

@@ -129,11 +129,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     // --- ESTADOS DE SIMULAÇÃO (Para Admin Geral testar visões específicas) ---
     const [simulatedUnit, setSimulatedUnit] = useState<SchoolUnit | null>(null);
 
-    // Se houver unidade simulada, usamos ela. Caso contrário, usamos a unidade real do admin.
-    const adminUnit = simulatedUnit || admin.unit;
+    // Se houver unidade simulada, usamos ela.
+    // Se a unidade do admin for 'admin_geral', tratamos como null (acesso total), a menos que simulada.
+    const adminUnit = simulatedUnit || (admin.unit === 'admin_geral' ? null : admin.unit);
 
-    // É Admin Geral apenas se não tiver unidade fixa E não estiver simulando uma.
-    const isGeneralAdmin = !admin.unit && !simulatedUnit;
+    // É Admin Geral apenas se não tiver unidade fixa (ou for admin_geral) E não estiver simulando uma.
+    const isGeneralAdmin = (!admin.unit || admin.unit === 'admin_geral') && !simulatedUnit;
 
     // --- ESTADOS GERAIS ---
     const [isLogModalOpen, setIsLogModalOpen] = useState(false);
@@ -175,6 +176,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [sPhone, setSPhone] = useState('55');
     const [sCode, setSCode] = useState('');
     const [sGrade, setSGrade] = useState('');
+    // Use fallback to UNIT_1 if adminUnit is null (general admin) for new student default
     const [sUnit, setSUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_1);
     const [sShift, setSShift] = useState<SchoolShift>(SchoolShift.MORNING);
     const [sClass, setSClass] = useState<SchoolClass>(SchoolClass.A);
