@@ -195,17 +195,17 @@ export const financialService = {
                     if (withBoletos && studentData) {
                         try {
                             const payer = {
-                                email: studentData.email || 'email@padrao.com',
-                                firstName: studentData.name.split(' ')[0],
-                                lastName: studentData.name.split(' ').slice(1).join(' '),
-                                cpf: studentData.cpf || studentData.responsibleCpf || '00000000000',
+                                email: studentData.email_responsavel || 'email@padrao.com',
+                                firstName: (studentData.nome_responsavel || studentData.name).split(' ')[0],
+                                lastName: (studentData.nome_responsavel || studentData.name).split(' ').slice(1).join(' ') || 'Responsável',
+                                cpf: studentData.cpf_responsavel || studentData.cpf_aluno || '00000000000',
                                 address: {
-                                    zipCode: studentData.zipCode || '59000000',
-                                    streetName: studentData.address || 'Endereço não informado',
-                                    streetNumber: 'S/N',
-                                    neighborhood: studentData.neighborhood || 'Bairro',
-                                    city: studentData.city || 'Natal',
-                                    state: 'RN'
+                                    zipCode: (studentData.cep || '').replace(/\D/g, '') || '59000000',
+                                    streetName: studentData.endereco_logradouro || 'Endereço não informado',
+                                    streetNumber: studentData.endereco_numero || 'S/N',
+                                    neighborhood: studentData.endereco_bairro || 'Bairro',
+                                    city: studentData.endereco_cidade || 'Natal',
+                                    state: studentData.endereco_uf || 'RN'
                                 }
                             };
 
@@ -220,6 +220,8 @@ export const financialService = {
                             if (boletoResult.barcode) {
                                 boletoData = {
                                     barcode: boletoResult.barcode,
+                                    digitableLine: boletoResult.digitableLine,
+                                    mpPaymentId: boletoResult.id,
                                     ticketUrl: boletoResult.ticketUrl,
                                     qrCode: boletoResult.qrCode,
                                     qrCodeBase64: boletoResult.qrCodeBase64

@@ -422,16 +422,16 @@ export function Financeiro() {
                 // Payer Data
                 const payer = {
                     email: student.email_responsavel || 'email@padrao.com',
-                    firstName: student.name.split(' ')[0],
-                    lastName: student.name.split(' ').slice(1).join(' '),
-                    cpf: student.cpf_responsavel || '00000000000',
+                    firstName: (student.nome_responsavel || student.name).split(' ')[0],
+                    lastName: (student.nome_responsavel || student.name).split(' ').slice(1).join(' ') || 'Responsável',
+                    cpf: student.cpf_responsavel || student.cpf_aluno || '00000000000',
                     address: {
-                        zipCode: student.cep || '59000000',
+                        zipCode: (student.cep || '').replace(/\D/g, '') || '59000000',
                         streetName: student.endereco_logradouro || 'Endereço não informado',
-                        streetNumber: 'S/N',
+                        streetNumber: student.endereco_numero || 'S/N',
                         neighborhood: student.endereco_bairro || 'Bairro',
                         city: student.endereco_cidade || 'Natal',
-                        state: 'RN'
+                        state: student.endereco_uf || 'RN'
                     }
                 };
 
@@ -446,6 +446,8 @@ export function Financeiro() {
                 // Atualizar parcela com dados do boleto
                 await financialService.updateInstallment(inst.id, {
                     barcode: boletoData.barcode,
+                    digitableLine: boletoData.digitableLine,
+                    mpPaymentId: boletoData.id,
                     ticketUrl: boletoData.ticketUrl,
                     qrCode: boletoData.qrCode,
                     qrCodeBase64: boletoData.qrCodeBase64

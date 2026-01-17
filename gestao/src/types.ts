@@ -174,7 +174,8 @@ export interface Mensalidade {
   paidValue?: number; // Novo: Valor total pago
   interestValue?: number; // Juros
   penaltyValue?: number; // Multa
-  barcode?: string; // Linha digitável do Boleto
+  barcode?: string; // Código de Barras (44 dígitos)
+  digitableLine?: string; // Linha digitável (47-48 caracteres)
   ticketUrl?: string; // URL do PDF do Boleto
   qrCode?: string; // Payload do PIX (Copia e Cola)
   qrCodeBase64?: string; // Imagem do QR Code Base64
