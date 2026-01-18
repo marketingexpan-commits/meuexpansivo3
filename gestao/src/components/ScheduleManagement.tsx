@@ -60,6 +60,8 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [itemToDeleteIndex, setItemToDeleteIndex] = useState<number | null>(null);
     const [fullScheduleForPrint, setFullScheduleForPrint] = useState<ClassSchedule[] | null>(null);
 
     // Copy feature state
@@ -111,12 +113,20 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
         setItems([...items, { startTime: '', endTime: '', subject: '' }]);
     };
 
-    const handleRemoveItem = async (index: number) => {
+    const handleRemoveItem = (index: number) => {
         if (isReadOnly) return;
-        if (!confirm("Deseja apagar este horário?")) return;
+        setItemToDeleteIndex(index);
+        setIsDeleteModalOpen(true);
+    };
 
+    const confirmDelete = async () => {
+        if (itemToDeleteIndex === null) return;
+        
+        const index = itemToDeleteIndex;
         const newItems = items.filter((_, i) => i !== index);
         setItems(newItems);
+        setIsDeleteModalOpen(false);
+        setItemToDeleteIndex(null);
 
         // Auto-save after removal
         setSaving(true);
@@ -139,7 +149,6 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                 });
                 setItems(sortedItems);
             }
-            // Optional: alert("Horário removido com sucesso!");
         } catch (error) {
             console.error("Error saving schedule after removal:", error);
             alert("Erro ao salvar após remover o horário.");
@@ -574,6 +583,36 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                             Este documento é para fins informativos e pode sofrer alterações.
                         </div>
                         <div className="w-32 h-1 bg-blue-900/10 rounded-xl"></div>
+                    </div>
+                </div>
+            )}
+            {/* Delete Confirmation Modal */}
+            {isDeleteModalOpen && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden animate-fade-in-up">
+                        <div className="p-6 text-center">
+                            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Trash2 className="w-8 h-8" />
+                            </div>
+                            <h3 className="text-lg font-black text-gray-900 mb-2">Excluir Horário?</h3>
+                            <p className="text-sm text-gray-500 mb-6">
+                                Tem certeza que deseja remover esta aula da grade? Esta ação não pode ser desfeita.
+                            </p>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setIsDeleteModalOpen(false)}
+                                    className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition-all"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={confirmDelete}
+                                    className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-all shadow-lg shadow-red-500/20"
+                                >
+                                    Excluir
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
