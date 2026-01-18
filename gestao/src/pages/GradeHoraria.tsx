@@ -6,11 +6,12 @@ import { Clock, Layout } from 'lucide-react';
 
 export default function GradeHoraria() {
     const [unit, setUnit] = useState<SchoolUnit | null>(null);
+    const [isAdminGeral, setIsAdminGeral] = useState(false);
 
     useEffect(() => {
         // Read unit from localStorage as set by Sidebar/Auth in Gestão
-        // In Gestão system, userUnit is often stored in localStorage
         const userUnit = localStorage.getItem('userUnit');
+        setIsAdminGeral(userUnit === 'admin_geral');
 
         // Mapping unit codes to SchoolUnit enum if necessary
         const unitMapping: Record<string, SchoolUnit> = {
@@ -23,8 +24,7 @@ export default function GradeHoraria() {
         if (userUnit && unitMapping[userUnit]) {
             setUnit(unitMapping[userUnit]);
         } else if (userUnit === 'admin_geral') {
-            // If admin_geral, we can default to Unit 1 or allow selection later
-            // For simplicity in the page, we'll use Unit 1 as baseline if not specified
+            // If admin_geral, we can default to Unit 1 and allow selection
             setUnit(SchoolUnit.UNIT_1);
         }
     }, []);
@@ -49,9 +49,25 @@ export default function GradeHoraria() {
                         Grade Horária
                     </h1>
                     <p className="text-slate-500 mt-2 font-medium">
-                        Gerenciamento de horários e disciplinas para {localStorage.getItem('userUnitLabel') || 'Unidade'}.
+                        Gerenciamento de horários e disciplinas para {isAdminGeral ? 'Administração Geral' : (localStorage.getItem('userUnitLabel') || 'Unidade')}.
                     </p>
                 </div>
+
+
+                {isAdminGeral && (
+                    <div className="flex flex-col min-w-[200px] animate-in slide-in-from-right-4 duration-500">
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Selecione a Unidade</label>
+                        <select
+                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950/20 outline-none"
+                            value={unit || ''}
+                            onChange={(e) => setUnit(e.target.value as SchoolUnit)}
+                        >
+                            {Object.values(SchoolUnit).map((u) => (
+                                <option key={u} value={u}>{u}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
             </div>
 
             <Card className="border-slate-200 shadow-xl shadow-slate-200/50 rounded-xl overflow-hidden">
@@ -66,6 +82,6 @@ export default function GradeHoraria() {
                     </div>
                 </CardContent>
             </Card>
-        </div>
+        </div >
     );
 }
