@@ -24,10 +24,14 @@ export const calculateTaughtClasses = (
     academicSubjects?: AcademicSubject[],
     classSchedules?: any[],
     calendarEvents?: any[],
-    schoolClass?: string
+    schoolClass?: string,
+    shift?: string
 ): { taught: number, isEstimated: boolean } => {
     let taughtClasses = 0;
     let isEstimated = false;
+
+    // Resolve subjectId from academicSubjects if available
+    const subjectId = academicSubjects?.find(s => s.name === subject)?.id;
 
     if (classSchedules && classSchedules.length > 0) {
         const result = calculateEffectiveTaughtClasses(
@@ -38,7 +42,9 @@ export const calculateTaughtClasses = (
             classSchedules,
             calendarEvents || [],
             gradeLevel,
-            schoolClass
+            schoolClass,
+            shift,
+            subjectId
         );
         taughtClasses = result.taught;
         isEstimated = result.isEstimated;
@@ -71,8 +77,8 @@ export const calculateTaughtClasses = (
         }
 
         if (weeklyClasses > 0) {
-            // FIXED: Pass gradeLevel and schoolClass for hierarchical filtering
-            const schoolDays = calculateSchoolDays(startDate, endDate, calendarEvents || [], unit, gradeLevel, schoolClass);
+            // FIXED: Pass gradeLevel, schoolClass, shift, and subjectId for hierarchical filtering
+            const schoolDays = calculateSchoolDays(startDate, endDate, calendarEvents || [], unit, gradeLevel, schoolClass, shift, subjectId);
             taughtClasses = Math.round((weeklyClasses / 5) * schoolDays);
         }
     }
@@ -104,7 +110,8 @@ export const calculateAttendancePercentage = (
     calendarEvents?: any[],
     unit?: string,
     classSchedules?: any[],
-    schoolClass?: string
+    schoolClass?: string,
+    shift?: string
 ): { percent: number, isEstimated: boolean } | null => {
 
     if (!unit) return null; // Unit is mandatory for strict calculation
@@ -141,7 +148,8 @@ export const calculateAttendancePercentage = (
         academicSubjects,
         classSchedules,
         calendarEvents,
-        schoolClass
+        schoolClass,
+        shift
     );
 
     // 4. Apply Strict Rules
@@ -171,7 +179,8 @@ export const calculateAnnualAttendancePercentage = (
     calendarEvents?: any[],
     unit?: string,
     classSchedules?: any[],
-    schoolClass?: string
+    schoolClass?: string,
+    shift?: string
 ): { percent: number, isEstimated: boolean } | null => {
 
     if (!unit) return null;
@@ -193,7 +202,8 @@ export const calculateAnnualAttendancePercentage = (
         calendarEvents,
         unit,
         classSchedules,
-        schoolClass
+        schoolClass,
+        shift
     );
 
 };
@@ -211,7 +221,8 @@ export const calculateGeneralFrequency = (
     calendarEvents?: any[],
     unit?: string,
     classSchedules?: any[],
-    schoolClass?: string
+    schoolClass?: string,
+    shift?: string
 ): string => {
     const currentYear = getCurrentSchoolYear();
     const startDate = settings?.bimesters?.[0]?.startDate || `${currentYear}-01-01`;
@@ -249,7 +260,8 @@ export const calculateGeneralFrequency = (
             academicSubjects,
             classSchedules,
             calendarEvents,
-            schoolClass
+            schoolClass,
+            shift
         );
         totalTaughtClasses += taught;
     });
@@ -259,8 +271,10 @@ export const calculateGeneralFrequency = (
         if (record.date < startDate || record.date > endDate) return acc;
         if (record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT) {
             // Verify if the day is a valid school day for this subject
+            const subjectId = academicSubjects?.find(s => s.name === record.discipline)?.id;
+
             if (classSchedules && classSchedules.length > 0) {
-                if (!isClassScheduled(record.date, record.discipline, classSchedules, calendarEvents || [], unit, gradeLevel, schoolClass)) {
+                if (!isClassScheduled(record.date, record.discipline, classSchedules, calendarEvents || [], unit, gradeLevel, schoolClass, shift, subjectId)) {
                     return acc;
                 }
             }
@@ -269,7 +283,7 @@ export const calculateGeneralFrequency = (
             const weight = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
 
             if (classSchedules && classSchedules.length > 0) {
-                return acc + getSubjectDurationForDay(record.date, record.discipline, classSchedules, weight, gradeLevel, schoolClass, calendarEvents, unit);
+                return acc + getSubjectDurationForDay(record.date, record.discipline, classSchedules, weight, gradeLevel, schoolClass, calendarEvents, unit, shift, subjectId);
             }
             return acc + weight;
         }
@@ -294,7 +308,8 @@ export const calculateBimesterGeneralFrequency = (
     calendarEvents?: any[],
     unit?: string,
     classSchedules?: any[],
-    schoolClass?: string
+    schoolClass?: string,
+    shift?: string
 ): string => {
     const currentYear = getCurrentSchoolYear();
 
@@ -341,7 +356,8 @@ export const calculateBimesterGeneralFrequency = (
             academicSubjects,
             classSchedules,
             calendarEvents,
-            schoolClass
+            schoolClass,
+            shift
         );
         totalTaughtClasses += taught;
     });
@@ -351,8 +367,10 @@ export const calculateBimesterGeneralFrequency = (
         const rBim = getDynamicBimester(record.date, settings);
         if (rYear === currentYear && rBim === bimester && record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT) {
             // Verify if the day is a valid school day for this subject
+            const subjectId = academicSubjects?.find(s => s.name === record.discipline)?.id;
+
             if (classSchedules && classSchedules.length > 0) {
-                if (!isClassScheduled(record.date, record.discipline, classSchedules, calendarEvents || [], unit, gradeLevel, schoolClass)) {
+                if (!isClassScheduled(record.date, record.discipline, classSchedules, calendarEvents || [], unit, gradeLevel, schoolClass, shift, subjectId)) {
                     return acc;
                 }
             }
@@ -361,7 +379,7 @@ export const calculateBimesterGeneralFrequency = (
             const weight = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
 
             if (classSchedules && classSchedules.length > 0) {
-                return acc + getSubjectDurationForDay(record.date, record.discipline, classSchedules, weight, gradeLevel, schoolClass, calendarEvents, unit);
+                return acc + getSubjectDurationForDay(record.date, record.discipline, classSchedules, weight, gradeLevel, schoolClass, calendarEvents, unit, shift, subjectId);
             }
             return acc + weight;
         }

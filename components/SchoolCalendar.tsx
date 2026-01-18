@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Info } from 'lucid
 
 interface SchoolCalendarProps {
     events: CalendarEvent[];
+    academicSubjects?: any[]; // Keep as any[] or precise type to avoid deep imports if possible, but AcademicSubject[] is better
 }
 
 const MONTH_NAMES = [
@@ -13,7 +14,7 @@ const MONTH_NAMES = [
 
 const WEEK_DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
-export const SchoolCalendar: React.FC<SchoolCalendarProps> = ({ events }) => {
+export const SchoolCalendar: React.FC<SchoolCalendarProps> = ({ events, academicSubjects }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<string | null>(new Date().toISOString().split('T')[0]);
 
@@ -323,6 +324,21 @@ export const SchoolCalendar: React.FC<SchoolCalendarProps> = ({ events }) => {
                                         )}
                                     </div>
                                     <h4 className="font-bold text-gray-800 text-sm mb-1">{ev.title}</h4>
+                                    {ev.targetSubjectIds && ev.targetSubjectIds.length > 0 && academicSubjects && (
+                                        <div className="mb-2">
+                                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-0.5">Disciplina(s):</span>
+                                            <div className="flex flex-wrap gap-1">
+                                                {ev.targetSubjectIds.map(sid => {
+                                                    const subName = academicSubjects.find(s => s.id === sid)?.name || 'Desconhecida';
+                                                    return (
+                                                        <span key={sid} className="text-[10px] bg-white border border-gray-200 px-1.5 py-0.5 rounded text-gray-600 font-semibold">
+                                                            {subName}
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
                                     {ev.description && (
                                         <p className="text-xs text-gray-600 leading-relaxed">{ev.description}</p>
                                     )}

@@ -523,6 +523,8 @@ export interface CalendarEvent {
   targetSegments?: string[]; // Optional: Limit scope to specific segments
   targetGrades?: string[];   // Optional: Limit scope to specific grades
   targetClasses?: string[];  // Optional: Limit scope to specific classes
+  targetSubjectIds?: string[]; // Optional: Limit scope to specific subject IDs (CRITICAL: Required for substitutions)
+  targetShifts?: string[];     // Optional: Limit scope to specific shifts (Manhã, Tarde, Noite)
   substituteDayOfWeek?: number; // Optional: For substitution events
   substituteDayLabel?: string;  // Optional: Label for the substitute day
 }

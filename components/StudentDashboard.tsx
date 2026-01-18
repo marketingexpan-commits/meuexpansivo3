@@ -861,6 +861,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                     {new Date(evt.startDate + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
                                                                 </span>
                                                                 <span className="text-sm font-bold text-gray-700">{evt.title}</span>
+                                                                {evt.targetSubjectIds && evt.targetSubjectIds.length > 0 && academicSubjects && (
+                                                                    <div className="flex flex-wrap gap-1 mt-1">
+                                                                        {evt.targetSubjectIds.map(sid => {
+                                                                            const subName = academicSubjects.find(s => s.id === sid)?.name || 'Desconhecida';
+                                                                            return (
+                                                                                <span key={sid} className="text-[10px] bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded border border-orange-200 font-bold uppercase tracking-wider">
+                                                                                    {subName}
+                                                                                </span>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                             {evt.description && (
                                                                 <span className="text-xs bg-orange-50 text-orange-700 px-2 py-1 rounded border border-orange-100 italic md:max-w-xs">{evt.description}</span>
@@ -1657,13 +1669,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                     if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
                                                                         if (getDynamicBimester(att.date, academicSettings) === bimesterNum) {
                                                                             if (classSchedules && classSchedules.length > 0) {
-                                                                                if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass)) return acc;
+                                                                                const subjectId = academicSubjects?.find(s => s.name === grade.subject)?.id;
+                                                                                if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass, student.shift, subjectId)) return acc;
                                                                             }
                                                                             const individualCount = att.studentAbsenceCount?.[student.id];
                                                                             const lessonCount = individualCount !== undefined ? individualCount : (att.lessonCount || 1);
 
                                                                             if (classSchedules && classSchedules.length > 0) {
-                                                                                return acc + getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass);
+                                                                                const subjectId = academicSubjects?.find(s => s.name === grade.subject)?.id;
+                                                                                return acc + getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass, calendarEvents, student.unit, student.shift, subjectId);
                                                                             }
                                                                             return acc + lessonCount;
                                                                         }
@@ -1708,7 +1722,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                             }
                                                                             const bimesterFaltasH = currentAbsences * (weeklyClasses > 0 ? 1 : 0); // Assuming 1h per absence locally or direct weight if available. Using 1 for simplicity consistent with previous logic.
 
-                                                                            const freqResult = calculateAttendancePercentage(grade.subject, currentAbsences, student.gradeLevel, bimesterNum, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass);
+                                                                            const freqResult = calculateAttendancePercentage(grade.subject, currentAbsences, student.gradeLevel, bimesterNum, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift);
                                                                             const freqPercent = freqResult?.percent ?? null;
                                                                             const isFreqEstimated = freqResult?.isEstimated ?? false;
                                                                             const isLowFreq = freqPercent !== null && freqPercent < 75;
@@ -1733,7 +1747,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                                         academicSubjects,
                                                                                         classSchedules || [],
                                                                                         calendarEvents || [],
-                                                                                        student.schoolClass
+                                                                                        student.schoolClass,
+                                                                                        student.shift
                                                                                     );
                                                                                     bMin = taught;
                                                                                 }
@@ -1771,13 +1786,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                         if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
                                                                             if (getDynamicBimester(att.date, academicSettings) === bNum) {
                                                                                 if (classSchedules && classSchedules.length > 0) {
-                                                                                    if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass)) return acc;
+                                                                                    const subjectId = academicSubjects?.find(s => s.name === grade.subject)?.id;
+                                                                                    if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass, student.shift, subjectId)) return acc;
                                                                                 }
                                                                                 const individualCount = att.studentAbsenceCount?.[student.id];
                                                                                 const lessonCount = individualCount !== undefined ? individualCount : (att.lessonCount || 1);
 
                                                                                 if (classSchedules && classSchedules.length > 0) {
-                                                                                    return acc + getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass);
+                                                                                    const subjectId = academicSubjects?.find(s => s.name === grade.subject)?.id;
+                                                                                    return acc + getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass, calendarEvents, student.unit, student.shift, subjectId);
                                                                                 }
                                                                                 return acc + lessonCount;
                                                                             }
@@ -1800,7 +1817,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                     weeklyClasses = (CURRICULUM_MATRIX[lk] || {})[grade.subject] || 0;
                                                                 }
 
-                                                                const annualResult = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel, elapsedBimesters, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass);
+                                                                const annualResult = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel, elapsedBimesters, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift);
                                                                 const annualFreq = annualResult?.percent ?? null;
                                                                 const isAnnualEstimated = annualResult?.isEstimated ?? false;
                                                                 const isCritical = annualFreq !== null && annualFreq < 75;
@@ -1835,7 +1852,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                         </tr>
                                                     ))}
                                                     {studentGrades.length > 0 && (() => {
-                                                        const generalFreq = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass);
+                                                        const generalFreq = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift);
                                                         return (
                                                             <tr className="bg-gray-100/80 font-bold border-t-2 border-gray-400">
                                                                 <td colSpan={31} className="px-4 py-1 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[11px]">
@@ -2068,7 +2085,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     )}
 
                     {currentView === 'calendar' && (
-                        <SchoolCalendar events={calendarEvents} />
+                        <SchoolCalendar events={calendarEvents} academicSubjects={academicSubjects || []} />
                     )}
 
                     {currentView === 'tickets' && (

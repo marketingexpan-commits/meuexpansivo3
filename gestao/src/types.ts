@@ -636,6 +636,8 @@ export interface CalendarEvent {
   targetSegments?: string[]; // e.g. ["Ensino Médio"]
   targetGrades?: string[]; // e.g. ["1ª Série - Ensino Médio"]
   targetClasses?: string[]; // e.g. ["A", "B"]
+  targetSubjectIds?: string[]; // NEW: Granular subject filtering
+  targetShifts?: string[]; // NEW: Granular shift filtering
   createdAt?: string;
   updatedAt?: string;
 }

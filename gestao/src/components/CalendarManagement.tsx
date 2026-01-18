@@ -43,7 +43,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
     const [filterUnit, setFilterUnit] = useState<string>(isAdmin ? 'all' : unit);
 
     // Academic Data for scoping
-    const { segments, grades } = useAcademicData();
+    const { segments, grades, subjects } = useAcademicData();
 
     useEffect(() => {
         if (!isOpen) return;
@@ -123,6 +123,14 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
         if (!editingEvent?.title || !editingEvent?.startDate || !editingEvent?.type || !editingEvent?.units || editingEvent.units.length === 0) {
             alert("Por favor, preencha todos os campos obrigatórios (título, data, tipo e ao menos uma unidade).");
             return;
+        }
+
+        // VALIDATION: Require subjects for Substitution/Reposition events
+        if ((editingEvent.type === 'school_day' || editingEvent.type === 'substitution') && editingEvent.substituteDayOfWeek) {
+            if (!editingEvent.targetSubjectIds || editingEvent.targetSubjectIds.length === 0) {
+                alert("Para eventos de Reposição/Substituição, é OBRIGATÓRIO selecionar as disciplinas repostas.");
+                return;
+            }
         }
 
         setIsSaving(true);
@@ -603,6 +611,61 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                                             <option value="">Para todas as Turmas</option>
                                                             {['A', 'B', 'C', 'D', 'E'].map(c => <option key={c} value={c}>{c}</option>)}
                                                         </select>
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold text-purple-900 uppercase tracking-widest mb-1">Escopo: Turno (Op.)</label>
+                                                        <select
+                                                            className="w-full p-2 bg-white border border-purple-200 rounded-lg text-xs font-bold text-purple-900 outline-none"
+                                                            value={editingEvent?.targetShifts?.[0] || ''}
+                                                            onChange={e => setEditingEvent({
+                                                                ...editingEvent,
+                                                                targetShifts: e.target.value ? [e.target.value] : []
+                                                            })}
+                                                        >
+                                                            <option value="">Para todos os Turnos</option>
+                                                            <option value="Matutino">Matutino</option>
+                                                            <option value="Vespertino">Vespertino</option>
+                                                            <option value="Noturno">Noturno</option>
+                                                            <option value="Integral">Integral</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div className="col-span-full">
+                                                        <label className="block text-[10px] font-bold text-purple-900 uppercase tracking-widest mb-1">
+                                                            Disciplinas Repostas <span className="text-red-500">*</span>
+                                                        </label>
+                                                        <div className="grid grid-cols-2 gap-2 bg-white p-2 border border-purple-200 rounded-lg max-h-40 overflow-y-auto">
+                                                            {subjects.map((subj) => {
+                                                                const isSelected = editingEvent?.targetSubjectIds?.includes(subj.id);
+                                                                return (
+                                                                    <label key={subj.id} className="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer hover:bg-purple-50 p-1 rounded">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            className="rounded text-purple-600 focus:ring-purple-500"
+                                                                            checked={!!isSelected}
+                                                                            onChange={(e) => {
+                                                                                const currentIds = editingEvent?.targetSubjectIds || [];
+                                                                                let newIds;
+                                                                                if (e.target.checked) {
+                                                                                    newIds = [...currentIds, subj.id];
+                                                                                } else {
+                                                                                    newIds = currentIds.filter((id: string) => id !== subj.id);
+                                                                                }
+                                                                                setEditingEvent({
+                                                                                    ...editingEvent,
+                                                                                    targetSubjectIds: newIds
+                                                                                });
+                                                                            }}
+                                                                        />
+                                                                        {subj.name}
+                                                                    </label>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                        {(!editingEvent?.targetSubjectIds || editingEvent.targetSubjectIds.length === 0) && (
+                                                            <p className="text-[10px] text-red-500 mt-1">* Selecione pelo menos uma disciplina para reposição.</p>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
