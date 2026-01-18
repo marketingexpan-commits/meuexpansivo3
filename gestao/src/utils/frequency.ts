@@ -259,7 +259,7 @@ export const calculateGeneralFrequency = (
             const weight = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
 
             if (classSchedules && classSchedules.length > 0) {
-                return acc + getSubjectDurationForDay(record.date, record.discipline, classSchedules, weight, gradeLevel, schoolClass);
+                return acc + getSubjectDurationForDay(record.date, record.discipline, classSchedules, weight, gradeLevel, schoolClass, calendarEvents, unit);
             }
             return acc + weight;
         }
@@ -351,7 +351,7 @@ export const calculateBimesterGeneralFrequency = (
             const weight = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
 
             if (classSchedules && classSchedules.length > 0) {
-                return acc + getSubjectDurationForDay(record.date, record.discipline, classSchedules, weight, gradeLevel, schoolClass);
+                return acc + getSubjectDurationForDay(record.date, record.discipline, classSchedules, weight, gradeLevel, schoolClass, calendarEvents, unit);
             }
             return acc + weight;
         }

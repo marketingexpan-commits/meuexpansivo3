@@ -364,6 +364,11 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                                             )}
                                                         </div>
                                                         <h4 className="font-bold text-gray-900 leading-tight">{event.title}</h4>
+                                                        {(event.type === 'school_day' || event.type === 'substitution') && event.substituteDayLabel && (
+                                                            <p className="text-[10px] font-bold text-purple-600 mt-0.5 uppercase tracking-tight">
+                                                                Substitui: {event.substituteDayLabel}
+                                                            </p>
+                                                        )}
                                                         {event.description && <p className="text-xs text-gray-500 mt-1 line-clamp-1">{event.description}</p>}
                                                     </div>
                                                 </div>
@@ -499,6 +504,51 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                                 <option value="exam">Prova / Avaliação</option>
                                             </select>
                                         </div>
+
+                                        {(editingEvent?.type === 'school_day' || editingEvent?.type === 'substitution') && (
+                                            <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 animate-in slide-in-from-top-2 duration-200">
+                                                <label className="block text-[10px] font-bold text-purple-900 uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                                                    <Clock className="w-3 h-3" />
+                                                    Substituição de Grade
+                                                </label>
+                                                <p className="text-[10px] text-purple-700/70 mb-3 leading-relaxed">
+                                                    Selecione qual dia da semana este evento letivo deve seguir. A grade horária deste dia será usada.
+                                                </p>
+                                                <select
+                                                    className="w-full p-2.5 bg-white border border-purple-200 rounded-xl text-sm font-bold text-purple-900 focus:ring-2 focus:ring-purple-500 outline-none"
+                                                    value={editingEvent?.substituteDayOfWeek ?? ''}
+                                                    onChange={e => {
+                                                        const val = e.target.value;
+                                                        if (val === '') {
+                                                            const { substituteDayOfWeek, substituteDayLabel, ...rest } = editingEvent || {};
+                                                            setEditingEvent(rest);
+                                                        } else {
+                                                            const dayMap: Record<string, string> = {
+                                                                '1': 'Segunda-feira',
+                                                                '2': 'Terça-feira',
+                                                                '3': 'Quarta-feira',
+                                                                '4': 'Quinta-feira',
+                                                                '5': 'Sexta-feira',
+                                                                '6': 'Sábado',
+                                                                '0': 'Domingo'
+                                                            };
+                                                            setEditingEvent({
+                                                                ...editingEvent,
+                                                                substituteDayOfWeek: parseInt(val),
+                                                                substituteDayLabel: dayMap[val]
+                                                            });
+                                                        }
+                                                    }}
+                                                >
+                                                    <option value="">Nenhuma (Usa dia real)</option>
+                                                    <option value="1">Segunda-feira</option>
+                                                    <option value="2">Terça-feira</option>
+                                                    <option value="3">Quarta-feira</option>
+                                                    <option value="4">Quinta-feira</option>
+                                                    <option value="5">Sexta-feira</option>
+                                                </select>
+                                            </div>
+                                        )}
 
                                         <div>
                                             <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Descrição (Op.)</label>

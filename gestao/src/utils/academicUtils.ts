@@ -240,15 +240,36 @@ export const calculateEffectiveTaughtClasses = (
     });
 
     while (curDate <= finalDate) {
-        const dayOfWeek = curDate.getDay(); // 0-6
+        const actualDayOfWeek = curDate.getDay(); // 0-6
         const dateStr = curDate.toISOString().split('T')[0];
 
-        // Strict Check: Not Holiday AND (Not Weekend OR Marked as Extra School Day)
-        const isActuallySchoolDay = (dayOfWeek !== 0 && dayOfWeek !== 6) || extraSchoolDates.has(dateStr);
+        // 1. Check for Events on this specific day
+        let isHoliday = holidayDates.has(dateStr);
+        let isExtraSchoolDay = extraSchoolDates.has(dateStr);
 
-        if (isActuallySchoolDay && !holidayDates.has(dateStr)) {
-            // Add classes for this specific day of week
-            taughtClasses += (scheduleMap[dayOfWeek] || 0);
+        // 2. Determine Effective Day of Week
+        let effectiveDay = actualDayOfWeek;
+
+        // Find the specific event for this date to check for substitution
+        const dayEvent = (calendarEvents || []).find(e => {
+            if (unit && e.units && e.units.length > 0 && !e.units.includes(unit) && !e.units.includes('all')) return false;
+            return dateStr >= e.startDate && dateStr <= (e.endDate || e.startDate);
+        });
+
+        if (dayEvent && (dayEvent.type === 'school_day' || dayEvent.type === 'substitution')) {
+            if (dayEvent.substituteDayOfWeek !== undefined && dayEvent.substituteDayOfWeek !== null) {
+                effectiveDay = dayEvent.substituteDayOfWeek;
+                isExtraSchoolDay = true;
+            }
+        }
+
+        // 3. Strict Check: Not Holiday AND (Not Weekend OR Marked as Extra School Day)
+        const isWeekend = actualDayOfWeek === 0 || actualDayOfWeek === 6;
+        const isActuallySchoolDay = (!isWeekend || isExtraSchoolDay) && !isHoliday;
+
+        if (isActuallySchoolDay) {
+            // Add classes for the effective day of week
+            taughtClasses += (scheduleMap[effectiveDay] || 0);
         }
         curDate.setDate(curDate.getDate() + 1);
     }
@@ -272,11 +293,12 @@ export const isClassScheduled = (
     const date = new Date(dateStr + 'T00:00:00');
     if (isNaN(date.getTime())) return false;
 
-    const weekDay = date.getDay(); // 0-6
+    const actualDayOfWeek = date.getDay(); // 0-6
 
     // 1. Check Holidays and Extra School Days
     let isHoliday = false;
     let isExtraSchoolDay = false;
+    let effectiveDay = actualDayOfWeek;
 
     (calendarEvents || []).forEach(e => {
         if (unit && e.units && e.units.length > 0 && !e.units.includes(unit) && !e.units.includes('all')) {
@@ -290,6 +312,9 @@ export const isClassScheduled = (
                 isHoliday = true;
             } else if (e.type === 'school_day' || e.type === 'substitution') {
                 isExtraSchoolDay = true;
+                if (e.substituteDayOfWeek !== undefined && e.substituteDayOfWeek !== null) {
+                    effectiveDay = e.substituteDayOfWeek;
+                }
             }
         }
     });
@@ -297,13 +322,12 @@ export const isClassScheduled = (
     if (isHoliday) return false;
 
     // Strict weekend check: if it's weekend, it MUST be an extra school day
-    const isWeekend = weekDay === 0 || weekDay === 6;
+    const isWeekend = actualDayOfWeek === 0 || actualDayOfWeek === 6;
     if (isWeekend && !isExtraSchoolDay) return false;
 
-    // 2. Check Schedule
-    // First, try to find a specific schedule for this day of week
+    // 2. Check Schedule for the effective day
     const daySchedule = classSchedules.find((s: any) => {
-        if (s.dayOfWeek !== weekDay) return false;
+        if (s.dayOfWeek !== effectiveDay) return false;
         if (gradeLevel) {
             if (parseGradeLevel(s.grade).grade !== parseGradeLevel(gradeLevel).grade) return false;
         }
@@ -314,20 +338,7 @@ export const isClassScheduled = (
     });
 
     if (daySchedule && daySchedule.items) {
-        const hasSubject = daySchedule.items.some((item: any) => normalizeStr(item.subject) === normalizeStr(subjectName));
-        if (hasSubject) return true;
-    }
-
-    // IF it's an extra school day (like Saturday) and no specific schedule was found,
-    // check if this subject EVER occurs for this class in the weekly schedule.
-    if (isExtraSchoolDay) {
-        const anyDaySchedule = classSchedules.some((s: any) => {
-            if (gradeLevel && parseGradeLevel(s.grade).grade !== parseGradeLevel(gradeLevel).grade) return false;
-            if (schoolClass && normalizeClass(s.class) !== normalizeClass(schoolClass)) return false;
-            if (!s.items) return false;
-            return s.items.some((item: any) => normalizeStr(item.subject) === normalizeStr(subjectName));
-        });
-        return anyDaySchedule;
+        return daySchedule.items.some((item: any) => normalizeStr(item.subject) === normalizeStr(subjectName));
     }
 
     return false;
@@ -343,13 +354,30 @@ export const getSubjectDurationForDay = (
     classSchedules: any[],
     lessonCount: number = 1,
     gradeLevel?: string,
-    schoolClass?: string
+    schoolClass?: string,
+    calendarEvents?: any[],
+    unit?: string
 ): number => {
     const date = new Date(dateStr + 'T00:00:00');
-    const weekDay = date.getDay();
+    const actualDayOfWeek = date.getDay();
+    let effectiveDay = actualDayOfWeek;
+
+    // Check for substitution in calendar events
+    const dayEvent = (calendarEvents || []).find(e => {
+        if (unit && e.units && e.units.length > 0 && !e.units.includes(unit) && !e.units.includes('all')) return false;
+        const s = new Date(e.startDate + 'T00:00:00');
+        const f = e.endDate ? new Date(e.endDate + 'T00:00:00') : new Date(e.startDate + 'T00:00:00');
+        return date >= s && date <= f;
+    });
+
+    if (dayEvent && (dayEvent.type === 'school_day' || dayEvent.type === 'substitution')) {
+        if (dayEvent.substituteDayOfWeek !== undefined && dayEvent.substituteDayOfWeek !== null) {
+            effectiveDay = dayEvent.substituteDayOfWeek;
+        }
+    }
 
     const daySchedule = classSchedules.find((s: any) => {
-        if (s.dayOfWeek !== weekDay) return false;
+        if (s.dayOfWeek !== effectiveDay) return false;
         if (gradeLevel && parseGradeLevel(s.grade).grade !== parseGradeLevel(gradeLevel).grade) return false;
         if (schoolClass && normalizeClass(s.class) !== normalizeClass(schoolClass)) return false;
         return true;

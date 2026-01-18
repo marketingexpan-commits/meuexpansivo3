@@ -631,6 +631,8 @@ export interface CalendarEvent {
   endDate?: string;
   type: EventType;
   units: string[];
+  substituteDayOfWeek?: number; // 0-6 (0=Sun, 1=Mon, etc.)
+  substituteDayLabel?: string; // e.g., "Segunda-feira"
   createdAt?: string;
   updatedAt?: string;
 }

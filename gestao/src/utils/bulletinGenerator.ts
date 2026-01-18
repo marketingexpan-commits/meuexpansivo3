@@ -31,7 +31,7 @@ const calculateSubjectFrequency = (
             const weight = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
 
             if (classSchedules && classSchedules.length > 0) {
-                return acc + getSubjectDurationForDay(record.date, subject, classSchedules, weight, student.gradeLevel, student.schoolClass);
+                return acc + getSubjectDurationForDay(record.date, subject, classSchedules, weight, student.gradeLevel, student.schoolClass, calendarEvents, student.unit);
             }
             return acc + weight;
         }
@@ -135,7 +135,7 @@ const generateBulletinHtml = (
                         const weight = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
 
                         if (classSchedules && classSchedules.length > 0) {
-                            return acc + getSubjectDurationForDay(record.date, g.subject, classSchedules, weight, student.gradeLevel, student.schoolClass);
+                            return acc + getSubjectDurationForDay(record.date, g.subject, classSchedules, weight, student.gradeLevel, student.schoolClass, calendarEvents, student.unit);
                         }
                         return acc + weight;
                     }
@@ -274,6 +274,28 @@ const generateBulletinHtml = (
         }).join('');
     };
 
+    const renderRepositionDetails = () => {
+        const repositions = (calendarEvents || []).filter(e =>
+            (e.type === 'school_day' || e.type === 'substitution') &&
+            e.substituteDayLabel &&
+            (e.units?.includes('all') || (student.unit && e.units?.includes(student.unit)))
+        );
+
+        if (repositions.length === 0) return '';
+
+        return `
+            <div style="margin-top: 15px; padding: 8px; border: 1px dashed #purple; background: #faf5ff; border-radius: 8px;">
+                <div style="font-weight: 800; color: #6b21a8; font-size: 9px; text-transform: uppercase; margin-bottom: 4px;">Informações de Reposição de Aulas:</div>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; font-size: 8.5px;">
+                    ${repositions.map(r => {
+            const date = new Date(r.startDate + 'T00:00:00').toLocaleDateString('pt-BR');
+            return `<div style="color: #7e22ce;">• ${r.title} (${date}): Grade de ${r.substituteDayLabel}</div>`;
+        }).join('')}
+                </div>
+            </div>
+        `;
+    };
+
     return `
         <div class="page" style="${pageBreak ? 'page-break-after: always;' : ''}">
             <div class="header" style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #1a426f; padding-bottom: 10px; margin-bottom: 15px;">
@@ -357,11 +379,10 @@ const generateBulletinHtml = (
                     <div><strong>CH:</strong> Carga Horária Prevista</div>
                     <div><strong>CH Min:</strong> Carga Horária Ministrada</div>
                 </div>
-                <p style="margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 5px;">
-                    * A frequência mínima obrigatória para aprovação é de 75%.<br>
-                    * Este documento é para fins informativos e não substitui o histórico escolar oficial.
                 </p>
+                ${renderRepositionDetails()}
                 ${student.observacoes_gerais ? `<p style="margin-top: 10px; white-space: pre-wrap;"><strong>Observações:</strong> ${student.observacoes_gerais}</p>` : ''}
+            </div>
             </div>
 
             <div class="signature-section" style="display: flex; justify-content: space-around; margin-top: 40px;">
