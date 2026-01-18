@@ -119,12 +119,21 @@ export const syncBimesterFromEvent = async (eventTitle: string, startDate: strin
         updateStart = true;
     } else if (normalizedTitle.includes('encerramento do ano letivo') || normalizedTitle.includes('término do ano letivo') || normalizedTitle.includes('fim do ano letivo')) {
         updateEnd = true;
-    } else if (normalizedTitle === 'ano letivo') {
+    } else if (normalizedTitle.includes('ano letivo')) {
+        // Catch "Ano Letivo 2026", "Ano Letivo - Central", etc.
         updateStart = true;
         if (endDate) updateEnd = true;
     }
 
-    if (!updateStart && !updateEnd) return;
+    // Check for specific bimester events (e.g., "1º Bimestre", "Bimestre 2")
+    const bimesterMatch = normalizedTitle.match(/(\d)[º°]?\s*bimestre/);
+    let bimesterIdx = -1;
+    if (bimesterMatch) {
+        const bNum = parseInt(bimesterMatch[1]);
+        if (bNum >= 1 && bNum <= 4) bimesterIdx = bNum - 1;
+    }
+
+    if (!updateStart && !updateEnd && bimesterIdx === -1) return;
 
     try {
         const settings = await getAcademicSettings(year, unit);
@@ -133,20 +142,30 @@ export const syncBimesterFromEvent = async (eventTitle: string, startDate: strin
         const newBimesters = [...settings.bimesters];
         let changed = false;
 
+        // Handle Year Start/End
         if (updateStart && newBimesters[0]) {
-            newBimesters[0] = {
-                ...newBimesters[0],
-                startDate: startDate
-            };
-            changed = true;
+            if (newBimesters[0].startDate !== startDate) {
+                newBimesters[0] = { ...newBimesters[0], startDate };
+                changed = true;
+            }
+        }
+        if (updateEnd && endDate && newBimesters[3]) {
+            if (newBimesters[3].endDate !== endDate) {
+                newBimesters[3] = { ...newBimesters[3], endDate };
+                changed = true;
+            }
         }
 
-        if (updateEnd && endDate && newBimesters[3]) {
-            newBimesters[3] = {
-                ...newBimesters[3],
-                endDate: endDate
-            };
-            changed = true;
+        // Handle Specific Bimester Start/End
+        if (bimesterIdx !== -1 && newBimesters[bimesterIdx]) {
+            if (newBimesters[bimesterIdx].startDate !== startDate) {
+                newBimesters[bimesterIdx] = { ...newBimesters[bimesterIdx], startDate };
+                changed = true;
+            }
+            if (endDate && newBimesters[bimesterIdx].endDate !== endDate) {
+                newBimesters[bimesterIdx] = { ...newBimesters[bimesterIdx], endDate };
+                changed = true;
+            }
         }
 
         if (changed) {
