@@ -203,6 +203,31 @@ export function Financeiro() {
         return 99;
     };
 
+
+
+    // Helper functions for robust filtering
+    const normalize = (str: string) => str ? str.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() : '';
+
+    const isFilterMatch = (studentValue: string | undefined, filterValue: string) => {
+        if (filterValue === 'all') return true;
+        if (!studentValue) return false;
+
+        const sVal = normalize(studentValue);
+        const fVal = normalize(filterValue);
+
+        // Exact match
+        if (sVal === fVal) return true;
+
+        // Partial match (includes)
+        if (sVal.includes(fVal) || fVal.includes(sVal)) return true;
+
+        // Specific unit handling
+        if (fVal.includes('zona norte') && sVal.includes('zn')) return true;
+        if (fVal.includes('zn') && sVal.includes('zona norte')) return true;
+
+        return false;
+    };
+
     const [isInstallmentModalOpen, setIsInstallmentModalOpen] = useState(false);
     const [installmentParams, setInstallmentParams] = useState({
         studentId: '',
@@ -305,10 +330,26 @@ export function Financeiro() {
             }
 
             const results = await Promise.all(promises) as any[];
-            const studentsData = results[0];
+            const studentsDataRaw = results[0] as Student[];
             const mensalidadesData = results[1] as any[] || [];
             const expensesData = results[2] as any[] || [];
             const eventosData = results[3] as any[] || [];
+
+            // Inferred Segment Logic (Fix for missing data)
+            const studentsData = studentsDataRaw.map(s => {
+                if (s.segment && s.segment !== 'undefined') return s;
+
+                let inferredSegment = '';
+                const grade = s.gradeLevel || '';
+                const normGrade = grade.toLowerCase();
+
+                if (normGrade.includes('médio')) inferredSegment = 'Ensino Médio';
+                else if (normGrade.includes('fundamental ii') || normGrade.match(/[6-9]º/)) inferredSegment = 'Fundamental II';
+                else if (normGrade.includes('fundamental i') || normGrade.match(/[1-5]º/)) inferredSegment = 'Fundamental I';
+                else if (normGrade.includes('infantil') || normGrade.includes('nível') || normGrade.includes('berçário')) inferredSegment = 'Educação Infantil';
+
+                return { ...s, segment: inferredSegment || s.segment };
+            });
 
             setStudents(studentsData);
 
@@ -699,10 +740,10 @@ export function Financeiro() {
             } else {
                 targetStudentIds = students
                     .filter(s =>
-                        (eventTarget.unit === 'all' || s.unit === eventTarget.unit) &&
-                        (eventTarget.segment === 'all' || s.segment === eventTarget.segment) &&
-                        (eventTarget.grade === 'all' || s.gradeLevel === eventTarget.grade) &&
-                        (eventTarget.schoolClass === 'all' || s.schoolClass === eventTarget.schoolClass)
+                        isFilterMatch(s.unit, eventTarget.unit) &&
+                        isFilterMatch(s.segment, eventTarget.segment) &&
+                        isFilterMatch(s.gradeLevel, eventTarget.grade) &&
+                        isFilterMatch(s.schoolClass, eventTarget.schoolClass)
                     )
                     .map(s => s.id);
             }
@@ -2011,7 +2052,7 @@ export function Financeiro() {
                                     { label: 'Todas', value: 'all' },
                                     ...Array.from(new Set([
                                         ...(eventTarget.segment !== 'all' && segmentGrades[eventTarget.segment] ? segmentGrades[eventTarget.segment] : []),
-                                        ...students.filter(s => eventTarget.segment === 'all' || s.segment === eventTarget.segment).map(s => s.gradeLevel)
+                                        ...students.filter(s => isFilterMatch(s.segment, eventTarget.segment)).map(s => s.gradeLevel)
                                     ]))
                                         .filter((s): s is string => !!s)
                                         .sort((a, b) => getGradeWeight(a) - getGradeWeight(b))
@@ -2026,7 +2067,7 @@ export function Financeiro() {
                                     { label: 'Todas', value: 'all' },
                                     ...Array.from(new Set([
                                         'A', 'B', 'C', 'D', 'E',
-                                        ...students.filter(s => (eventTarget.grade === 'all' || s.gradeLevel === eventTarget.grade) && (eventTarget.unit === 'all' || s.unit === eventTarget.unit)).map(s => s.schoolClass)
+                                        ...students.filter(s => isFilterMatch(s.gradeLevel, eventTarget.grade) && isFilterMatch(s.unit, eventTarget.unit)).map(s => s.schoolClass)
                                     ]))
                                         .filter((s) => !!s)
                                         .sort()
@@ -2045,10 +2086,10 @@ export function Financeiro() {
                                 <option value="all">Todos do grupo acima</option>
                                 {students
                                     .filter(s =>
-                                        (eventTarget.unit === 'all' || s.unit === eventTarget.unit) &&
-                                        (eventTarget.segment === 'all' || s.segment === eventTarget.segment) &&
-                                        (eventTarget.grade === 'all' || s.gradeLevel === eventTarget.grade) &&
-                                        (eventTarget.schoolClass === 'all' || s.schoolClass === eventTarget.schoolClass)
+                                        isFilterMatch(s.unit, eventTarget.unit) &&
+                                        isFilterMatch(s.segment, eventTarget.segment) &&
+                                        isFilterMatch(s.gradeLevel, eventTarget.grade) &&
+                                        isFilterMatch(s.schoolClass, eventTarget.schoolClass)
                                     )
                                     .sort((a, b) => a.name.localeCompare(b.name))
                                     .map(s => (
