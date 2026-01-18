@@ -1873,7 +1873,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         </div>
                                         {studentGrades.length > 0 && (
                                             <div className="mt-2 flex items-center gap-2 text-xs text-orange-800 bg-orange-100 p-2 rounded border border-orange-200 print:hidden">
-                                                <div className="w-2.5 h-2.5 bg-orange-500 rounded-full flex-shrink-0"></div>
+                                                <div className="w-2.5 h-2.5 bg-yellow-400 rounded-full flex-shrink-0"></div>
                                                 <span>= Nota em processo de atualização pela coordenação pedagógica.</span>
                                             </div>
                                         )}
