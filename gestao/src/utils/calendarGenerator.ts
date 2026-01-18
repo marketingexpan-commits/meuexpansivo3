@@ -24,13 +24,15 @@ export const generateSchoolCalendar = (
             case 'holiday_state':
             case 'holiday_municipal':
             case 'holiday': // Fallback legacy
-                return '#ef4444';
-            case 'exam': return '#f59e0b';
-            case 'meeting': return '#3b82f6';
-            case 'vacation':
-            case 'recess':
-                return '#10b981';
-            default: return '#64748b';
+                return '#ef4444'; // Vermelho
+            case 'exam': return '#f97316'; // Laranja Escuro/Prova
+            case 'meeting': return '#6b7280'; // Cinza/Reunião
+            case 'vacation': return '#eab308'; // Amarelo/Férias
+            case 'recess': return '#fb923c'; // Laranja/Recesso
+            case 'school_day': return '#22c55e'; // Verde/Letivo
+            case 'substitution': return '#a855f7'; // Roxo/Reposição
+            case 'event': return '#1e40af'; // Azul/Evento
+            default: return '#1e40af';
         }
     };
 
@@ -44,7 +46,10 @@ export const generateSchoolCalendar = (
             case 'meeting': return 'Reunião';
             case 'vacation': return 'Férias';
             case 'recess': return 'Recesso';
-            default: return 'Evento';
+            case 'school_day': return 'Letivo';
+            case 'substitution': return 'Reposição';
+            case 'event': return 'Evento';
+            default: return 'Geral';
         }
     };
 
