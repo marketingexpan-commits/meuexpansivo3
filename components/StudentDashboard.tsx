@@ -482,6 +482,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         const key = `bimester${selectedSupportBimester}`;
         const bData = (g.bimesters as any)[key] as BimesterData;
 
+        // NEW: CRITICAL CHECK
+        // If the grade is awaiting approval (yellow dot), HIDE THE CARD COMPLETELY.
+        if (bData?.isNotaApproved === false || bData?.isRecuperacaoApproved === false) {
+            return false; // This hides the card completely until coordinator approval
+        }
+
         const hasDifficulty = bData && bData.difficultyTopic && bData.difficultyTopic.trim().length > 5;
         // Only show if difficulty is explicitly identified by the teacher
         return hasDifficulty;
