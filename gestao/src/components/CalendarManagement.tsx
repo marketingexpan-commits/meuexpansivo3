@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { CalendarEvent, EventType, AcademicSettings } from '../types';
 import { db } from '../firebaseConfig';
 import { subscribeToAcademicSettings, updateAcademicSettings, syncBimesterFromEvent } from '../services/academicSettings';
+import { useAcademicData } from '../hooks/useAcademicData';
 import {
     collection,
     query,
@@ -40,6 +41,9 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
 
     // Filter unit for Admin view
     const [filterUnit, setFilterUnit] = useState<string>(isAdmin ? 'all' : unit);
+
+    // Academic Data for scoping
+    const { segments, grades } = useAcademicData();
 
     useEffect(() => {
         if (!isOpen) return;
@@ -547,6 +551,55 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                                     <option value="4">Quinta-feira</option>
                                                     <option value="5">Sexta-feira</option>
                                                 </select>
+
+                                                <div className="mt-4 space-y-3 pt-3 border-t border-purple-100">
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold text-purple-900 uppercase tracking-widest mb-1">Escopo: Segmento (Op.)</label>
+                                                        <select
+                                                            className="w-full p-2 bg-white border border-purple-200 rounded-lg text-xs font-bold text-purple-900 outline-none"
+                                                            value={editingEvent?.targetSegments?.[0] || ''}
+                                                            onChange={e => setEditingEvent({
+                                                                ...editingEvent,
+                                                                targetSegments: e.target.value ? [e.target.value] : []
+                                                            })}
+                                                        >
+                                                            <option value="">Para todos os Segmentos</option>
+                                                            {segments.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                                                        </select>
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold text-purple-900 uppercase tracking-widest mb-1">Escopo: Série (Op.)</label>
+                                                        <select
+                                                            className="w-full p-2 bg-white border border-purple-200 rounded-lg text-xs font-bold text-purple-900 outline-none"
+                                                            value={editingEvent?.targetGrades?.[0] || ''}
+                                                            onChange={e => setEditingEvent({
+                                                                ...editingEvent,
+                                                                targetGrades: e.target.value ? [e.target.value] : []
+                                                            })}
+                                                        >
+                                                            <option value="">Para todas as Séries</option>
+                                                            {grades.filter(g => !editingEvent?.targetSegments?.[0] || g.name.includes(editingEvent.targetSegments[0])).map(g => (
+                                                                <option key={g.id} value={g.name}>{g.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold text-purple-900 uppercase tracking-widest mb-1">Escopo: Turma (Op.)</label>
+                                                        <select
+                                                            className="w-full p-2 bg-white border border-purple-200 rounded-lg text-xs font-bold text-purple-900 outline-none"
+                                                            value={editingEvent?.targetClasses?.[0] || ''}
+                                                            onChange={e => setEditingEvent({
+                                                                ...editingEvent,
+                                                                targetClasses: e.target.value ? [e.target.value] : []
+                                                            })}
+                                                        >
+                                                            <option value="">Para todas as Turmas</option>
+                                                            {['A', 'B', 'C', 'D', 'E'].map(c => <option key={c} value={c}>{c}</option>)}
+                                                        </select>
+                                                    </div>
+                                                </div>
                                             </div>
                                         )}
 

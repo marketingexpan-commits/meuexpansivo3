@@ -633,6 +633,9 @@ export interface CalendarEvent {
   units: string[];
   substituteDayOfWeek?: number; // 0-6 (0=Sun, 1=Mon, etc.)
   substituteDayLabel?: string; // e.g., "Segunda-feira"
+  targetSegments?: string[]; // e.g. ["Ensino Médio"]
+  targetGrades?: string[]; // e.g. ["1ª Série - Ensino Médio"]
+  targetClasses?: string[]; // e.g. ["A", "B"]
   createdAt?: string;
   updatedAt?: string;
 }

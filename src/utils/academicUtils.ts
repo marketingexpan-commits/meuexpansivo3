@@ -168,6 +168,45 @@ const getDurationInHours = (startTime: string, endTime: string): number => {
     return durationMinutes > 0 ? durationMinutes / 60 : 1;
 };
 
+/**
+ * Validates if a calendar event applies to a specific student context 
+ * using Hierarchical Priority (Class > Grade > Segment > Unit).
+ */
+export const doesEventApplyToStudent = (
+    event: any,
+    unit?: string,
+    gradeLevel?: string,
+    schoolClass?: string
+): boolean => {
+    // 1. Basic Unit Check
+    if (unit && event.units && event.units.length > 0 && !event.units.includes(unit) && !event.units.includes('all')) {
+        return false;
+    }
+
+    // 2. Hierarchical Priority Check
+
+    // a) Turma (Class) - Most Specific
+    if (event.targetClasses && event.targetClasses.length > 0) {
+        const normalizedStudentClass = schoolClass ? normalizeClass(schoolClass) : null;
+        return normalizedStudentClass ? event.targetClasses.some((c: string) => normalizeClass(c) === normalizedStudentClass) : false;
+    }
+
+    // b) Série (Grade)
+    if (event.targetGrades && event.targetGrades.length > 0) {
+        const studentGrade = gradeLevel ? parseGradeLevel(gradeLevel).grade : null;
+        return studentGrade ? event.targetGrades.some((g: string) => parseGradeLevel(g).grade === studentGrade) : false;
+    }
+
+    // c) Segmento (Segment)
+    if (event.targetSegments && event.targetSegments.length > 0) {
+        const studentSegment = gradeLevel ? parseGradeLevel(gradeLevel).level : null;
+        return studentSegment ? event.targetSegments.includes(studentSegment) : false;
+    }
+
+    // d) Geral da Unidade (No filters defined)
+    return true;
+};
+
 export const calculateEffectiveTaughtClasses = (
     startDate: string,
     endDate: string,
@@ -223,9 +262,8 @@ export const calculateEffectiveTaughtClasses = (
     const extraSchoolDates = new Set<string>();
 
     (calendarEvents || []).forEach(e => {
-        if (unit && e.units && e.units.length > 0 && !e.units.includes(unit) && !e.units.includes('all')) {
-            return;
-        }
+        if (!doesEventApplyToStudent(e, unit, gradeLevel, schoolClass)) return;
+
         const s = new Date(e.startDate + 'T00:00:00');
         const f = e.endDate ? new Date(e.endDate + 'T00:00:00') : new Date(e.startDate + 'T00:00:00');
 
@@ -255,7 +293,7 @@ export const calculateEffectiveTaughtClasses = (
 
         // Find the specific event for this date to check for substitution
         const dayEvent = (calendarEvents || []).find(e => {
-            if (unit && e.units && e.units.length > 0 && !e.units.includes(unit) && !e.units.includes('all')) return false;
+            if (!doesEventApplyToStudent(e, unit, gradeLevel, schoolClass)) return false;
             return dateStr >= e.startDate && dateStr <= (e.endDate || e.startDate);
         });
 
@@ -304,9 +342,8 @@ export const isClassScheduled = (
     let effectiveDay = actualDayOfWeek;
 
     (calendarEvents || []).forEach(e => {
-        if (unit && e.units && e.units.length > 0 && !e.units.includes(unit) && !e.units.includes('all')) {
-            return;
-        }
+        if (!doesEventApplyToStudent(e, unit, gradeLevel, schoolClass)) return;
+
         const s = new Date(e.startDate + 'T00:00:00');
         const f = e.endDate ? new Date(e.endDate + 'T00:00:00') : new Date(e.startDate + 'T00:00:00');
 
@@ -367,7 +404,7 @@ export const getSubjectDurationForDay = (
 
     // Check for substitution in calendar events
     const dayEvent = (calendarEvents || []).find(e => {
-        if (unit && e.units && e.units.length > 0 && !e.units.includes(unit) && !e.units.includes('all')) return false;
+        if (!doesEventApplyToStudent(e, unit, gradeLevel, schoolClass)) return false;
         const s = new Date(e.startDate + 'T00:00:00');
         const f = e.endDate ? new Date(e.endDate + 'T00:00:00') : new Date(e.startDate + 'T00:00:00');
         return date >= s && date <= f;

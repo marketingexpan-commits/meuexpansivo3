@@ -1,5 +1,5 @@
 import { CURRICULUM_MATRIX } from './academicDefaults';
-import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, getSubjectDurationForDay } from './academicUtils';
+import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, getSubjectDurationForDay, doesEventApplyToStudent } from './academicUtils';
 import type { Student, GradeEntry, AttendanceRecord, AcademicSubject, SchoolUnitDetail, AcademicSettings, CalendarEvent } from '../types';
 import { AttendanceStatus } from '../types';
 import { calculateGeneralFrequency as calculateUnifiedFrequency, calculateTaughtClasses, calculateAttendancePercentage } from './frequency';
@@ -278,7 +278,7 @@ const generateBulletinHtml = (
         const repositions = (calendarEvents || []).filter(e =>
             (e.type === 'school_day' || e.type === 'substitution') &&
             e.substituteDayLabel &&
-            (e.units?.includes('all') || (student.unit && e.units?.includes(student.unit)))
+            doesEventApplyToStudent(e, student.unit, student.gradeLevel, student.schoolClass)
         );
 
         if (repositions.length === 0) return '';
