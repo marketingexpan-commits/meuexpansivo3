@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { db } from '../firebaseConfig';
-import { UnitContact, SchoolUnit, CoordinationSegment, Subject, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket, SchoolMessage, MessageRecipient } from '../types';
+import { UnitContact, SchoolUnit, CoordinationSegment, Subject, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket, SchoolMessage, MessageRecipient, CalendarEvent, ClassSchedule } from '../types';
 import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, CURRICULUM_MATRIX, getCurriculumSubjects, calculateBimesterMedia, calculateFinalData, SCHOOL_CLASSES_OPTIONS, SCHOOL_SHIFTS } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency } from '../utils/frequency';
-import { getDynamicBimester } from '../src/utils/academicUtils';
+import { getDynamicBimester, isClassScheduled } from '../src/utils/academicUtils';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 import { SchoolCalendar } from './SchoolCalendar';
 import { generateSchoolCalendar } from '../utils/calendarGenerator';
-import { CalendarEvent } from '../types';
 import {
     AlertCircle,
     X,
@@ -58,9 +57,19 @@ interface CoordinatorDashboardProps {
     onCreateNotification?: (title: string, message: string, studentId?: string, teacherId?: string) => Promise<void>;
     academicSettings?: any;
     tickets?: Ticket[];
+    calendarEvents?: CalendarEvent[];
+    classSchedules?: ClassSchedule[];
 }
 
-export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coordinator, onLogout, onCreateNotification, academicSettings, tickets = [] }) => {
+export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
+    coordinator,
+    onLogout,
+    onCreateNotification,
+    academicSettings,
+    tickets = [],
+    calendarEvents = [],
+    classSchedules = []
+}) => {
     // --- ACADEMIC DATA ---
     const { segments: academicSegments, grades: academicGrades, subjects: academicSubjects, loading: loadingAcademic } = useAcademicData();
 
@@ -72,29 +81,13 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
     const [quickSubjectFilter, setQuickSubjectFilter] = useState<string>('all');
 
     // NEW: Navigation State
-    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'attendance' | 'calendar' | 'messages'>('menu');
+    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages'>('menu');
     // --- OCCURRENCE HISTORY STATE ---
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [historyOccurrences, setHistoryOccurrences] = useState<Occurrence[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
 
-    // Calendar State
-    const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
-    const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
-
-    useEffect(() => {
-        const fetchCalendarEvents = async () => {
-            try {
-                const snapshot = await db.collection('calendar_events')
-                    .where('units', 'array-contains-any', [coordinator.unit, 'all'])
-                    .get();
-                setCalendarEvents(snapshot.docs.map(doc => ({ ...doc.data() as CalendarEvent, id: doc.id })));
-            } catch (error) {
-                console.error("Erro ao buscar eventos do calendário:", error);
-            }
-        };
-        fetchCalendarEvents();
-    }, [coordinator.unit]);
+    // Calendar logic is now handled via props
 
     // Dynamic Listener for Messages
     useEffect(() => {
@@ -157,23 +150,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
     const [isSendingReply, setIsSendingReply] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
 
-    // --- ATTENDANCE MANAGEMENT STATE ---
-    const [isAttendanceManageModalOpen, setIsAttendanceManageModalOpen] = useState(false);
-    const [manageAttendanceStep, setManageAttendanceStep] = useState<'filters' | 'list'>('filters');
-    const [manageFilters, setManageFilters] = useState({
-        date: new Date().toLocaleDateString('en-CA'),
-        grade: '',
-        class: 'A',
-        shift: 'Matutino',
-        subjectId: '',
-        lessonCount: 1
-    });
-    const [manageStudents, setManageStudents] = useState<Student[]>([]);
-    const [manageStatuses, setManageStatuses] = useState<Record<string, AttendanceStatus>>({});
-    const [manageAbsenceOverrides, setManageAbsenceOverrides] = useState<Record<string, number>>({});
-    const [isSavingAttendance, setIsSavingAttendance] = useState(false);
-    const [isLoadingManageAttendance, setIsLoadingManageAttendance] = useState(false);
-    const [manageTeacherName, setManageTeacherName] = useState('Coordenador (Manual)');
+
 
     // --- COMPUTED ---
     const uniqueClasses = useMemo(() => {
@@ -208,37 +185,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
         return Array.from(subjects).sort();
     }, [pendingGradesMap]);
 
-    const filteredAttendanceGrades = useMemo(() => {
-        if (!coordinator.segment || coordinator.segment === CoordinationSegment.GERAL) {
-            return academicGrades;
-        }
 
-        const seg = coordinator.segment;
-
-        return academicGrades.filter(grade => {
-            const segment = academicSegments.find(s => s.id === grade.segmentId);
-            if (!segment) return false;
-            const name = segment.name.toLowerCase();
-
-            if (seg === CoordinationSegment.INFANTIL_FUND1) {
-                // Check: Infantil OR Fundamental I (excluding II/Finals)
-                const isInfantil = name.includes('infantil');
-                const isFund = name.includes('fundamental');
-                const isFund2 = name.includes('ii') || name.includes(' 2') || name.includes('final') || name.includes('finais');
-
-                return isInfantil || (isFund && !isFund2);
-            }
-
-            if (seg === CoordinationSegment.FUND2_MEDIO) {
-                // Check: Médio OR Fundamental II
-                const isMedio = name.includes('médio') || name.includes('medio');
-                const isFund2 = name.includes('fundamental') && (name.includes('ii') || name.includes(' 2') || name.includes('final') || name.includes('finais'));
-                return isMedio || isFund2;
-            }
-
-            return true;
-        });
-    }, [academicGrades, academicSegments, coordinator.segment]);
 
     const filteredDisplayStudents = useMemo(() => {
         return pendingGradesStudents.filter(s => {
@@ -625,118 +572,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
     }, [historyOccurrences, historyFilterTerm]);
 
     // --- ATTENDANCE MANAGEMENT LOGIC ---
-    const handleFetchAttendanceForManagement = async () => {
-        if (!manageFilters.grade || !manageFilters.class || !manageFilters.shift || !manageFilters.date) {
-            alert("Preencha todos os campos obrigatórios.");
-            return;
-        }
 
-        setIsLoadingManageAttendance(true);
-        try {
-            // 1. Fetch Students
-            const studentsSnap = await db.collection('students')
-                .where('unit', '==', coordinator.unit)
-                .where('schoolClass', '==', manageFilters.class)
-                .get();
-
-            let students = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Student[];
-
-            // Filter by shift/grade in memory
-            students = students.filter(s => {
-                const dbGrade = (s.gradeLevel || '').trim();
-                const filterGrade = manageFilters.grade.trim();
-                return s.shift === manageFilters.shift && (dbGrade === filterGrade || dbGrade.startsWith(filterGrade));
-            });
-
-            if (students.length === 0) {
-                alert("Nenhum aluno encontrado.");
-                setIsLoadingManageAttendance(false);
-                return;
-            }
-
-            // 2. Fetch Existing Attendance
-            const attendanceSnap = await db.collection('attendance')
-                .where('unit', '==', coordinator.unit)
-                .where('date', '==', manageFilters.date)
-                .where('schoolClass', '==', manageFilters.class)
-                .get();
-
-            const existingAttendance = attendanceSnap.docs.map(d => d.data());
-            const statusMap: Record<string, AttendanceStatus> = {};
-            const overrideMap: Record<string, number> = {};
-
-            students.forEach(s => {
-                const record = existingAttendance.find((r: any) => r.studentId === s.id);
-                if (record) {
-                    statusMap[s.id] = record.status as AttendanceStatus;
-                    // If there's an override logic in future, handle here
-                } else {
-                    statusMap[s.id] = AttendanceStatus.PRESENT; // Default
-                }
-            });
-
-            setManageStudents(students);
-            setManageStatuses(statusMap);
-            setManageAttendanceStep('list'); // Switch to list view (step 2)
-
-        } catch (error) {
-            console.error(error);
-            alert("Erro ao buscar dados de frequência.");
-        } finally {
-            setIsLoadingManageAttendance(false);
-        }
-    };
-
-    const handleSaveAttendanceManagement = async () => {
-        if (!confirm("Confirma o salvamento da chamada?")) return;
-        setIsSavingAttendance(true);
-        try {
-            const batch = db.batch();
-
-            for (const student of manageStudents) {
-                const status = manageStatuses[student.id];
-
-                // Construct ID (assuming unique per student per date/class/subject? or just date/student)
-                // If subjectId is present, we might want to include it, but typically attendance IS daily.
-                // If subjectId provided, it's specific.
-                const docId = `${manageFilters.date}_${student.id}${manageFilters.subjectId ? `_${manageFilters.subjectId}` : ''}`;
-                const docRef = db.collection('attendance').doc(docId);
-
-                const data: any = {
-                    date: manageFilters.date,
-                    studentId: student.id,
-                    studentName: student.name,
-                    schoolClass: manageFilters.class,
-                    gradeLevel: manageFilters.grade,
-                    shift: manageFilters.shift,
-                    unit: coordinator.unit,
-                    status: status,
-                    lessonCount: manageFilters.lessonCount,
-                    recordedBy: manageTeacherName || coordinator.name,
-                    timestamp: new Date().toISOString()
-                };
-
-                if (manageFilters.subjectId) {
-                    // find subject name
-                    const subj = academicSubjects.find(s => s.id === manageFilters.subjectId);
-                    data.subject = subj?.name || '';
-                    data.subjectId = manageFilters.subjectId;
-                }
-
-                batch.set(docRef, data, { merge: true });
-            }
-
-            await batch.commit();
-            alert("Chamada salva com sucesso!");
-            setManageAttendanceStep('filters');
-            setManageStudents([]);
-        } catch (error) {
-            console.error(error);
-            alert("Erro ao salvar chamada.");
-        } finally {
-            setIsSavingAttendance(false);
-        }
-    };
 
     const handleMarkAsRead = async (messageId: string) => {
         try {
@@ -800,7 +636,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans">
             <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${activeTab === 'menu' ? 'max-w-2xl' :
-                (activeTab === 'occurrences' || activeTab === 'attendance' || activeTab === 'messages') ? 'max-w-3xl' :
+                (activeTab === 'occurrences' || activeTab === 'messages') ? 'max-w-3xl' :
                     'max-w-5xl'
                 }`}>
 
@@ -934,11 +770,10 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                                         ? "Utilize os filtros abaixo para localizar e aprovar notas pendentes."
                                         : activeTab === 'occurrences'
                                             ? "Gerencie o histórico e registre novas ocorrências disciplinares."
-                                            : activeTab === 'attendance'
-                                                ? "Controle e lançamentos manuais de frequência diária."
-                                                : activeTab === 'messages'
-                                                    ? "Gerencie as mensagens e feedbacks enviados pelos alunos."
-                                                    : "Calendário letivo da unidade."
+
+                                            : activeTab === 'messages'
+                                                ? "Gerencie as mensagens e feedbacks enviados pelos alunos."
+                                                : "Calendário letivo da unidade."
                                 }
                             </p>
                         </div>
@@ -1672,274 +1507,31 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                     )}
 
 
-                    {/* ATTENDANCE MANAGEMENT VIEW (activeTab === 'attendance') */}
-                    {activeTab === 'attendance' && (
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-0 md:p-6 mb-8 animate-fade-in-up flex flex-col h-full">
-
-                            {/* Content */}
-                            <div className="flex-1 overflow-y-auto p-0 md:p-4">
-                                {/* Steps */}
-                                <div className="flex items-center justify-between mb-8 px-4">
-                                    {[
-                                        { step: 'filters', label: 'Filtros' },
-                                        { step: 'list', label: 'Chamada' }
-                                    ].map((s, idx) => (
-                                        <React.Fragment key={s.step}>
-                                            <div className="flex flex-col items-center gap-2">
-                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${manageAttendanceStep === s.step ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' :
-                                                    (manageAttendanceStep === 'list' && idx === 0) ? 'bg-emerald-600/30 text-emerald-800' : 'bg-gray-100 text-gray-400'
-                                                    }`}>
-                                                    {(manageAttendanceStep === 'list' && idx === 0) ? <CheckCircle2 className="w-5 h-5" /> : idx + 1}
-                                                </div>
-                                                <span className={`text-[10px] font-bold uppercase tracking-wider ${manageAttendanceStep === s.step ? 'text-emerald-700' : 'text-gray-400'}`}>
-                                                    {s.label}
-                                                </span>
-                                            </div>
-                                            {idx < 1 && <div className={`flex-1 h-0.5 mx-4 ${(manageAttendanceStep === 'list' && idx === 0) ? 'bg-emerald-500' : 'bg-gray-100'}`}></div>}
-                                        </React.Fragment>
-                                    ))}
-                                </div>
-
-                                {/* Step 1: Filters */}
-                                {manageAttendanceStep === 'filters' && (
-                                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Data da Chamada</label>
-                                                <input
-                                                    type="date"
-                                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-emerald-500"
-                                                    value={manageFilters.date}
-                                                    onChange={(e) => setManageFilters({ ...manageFilters, date: e.target.value })}
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Série/Ano</label>
-                                                <select
-                                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-emerald-500"
-                                                    value={manageFilters.grade}
-                                                    onChange={(e) => setManageFilters({ ...manageFilters, grade: e.target.value, subjectId: '' })}
-                                                >
-                                                    <option value="">Selecione</option>
-                                                    {filteredAttendanceGrades.map(g => (
-                                                        <option key={g.id} value={g.name}>{g.name}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Turma</label>
-                                                <select
-                                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-emerald-500"
-                                                    value={manageFilters.class}
-                                                    onChange={(e) => setManageFilters({ ...manageFilters, class: (e.target.value as SchoolClass) })}
-                                                >
-                                                    <option value="">Selecione</option>
-                                                    {SCHOOL_CLASSES_OPTIONS.map(opt => (
-                                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Turno</label>
-                                                <select
-                                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-emerald-500"
-                                                    value={manageFilters.shift}
-                                                    onChange={(e) => setManageFilters({ ...manageFilters, shift: (e.target.value as SchoolShift) })}
-                                                >
-                                                    {SCHOOL_SHIFTS.map(opt => (
-                                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Disciplina (Opcional)</label>
-                                            <select
-                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-emerald-500"
-                                                value={manageFilters.subjectId}
-                                                onChange={(e) => setManageFilters({ ...manageFilters, subjectId: e.target.value })}
-                                            >
-                                                <option value="">Geral / Apenas Presença Diária</option>
-                                                {manageFilters.grade && academicSubjects
-                                                    .filter(s => s.gradeId === academicGrades.find(g => g.name === manageFilters.grade)?.id)
-                                                    .map(subj => (
-                                                        <option key={subj.id} value={subj.id}>{subj.name}</option>
-                                                    ))}
-                                            </select>
-                                            <p className="text-[10px] text-gray-500">* Se não selecionar disciplina, será considerada falta GLOBAL no dia.</p>
-                                        </div>
-
-                                        <div className="flex justify-end pt-4">
-                                            <Button
-                                                onClick={handleFetchAttendanceForManagement}
-                                                disabled={!manageFilters.date || !manageFilters.grade || !manageFilters.class || isLoadingManageAttendance}
-                                                className="w-full md:w-auto py-3 px-8 text-sm !bg-emerald-600 hover:!bg-emerald-700 shadow-lg text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
-                                            >
-                                                {isLoadingManageAttendance ? 'Carregando...' : (
-                                                    <>
-                                                        <Search className="w-4 h-4" />
-                                                        Buscar Lista de Chamada
-                                                    </>
-                                                )}
-                                            </Button>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Step 2: List */}
-                                {
-                                    manageAttendanceStep === 'list' && (
-                                        <div className="flex flex-col h-full animate-in slide-in-from-right-4 duration-300">
-                                            {/* Info Bar */}
-                                            <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100 mb-4 flex flex-wrap gap-4 items-center justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <button
-                                                        onClick={() => { setManageStudents([]); setManageStatuses({}); setManageAbsenceOverrides({}); setManageTeacherName(''); setManageAttendanceStep('filters'); }}
-                                                        className="p-1.5 hover:bg-white rounded-full transition-colors text-emerald-700 shadow-sm bg-white"
-                                                        title="Voltar aos Filtros"
-                                                    >
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                                                        </svg>
-                                                    </button>
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="p-2 bg-white rounded-lg text-emerald-600 shadow-sm">
-                                                            <CalendarIcon className="w-5 h-5" />
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Data Selecionada</p>
-                                                            <p className="font-bold text-gray-800">{new Date(manageFilters.date + 'T12:00:00').toLocaleDateString()}</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {isLoadingManageAttendance ? (
-                                                <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
-                                                    <Loader2 className="w-8 h-8 animate-spin mb-2" />
-                                                    <span className="text-xs font-medium">Processando dados...</span>
-                                                </div>
-                                            ) : (
-                                                <div className="flex-1 overflow-y-auto space-y-2 pr-2">
-                                                    {/* TEACHER OVERRIDE (Optional) */}
-                                                    <div className="bg-white p-4 rounded-xl border border-gray-200 mb-4">
-                                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Professor Responsável (Registro)</label>
-                                                        <input
-                                                            type="text"
-                                                            placeholder={`Ex: ${coordinator.name} (Coordenação)`}
-                                                            className="w-full p-2.5 border border-gray-200 rounded-lg text-sm"
-                                                            value={manageTeacherName}
-                                                            onChange={(e) => setManageTeacherName(e.target.value)}
-                                                        />
-                                                        <p className="text-[10px] text-gray-400 mt-1">* Deixe em branco para usar seu nome automaticamente.</p>
-                                                    </div>
-
-                                                    {manageStudents.map(student => {
-                                                        const status = manageStatuses[student.id]; // 'present' | 'absent' | undefined
-                                                        const isOverride = manageAbsenceOverrides[student.id];
-
-                                                        return (
-                                                            <div key={student.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${status === 'absent' ? 'bg-red-50 border-red-200' :
-                                                                status === 'present' ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-gray-100'
-                                                                }`}>
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${status === 'absent' ? 'bg-red-100 text-red-600' :
-                                                                        status === 'present' ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-400'
-                                                                        }`}>
-                                                                        {student.name.charAt(0)}
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className={`text-sm font-bold ${status === 'absent' ? 'text-red-700' : 'text-gray-800'}`}>{student.name}</p>
-                                                                        <p className="text-[10px] text-gray-400">RM: {student.code}</p>
-                                                                    </div>
-                                                                </div>
-
-                                                                <div className="flex gap-2">
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            setManageStatuses(prev => ({ ...prev, [student.id]: 'present' }));
-                                                                            // If it was override, keep it or logic? For simplicity, present is just present.
-                                                                            setManageAbsenceOverrides(prev => { const n = { ...prev }; delete n[student.id]; return n; });
-                                                                        }}
-                                                                        className={`p-2 rounded-lg transition-colors flex items-center gap-1 ${status === 'present' ? 'bg-emerald-600 text-white shadow-md' : 'bg-gray-100 text-gray-400 hover:bg-emerald-50 hover:text-emerald-600'}`}
-                                                                    >
-                                                                        <CheckCircle2 className="w-4 h-4" />
-                                                                        <span className="text-xs font-bold hidden md:inline">Presente</span>
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            setManageStatuses(prev => ({ ...prev, [student.id]: 'absent' }));
-                                                                        }}
-                                                                        className={`p-2 rounded-lg transition-colors flex items-center gap-1 ${status === 'absent' ? 'bg-red-600 text-white shadow-md' : 'bg-gray-100 text-gray-400 hover:bg-red-50 hover:text-red-600'}`}
-                                                                    >
-                                                                        <X className="w-4 h-4" />
-                                                                        <span className="text-xs font-bold hidden md:inline">Falta</span>
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-
-                                            <div className="pt-4 border-t border-gray-100 mt-2">
-                                                <div className="flex justify-between items-center mb-4 text-xs font-bold text-gray-500">
-                                                    <span>Total: {manageStudents.length}</span>
-                                                    <div className="flex gap-3">
-                                                        <span className="text-emerald-600">Presentes: {Object.values(manageStatuses).filter(s => s === 'present').length}</span>
-                                                        <span className="text-red-600">Faltas: {Object.values(manageStatuses).filter(s => s === 'absent').length}</span>
-                                                    </div>
-                                                </div>
-                                                {isSavingAttendance && (
-                                                    <div className="mb-2 w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                                                        <div className="bg-emerald-500 h-full animate-progress-indeterminate"></div>
-                                                    </div>
-                                                )}
-                                                <Button
-                                                    onClick={handleSaveAttendanceManagement}
-                                                    disabled={isSavingAttendance || manageStudents.length === 0}
-                                                    className="w-full py-3.5 text-base !bg-blue-950 hover:!bg-black shadow-xl text-white font-bold rounded-xl transition-all"
-                                                >
-                                                    {isSavingAttendance ? 'Salvando Registros...' : '💾 Confirmar Chamada'}
-                                                </Button>
-                                                {!manageFilters.subjectId && (
-                                                    <p className="text-[10px] text-center text-gray-400 mt-2">
-                                                        * Modo Global: A falta será aplicada para TODAS as aulas do dia (Configuração: {academicSettings?.dailyShiftClasses || 5} aulas).
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )
-                                }
-
-                            </div>
-                        </div>
-                    )}
 
                     {/* CALENDAR VIEW (activeTab === 'calendar') */}
-                    {
-                        activeTab === 'calendar' && (
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-0 md:p-6 mb-8 animate-fade-in-up flex flex-col h-full">
-                                {/* Header */}
-                                <div className="flex justify-end mb-4 px-4 md:px-0">
-                                    <button
-                                        onClick={handlePrintCalendar}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-gray-500 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-gray-50 hover:text-blue-950 transition-all shadow-sm active:scale-95 cursor-pointer"
-                                    >
-                                        <Printer className="w-3.5 h-3.5" />
-                                        Imprimir
-                                    </button>
-                                </div>
+                    {activeTab === 'calendar' && (
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-0 md:p-6 mb-8 animate-fade-in-up flex flex-col h-full">
+                            {/* Header */}
+                            <div className="flex justify-end mb-4 px-4 md:px-0">
+                                <button
+                                    onClick={handlePrintCalendar}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-gray-500 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-gray-50 hover:text-blue-950 transition-all shadow-sm active:scale-95 cursor-pointer"
+                                >
+                                    <Printer className="w-3.5 h-3.5" />
+                                    Imprimir
+                                </button>
+                            </div>
 
-                                {/* Content */}
-                                <div className="flex-1 overflow-y-auto p-0 md:p-4 bg-gray-50/20">
-                                    <div className="max-w-5xl mx-auto">
-                                        <SchoolCalendar events={calendarEvents} />
-                                    </div>
+                            {/* Content */}
+                            <div className="flex-1 overflow-y-auto p-0 md:p-4 bg-gray-50/20">
+                                <div className="max-w-5xl mx-auto">
+                                    <SchoolCalendar events={calendarEvents} />
                                 </div>
                             </div>
-                        )
+                        </div>
+                    )
                     }
+
 
                     {/* MESSAGES VIEW (activeTab === 'messages') */}
                     {activeTab === 'messages' && (
@@ -2101,9 +1693,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({ coor
                             )}
                         </div>
                     )}
-
-                </main >
-            </div >
-        </div >
+                </main>
+            </div>
+        </div>
     );
 };

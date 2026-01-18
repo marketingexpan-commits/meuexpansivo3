@@ -5,7 +5,7 @@ import { Button } from './Button';
 import { pedagogicalService } from '../services/pedagogicalService';
 import { studentService } from '../services/studentService';
 import { Loader2, ShieldCheck, Search, X, Trash2, AlertTriangle, Database, Zap, Calendar } from 'lucide-react';
-import { getCurrentSchoolYear } from '../utils/academicUtils';
+import { getCurrentSchoolYear, isClassScheduled } from '../utils/academicUtils';
 import { getAcademicSettings } from '../services/academicSettings';
 import type { GradeEntry, ClassSchedule } from '../types';
 import { SchoolUnit } from '../types';
@@ -60,10 +60,12 @@ export const DatabaseCleanupTool = () => {
         setDiscrepancies([]);
         setSelectedDiscrepancies([]);
         try {
-            const [allStudents, allGrades, allAttendance, settings] = await Promise.all([
+            const [allStudents, allGrades, allAttendance, allSchedules, allEvents, settings] = await Promise.all([
                 studentService.getStudents(),
                 pedagogicalService.getAllGrades(),
                 pedagogicalService.getAllAttendance(),
+                pedagogicalService.getAllSchedules(),
+                pedagogicalService.getCalendarEvents(),
                 getAcademicSettings()
             ]);
 
@@ -99,9 +101,22 @@ export const DatabaseCleanupTool = () => {
                             // or better, check if key exists and equals value.
                             // Accessing dynamic property types safely
                             if (record.studentStatus && record.studentStatus[student.id] === 'Faltou') {
-                                const individualCount = record.studentAbsenceCount?.[student.id];
-                                const weight = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
-                                actualAbsences += weight;
+                                // NEW: Verify if the day is a valid school day for this subject
+                                const scheduled = isClassScheduled(
+                                    record.date,
+                                    record.discipline,
+                                    allSchedules || [],
+                                    allEvents || [],
+                                    student.unit,
+                                    student.gradeLevel,
+                                    student.schoolClass
+                                );
+
+                                if (scheduled) {
+                                    const individualCount = record.studentAbsenceCount?.[student.id];
+                                    const weight = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
+                                    actualAbsences += weight;
+                                }
                             }
                         });
 

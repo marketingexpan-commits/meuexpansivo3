@@ -105,14 +105,17 @@ export const calculateSchoolDays = (
 
     if (isNaN(curDate.getTime()) || isNaN(endDate.getTime())) return 0;
 
-    // Map holidays for faster lookup
+    // Map events for faster lookup
     const holidayDates = new Set<string>();
+    const extraSchoolDates = new Set<string>();
+
     (events || []).forEach(e => {
-        if (e.type === 'holiday_national' || e.type === 'holiday_state' || e.type === 'holiday_municipal' || e.type === 'vacation' || e.type === 'recess') {
-            // UNIT CHECK: If event has units defined, ONLY apply if current unit is in list.
-            // If event units is empty/null, it applies to ALL units.
-            if (unit && e.units && e.units.length > 0 && !e.units.includes(unit)) {
-                return; // Skip this holiday as it doesn't apply to this unit
+        const isHoliday = e.type === 'holiday_national' || e.type === 'holiday_state' || e.type === 'holiday_municipal' || e.type === 'vacation' || e.type === 'recess';
+        const isExtraSchoolDay = e.type === 'school_day' || e.type === 'substitution';
+
+        if (isHoliday || isExtraSchoolDay) {
+            if (unit && e.units && e.units.length > 0 && !e.units.includes(unit) && !e.units.includes('all')) {
+                return;
             }
 
             const s = new Date(e.startDate + 'T00:00:00');
@@ -120,7 +123,9 @@ export const calculateSchoolDays = (
 
             if (!isNaN(s.getTime())) {
                 for (let d = new Date(s); d <= f; d.setDate(d.getDate() + 1)) {
-                    holidayDates.add(d.toISOString().split('T')[0]);
+                    const dStr = d.toISOString().split('T')[0];
+                    if (isHoliday) holidayDates.add(dStr);
+                    if (isExtraSchoolDay) extraSchoolDates.add(dStr);
                 }
             }
         }
@@ -129,8 +134,11 @@ export const calculateSchoolDays = (
     while (curDate <= endDate) {
         const dayOfWeek = curDate.getDay();
         const dateStr = curDate.toISOString().split('T')[0];
+
         // 0 = Sunday, 6 = Saturday
-        if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidayDates.has(dateStr)) {
+        const isActuallySchoolDay = (dayOfWeek !== 0 && dayOfWeek !== 6) || extraSchoolDates.has(dateStr);
+
+        if (isActuallySchoolDay && !holidayDates.has(dateStr)) {
             count++;
         }
         curDate.setDate(curDate.getDate() + 1);
@@ -207,18 +215,25 @@ export const calculateEffectiveTaughtClasses = (
     const curDate = new Date(startDate + 'T00:00:00');
     const finalDate = new Date(endDate + 'T00:00:00');
 
-    // Holiday filtering setup
+    // Event filtering setup
     const holidayDates = new Set<string>();
+    const extraSchoolDates = new Set<string>();
+
     (calendarEvents || []).forEach(e => {
-        if (e.type === 'holiday_national' || e.type === 'holiday_state' || e.type === 'holiday_municipal' || e.type === 'vacation' || e.type === 'recess') {
-            if (unit && e.units && e.units.length > 0 && !e.units.includes(unit)) {
+        const isHoliday = e.type === 'holiday_national' || e.type === 'holiday_state' || e.type === 'holiday_municipal' || e.type === 'vacation' || e.type === 'recess';
+        const isExtraSchoolDay = e.type === 'school_day' || e.type === 'substitution';
+
+        if (isHoliday || isExtraSchoolDay) {
+            if (unit && e.units && e.units.length > 0 && !e.units.includes(unit) && !e.units.includes('all')) {
                 return;
             }
             const s = new Date(e.startDate + 'T00:00:00');
             const f = e.endDate ? new Date(e.endDate + 'T00:00:00') : new Date(e.startDate + 'T00:00:00');
             if (!isNaN(s.getTime())) {
                 for (let d = new Date(s); d <= f; d.setDate(d.getDate() + 1)) {
-                    holidayDates.add(d.toISOString().split('T')[0]);
+                    const dStr = d.toISOString().split('T')[0];
+                    if (isHoliday) holidayDates.add(dStr);
+                    if (isExtraSchoolDay) extraSchoolDates.add(dStr);
                 }
             }
         }
@@ -228,8 +243,10 @@ export const calculateEffectiveTaughtClasses = (
         const dayOfWeek = curDate.getDay(); // 0-6
         const dateStr = curDate.toISOString().split('T')[0];
 
-        // Strict Check: Not Weekend AND Not Holiday
-        if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidayDates.has(dateStr)) {
+        // Strict Check: Not Holiday AND (Not Weekend OR Marked as Extra School Day)
+        const isActuallySchoolDay = (dayOfWeek !== 0 && dayOfWeek !== 6) || extraSchoolDates.has(dateStr);
+
+        if (isActuallySchoolDay && !holidayDates.has(dateStr)) {
             // Add classes for this specific day of week
             taughtClasses += (scheduleMap[dayOfWeek] || 0);
         }
@@ -258,23 +275,32 @@ export const isClassScheduled = (
     const weekDay = date.getDay(); // 0-6
     if (weekDay === 0 || weekDay === 6) return false;
 
-    // 1. Check Holidays
-    const isHoliday = (calendarEvents || []).some(e => {
-        if (e.type === 'holiday_national' || e.type === 'holiday_state' || e.type === 'holiday_municipal' || e.type === 'vacation' || e.type === 'recess') {
-            if (unit && e.units && e.units.length > 0 && !e.units.includes(unit)) {
+    const isHolidayOrExtra = (calendarEvents || []).find(e => {
+        const isHoliday = e.type === 'holiday_national' || e.type === 'holiday_state' || e.type === 'holiday_municipal' || e.type === 'vacation' || e.type === 'recess';
+        const isExtraSchoolDay = e.type === 'school_day' || e.type === 'substitution';
+
+        if (isHoliday || isExtraSchoolDay) {
+            if (unit && e.units && e.units.length > 0 && !e.units.includes(unit) && !e.units.includes('all')) {
                 return false;
             }
             const s = new Date(e.startDate + 'T00:00:00');
             const f = e.endDate ? new Date(e.endDate + 'T00:00:00') : new Date(e.startDate + 'T00:00:00');
-            return date >= s && date <= f;
+            return date >= s && date <= f ? (isHoliday ? 'holiday' : 'extra') : false;
         }
         return false;
     });
 
+    const isHoliday = isHolidayOrExtra === 'holiday';
+    const isExtraSchoolDay = isHolidayOrExtra === 'extra';
+
     if (isHoliday) return false;
 
+    // Strict weekend check: if it's weekend, it MUST be an extra school day
+    const isWeekend = weekDay === 0 || weekDay === 6;
+    if (isWeekend && !isExtraSchoolDay) return false;
+
     // 2. Check Schedule
-    // Find schedule for this day of week
+    // First, try to find a specific schedule for this day of week
     const daySchedule = classSchedules.find((s: any) => {
         if (s.dayOfWeek !== weekDay) return false;
         if (gradeLevel) {
@@ -285,11 +311,25 @@ export const isClassScheduled = (
         }
         return true;
     });
-    if (!daySchedule || !daySchedule.items) return false;
 
-    // Check if subject exists in items (Normalized)
-    const hasSubject = daySchedule.items.some((item: any) => normalizeStr(item.subject) === normalizeStr(subjectName));
-    return hasSubject;
+    if (daySchedule && daySchedule.items) {
+        const hasSubject = daySchedule.items.some((item: any) => normalizeStr(item.subject) === normalizeStr(subjectName));
+        if (hasSubject) return true;
+    }
+
+    // IF it's an extra school day (like Saturday) and no specific schedule was found,
+    // check if this subject EVER occurs for this class in the weekly schedule.
+    if (isExtraSchoolDay) {
+        const anyDaySchedule = classSchedules.some((s: any) => {
+            if (gradeLevel && parseGradeLevel(s.grade).grade !== parseGradeLevel(gradeLevel).grade) return false;
+            if (schoolClass && normalizeClass(s.class) !== normalizeClass(schoolClass)) return false;
+            if (!s.items) return false;
+            return s.items.some((item: any) => normalizeStr(item.subject) === normalizeStr(subjectName));
+        });
+        return anyDaySchedule;
+    }
+
+    return false;
 };
 
 /**

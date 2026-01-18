@@ -1321,6 +1321,8 @@ const AppContent: React.FC = () => {
           onCreateNotification={createNotification}
           academicSettings={academicSettings}
           tickets={tickets}
+          calendarEvents={calendarEvents}
+          classSchedules={classSchedules}
         />
         <BackToTopButton />
       </>

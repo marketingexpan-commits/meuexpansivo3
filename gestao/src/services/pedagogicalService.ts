@@ -165,5 +165,16 @@ export const pedagogicalService = {
             console.error("Erro ao deletar grades em lote:", error);
             throw error;
         }
+    },
+
+    // Buscar todos os eventos do calendário
+    async getCalendarEvents() {
+        try {
+            const snap = await getDocs(collection(db, 'calendar_events'));
+            return snap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+        } catch (error) {
+            console.error("Erro ao buscar eventos do calendário:", error);
+            throw error;
+        }
     }
 };

@@ -8,7 +8,7 @@
 import { CURRICULUM_MATRIX } from "../constants";
 import { AttendanceStatus } from "../types";
 import type { GradeEntry, AttendanceRecord, AcademicSubject, AcademicSettings } from "../types";
-import { getCurrentSchoolYear, getDynamicBimester, calculateSchoolDays, calculateEffectiveTaughtClasses, getSubjectDurationForDay } from "./academicUtils";
+import { getCurrentSchoolYear, getDynamicBimester, calculateSchoolDays, calculateEffectiveTaughtClasses, getSubjectDurationForDay, isClassScheduled } from "./academicUtils";
 
 /**
  * Calculates the number of taught classes for a given period and subject.
@@ -248,6 +248,13 @@ export const calculateGeneralFrequency = (
     const totalAbsences = (attendanceRecords || []).reduce((acc, record) => {
         if (record.date < startDate || record.date > endDate) return acc;
         if (record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT) {
+            // Verify if the day is a valid school day for this subject
+            if (classSchedules && classSchedules.length > 0) {
+                if (!isClassScheduled(record.date, record.discipline, classSchedules, calendarEvents || [], unit, gradeLevel, schoolClass)) {
+                    return acc;
+                }
+            }
+
             const individualCount = record.studentAbsenceCount?.[studentId];
             const weight = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
 
@@ -333,6 +340,13 @@ export const calculateBimesterGeneralFrequency = (
         const rYear = parseInt(record.date.split('-')[0], 10);
         const rBim = getDynamicBimester(record.date, settings);
         if (rYear === currentYear && rBim === bimester && record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT) {
+            // Verify if the day is a valid school day for this subject
+            if (classSchedules && classSchedules.length > 0) {
+                if (!isClassScheduled(record.date, record.discipline, classSchedules, calendarEvents || [], unit, gradeLevel, schoolClass)) {
+                    return acc;
+                }
+            }
+
             const individualCount = record.studentAbsenceCount?.[studentId];
             const weight = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
 

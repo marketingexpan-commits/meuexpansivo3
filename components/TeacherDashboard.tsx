@@ -298,27 +298,18 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     const scheduleConflict = useMemo(() => {
         if (!attendanceDate || !attendanceGrade || !attendanceClass || !attendanceSubject || !classSchedules || classSchedules.length === 0) return false;
 
-        // Convert date to day of week (0 = Sunday, 1 = Monday ...)
-        // Note: ClassSchedule uses 0=Sunday, 1=Monday... or similar. 
-        // Let's verify standard: 0 (Sunday) to 6 (Saturday).
-        const dateObj = new Date(attendanceDate + 'T00:00:00');
-        const dayOfWeek = dateObj.getDay();
-
-        // Find schedule for this day/grade/class AND UNIT
-        const daySchedule = classSchedules.find(s =>
-            s.schoolId === activeUnit &&
-            s.dayOfWeek === dayOfWeek &&
-            s.grade === attendanceGrade &&
-            s.class === attendanceClass &&
-            (attendanceShift ? s.shift === attendanceShift : true)
+        const scheduled = isClassScheduled(
+            attendanceDate,
+            attendanceSubject,
+            classSchedules || [],
+            calendarEvents || [],
+            activeUnit,
+            attendanceGrade,
+            attendanceClass
         );
 
-        if (!daySchedule) return true; // No classes at all on this day
-
-        // Check if the specific subject is in the items
-        const hasSubject = daySchedule.items.some(item => item.subject === attendanceSubject);
-        return !hasSubject;
-    }, [attendanceDate, attendanceGrade, attendanceClass, attendanceSubject, attendanceShift, classSchedules, activeUnit]);
+        return !scheduled;
+    }, [attendanceDate, attendanceGrade, attendanceClass, attendanceSubject, classSchedules, activeUnit, calendarEvents]);
     const filteredSubjectsForAgenda = useMemo(() => getFilteredSubjects(agendaGrade), [agendaGrade, getFilteredSubjects]);
     const filteredSubjectsForMaterials = useMemo(() => getFilteredSubjects(materialGrade), [materialGrade, getFilteredSubjects]);
     const filteredSubjectsForExams = useMemo(() => getFilteredSubjects(examGrade), [examGrade, getFilteredSubjects]);
@@ -526,6 +517,43 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     const loadAttendance = () => {
         if (!attendanceGrade) { alert("Por favor, selecione uma série."); return; }
         if (!attendanceSubject) { alert("Por favor, selecione uma disciplina."); return; }
+
+        // CHECK: Is it a valid school day for this subject?
+        const scheduled = isClassScheduled(
+            attendanceDate,
+            attendanceSubject,
+            classSchedules || [],
+            calendarEvents || [],
+            activeUnit,
+            attendanceGrade,
+            attendanceClass
+        );
+
+        if (!scheduled) {
+            const dateObj = new Date(attendanceDate + 'T00:00:00');
+            const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
+
+            // Check if record already exists (to allow viewing/editing/deleting existing "orphan" records)
+            const recordId = `${attendanceDate}_${activeUnit}_${attendanceGrade}_${attendanceClass}_${attendanceSubject}`;
+            const existingRecord = attendanceRecords.find(r => r.id === recordId);
+
+            if (!existingRecord) {
+                if (isWeekend) {
+                    alert("Atenção: Este dia é um final de semana e não está marcado como 'Dia Letivo' no calendário. Não é possível iniciar uma nova chamada.");
+                } else {
+                    alert(`Não há aula prevista de ${attendanceSubject} para este dia de acordo com o horário escolar.`);
+                }
+                return;
+            } else {
+                // If it exists, we warn but allow loading (to facilitate correction/deletion)
+                if (isWeekend) {
+                    alert("Aviso: Esta chamada foi realizada em um final de semana não letivo. As faltas desta lista NÃO serão contabilizadas no boletim.");
+                } else {
+                    alert("Aviso: Não há aula prevista neste dia no horário escolar. As faltas desta lista NÃO serão contabilizadas no boletim.");
+                }
+            }
+        }
+
         setIsAttendanceLoading(true);
         const studentsInClass = students.filter(s => {
             const { grade: sGrade } = parseGradeLevel(s.gradeLevel);
@@ -628,8 +656,21 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     allRelevantRecords.forEach(r => {
                         if (r.studentStatus[student.id] === AttendanceStatus.ABSENT) {
                             if (getDynamicBimester(r.date, academicSettings) === targetBimester) {
-                                const individualCount = r.studentAbsenceCount?.[student.id];
-                                totalAbsences += individualCount !== undefined ? individualCount : (r.lessonCount || 1);
+                                // STRICT SYNC: Only count if it's a valid school day
+                                const scheduled = isClassScheduled(
+                                    r.date,
+                                    r.discipline,
+                                    classSchedules || [],
+                                    calendarEvents || [],
+                                    r.unit,
+                                    r.gradeLevel,
+                                    r.schoolClass
+                                );
+
+                                if (scheduled) {
+                                    const individualCount = r.studentAbsenceCount?.[student.id];
+                                    totalAbsences += individualCount !== undefined ? individualCount : (r.lessonCount || 1);
+                                }
                             }
                         }
                     });
@@ -714,8 +755,21 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                         otherRecords.forEach(r => {
                             if (r.studentStatus[student.id] === AttendanceStatus.ABSENT) {
                                 if (getDynamicBimester(r.date, academicSettings) === targetBimester) {
-                                    const individualCount = r.studentAbsenceCount?.[student.id];
-                                    totalAbsences += individualCount !== undefined ? individualCount : (r.lessonCount || 1);
+                                    // STRICT SYNC: Only count if it's a valid school day
+                                    const scheduled = isClassScheduled(
+                                        r.date,
+                                        r.discipline,
+                                        classSchedules || [],
+                                        calendarEvents || [],
+                                        r.unit,
+                                        r.gradeLevel,
+                                        r.schoolClass
+                                    );
+
+                                    if (scheduled) {
+                                        const individualCount = r.studentAbsenceCount?.[student.id];
+                                        totalAbsences += individualCount !== undefined ? individualCount : (r.lessonCount || 1);
+                                    }
                                 }
                             }
                         });
