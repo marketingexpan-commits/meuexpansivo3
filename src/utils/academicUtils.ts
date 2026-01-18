@@ -101,7 +101,9 @@ export const calculateSchoolDays = (
     start: string,
     end: string,
     events: any[], // CalendarEvent[]
-    unit?: string // Optional unit for filtering
+    unit?: string, // Optional unit for filtering
+    gradeLevel?: string,
+    schoolClass?: string
 ) => {
     let count = 0;
     const curDate = new Date(start + 'T00:00:00');
@@ -114,7 +116,8 @@ export const calculateSchoolDays = (
     const extraSchoolDates = new Set<string>();
 
     (events || []).forEach(e => {
-        if (unit && e.units && e.units.length > 0 && !e.units.includes(unit) && !e.units.includes('all')) {
+        // Use hierarchical filter
+        if (!doesEventApplyToStudent(e, unit, gradeLevel, schoolClass)) {
             return;
         }
 

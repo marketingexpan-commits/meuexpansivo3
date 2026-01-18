@@ -579,7 +579,12 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                                             })}
                                                         >
                                                             <option value="">Para todas as Séries</option>
-                                                            {grades.filter(g => !editingEvent?.targetSegments?.[0] || g.name.includes(editingEvent.targetSegments[0])).map(g => (
+                                                            {grades.filter(g => {
+                                                                const selectedSegName = editingEvent?.targetSegments?.[0];
+                                                                if (!selectedSegName) return true;
+                                                                const segObj = segments.find(s => s.name === selectedSegName);
+                                                                return segObj ? g.segmentId === segObj.id : true;
+                                                            }).map(g => (
                                                                 <option key={g.id} value={g.name}>{g.name}</option>
                                                             ))}
                                                         </select>

@@ -3,7 +3,7 @@ import { useAcademicData } from '../hooks/useAcademicData';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
 import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial, Occurrence, DailyAgenda, ExamGuide, CalendarEvent, AcademicSubject } from '../types';
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
-import { getBimesterFromDate, getDynamicBimester, normalizeClass, parseGradeLevel, calculateSchoolDays, isClassScheduled, calculateEffectiveTaughtClasses, getSubjectDurationForDay } from '../src/utils/academicUtils';
+import { getBimesterFromDate, getDynamicBimester, normalizeClass, parseGradeLevel, calculateSchoolDays, isClassScheduled, calculateEffectiveTaughtClasses, getSubjectDurationForDay, doesEventApplyToStudent } from '../src/utils/academicUtils';
 import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects, MOCK_CALENDAR_EVENTS } from '../constants'; // Import Sync Fix
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency, calculateBimesterGeneralFrequency, calculateTaughtClasses } from '../utils/frequency';
 import { getStudyTips } from '../services/geminiService';
@@ -344,7 +344,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         }
 
         return existingGrades;
-    }, [student.id, student.gradeLevel, grades, academicSettings, isYearFinished]);
+    }, [student.id, student.gradeLevel, grades, academicSettings, isYearFinished, calendarEvents, classSchedules]);
 
     const { settings: contactSettings } = useFinancialSettings(student.unit);
 
@@ -411,6 +411,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             return acc;
         }, 0);
     }, [studentAttendance, currentYear, student.id]);
+
+    const upcomingReplacements = useMemo(() => {
+        const todayStr = new Date().toLocaleDateString('en-CA');
+        return calendarEvents.filter(e => {
+            const isFuture = e.startDate >= todayStr;
+            const isType = e.type === 'substitution' || (e.type === 'school_day' && e.title.toLowerCase().includes('reposição'));
+            const applies = doesEventApplyToStudent(e, student.unit, student.gradeLevel, student.schoolClass);
+            return isFuture && isType && applies;
+        }).sort((a, b) => a.startDate.localeCompare(b.startDate));
+    }, [calendarEvents, student.unit, student.gradeLevel, student.schoolClass]);
 
 
     const formatGrade = (grade: number | null | undefined) => (grade !== null && grade !== undefined && grade !== -1) ? grade.toFixed(1) : '-';
@@ -827,6 +837,42 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         <Button variant="secondary" onClick={onLogout} className="text-sm font-semibold py-1.5 px-4 h-10">Sair</Button>
                                     </div>
                                 </div>
+
+                                {/* ALERT: Reposições e Aulas Extras - INICIO */}
+                                {upcomingReplacements.length > 0 && (
+                                    <div className="mb-6 bg-gradient-to-r from-orange-50 to-white border-l-4 border-orange-500 rounded-r-lg shadow-sm animate-fade-in-up">
+                                        <div className="p-4 flex items-start">
+                                            <div className="flex-shrink-0 mt-0.5">
+                                                <div className="bg-orange-100 rounded-full p-2">
+                                                    <svg className="h-5 w-5 text-orange-600 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                            <div className="ml-4 w-full">
+                                                <h3 className="text-sm leading-5 font-bold text-orange-900 border-b border-orange-100 pb-1 mb-2">
+                                                    Atenção: Reposição de Aula Programada
+                                                </h3>
+                                                <div className="space-y-3">
+                                                    {upcomingReplacements.map(evt => (
+                                                        <div key={evt.id} className="bg-white p-3 rounded-lg border border-orange-200 shadow-sm flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+                                                            <div>
+                                                                <span className="block font-black text-orange-800 text-sm">
+                                                                    {new Date(evt.startDate + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
+                                                                </span>
+                                                                <span className="text-sm font-bold text-gray-700">{evt.title}</span>
+                                                            </div>
+                                                            {evt.description && (
+                                                                <span className="text-xs bg-orange-50 text-orange-700 px-2 py-1 rounded border border-orange-100 italic md:max-w-xs">{evt.description}</span>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                                {/* ALERT: Reposições e Aulas Extras - FIM */}
 
                                 {/* Student Info Card */}
                                 <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-100 mb-4">

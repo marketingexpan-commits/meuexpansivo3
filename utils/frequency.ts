@@ -9,7 +9,7 @@
 import { CURRICULUM_MATRIX } from "../src/utils/academicDefaults";
 import { AttendanceStatus } from "../types";
 import type { GradeEntry, AttendanceRecord, AcademicSubject } from "../types";
-import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, calculateSchoolDays, calculateEffectiveTaughtClasses, getSubjectDurationForDay } from "../src/utils/academicUtils";
+import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, calculateSchoolDays, calculateEffectiveTaughtClasses, getSubjectDurationForDay, isClassScheduled } from "../src/utils/academicUtils";
 import type { AcademicSettings } from "../types";
 
 /**
@@ -71,7 +71,8 @@ export const calculateTaughtClasses = (
         }
 
         if (weeklyClasses > 0) {
-            const schoolDays = calculateSchoolDays(startDate, endDate, calendarEvents || [], unit);
+            // FIXED: Pass gradeLevel and schoolClass for hierarchical filtering
+            const schoolDays = calculateSchoolDays(startDate, endDate, calendarEvents || [], unit, gradeLevel, schoolClass);
             taughtClasses = Math.round((weeklyClasses / 5) * schoolDays);
         }
     }
@@ -257,11 +258,18 @@ export const calculateGeneralFrequency = (
     const totalAbsences = (attendanceRecords || []).reduce((acc, record) => {
         if (record.date < startDate || record.date > endDate) return acc;
         if (record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT) {
+            // Verify if the day is a valid school day for this subject
+            if (classSchedules && classSchedules.length > 0) {
+                if (!isClassScheduled(record.date, record.discipline, classSchedules, calendarEvents || [], unit, gradeLevel, schoolClass)) {
+                    return acc;
+                }
+            }
+
             const individualCount = record.studentAbsenceCount?.[studentId];
             const weight = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
 
             if (classSchedules && classSchedules.length > 0) {
-                return acc + getSubjectDurationForDay(record.date, record.discipline, classSchedules, weight, gradeLevel, schoolClass);
+                return acc + getSubjectDurationForDay(record.date, record.discipline, classSchedules, weight, gradeLevel, schoolClass, calendarEvents, unit);
             }
             return acc + weight;
         }
@@ -342,11 +350,18 @@ export const calculateBimesterGeneralFrequency = (
         const rYear = parseInt(record.date.split('-')[0], 10);
         const rBim = getDynamicBimester(record.date, settings);
         if (rYear === currentYear && rBim === bimester && record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT) {
+            // Verify if the day is a valid school day for this subject
+            if (classSchedules && classSchedules.length > 0) {
+                if (!isClassScheduled(record.date, record.discipline, classSchedules, calendarEvents || [], unit, gradeLevel, schoolClass)) {
+                    return acc;
+                }
+            }
+
             const individualCount = record.studentAbsenceCount?.[studentId];
             const weight = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
 
             if (classSchedules && classSchedules.length > 0) {
-                return acc + getSubjectDurationForDay(record.date, record.discipline, classSchedules, weight, gradeLevel, schoolClass);
+                return acc + getSubjectDurationForDay(record.date, record.discipline, classSchedules, weight, gradeLevel, schoolClass, calendarEvents, unit);
             }
             return acc + weight;
         }

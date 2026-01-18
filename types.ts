@@ -520,6 +520,11 @@ export interface CalendarEvent {
   endDate?: string;
   type: EventType;
   units: string[]; // List of school units (e.g., ['Zona Norte', 'all'])
+  targetSegments?: string[]; // Optional: Limit scope to specific segments
+  targetGrades?: string[];   // Optional: Limit scope to specific grades
+  targetClasses?: string[];  // Optional: Limit scope to specific classes
+  substituteDayOfWeek?: number; // Optional: For substitution events
+  substituteDayLabel?: string;  // Optional: Label for the substitute day
 }
 
 // --- SISTEMA DE GRADE HORÁRIA ---
