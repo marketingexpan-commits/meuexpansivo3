@@ -282,7 +282,7 @@ export const isClassScheduled = (
     let isExtraSchoolDay = false;
 
     (calendarEvents || []).forEach(e => {
-        if (unit && e.units && e.units.length > 0 && !e.units.includes(unit)) {
+        if (unit && e.units && e.units.length > 0 && !e.units.includes(unit) && !e.units.includes('all')) {
             return;
         }
         const s = new Date(e.startDate + 'T00:00:00');
