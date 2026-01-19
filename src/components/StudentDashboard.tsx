@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAcademicData } from '../../hooks/useAcademicData';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
-import { Student, GradeEntry, Teacher, Subject, SchoolMessage, MessageRecipient, MessageType, AttendanceRecord, AttendanceStatus, BimesterData, UnitContact, CoordinationSegment } from '../types';
+import { Student, GradeEntry, Teacher, Subject, SchoolMessage, MessageRecipient, MessageType, AttendanceRecord, AttendanceStatus, BimesterData, UnitContact, CoordinationSegment, SUBJECT_LABELS } from '../types';
 import { getStudyTips } from '../services/geminiService';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
@@ -303,7 +303,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ student, gra
                             {studentGrades.map((grade) => (
                                 <tr key={grade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-300">
                                     <td className="px-3 py-2 font-bold text-gray-900 border-r border-gray-300 text-xs">
-                                        <span className="uppercase block">{grade.subject}</span>
+                                        <span className="uppercase block">{SUBJECT_LABELS[grade.subject as Subject] || grade.subject}</span>
                                         <span className="text-[10px] text-gray-500 font-normal mt-0.5 block italic truncate max-w-[150px]">
                                             Prof. {getTeacherName(grade.subject)}
                                         </span>
@@ -395,7 +395,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ student, gra
                                 return (
                                     <div key={grade.id} className={`p-5 border-l-4 rounded-lg bg-white shadow-md transition-shadow hover:shadow-lg ${statusConfig.color} flex flex-col`}>
                                         <div className="flex justify-between items-start mb-3">
-                                            <h4 className="text-lg font-bold text-gray-800">{grade.subject}</h4>
+                                            <h4 className="text-lg font-bold text-gray-800">{SUBJECT_LABELS[grade.subject as Subject] || grade.subject}</h4>
                                             {statusConfig.badge && <span className={`${statusConfig.badgeColor} text-xs font-bold px-2 py-1 rounded`}>{statusConfig.badge}</span>}
                                         </div>
 
@@ -423,7 +423,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ student, gra
                                         <div className="mt-auto border-t border-gray-100 pt-4">
                                             {statusConfig.showContactButton && teacherPhone && (
                                                 <a
-                                                    href={`https://wa.me/${waPhone}?text=Olá, sou o aluno(a) ${student.name}. Estou com dificuldades em ${grade.subject} e gostaria de tirar dúvidas.`}
+                                                    href={`https://wa.me/${waPhone}?text=Olá, sou o aluno(a) ${student.name}. Estou com dificuldades em ${SUBJECT_LABELS[grade.subject as Subject] || grade.subject} e gostaria de tirar dúvidas.`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="w-full bg-green-500 text-white hover:bg-green-600 py-2.5 rounded-md text-sm font-bold flex items-center justify-center transition-colors shadow-sm"
