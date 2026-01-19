@@ -10,7 +10,8 @@ import { clsx } from 'clsx';
 import { ImageCropperModal } from './ImageCropperModal';
 import { studentService } from '../services/studentService';
 import type { Student } from '../types';
-import { SCHOOL_SHIFTS, SCHOOL_CLASSES_OPTIONS } from '../utils/academicDefaults';
+import { UNIT_LABELS, SchoolUnit, SHIFT_LABELS, SchoolShift } from '../types';
+import { SCHOOL_CLASSES_OPTIONS, ACADEMIC_SEGMENTS, ACADEMIC_GRADES } from '../utils/academicDefaults';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { useSchoolUnits } from '../hooks/useSchoolUnits';
 import { financialService } from '../services/financialService';
@@ -65,7 +66,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
     const [activeTab, setActiveTab] = useState<'personal' | 'academic' | 'family' | 'filiation' | 'address' | 'health' | 'documents' | 'observations'>('personal');
     const [isLoading, setIsLoading] = useState(false);
     const [isGeneratingBoleto, setIsGeneratingBoleto] = useState(false);
-    const { segments, grades, loading: loadingAcademic } = useAcademicData();
+    const { loading: loadingAcademic } = useAcademicData();
     const { getUnitById } = useSchoolUnits();
     const [printBlank, setPrintBlank] = useState(false);
     const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -424,8 +425,13 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
     });
 
     const handleLevelChange = (newLevel: string) => {
+        const segment = Object.values(ACADEMIC_SEGMENTS).find(s => s.label === newLevel);
         setSelectedLevel(newLevel);
-        setFormData((prev: any) => ({ ...prev, gradeLevel: '' }));
+        setFormData((prev: any) => ({
+            ...prev,
+            gradeLevel: '',
+            segmentId: segment?.id || ''
+        }));
     };
 
     // Helper to remove undefined/null from object before saving to Firestore
@@ -539,11 +545,30 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
     const handleSubmit = async () => {
         try {
             setIsLoading(true);
-            console.log("Saving student:", formData);
-            // Basic validation
-            if (!formData.name) return alert("Nome é obrigatório");
-            if (!formData.unit) return alert("Unidade é obrigatória"); // Ensure unit is present
-            if (!formData.code) return alert("Código de matrícula é obrigatório");
+
+            // --- BLINDAGEM: VALIDAÇÃO RIGOROSA ---
+            const requiredFields = [
+                { key: 'name', label: 'Nome do Aluno' },
+                { key: 'unit', label: 'Unidade Escolar' },
+                { key: 'gradeLevel', label: 'Série / Ano' },
+                { key: 'shift', label: 'Turno' },
+                { key: 'schoolClass', label: 'Turma' },
+                { key: 'code', label: 'Código de Matrícula' },
+                { key: 'nome_responsavel', label: 'Nome do Responsável' }
+            ];
+
+            for (const field of requiredFields) {
+                if (!formData[field.key]) {
+                    setIsLoading(false);
+                    return alert(`O campo "${field.label}" é obrigatório para realizar a matrícula.`);
+                }
+            }
+
+            // Segment validation (Ensures consistency)
+            if (!selectedLevel) {
+                setIsLoading(false);
+                return alert("O Nível de Ensino (Segmento) é obrigatório.");
+            }
 
             // Validação de Unicidade Global
             const isUnique = await studentService.isCodeUnique(formData.code, student?.id);
@@ -570,27 +595,23 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
             // Synchronize phone fields & Sanitize Financials
             const cleanTuition = parseCurrency(formData.valor_mensalidade);
 
-            // STANDARDIZATION: Append full suffix to gradeLevel based on selectedLevel
+            // STANDARDIZATION: Enforce absolute naming convention "GradeLabel - SegmentLabel"
+            const officialGrade = Object.values(ACADEMIC_GRADES).find(g => g.label === formData.gradeLevel && g.segmentId === Object.values(ACADEMIC_SEGMENTS).find(s => s.label === selectedLevel)?.id);
+
             let finalGradeLevel = formData.gradeLevel;
-            // Only append if it doesn't already have the long format suffix
-            if (finalGradeLevel) {
-                if (selectedLevel === 'Ensino Médio' && !finalGradeLevel.includes(' - Ensino Médio')) {
-                    // Try to strip existing short suffix if present
-                    const clean = finalGradeLevel.replace(' - Ens. Médio', '').replace(' - Médio', '');
-                    finalGradeLevel = `${clean} - Ensino Médio`;
-                } else if (selectedLevel === 'Fundamental II' && !finalGradeLevel.includes(' - Fundamental II')) {
-                    const clean = finalGradeLevel.replace(' - Fund. II', '');
-                    finalGradeLevel = `${clean} - Fundamental II`;
-                } else if (selectedLevel === 'Fundamental I' && !finalGradeLevel.includes(' - Fundamental I')) {
-                    const clean = finalGradeLevel.replace(' - Fund. I', '');
-                    finalGradeLevel = `${clean} - Fundamental I`;
-                } else if (selectedLevel === 'Educação Infantil' && !finalGradeLevel.includes(' - Edu. Infantil')) {
-                    // Usually Education Infantil grades are unique (Nível I, etc), but we can standardize if needed.
-                    // Checking previous logs, "Nível II - Edu. Infantil" exists.
-                    const clean = finalGradeLevel.replace(' - Edu. Infantil', '').replace(' - Infantil', '');
-                    finalGradeLevel = `${clean} - Edu. Infantil`;
-                }
+            if (officialGrade) {
+                finalGradeLevel = `${officialGrade.label} - ${selectedLevel}`;
+            } else {
+                // Se por algum motivo não achou no objeto, faz o join manual limpo
+                finalGradeLevel = `${formData.gradeLevel} - ${selectedLevel}`;
             }
+
+            // Banish any "Ens. Médio" or "Fund. I" abbreviations from being saved
+            finalGradeLevel = finalGradeLevel
+                .replace('Ens. Médio', 'Ensino Médio')
+                .replace('Fund. I', 'Fundamental I')
+                .replace('Fund. II', 'Fundamental II')
+                .replace('Edu. Infantil', 'Educação Infantil');
 
             // Build the complete ficha_saude object
             const fichaSaude = {
@@ -615,30 +636,31 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                 observacoes_adicionais: formData.health_obs
             };
 
-            const dataToSave = {
+            // Final sanitization to remove undefined values and construct the final data object
+            const finalData = cleanObject({
                 ...formData,
                 gradeLevel: finalGradeLevel, // Use standardized grade
+                segment: selectedLevel, // Explicit segment storage
+                segmentId: Object.values(ACADEMIC_SEGMENTS).find(s => s.label === selectedLevel)?.id || '',
                 valor_mensalidade: cleanTuition, // Save as dot-decimal string or number
                 phoneNumber: formData.telefone_responsavel, // Ensure root project field is updated
                 ficha_saude: fichaSaude
-            };
+            });
 
-            // Remove flat health fields from dataToSave to keep DB clean
-            Object.keys(dataToSave).forEach(key => {
+            // Remove flat health fields from finalData to keep DB clean
+            // This needs to be done AFTER spreading formData, but BEFORE sending to service
+            Object.keys(finalData).forEach(key => {
                 if (key.startsWith('health_')) {
-                    delete (dataToSave as any)[key];
+                    delete (finalData as any)[key];
                 }
             });
 
-            // Final sanitization to remove undefined values
-            const finalData = cleanObject(dataToSave);
-
             if (student && student.id) {
                 await studentService.updateStudent(student.id, finalData);
-                alert("Dados do aluno atualizados com sucesso!");
+                alert("Matrícula atualizada com sucesso!");
             } else {
                 await studentService.createStudent(finalData);
-                alert("Aluno matriculado com sucesso!");
+                alert("Nova matrícula realizada com sucesso!");
             }
 
             // CRITICAL: Update formData with the complete ficha_saude structure
@@ -874,18 +896,16 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                 value={formData.unit}
                                 onChange={(e) => handleSelectChange('unit', e.target.value)}
                                 disabled={isUnitLocked}
-                                options={[
-                                    { label: 'Unidade Zona Norte', value: 'Zona Norte' },
-                                    { label: 'Unidade Extremoz', value: 'Extremoz' },
-                                    { label: 'Unidade Quintas', value: 'Quintas' },
-                                    { label: 'Unidade Boa Sorte', value: 'Boa Sorte' }
-                                ]}
+                                options={Object.values(SchoolUnit).map(unit => ({
+                                    label: UNIT_LABELS[unit],
+                                    value: unit
+                                }))}
                             />
                             <Select
                                 label="Nível de Ensino"
                                 value={selectedLevel}
                                 onChange={(e) => handleLevelChange(e.target.value)}
-                                options={segments.map(s => ({ label: s.name, value: s.name }))}
+                                options={Object.values(ACADEMIC_SEGMENTS).map(s => ({ label: s.label, value: s.label }))}
                                 disabled={loadingAcademic}
                             />
                             <Select
@@ -893,11 +913,11 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                 value={formData.gradeLevel}
                                 onChange={(e) => handleSelectChange('gradeLevel', e.target.value)}
                                 options={(() => {
-                                    const segment = segments.find(s => s.name === selectedLevel);
+                                    const segment = Object.values(ACADEMIC_SEGMENTS).find(s => s.label === selectedLevel);
                                     if (!segment) return [];
-                                    return grades
-                                        .filter(g => g.segmentId === segment.id && g.isActive)
-                                        .map(g => ({ label: g.name, value: g.name }));
+                                    return Object.values(ACADEMIC_GRADES)
+                                        .filter(g => g.segmentId === segment.id)
+                                        .map(g => ({ label: g.label, value: g.label }));
                                 })()}
                                 disabled={!selectedLevel || loadingAcademic}
                             />
@@ -905,7 +925,10 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                 label="Turno"
                                 value={formData.shift}
                                 onChange={(e) => handleSelectChange('shift', e.target.value)}
-                                options={SCHOOL_SHIFTS}
+                                options={Object.values(SchoolShift).map(shift => ({
+                                    label: SHIFT_LABELS[shift],
+                                    value: shift
+                                }))}
                             />
                             <Select
                                 label="Turma"

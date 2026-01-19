@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { db } from '../firebaseConfig';
 import { collection, getDocs } from 'firebase/firestore';
 import type { AcademicSegment, AcademicGrade, AcademicSubject } from '../types';
-import { EDUCATION_LEVELS, GRADES_BY_LEVEL, DEFAULT_SUBJECTS } from '../utils/academicDefaults';
+import { ACADEMIC_SEGMENTS, ACADEMIC_GRADES, SUBJECTS_DATA } from '../utils/academicDefaults';
 
 export function useAcademicData() {
     const [segments, setSegments] = useState<AcademicSegment[]>([]);
@@ -21,9 +21,9 @@ export function useAcademicData() {
                 // Fetch Segments
                 const segSnap = await getDocs(collection(db, 'academic_segments'));
                 if (segSnap.empty) {
-                    segmentsData = EDUCATION_LEVELS.map((levelName, index) => ({
-                        id: `fallback_seg_${index}`,
-                        name: levelName,
+                    segmentsData = Object.values(ACADEMIC_SEGMENTS).map((seg, index) => ({
+                        id: seg.id,
+                        name: seg.label,
                         isActive: true,
                         order: (index + 1) * 10
                     }));
@@ -36,43 +36,25 @@ export function useAcademicData() {
                 // Fetch Grades
                 const gradeSnap = await getDocs(collection(db, 'academic_grades'));
                 if (gradeSnap.empty) {
-                    // Reconstruct from GRADES_BY_LEVEL
-                    EDUCATION_LEVELS.forEach((levelName, sIdx) => {
-                        const segmentId = segmentsData[sIdx]?.id || `fallback_seg_${sIdx}`;
-                        const levelMatches = GRADES_BY_LEVEL.find(l => l.level === levelName);
-                        const levelGrades = levelMatches ? levelMatches.grades : [];
-
-                        levelGrades.forEach((gName, gIdx) => {
-                            const fullName = `${gName} - ${levelName}`;
-                            gradesData.push({
-                                id: `fallback_grade_${sIdx}_${gIdx}`,
-                                segmentId: segmentId,
-                                name: fullName,
-                                isActive: true,
-                                order: (gIdx + 1) * 10
-                            });
-                        });
-                    });
+                    gradesData = Object.values(ACADEMIC_GRADES).map((grade, index) => ({
+                        id: grade.id,
+                        segmentId: grade.segmentId,
+                        name: grade.label, // In TeacherForm/StudentForm we might need "Grade - Segment", but the Hook should provide the raw label
+                        isActive: true,
+                        order: (index + 1) * 10
+                    }));
                 } else {
                     gradesData = gradeSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AcademicGrade));
                 }
-                // Sort grades by segment order first, then by grade order
-                gradesData.sort((a, b) => {
-                    const segA = segmentsData.find(s => s.id === a.segmentId);
-                    const segB = segmentsData.find(s => s.id === b.segmentId);
-                    const segOrderDiff = (segA?.order || 0) - (segB?.order || 0);
-                    if (segOrderDiff !== 0) return segOrderDiff;
-                    return (a.order || 0) - (b.order || 0);
-                });
                 setGrades(gradesData);
 
                 // Fetch Subjects
                 const subSnap = await getDocs(collection(db, 'academic_subjects'));
                 if (subSnap.empty) {
-                    subjectsData = DEFAULT_SUBJECTS.map((name, index) => ({
-                        id: `fallback_sub_${index}`,
-                        name: name,
-                        shortName: name.substring(0, 3).toUpperCase(),
+                    subjectsData = Object.values(SUBJECTS_DATA).map((sub, index) => ({
+                        id: sub.id,
+                        name: sub.label,
+                        shortName: sub.label.substring(0, 3).toUpperCase(),
                         isActive: true,
                         order: (index + 1) * 10
                     }));
@@ -86,22 +68,25 @@ export function useAcademicData() {
                 console.error("Error loading academic data:", error);
 
                 // Final Emergency Fallbacks
-                setSegments(EDUCATION_LEVELS.map((name, idx) => ({ id: `err-seg-${idx}`, name, order: idx, isActive: true })));
-                setGrades(GRADES_BY_LEVEL.flatMap((level, idx) =>
-                    level.grades.map((g, gIdx) => ({
-                        id: `err-grade-${idx}-${gIdx}`,
-                        name: `${g} - ${level.level}`,
-                        segmentId: `err-seg-${idx}`,
-                        isActive: true,
-                        order: gIdx
-                    }))
-                ));
-                setSubjects(DEFAULT_SUBJECTS.map((s, idx) => ({
-                    id: `err-sub-${idx}`,
-                    name: s,
-                    shortName: s.substring(0, 3).toUpperCase(),
+                setSegments(Object.values(ACADEMIC_SEGMENTS).map((seg, idx: number) => ({
+                    id: seg.id,
+                    name: seg.label,
+                    order: idx * 10,
+                    isActive: true
+                })));
+                setGrades(Object.values(ACADEMIC_GRADES).map((grade, idx: number) => ({
+                    id: grade.id,
+                    name: grade.label,
+                    segmentId: grade.segmentId,
                     isActive: true,
-                    order: idx
+                    order: idx * 10
+                })));
+                setSubjects(Object.values(SUBJECTS_DATA).map((s, idx: number) => ({
+                    id: s.id,
+                    name: s.label,
+                    shortName: s.label.substring(0, 3).toUpperCase(),
+                    isActive: true,
+                    order: idx * 10
                 })));
             } finally {
                 setLoading(false);

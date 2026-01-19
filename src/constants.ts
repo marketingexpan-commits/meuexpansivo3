@@ -53,10 +53,10 @@ export const ALLOW_MOCK_LOGIN = false;
 // --- ADMINISTRADORES ---
 // SENHAS SIMPLIFICADAS PARA TESTE E ACESSO IMEDIATO
 export const MOCK_ADMINS: Admin[] = [
-  { id: 'a1', username: 'admin_zn', password: 'admin', name: 'Direção Zona Norte', unit: SchoolUnit.UNIT_3 },
-  { id: 'a2', username: 'admin_bs', password: 'admin', name: 'Direção Boa Sorte', unit: SchoolUnit.UNIT_1 },
-  { id: 'a3', username: 'admin_ext', password: 'admin', name: 'Direção Extremoz', unit: SchoolUnit.UNIT_2 },
-  { id: 'a4', username: 'admin_qui', password: 'admin', name: 'Direção Quintas', unit: SchoolUnit.UNIT_4 },
+  { id: 'a1', username: 'admin_zn', password: 'admin', name: 'Direção Zona Norte', unit: SchoolUnit.UNIT_ZN },
+  { id: 'a2', username: 'admin_bs', password: 'admin', name: 'Direção Boa Sorte', unit: SchoolUnit.UNIT_BS },
+  { id: 'a3', username: 'admin_ext', password: 'admin', name: 'Direção Extremoz', unit: SchoolUnit.UNIT_EXT },
+  { id: 'a4', username: 'admin_qui', password: 'admin', name: 'Direção Quintas', unit: SchoolUnit.UNIT_QUI },
   { id: 'a0', username: 'admin_geral', password: 'admin', name: 'Direção Geral' }
 ];
 
@@ -76,7 +76,7 @@ export const MOCK_STUDENTS: Student[] = [
     gradeLevel: '8º Ano - Fundamental II',
     schoolClass: SchoolClass.A,
     shift: SchoolShift.MORNING,
-    unit: SchoolUnit.UNIT_3,
+    unit: SchoolUnit.UNIT_ZN,
     isBlocked: false
   },
   {
@@ -87,7 +87,7 @@ export const MOCK_STUDENTS: Student[] = [
     gradeLevel: '9º Ano - Fundamental II',
     schoolClass: SchoolClass.B,
     shift: SchoolShift.AFTERNOON,
-    unit: SchoolUnit.UNIT_1,
+    unit: SchoolUnit.UNIT_BS,
     isBlocked: false
   }
 ];
@@ -101,7 +101,7 @@ export const MOCK_TEACHERS: Teacher[] = [
     name: 'Prof. Carlos Santos (ZN)',
     subjects: [Subject.MATH, Subject.PORTUGUESE],
     phoneNumber: '+5584999999999',
-    unit: SchoolUnit.UNIT_3
+    unit: SchoolUnit.UNIT_ZN
   },
   {
     id: 't2',
@@ -110,7 +110,7 @@ export const MOCK_TEACHERS: Teacher[] = [
     name: 'Prof. Ana Lima (BS)',
     subjects: [Subject.SCIENCE, Subject.BIOLOGY],
     phoneNumber: '+5584988888888',
-    unit: SchoolUnit.UNIT_1
+    unit: SchoolUnit.UNIT_BS
   },
   {
     id: 't3',
@@ -119,7 +119,7 @@ export const MOCK_TEACHERS: Teacher[] = [
     name: 'Prof. Marcos Souza (EXT)',
     subjects: [Subject.HISTORY, Subject.GEOGRAPHY],
     phoneNumber: '+5584977777777',
-    unit: SchoolUnit.UNIT_2
+    unit: SchoolUnit.UNIT_EXT
   },
   {
     id: 't4',
@@ -128,7 +128,7 @@ export const MOCK_TEACHERS: Teacher[] = [
     name: 'Prof. Julia Costa (QUI)',
     subjects: [Subject.ENGLISH, Subject.ARTS],
     phoneNumber: '+5584966666666',
-    unit: SchoolUnit.UNIT_4
+    unit: SchoolUnit.UNIT_QUI
   }
 ];
 

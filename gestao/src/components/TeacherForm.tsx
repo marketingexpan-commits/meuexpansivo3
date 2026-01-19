@@ -6,6 +6,7 @@ import { Button } from './Button';
 import { User, Phone, Mail, GraduationCap, X, Loader2, ShieldAlert, Key, BookOpen, Layers } from 'lucide-react';
 import { teacherService } from '../services/teacherService';
 import type { Teacher } from '../types';
+import { UNIT_LABELS, SchoolUnit } from '../types';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { useSchoolUnits } from '../hooks/useSchoolUnits';
 import { maskCPF, sanitizePhone } from '../utils';
@@ -18,20 +19,13 @@ interface TeacherFormProps {
 export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
     const [isLoading, setIsLoading] = useState(false);
     const { subjects, segments, grades, loading: loadingAcademic } = useAcademicData();
-    const { units } = useSchoolUnits();
+    const { } = useSchoolUnits();
     const [showPassword, setShowPassword] = useState(false);
 
     const userUnit = localStorage.getItem('userUnit');
     const isAdminGeral = userUnit === 'admin_geral';
 
-    const unitMapping: Record<string, string> = {
-        'unit_zn': 'Zona Norte',
-        'unit_ext': 'Extremoz',
-        'unit_qui': 'Quintas',
-        'unit_bs': 'Boa Sorte'
-    };
-
-    const mappedUnit = (userUnit && !isAdminGeral) ? unitMapping[userUnit] : userUnit;
+    const mappedUnit = (userUnit && !isAdminGeral) ? userUnit : userUnit;
 
     const [formData, setFormData] = useState<Partial<Teacher>>({
         name: '',
@@ -144,9 +138,29 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.name || !formData.cpf || (!teacher && !formData.password)) {
-            alert("Por favor, preencha os campos obrigatórios.");
-            return;
+        // --- BLINDAGEM: VALIDAÇÃO RIGOROSA ---
+        const requiredFields = [
+            { key: 'name', label: 'Nome Completo' },
+            { key: 'cpf', label: 'CPF' },
+            { key: 'unit', label: 'Unidade' }
+        ];
+
+        for (const field of requiredFields) {
+            if (!(formData as any)[field.key]) {
+                return alert(`O campo "${field.label}" é obrigatório.`);
+            }
+        }
+
+        if (!teacher && !formData.password) {
+            return alert("Por favor, defina uma senha para o novo professor.");
+        }
+
+        if (!formData.subjects || formData.subjects.length === 0) {
+            return alert("Selecione pelo menos uma disciplina.");
+        }
+
+        if (!formData.assignments || formData.assignments.length === 0) {
+            return alert("É necessário vincular pelo menos uma matéria a uma série no quadro de 'Vínculos de Aula'.");
         }
 
         setIsLoading(true);
@@ -248,7 +262,10 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                                 name="unit"
                                 value={formData.unit}
                                 onChange={handleChange}
-                                options={isAdminGeral ? units.map(u => ({ label: u.fullName, value: u.id })) : units.filter(u => u.id === mappedUnit || u.fullName === mappedUnit).map(u => ({ label: u.fullName, value: u.id }))}
+                                options={Object.values(SchoolUnit).map(unit => ({
+                                    label: UNIT_LABELS[unit],
+                                    value: unit
+                                }))}
                                 startIcon={<GraduationCap className="w-4 h-4" />}
                                 required
                                 disabled={!isAdminGeral}

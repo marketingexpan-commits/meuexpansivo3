@@ -48,45 +48,62 @@ export const getCurrentSchoolYear = (): number => {
     return 2026; // Hardcoded to current system year as requested for the 2026 cycle
 };
 
+import { ACADEMIC_GRADES, ACADEMIC_SEGMENTS } from "./academicDefaults";
+
 /**
  * Normalizes class strings from numeric format to letters (e.g. "03" -> "C").
+ * Now strictly enforced as a single letter ID.
  */
 export const normalizeClass = (schoolClass: any): string => {
     if (!schoolClass) return '';
-    const classStr = String(schoolClass).trim();
+    const classStr = String(schoolClass).trim().toUpperCase();
 
-    // If already a letter A-E, just return it uppercase
-    if (/^[A-E]$/i.test(classStr)) return classStr.toUpperCase();
-
-    // Mapping numbers to letters
-    const num = parseInt(classStr, 10);
-    if (isNaN(num)) return classStr;
-
-    const mapping: Record<number, string> = {
-        1: 'A',
-        2: 'B',
-        3: 'C',
-        4: 'D',
-        5: 'E'
+    // Mapping common variants to standard IDs
+    const mapping: Record<string, string> = {
+        '1': 'A', '01': 'A',
+        '2': 'B', '02': 'B',
+        '3': 'C', '03': 'C',
+        '4': 'D', '04': 'D',
+        '5': 'E', '05': 'E'
     };
 
-    return mapping[num] || classStr;
+    return mapping[classStr] || classStr;
 };
 
 /**
  * Parses a grade level string into its grade and level components.
- * Example: "1º Ano - Fundamental I" -> { grade: "1º Ano", level: "Fundamental I" }
+ * Rigorous version: Expects "GradeLabel - SegmentLabel" or a valid Grade ID.
+ * Returns official Labels only to maintain UI consistency.
  */
 export const parseGradeLevel = (gradeLevel: string) => {
-    if (!gradeLevel) return { grade: '', level: 'Fundamental I' };
+    if (!gradeLevel) return { grade: '', level: ACADEMIC_SEGMENTS.FUND_1.label };
 
-    let level = 'Fundamental I';
-    if (gradeLevel.includes('Fundamental II')) level = 'Fundamental II';
-    else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) level = 'Ensino Médio';
+    // 1. Try to find by official "Grade - Segment" string
+    const [gradePart, levelPart] = gradeLevel.split(' - ');
 
-    const grade = gradeLevel.split(' - ')[0] || gradeLevel;
+    // 2. Validate against official list
+    const officialGrade = Object.values(ACADEMIC_GRADES).find(
+        g => g.label === gradePart && (levelPart ? ACADEMIC_SEGMENTS[Object.keys(ACADEMIC_SEGMENTS).find(k => ACADEMIC_SEGMENTS[k as keyof typeof ACADEMIC_SEGMENTS].label === levelPart) as keyof typeof ACADEMIC_SEGMENTS]?.label === levelPart : true)
+    );
 
-    return { grade, level };
+    if (officialGrade) {
+        const segment = Object.values(ACADEMIC_SEGMENTS).find(s => s.id === officialGrade.segmentId);
+        return {
+            grade: officialGrade.label,
+            level: segment?.label || ACADEMIC_SEGMENTS.FUND_1.label
+        };
+    }
+
+    // Fallback logic for legacy cases
+    let level = ACADEMIC_SEGMENTS.FUND_1.label;
+    if (gradeLevel.includes('Fundamental II')) level = ACADEMIC_SEGMENTS.FUND_2.label;
+    else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) level = ACADEMIC_SEGMENTS.MEDIO.label;
+    else if (gradeLevel.includes('Infantil')) level = ACADEMIC_SEGMENTS.INFANTIL.label;
+
+    return {
+        grade: gradeLevel.split(' - ')[0] || gradeLevel,
+        level
+    };
 };
 
 /**
