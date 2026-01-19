@@ -688,7 +688,7 @@ export interface BimesterConfig {
 export interface AcademicSettings {
   id: string;
   year: number;
-  unit: string; // 'all' for network default, or specific unit name
+  unit: SchoolUnit | 'all'; // 'all' for network default, or specific unit ID
   currentBimester: 1 | 2 | 3 | 4;
   bimesters: BimesterConfig[];
   updatedAt?: string;

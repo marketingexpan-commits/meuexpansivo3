@@ -1,4 +1,5 @@
 
+import { SchoolUnit } from '../types';
 import type { Student, SchoolUnitDetail } from '../types';
 
 
@@ -22,7 +23,7 @@ export function generateSchoolDeclaration(type: DeclarationType, data: Declarati
         month: 'long',
         year: 'numeric'
     });
-    const city = unitDetail.city || (student.unit === 'Extremoz' ? 'Extremoz' : 'Natal');
+    const city = unitDetail.city || (student.unit === SchoolUnit.UNIT_EXT ? 'Extremoz' : 'Natal');
     const currentYear = data.year || new Date().getFullYear();
 
     let title = '';

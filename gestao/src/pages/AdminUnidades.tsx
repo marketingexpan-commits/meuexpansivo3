@@ -5,15 +5,15 @@ import { Button } from '../components/Button';
 import { Select } from '../components/Select';
 import { db } from '../firebaseConfig';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
-import { SchoolUnit } from '../types';
+import { SchoolUnit, UNIT_LABELS } from '../types';
 import type { Admin } from '../types';
 import { Loader2, Pencil, Trash2, Eye, EyeOff, ShieldCheck, Save, Plus } from 'lucide-react';
 
 const SCHOOL_UNITS_LIST = [
-    { label: 'Boa Sorte', value: 'Boa Sorte' },
-    { label: 'Extremoz', value: 'Extremoz' },
-    { label: 'Zona Norte', value: 'Zona Norte' },
-    { label: 'Quintas', value: 'Quintas' },
+    { label: UNIT_LABELS[SchoolUnit.UNIT_BS], value: SchoolUnit.UNIT_BS },
+    { label: UNIT_LABELS[SchoolUnit.UNIT_EXT], value: SchoolUnit.UNIT_EXT },
+    { label: UNIT_LABELS[SchoolUnit.UNIT_ZN], value: SchoolUnit.UNIT_ZN },
+    { label: UNIT_LABELS[SchoolUnit.UNIT_QUI], value: SchoolUnit.UNIT_QUI },
     { label: 'Todas as Unidades (Acesso Geral)', value: 'admin_geral' }
 ];
 
@@ -26,7 +26,7 @@ export default function AdminUnidades() {
     const [name, setName] = useState('');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [unit, setUnit] = useState<string>('Boa Sorte');
+    const [unit, setUnit] = useState<string>(SchoolUnit.UNIT_BS);
     const [roleType, setRoleType] = useState<'gestao' | 'student_app'>('student_app');
     const [isGeneralAdmin, setIsGeneralAdmin] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -44,7 +44,7 @@ export default function AdminUnidades() {
         if (isGeneralAdmin) {
             setUnit('admin_geral');
         } else if (unit === 'admin_geral') {
-            setUnit('Boa Sorte'); // Reset to default if unchecking
+            setUnit(SchoolUnit.UNIT_BS); // Reset to default if unchecking
         }
     }, [isGeneralAdmin]);
 
@@ -79,7 +79,7 @@ export default function AdminUnidades() {
         setName('');
         setUsername('');
         setPassword('');
-        setUnit('Boa Sorte');
+        setUnit(SchoolUnit.UNIT_BS);
         setRoleType('student_app');
         setIsGeneralAdmin(false);
         setShowPassword(false);
@@ -93,7 +93,7 @@ export default function AdminUnidades() {
 
         const isGeneral = admin.unit === 'admin_geral';
         setIsGeneralAdmin(isGeneral);
-        setUnit(admin.unit || 'Boa Sorte');
+        setUnit(admin.unit || SchoolUnit.UNIT_BS);
 
         setRoleType(admin.roleType || 'student_app');
         window.scrollTo({ top: 0, behavior: 'smooth' });

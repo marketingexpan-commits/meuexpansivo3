@@ -8,7 +8,7 @@ import { Loader2, ShieldCheck, Search, X, Trash2, AlertTriangle, Database, Zap, 
 import { getCurrentSchoolYear, isClassScheduled } from '../utils/academicUtils';
 import { getAcademicSettings } from '../services/academicSettings';
 import type { GradeEntry, ClassSchedule } from '../types';
-import { SchoolUnit } from '../types';
+import { SchoolUnit, UNIT_LABELS } from '../types';
 import { useAcademicData } from '../hooks/useAcademicData';
 
 interface Discrepancy {
@@ -44,7 +44,7 @@ export const DatabaseCleanupTool = () => {
 
     // Filters & Context
     const { grades: allGradesList } = useAcademicData();
-    const [selectedUnit, setSelectedUnit] = useState<string>(SchoolUnit.UNIT_1);
+    const [selectedUnit, setSelectedUnit] = useState<SchoolUnit>(SchoolUnit.UNIT_BS);
     const [selectedGrade, setSelectedGrade] = useState<string>('');
 
     // Auth Check
@@ -532,11 +532,11 @@ export const DatabaseCleanupTool = () => {
                                         <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Unidade</label>
                                         <select
                                             value={selectedUnit}
-                                            onChange={(e) => setSelectedUnit(e.target.value)}
+                                            onChange={(e) => setSelectedUnit(e.target.value as SchoolUnit)}
                                             className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold shadow-sm outline-none focus:ring-2 focus:ring-blue-950/10"
                                         >
-                                            {Object.entries(SchoolUnit).map(([key, value]) => (
-                                                <option key={key} value={value}>{value}</option>
+                                            {Object.values(SchoolUnit).map((value) => (
+                                                <option key={value} value={value}>{UNIT_LABELS[value]}</option>
                                             ))}
                                         </select>
                                     </div>

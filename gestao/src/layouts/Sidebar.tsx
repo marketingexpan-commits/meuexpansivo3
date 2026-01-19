@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { SchoolUnit } from '../types';
 import { DeclarationSearchModal } from '../components/DeclarationSearchModal';
 import { HistorySearchModal } from '../components/HistorySearchModal';
 import { BulletinSearchModal } from '../components/BulletinSearchModal'; // Import new modal
@@ -366,21 +367,18 @@ export function Sidebar() {
             )}
 
             {showCalendarModal && (() => {
-                const userUnit = localStorage.getItem('userUnit');
+                const userUnit = localStorage.getItem('userUnit') as SchoolUnit | 'admin_geral' | null;
                 const isAdmin = userUnit === 'admin_geral';
-                const unitMapping: Record<string, string> = {
-                    'unit_zn': 'Zona Norte',
-                    'unit_ext': 'Extremoz',
-                    'unit_qui': 'Quintas',
-                    'unit_bs': 'Boa Sorte'
-                };
-                const mappedUnit = (userUnit && !isAdmin) ? (unitMapping[userUnit] || userUnit) : 'all';
+
+                // If user is admin_geral, we pass 'admin_geral' to CalendarManagement
+                // If user is a unit coordinator, we pass their SchoolUnit
+                const mappedUnit = userUnit || 'admin_geral';
 
                 return (
                     <CalendarManagement
                         isOpen={showCalendarModal}
                         onClose={() => setShowCalendarModal(false)}
-                        unit={mappedUnit}
+                        unit={mappedUnit as SchoolUnit | 'admin_geral'}
                         isAdmin={isAdmin}
                     />
                 );

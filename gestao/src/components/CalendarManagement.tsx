@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { CalendarEvent, EventType, AcademicSettings } from '../types';
+import { SchoolUnit, UNIT_LABELS } from '../types';
 import { db } from '../firebaseConfig';
 import { subscribeToAcademicSettings, updateAcademicSettings, syncBimesterFromEvent } from '../services/academicSettings';
 import { useAcademicData } from '../hooks/useAcademicData';
@@ -24,7 +25,7 @@ import { generateSchoolCalendar } from '../utils/calendarGenerator';
 interface CalendarManagementProps {
     isOpen: boolean;
     onClose: () => void;
-    unit: string; // Current unit (for coordinators)
+    unit: SchoolUnit | 'admin_geral'; // Current unit (for coordinators)
     isAdmin?: boolean;
 }
 
@@ -40,7 +41,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
     const [academicSettings, setAcademicSettings] = useState<AcademicSettings | null>(null);
 
     // Filter unit for Admin view
-    const [filterUnit, setFilterUnit] = useState<string>(isAdmin ? 'all' : unit);
+    const [filterUnit, setFilterUnit] = useState<SchoolUnit | 'all'>(isAdmin ? 'all' : (unit === 'admin_geral' ? 'all' : unit as SchoolUnit));
 
     // Academic Data for scoping
     const { segments, grades, subjects } = useAcademicData();
@@ -106,7 +107,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                 const finalUnits = targetUnit === 'all' ? ['all'] : [targetUnit];
                 batch.set(docRef, { ...eventData, units: finalUnits, createdAt: new Date().toISOString() });
                 // NEW: Sync bimester dates if this is a key event
-                syncBimesterFromEvent(eventData.title, eventData.startDate, targetUnit, 2026, eventData.endDate);
+                syncBimesterFromEvent(eventData.title, eventData.startDate, targetUnit as SchoolUnit | 'all', 2026, eventData.endDate);
             });
             await batch.commit();
             alert("Eventos importados com sucesso!");
@@ -153,7 +154,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
             if (data.title && data.startDate) {
                 const targetUnits = data.units || [];
                 for (const u of targetUnits) {
-                    syncBimesterFromEvent(data.title as string, data.startDate as string, u, 2026, data.endDate as string);
+                    syncBimesterFromEvent(data.title as string, data.startDate as string, u as SchoolUnit | 'all', 2026, data.endDate as string);
                 }
             }
             setIsFormOpen(false);
@@ -237,11 +238,11 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                         <select
                                             className="text-[10px] font-black uppercase tracking-widest text-blue-900 bg-blue-50/50 border-none rounded-xl py-1 px-2 outline-none cursor-pointer hover:bg-blue-100 transition-colors"
                                             value={filterUnit}
-                                            onChange={(e) => setFilterUnit(e.target.value)}
+                                            onChange={(e) => setFilterUnit(e.target.value as SchoolUnit | 'all')}
                                         >
                                             <option value="all">Rede (Padrão)</option>
                                             {SCHOOL_UNITS_LIST.map(u => (
-                                                <option key={u} value={u}>{u}</option>
+                                                <option key={u} value={u}>{UNIT_LABELS[u as SchoolUnit]}</option>
                                             ))}
                                         </select>
                                     </div>
@@ -466,7 +467,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                                                         }
                                                                     }}
                                                                 />
-                                                                <span className="text-sm font-medium text-gray-600 group-hover:text-blue-950 transition-colors">{u}</span>
+                                                                <span className="text-sm font-medium text-gray-600 group-hover:text-blue-950 transition-colors">{UNIT_LABELS[u as SchoolUnit]}</span>
                                                             </label>
                                                         ))}
                                                     </div>

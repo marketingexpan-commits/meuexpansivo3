@@ -19,7 +19,7 @@ interface UnitContactSettings {
 const DEFAULT_MESSAGE = "Olá, estou enviando o comprovante de pagamento.";
 
 export function FinanceiroConfig() {
-    const [selectedUnit, setSelectedUnit] = useState<SchoolUnit>(SchoolUnit.UNIT_3); // Default fallback
+    const [selectedUnit, setSelectedUnit] = useState<SchoolUnit>(SchoolUnit.UNIT_ZN); // Default fallback
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [userRole, setUserRole] = useState<string>(''); // 'admin_geral' or unit code
@@ -41,10 +41,10 @@ export function FinanceiroConfig() {
             // Map login unit code to SchoolUnit enum
             let unitToSelect: SchoolUnit | undefined;
             switch (storedUnit) {
-                case 'unit_zn': unitToSelect = SchoolUnit.UNIT_3; break; // Zona Norte
-                case 'unit_bs': unitToSelect = SchoolUnit.UNIT_1; break; // Boa Sorte
-                case 'unit_ext': unitToSelect = SchoolUnit.UNIT_2; break; // Extremoz
-                case 'unit_qui': unitToSelect = SchoolUnit.UNIT_4; break; // Quintas
+                case 'unit_zn': unitToSelect = SchoolUnit.UNIT_ZN; break; // Zona Norte
+                case 'unit_bs': unitToSelect = SchoolUnit.UNIT_BS; break; // Boa Sorte
+                case 'unit_ext': unitToSelect = SchoolUnit.UNIT_EXT; break; // Extremoz
+                case 'unit_qui': unitToSelect = SchoolUnit.UNIT_QUI; break; // Quintas
             }
             if (unitToSelect) setSelectedUnit(unitToSelect);
         }

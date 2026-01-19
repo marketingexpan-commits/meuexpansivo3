@@ -10,6 +10,7 @@ import {
     onSnapshot,
     writeBatch
 } from 'firebase/firestore';
+import { SchoolUnit } from '../types';
 import type { AcademicSettings, BimesterConfig } from '../types';
 
 const SETTINGS_COLLECTION = 'academic_settings';
@@ -21,7 +22,7 @@ export const DEFAULT_BIMESTERS: BimesterConfig[] = [
     { number: 4, label: '4º Bimestre', startDate: '2026-09-28', endDate: '2026-12-15' },
 ];
 
-export const getAcademicSettings = async (year: number = 2026, unit: string = 'all'): Promise<AcademicSettings> => {
+export const getAcademicSettings = async (year: number = 2026, unit: SchoolUnit | 'all' = 'all'): Promise<AcademicSettings> => {
     const q = query(
         collection(db, SETTINGS_COLLECTION),
         where('year', '==', year),
@@ -60,7 +61,7 @@ export const getAcademicSettings = async (year: number = 2026, unit: string = 'a
     return { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() } as AcademicSettings;
 };
 
-export const updateAcademicSettings = async (id: string, data: Partial<AcademicSettings>, unit?: string, year?: number) => {
+export const updateAcademicSettings = async (id: string, data: Partial<AcademicSettings>, unit?: SchoolUnit | 'all', year?: number) => {
     if (!id) return;
 
     const docRef = doc(db, SETTINGS_COLLECTION, id);
@@ -92,7 +93,7 @@ export const updateAcademicSettings = async (id: string, data: Partial<AcademicS
     }
 };
 
-export const subscribeToAcademicSettings = (year: number, unit: string, callback: (settings: AcademicSettings) => void) => {
+export const subscribeToAcademicSettings = (year: number, unit: SchoolUnit | 'all', callback: (settings: AcademicSettings) => void) => {
     const q = query(
         collection(db, SETTINGS_COLLECTION),
         where('year', '==', year),
@@ -110,7 +111,7 @@ export const subscribeToAcademicSettings = (year: number, unit: string, callback
     });
 };
 
-export const syncBimesterFromEvent = async (eventTitle: string, startDate: string, unit: string, year: number, endDate?: string) => {
+export const syncBimesterFromEvent = async (eventTitle: string, startDate: string, unit: SchoolUnit | 'all', year: number, endDate?: string) => {
     let updateStart = false;
     let updateEnd = false;
     const normalizedTitle = eventTitle.trim().toLowerCase();
