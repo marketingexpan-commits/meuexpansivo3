@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useAcademicData } from '../../hooks/useAcademicData';
 import * as XLSX from 'xlsx';
 import { db } from '../../firebaseConfig';
-import { Admin, Student, Teacher, SchoolUnit, Subject, SchoolShift, SchoolClass, UnitContact, CoordinationSegment } from '../types';
+import { Admin, Student, Teacher, SchoolUnit, UNIT_LABELS, Subject, SchoolShift, SchoolClass, UnitContact, CoordinationSegment } from '../types';
 import { SCHOOL_UNITS_LIST, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST } from '../constants';
 import { Button } from './Button';
 import { Card, CardContent, CardHeader, CardTitle } from './Card';
@@ -76,7 +76,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             setSGrade(grades[0].name);
         }
     }, [loadingAcademic, grades, sGrade]);
-    const [sUnit, setSUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_1);
+    const [sUnit, setSUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_BS);
     const [sShift, setSShift] = useState<SchoolShift>(SchoolShift.MORNING);
     const [sClass, setSClass] = useState<SchoolClass>(SchoolClass.A);
     const [sStatus, setSStatus] = useState<string>('CURSANDO'); // New State
@@ -90,7 +90,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [tName, setTName] = useState('');
     const [tCpf, setTCpf] = useState('');
     const [tPhone, setTPhone] = useState('+55');
-    const [tUnit, setTUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_1);
+    const [tUnit, setTUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_BS);
     const [tPass, setTPass] = useState('');
     const [showTeacherPassword, setShowTeacherPassword] = useState(false);
     const [tSubjects, setTSubjects] = useState<Subject[]>([]);
@@ -108,7 +108,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [aName, setAName] = useState('');
     const [aUser, setAUser] = useState('');
     const [aPass, setAPass] = useState('');
-    const [aUnit, setAUnit] = useState<SchoolUnit>(SchoolUnit.UNIT_1);
+    const [aUnit, setAUnit] = useState<SchoolUnit>(SchoolUnit.UNIT_BS);
     const [showAdminPassword, setShowAdminPassword] = useState(false);
     const [adminToDelete, setAdminToDelete] = useState<string | null>(null);
 
@@ -117,7 +117,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [cName, setCName] = useState('');
     const [cRole, setCRole] = useState('Coordenador');
     const [cPhone, setCPhone] = useState('+55');
-    const [cUnit, setCUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_1);
+    const [cUnit, setCUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_BS);
     const [cSegment, setCSegment] = useState<CoordinationSegment | undefined>(undefined);
     const [contactToDelete, setContactToDelete] = useState<string | null>(null);
 
@@ -489,8 +489,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         <div>
                                             <label className="text-sm font-medium">Unidade</label>
                                             {isGeneralAdmin ? (
-                                                <select value={sUnit} onChange={e => setSUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>
-                                            ) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}
+                                                <select value={sUnit} onChange={e => setSUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{UNIT_LABELS[u as SchoolUnit]}</option>)}</select>
+                                            ) : <div className="p-2 bg-gray-100 rounded text-gray-600">{UNIT_LABELS[adminUnit as SchoolUnit]}</div>}
                                         </div>
                                         <div>
                                             <label className="text-sm font-medium">Situação (Status)</label>
@@ -546,7 +546,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                     <tr key={s.id} className="border-b">
                                                         <td className="p-3">{s.name}</td>
                                                         <td className="p-3">{s.code}</td>
-                                                        <td className="p-3">{s.unit}</td>
+                                                        <td className="p-3">{UNIT_LABELS[s.unit as SchoolUnit] || s.unit}</td>
                                                         <td className="p-3 flex gap-2">
                                                             <button onClick={() => startEditingStudent(s)} className="text-blue-600 hover:underline">Editar</button>
                                                             <button onClick={() => initiateDeleteStudent(s.id)} className="text-red-600 hover:underline">Excluir</button>
@@ -594,8 +594,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         <div>
                                             <label className="text-sm font-medium">Unidade</label>
                                             {isGeneralAdmin ? (
-                                                <select value={tUnit} onChange={e => setTUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>
-                                            ) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}
+                                                <select value={tUnit} onChange={e => setTUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{UNIT_LABELS[u as SchoolUnit]}</option>)}</select>
+                                            ) : <div className="p-2 bg-gray-100 rounded text-gray-600">{UNIT_LABELS[adminUnit as SchoolUnit]}</div>}
                                         </div>
 
                                         <div>
@@ -623,7 +623,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                     <tr key={t.id} className="border-b">
                                                         <td className="p-3">{t.name}</td>
                                                         <td className="p-3"><div className="flex flex-wrap gap-1">{t.subjects.map(s => <span key={s} className="bg-gray-100 px-2 rounded text-xs">{s}</span>)}</div></td>
-                                                        <td className="p-3">{t.unit}</td>
+                                                        <td className="p-3">{UNIT_LABELS[t.unit as SchoolUnit] || t.unit}</td>
                                                         <td className="p-3 flex gap-2">
                                                             <button onClick={() => startEditingTeacher(t)} className="text-blue-600 hover:underline">Editar</button>
                                                             <button onClick={() => initiateDeleteTeacher(t.id)} className="text-red-600 hover:underline">Excluir</button>
@@ -636,127 +636,132 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 </div>
                             </div>
                         </div>
-                    )}
+                    )
+                    }
 
                     {/* --- CONTEÚDO ADMINS (NOVA ABA) --- */}
-                    {activeTab === 'admins' && isGeneralAdmin && (
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            <div className="lg:col-span-1">
-                                <div className="bg-white p-6 rounded-xl shadow-sm border border-purple-200">
-                                    <h2 className="text-lg font-bold text-purple-800 mb-4">{editingAdminId ? 'Editar Admin' : 'Novo Admin de Unidade'}</h2>
-                                    <form onSubmit={handleAdminSubmit} className="space-y-4">
-                                        <div><label className="text-sm font-medium">Nome (Descrição)</label><input type="text" value={aName} onChange={e => setAName(e.target.value)} required className="w-full p-2 border rounded" /></div>
-                                        <div><label className="text-sm font-medium">Usuário de Login</label><input type="text" value={aUser} onChange={e => setAUser(e.target.value)} required className="w-full p-2 border rounded" /></div>
-                                        <div>
-                                            <label className="text-sm font-medium">Unidade Responsável</label>
-                                            <select value={aUnit} onChange={e => setAUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">
-                                                {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="text-sm font-medium">Senha</label>
-                                            <div className="flex gap-2 relative">
-                                                <input type={showAdminPassword ? "text" : "password"} value={aPass} onChange={e => setAPass(e.target.value)} required={!editingAdminId} className="w-full p-2 border rounded" />
-                                                <button type="button" onClick={() => setShowAdminPassword(!showAdminPassword)} className="absolute right-16 top-2 text-gray-500">{showAdminPassword ? <EyeOffIcon /> : <EyeIcon />}</button>
-                                                <button type="button" onClick={handleGenerateAdminPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button>
+                    {
+                        activeTab === 'admins' && isGeneralAdmin && (
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                <div className="lg:col-span-1">
+                                    <div className="bg-white p-6 rounded-xl shadow-sm border border-purple-200">
+                                        <h2 className="text-lg font-bold text-purple-800 mb-4">{editingAdminId ? 'Editar Admin' : 'Novo Admin de Unidade'}</h2>
+                                        <form onSubmit={handleAdminSubmit} className="space-y-4">
+                                            <div><label className="text-sm font-medium">Nome (Descrição)</label><input type="text" value={aName} onChange={e => setAName(e.target.value)} required className="w-full p-2 border rounded" /></div>
+                                            <div><label className="text-sm font-medium">Usuário de Login</label><input type="text" value={aUser} onChange={e => setAUser(e.target.value)} required className="w-full p-2 border rounded" /></div>
+                                            <div>
+                                                <label className="text-sm font-medium">Unidade Responsável</label>
+                                                <select value={aUnit} onChange={e => setAUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">
+                                                    {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{UNIT_LABELS[u as SchoolUnit]}</option>)}
+                                                </select>
                                             </div>
-                                        </div>
-                                        <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700">Salvar Admin</Button>
-                                    </form>
+                                            <div>
+                                                <label className="text-sm font-medium">Senha</label>
+                                                <div className="flex gap-2 relative">
+                                                    <input type={showAdminPassword ? "text" : "password"} value={aPass} onChange={e => setAPass(e.target.value)} required={!editingAdminId} className="w-full p-2 border rounded" />
+                                                    <button type="button" onClick={() => setShowAdminPassword(!showAdminPassword)} className="absolute right-16 top-2 text-gray-500">{showAdminPassword ? <EyeOffIcon /> : <EyeIcon />}</button>
+                                                    <button type="button" onClick={handleGenerateAdminPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button>
+                                                </div>
+                                            </div>
+                                            <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700">Salvar Admin</Button>
+                                        </form>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className="lg:col-span-2">
-                                <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-                                    <div className="p-4 bg-purple-50 border-b border-purple-100"><h3 className="font-bold text-purple-900">Administradores Cadastrados</h3></div>
-                                    <table className="w-full text-sm text-left">
-                                        <thead className="bg-gray-50"><tr><th className="p-3">Nome</th><th className="p-3">Usuário</th><th className="p-3">Unidade</th><th className="p-3">Ações</th></tr></thead>
-                                        <tbody>
-                                            {filteredAdmins.map(a => (
-                                                <tr key={a.id} className="border-b">
-                                                    <td className="p-3 font-medium">{a.name}</td>
-                                                    <td className="p-3 font-mono text-gray-600">{a.username}</td>
-                                                    <td className="p-3"><span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{a.unit}</span></td>
-                                                    <td className="p-3 flex gap-2">
-                                                        <button onClick={() => startEditingAdmin(a)} className="text-blue-600 hover:underline">Editar</button>
-                                                        <button onClick={() => initiateDeleteAdmin(a.id)} className="text-red-600 hover:underline">Excluir</button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                <div className="lg:col-span-2">
+                                    <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                                        <div className="p-4 bg-purple-50 border-b border-purple-100"><h3 className="font-bold text-purple-900">Administradores Cadastrados</h3></div>
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="bg-gray-50"><tr><th className="p-3">Nome</th><th className="p-3">Usuário</th><th className="p-3">Unidade</th><th className="p-3">Ações</th></tr></thead>
+                                            <tbody>
+                                                {filteredAdmins.map(a => (
+                                                    <tr key={a.id} className="border-b">
+                                                        <td className="p-3 font-medium">{a.name}</td>
+                                                        <td className="p-3 font-mono text-gray-600">{a.username}</td>
+                                                        <td className="p-3"><span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{UNIT_LABELS[a.unit as SchoolUnit] || a.unit}</span></td>
+                                                        <td className="p-3 flex gap-2">
+                                                            <button onClick={() => startEditingAdmin(a)} className="text-blue-600 hover:underline">Editar</button>
+                                                            <button onClick={() => initiateDeleteAdmin(a.id)} className="text-red-600 hover:underline">Excluir</button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )
+                    }
 
 
                     {/* --- CONTEÚDO CONTATOS / COORDENAÇÃO --- */}
-                    {activeTab === 'contacts' && (
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            <div className="lg:col-span-1">
-                                <div className="bg-white p-6 rounded-xl shadow-sm border border-green-200">
-                                    <h2 className="text-lg font-bold text-green-800 mb-4">{editingContactId ? 'Editar Contato/Coord.' : 'Novo Contato'}</h2>
-                                    <form onSubmit={handleContactSubmit} className="space-y-4">
-                                        <div><label className="text-sm font-medium">Nome</label><input type="text" value={cName} onChange={e => setCName(e.target.value)} required className="w-full p-2 border rounded" placeholder="Ex: Coord. Pedagógica" /></div>
-                                        <div><label className="text-sm font-medium">Cargo/Função</label><input type="text" value={cRole} onChange={e => setCRole(e.target.value)} required className="w-full p-2 border rounded" placeholder="Ex: Coordenador" /></div>
-                                        <div><label className="text-sm font-medium">Whatsapp</label><input type="text" value={cPhone} onChange={e => setCPhone(e.target.value)} required className="w-full p-2 border rounded" /></div>
+                    {
+                        activeTab === 'contacts' && (
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                <div className="lg:col-span-1">
+                                    <div className="bg-white p-6 rounded-xl shadow-sm border border-green-200">
+                                        <h2 className="text-lg font-bold text-green-800 mb-4">{editingContactId ? 'Editar Contato/Coord.' : 'Novo Contato'}</h2>
+                                        <form onSubmit={handleContactSubmit} className="space-y-4">
+                                            <div><label className="text-sm font-medium">Nome</label><input type="text" value={cName} onChange={e => setCName(e.target.value)} required className="w-full p-2 border rounded" placeholder="Ex: Coord. Pedagógica" /></div>
+                                            <div><label className="text-sm font-medium">Cargo/Função</label><input type="text" value={cRole} onChange={e => setCRole(e.target.value)} required className="w-full p-2 border rounded" placeholder="Ex: Coordenador" /></div>
+                                            <div><label className="text-sm font-medium">Whatsapp</label><input type="text" value={cPhone} onChange={e => setCPhone(e.target.value)} required className="w-full p-2 border rounded" /></div>
 
-                                        <div>
-                                            <label className="text-sm font-medium">Segmento de Atuação</label>
-                                            <select value={cSegment || ''} onChange={e => setCSegment(e.target.value as CoordinationSegment)} className="w-full p-2 border rounded">
-                                                <option value="">-- Selecione (Opcional) --</option>
-                                                <option value="infantil_fund1">Educação Infantil / Fundamental I</option>
-                                                <option value="fund2_medio">Fundamental II / Ensino Médio</option>
-                                                <option value="geral">Geral / Ambos</option>
-                                            </select>
-                                            <p className="text-xs text-gray-500 mt-1">Define para quais alunos aparecerá no Fale com a Escola.</p>
-                                        </div>
+                                            <div>
+                                                <label className="text-sm font-medium">Segmento de Atuação</label>
+                                                <select value={cSegment || ''} onChange={e => setCSegment(e.target.value as CoordinationSegment)} className="w-full p-2 border rounded">
+                                                    <option value="">-- Selecione (Opcional) --</option>
+                                                    <option value="infantil_fund1">Educação Infantil / Fundamental I</option>
+                                                    <option value="fund2_medio">Fundamental II / Ensino Médio</option>
+                                                    <option value="geral">Geral / Ambos</option>
+                                                </select>
+                                                <p className="text-xs text-gray-500 mt-1">Define para quais alunos aparecerá no Fale com a Escola.</p>
+                                            </div>
 
-                                        <div>
-                                            <label className="text-sm font-medium">Unidade</label>
-                                            {isGeneralAdmin ? (
-                                                <select value={cUnit} onChange={e => setCUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>
-                                            ) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}
-                                        </div>
+                                            <div>
+                                                <label className="text-sm font-medium">Unidade</label>
+                                                {isGeneralAdmin ? (
+                                                    <select value={cUnit} onChange={e => setCUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{UNIT_LABELS[u as SchoolUnit]}</option>)}</select>
+                                                ) : <div className="p-2 bg-gray-100 rounded text-gray-600">{UNIT_LABELS[adminUnit as SchoolUnit]}</div>}
+                                            </div>
 
-                                        <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">{editingContactId ? 'Salvar Coord.' : 'Cadastrar Coord.'}</Button>
-                                        {editingContactId && <button type="button" onClick={() => { setEditingContactId(null); setCName(''); setCPhone(''); setCSegment(undefined); }} className="w-full text-center text-sm text-gray-500 mt-2">Cancelar</button>}
-                                    </form>
+                                            <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">{editingContactId ? 'Salvar Coord.' : 'Cadastrar Coord.'}</Button>
+                                            {editingContactId && <button type="button" onClick={() => { setEditingContactId(null); setCName(''); setCPhone(''); setCSegment(undefined); }} className="w-full text-center text-sm text-gray-500 mt-2">Cancelar</button>}
+                                        </form>
+                                    </div>
+                                </div >
+
+                                <div className="lg:col-span-2">
+                                    <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                                        <div className="p-4 bg-green-50 border-b border-green-100"><h3 className="font-bold text-green-900">Coordenação Cadastrada ({filteredContacts.length})</h3></div>
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="bg-gray-50"><tr><th className="p-3">Nome/Cargo</th><th className="p-3">Segmento</th><th className="p-3">Whatsapp</th><th className="p-3">Ações</th></tr></thead>
+                                            <tbody>
+                                                {filteredContacts.map(c => (
+                                                    <tr key={c.id} className="border-b">
+                                                        <td className="p-3">
+                                                            <div className="font-bold">{c.name}</div>
+                                                            <div className="text-gray-500 text-xs">{c.role} ({UNIT_LABELS[c.unit as SchoolUnit] || c.unit})</div>
+                                                        </td>
+                                                        <td className="p-3">
+                                                            {c.segment === CoordinationSegment.INFANTIL_FUND1 && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">Infantil/Fund I</span>}
+                                                            {c.segment === CoordinationSegment.FUND2_MEDIO && <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">Fund II/Médio</span>}
+                                                            {(c.segment === CoordinationSegment.GERAL || !c.segment) && <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs">Geral</span>}
+                                                        </td>
+                                                        <td className="p-3 text-xs font-mono">{c.phone}</td>
+                                                        <td className="p-3 flex gap-2">
+                                                            <button onClick={() => startEditingContact(c)} className="text-blue-600 hover:underline">Editar</button>
+                                                            <button onClick={() => initiateDeleteContact(c.id)} className="text-red-600 hover:underline">Excluir</button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {filteredContacts.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-gray-500">Nenhum coordenador cadastrado.</td></tr>}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
-                            </div>
-
-                            <div className="lg:col-span-2">
-                                <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-                                    <div className="p-4 bg-green-50 border-b border-green-100"><h3 className="font-bold text-green-900">Coordenação Cadastrada ({filteredContacts.length})</h3></div>
-                                    <table className="w-full text-sm text-left">
-                                        <thead className="bg-gray-50"><tr><th className="p-3">Nome/Cargo</th><th className="p-3">Segmento</th><th className="p-3">Whatsapp</th><th className="p-3">Ações</th></tr></thead>
-                                        <tbody>
-                                            {filteredContacts.map(c => (
-                                                <tr key={c.id} className="border-b">
-                                                    <td className="p-3">
-                                                        <div className="font-bold">{c.name}</div>
-                                                        <div className="text-gray-500 text-xs">{c.role} ({c.unit})</div>
-                                                    </td>
-                                                    <td className="p-3">
-                                                        {c.segment === CoordinationSegment.INFANTIL_FUND1 && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">Infantil/Fund I</span>}
-                                                        {c.segment === CoordinationSegment.FUND2_MEDIO && <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">Fund II/Médio</span>}
-                                                        {(c.segment === CoordinationSegment.GERAL || !c.segment) && <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs">Geral</span>}
-                                                    </td>
-                                                    <td className="p-3 text-xs font-mono">{c.phone}</td>
-                                                    <td className="p-3 flex gap-2">
-                                                        <button onClick={() => startEditingContact(c)} className="text-blue-600 hover:underline">Editar</button>
-                                                        <button onClick={() => initiateDeleteContact(c.id)} className="text-red-600 hover:underline">Excluir</button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                            {filteredContacts.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-gray-500">Nenhum coordenador cadastrado.</td></tr>}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                            </div >
+                        )
+                    }
 
                     {/* SEÇÃO DE MANUTENÇÃO (APENAS ADMIN GERAL) */}
                     {
@@ -945,8 +950,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         )
                     }
 
-                </main>
-            </div>
-        </div>
+                </main >
+            </div >
+        </div >
     );
 };

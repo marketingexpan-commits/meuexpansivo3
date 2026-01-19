@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc -b && vite build",
     "preview": "vite preview",
     "build:css": "tailwindcss -i ./index.css -o ./public/style.css --minify",
     "watch:css": "tailwindcss -i ./index.css -o ./public/style.css --watch"

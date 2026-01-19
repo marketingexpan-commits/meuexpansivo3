@@ -7,8 +7,8 @@ export const generateSchoolCalendar = (
     settings: AcademicSettings | null,
     unitName: string
 ) => {
-    const rawUnitKey = unitName === 'all' ? 'Zona Norte' : unitName; // Fallback for header if 'all'
-    const unitInfo = UNIT_DETAILS[rawUnitKey] || UNIT_DETAILS['Zona Norte'];
+    const rawUnitKey = unitName === 'all' ? 'unit_zn' : unitName; // Fallback for header if 'all'
+    const unitInfo = UNIT_DETAILS[rawUnitKey] || UNIT_DETAILS['unit_zn'];
     const logoUrl = 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png';
     const currentYear = settings?.year || new Date().getFullYear();
 

@@ -62,3 +62,136 @@ export const SUBJECTS_DATA = {
     ENTREPRENEURSHIP: { id: 'sub_entrepreneurship', label: 'Empreendedorismo' },
     MUSIC: { id: 'sub_music', label: 'Música' }
 };
+
+export const DEFAULT_SUBJECTS = Object.values(SUBJECTS_DATA).map(s => s.label);
+
+export const UNIT_DETAILS: Record<string, {
+    name: string,
+    cnpj: string,
+    address: string,
+    phone: string,
+    email?: string,
+    district?: string,
+    city?: string,
+    uf?: string,
+    cep?: string,
+    professionalTitle?: string,
+    authorization?: string
+}> = {
+    'unit_zn': {
+        name: 'Expansivo - Zona Norte',
+        cnpj: '08.693.673/0001-95',
+        address: 'Rua Desportista José Augusto de Freitas, 50',
+        district: 'Pajuçara',
+        city: 'Natal',
+        uf: 'RN',
+        cep: '59133-310',
+        phone: '(84) 99836-2024',
+        email: 'diretoria.ZN@expansivo.com.br',
+        professionalTitle: 'Educação Infantil, Ensino Fundamental e Médio',
+        authorization: 'Portaria SEEC/RN'
+    },
+    'unit_bs': {
+        name: 'Expansivo - Boa Sorte',
+        cnpj: '08.693.673/0002-76',
+        address: 'Av. Boa Sorte, 265',
+        district: 'Nossa Senhora da Apresentação',
+        city: 'Natal',
+        uf: 'RN',
+        cep: '59114-150',
+        phone: '(84) 98827-7188',
+        email: 'contato.bs@expansivo.com.br',
+        professionalTitle: 'Educação Infantil, Ensino Fundamental e Médio',
+        authorization: 'Portaria SEEC/RN'
+    },
+    'unit_ext': {
+        name: 'Expansivo - Extremoz',
+        cnpj: '08.693.673/0003-57',
+        address: 'Rua do Futebol, 32',
+        district: 'Estivas',
+        city: 'Extremoz',
+        uf: 'RN',
+        cep: '59575-000',
+        phone: '(84) 98186-3522',
+        email: 'expansivoextremoz@gmail.com',
+        professionalTitle: 'Educação Infantil, Ensino Fundamental e Médio',
+        authorization: 'Portaria SEEC/RN'
+    },
+    'unit_qui': {
+        name: 'Expansivo - Quintas',
+        cnpj: '08.693.673/0004-38',
+        address: 'Rua Coemaçu, 1045',
+        district: 'Quintas',
+        city: 'Natal',
+        uf: 'RN',
+        cep: '59035-130',
+        phone: '(84) 99954-0167',
+        email: 'expansivo.quintas@gmail.com',
+        professionalTitle: 'Educação Infantil, Ensino Fundamental e Médio',
+        authorization: 'Portaria SEEC/RN'
+    }
+};
+
+export const HS_SUBJECTS_2025 = [
+    SUBJECTS_DATA.PORTUGUESE.id,
+    SUBJECTS_DATA.MATH.id,
+    SUBJECTS_DATA.PHYSICS.id,
+    SUBJECTS_DATA.BIOLOGY.id,
+    SUBJECTS_DATA.HISTORY.id,
+    SUBJECTS_DATA.GEOGRAPHY.id,
+    SUBJECTS_DATA.SOCIOLOGY.id,
+    SUBJECTS_DATA.PHILOSOPHY.id,
+    SUBJECTS_DATA.CHEMISTRY.id,
+    SUBJECTS_DATA.LITERATURE.id,
+    SUBJECTS_DATA.WRITING.id,
+    SUBJECTS_DATA.ENGLISH.id,
+    SUBJECTS_DATA.SPANISH.id,
+    SUBJECTS_DATA.LIFE_PROJECT.id,
+    SUBJECTS_DATA.ENTREPRENEURSHIP.id
+];
+
+export const CURRICULUM_MATRIX: Record<string, Record<string, number>> = {
+    'Fundamental I': {
+        [SUBJECTS_DATA.PORTUGUESE.id]: 4,
+        [SUBJECTS_DATA.MATH.id]: 4,
+        [SUBJECTS_DATA.SCIENCE.id]: 2,
+        [SUBJECTS_DATA.GEOGRAPHY.id]: 2,
+        [SUBJECTS_DATA.HISTORY.id]: 2,
+        [SUBJECTS_DATA.ENGLISH.id]: 2,
+        [SUBJECTS_DATA.ARTS.id]: 2,
+        [SUBJECTS_DATA.SPANISH.id]: 1,
+        [SUBJECTS_DATA.PHILOSOPHY.id]: 1,
+        [SUBJECTS_DATA.LIFE_PROJECT.id]: 1,
+        [SUBJECTS_DATA.MUSIC.id]: 1
+    },
+    'Fundamental II': {
+        [SUBJECTS_DATA.MATH.id]: 4,
+        [SUBJECTS_DATA.PORTUGUESE.id]: 4,
+        [SUBJECTS_DATA.HISTORY.id]: 2,
+        [SUBJECTS_DATA.GEOGRAPHY.id]: 2,
+        [SUBJECTS_DATA.SCIENCE.id]: 2,
+        [SUBJECTS_DATA.ENGLISH.id]: 1,
+        [SUBJECTS_DATA.SPANISH.id]: 1,
+        [SUBJECTS_DATA.ARTS.id]: 1,
+        [SUBJECTS_DATA.WRITING.id]: 1,
+        [SUBJECTS_DATA.PHYSICAL_ED.id]: 1,
+        [SUBJECTS_DATA.LIFE_PROJECT.id]: 1
+    },
+    'Ens. Médio': {
+        [SUBJECTS_DATA.PORTUGUESE.id]: 2,
+        [SUBJECTS_DATA.MATH.id]: 4,
+        [SUBJECTS_DATA.PHYSICS.id]: 4,
+        [SUBJECTS_DATA.BIOLOGY.id]: 2,
+        [SUBJECTS_DATA.HISTORY.id]: 2,
+        [SUBJECTS_DATA.GEOGRAPHY.id]: 2,
+        [SUBJECTS_DATA.SOCIOLOGY.id]: 1,
+        [SUBJECTS_DATA.PHILOSOPHY.id]: 2,
+        [SUBJECTS_DATA.CHEMISTRY.id]: 2,
+        [SUBJECTS_DATA.LITERATURE.id]: 2,
+        [SUBJECTS_DATA.WRITING.id]: 2,
+        [SUBJECTS_DATA.ENGLISH.id]: 1,
+        [SUBJECTS_DATA.SPANISH.id]: 1,
+        [SUBJECTS_DATA.LIFE_PROJECT.id]: 0,
+        [SUBJECTS_DATA.ENTREPRENEURSHIP.id]: 0
+    }
+};
