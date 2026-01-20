@@ -62,7 +62,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
     const [showFinancialTools, setShowFinancialTools] = useState(false);
     const [showDelinquencyList, setShowDelinquencyList] = useState(false);
 
-    const [contactUnit, setContactUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_1);
+    const [contactUnit, setContactUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_ZN);
     const [contactName, setContactName] = useState('');
     const [contactPhone, setContactPhone] = useState('+55');
     const [editingContactId, setEditingContactId] = useState<string | null>(null);

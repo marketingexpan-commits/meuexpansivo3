@@ -177,7 +177,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [sCode, setSCode] = useState('');
     const [sGrade, setSGrade] = useState('');
     // Use fallback to UNIT_1 if adminUnit is null (general admin) for new student default
-    const [sUnit, setSUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_1);
+    const [sUnit, setSUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_ZN);
     const [sShift, setSShift] = useState<SchoolShift>(SchoolShift.MORNING);
     const [sClass, setSClass] = useState<SchoolClass>(SchoolClass.A);
     const [sPass, setSPass] = useState('');
@@ -195,7 +195,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [tName, setTName] = useState('');
     const [tCpf, setTCpf] = useState('');
     const [tPhone, setTPhone] = useState('55');
-    const [tUnit, setTUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_1);
+    const [tUnit, setTUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_ZN);
     const [tPass, setTPass] = useState('');
     const [showTeacherPassword, setShowTeacherPassword] = useState(false);
     const [tSubjects, setTSubjects] = useState<Subject[]>([]);
@@ -210,14 +210,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [aName, setAName] = useState('');
     const [aUser, setAUser] = useState('');
     const [aPass, setAPass] = useState('');
-    const [aUnit, setAUnit] = useState<SchoolUnit>(SchoolUnit.UNIT_1);
+    const [aUnit, setAUnit] = useState<SchoolUnit>(SchoolUnit.UNIT_ZN);
     const [showAdminPassword, setShowAdminPassword] = useState(false);
     const [adminToDelete, setAdminToDelete] = useState<string | null>(null);
 
     const [messageFilter, setMessageFilter] = useState<'new' | 'all'>('new');
 
     // States for Coordination / Grade Approval
-    const [coordinationFilterUnit, setCoordinationFilterUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_1);
+    const [coordinationFilterUnit, setCoordinationFilterUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_ZN);
     const [coordinationFilterGrade, setCoordinationFilterGrade] = useState('');
     const [coordinationFilterClass, setCoordinationFilterClass] = useState('');
     const [coordinationFilterSubject, setCoordinationFilterSubject] = useState('');
@@ -242,7 +242,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const [editingContactId, setEditingContactId] = useState<string | null>(null);
     const [contactName, setContactName] = useState('');
     const [contactPhone, setContactPhone] = useState('+55');
-    const [contactUnit, setContactUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_1);
+    const [contactUnit, setContactUnit] = useState<SchoolUnit>(adminUnit || SchoolUnit.UNIT_ZN);
     const [contactSegment, setContactSegment] = useState<'infantil' | 'fundamental_medio' | 'all'>('all'); // Novo state
     const [contactPassword, setContactPassword] = useState(''); // Novo state para senha de coordenador
 
@@ -1345,7 +1345,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 gradeLevel: sGrade,
                                                 schoolClass: sClass,
                                                 shift: sShift,
-                                                unit: isGeneralAdmin ? sUnit : (adminUnit || SchoolUnit.UNIT_1), // Ensure unit is present
+                                                unit: isGeneralAdmin ? sUnit : (adminUnit || SchoolUnit.UNIT_ZN), // Ensure unit is present
                                                 // Legacy/Optional fields can be partial/dummy if not used by fee generator,
                                                 // but best to try finding original to keep data clean if possible.
                                                 ...(students.find(s => s.id === editingStudentId) || {} as any)
