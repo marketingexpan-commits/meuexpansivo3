@@ -15,22 +15,22 @@ export const ALLOW_MOCK_LOGIN = false;
 // --- DADOS DE CONTATO DAS UNIDADES ---
 export const UNITS_CONTACT_INFO = [
   {
-    name: SchoolUnit.UNIT_1,
+    name: SchoolUnit.UNIT_BS,
     address: 'Av. Boa Sorte, 265 - Nossa Senhora da Apresentação, Natal - RN',
     whatsapp: '5584988277188',
   },
   {
-    name: SchoolUnit.UNIT_2,
+    name: SchoolUnit.UNIT_EXT,
     address: 'Rua do Futebol, 32 - Estivas, Extremoz - RN',
     whatsapp: '5584981863522',
   },
   {
-    name: SchoolUnit.UNIT_3,
+    name: SchoolUnit.UNIT_ZN,
     address: 'Rua Desportista José Augusto de Freitas, 50 - Pajuçara, Natal - RN',
     whatsapp: '5584998362024',
   },
   {
-    name: SchoolUnit.UNIT_4,
+    name: SchoolUnit.UNIT_QUI,
     address: 'Rua Coemaçu, 1045 - Quintas, Natal - RN',
     whatsapp: '5584999540167',
   }
@@ -87,10 +87,10 @@ export const EARLY_CHILDHOOD_REPORT_TEMPLATE: ExperienceField[] = [
 // --- ADMINISTRADORES ---
 // SENHAS SIMPLIFICADAS PARA TESTE E ACESSO IMEDIATO
 const PRIVATE_MOCK_ADMINS: Admin[] = [
-  { id: 'a1', username: 'admin_zn', password: 'admin', name: 'Direção Zona Norte', unit: SchoolUnit.UNIT_3 },
-  { id: 'a2', username: 'admin_bs', password: 'admin', name: 'Direção Boa Sorte', unit: SchoolUnit.UNIT_1 },
-  { id: 'a3', username: 'admin_ext', password: 'admin', name: 'Direção Extremoz', unit: SchoolUnit.UNIT_2 },
-  { id: 'a4', username: 'admin_qui', password: 'admin', name: 'Direção Quintas', unit: SchoolUnit.UNIT_4 },
+  { id: 'a1', username: 'admin_zn', password: 'admin', name: 'Direção Zona Norte', unit: SchoolUnit.UNIT_ZN },
+  { id: 'a2', username: 'admin_bs', password: 'admin', name: 'Direção Boa Sorte', unit: SchoolUnit.UNIT_BS },
+  { id: 'a3', username: 'admin_ext', password: 'admin', name: 'Direção Extremoz', unit: SchoolUnit.UNIT_EXT },
+  { id: 'a4', username: 'admin_qui', password: 'admin', name: 'Direção Quintas', unit: SchoolUnit.UNIT_QUI },
   { id: 'a0', username: 'admin_geral', password: 'admin', name: 'Direção Geral' }
 ];
 
@@ -108,7 +108,7 @@ export const MOCK_STUDENTS: Student[] = ALLOW_MOCK_LOGIN ? [
     gradeLevel: '8º Ano - Fundamental II',
     schoolClass: SchoolClass.A,
     shift: SchoolShift.MORNING,
-    unit: SchoolUnit.UNIT_3,
+    unit: SchoolUnit.UNIT_ZN,
     isBlocked: false
   },
   {
@@ -119,7 +119,7 @@ export const MOCK_STUDENTS: Student[] = ALLOW_MOCK_LOGIN ? [
     gradeLevel: '9º Ano - Fundamental II',
     schoolClass: SchoolClass.B,
     shift: SchoolShift.AFTERNOON,
-    unit: SchoolUnit.UNIT_1,
+    unit: SchoolUnit.UNIT_BS,
     isBlocked: false
   }
 ] : [];
@@ -133,7 +133,7 @@ export const MOCK_TEACHERS: Teacher[] = ALLOW_MOCK_LOGIN ? [
     name: 'Prof. Carlos Santos (ZN)',
     subjects: [Subject.MATH, Subject.PORTUGUESE],
     phoneNumber: '+5584999999999',
-    unit: SchoolUnit.UNIT_3
+    unit: SchoolUnit.UNIT_ZN
   },
   {
     id: 't2',
@@ -142,7 +142,7 @@ export const MOCK_TEACHERS: Teacher[] = ALLOW_MOCK_LOGIN ? [
     name: 'Prof. Ana Lima (BS)',
     subjects: [Subject.SCIENCE, Subject.BIOLOGY],
     phoneNumber: '+5584988888888',
-    unit: SchoolUnit.UNIT_1
+    unit: SchoolUnit.UNIT_BS
   },
   {
     id: 't3',
@@ -151,7 +151,7 @@ export const MOCK_TEACHERS: Teacher[] = ALLOW_MOCK_LOGIN ? [
     name: 'Prof. Marcos Souza (EXT)',
     subjects: [Subject.HISTORY, Subject.GEOGRAPHY],
     phoneNumber: '+5584977777777',
-    unit: SchoolUnit.UNIT_2
+    unit: SchoolUnit.UNIT_EXT
   },
   {
     id: 't4',
@@ -160,7 +160,7 @@ export const MOCK_TEACHERS: Teacher[] = ALLOW_MOCK_LOGIN ? [
     name: 'Prof. Julia Costa (QUI)',
     subjects: [Subject.ENGLISH, Subject.ARTS],
     phoneNumber: '+5584966666666',
-    unit: SchoolUnit.UNIT_4
+    unit: SchoolUnit.UNIT_QUI
   }
 ] : [];
 

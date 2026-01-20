@@ -176,5 +176,19 @@ export const pedagogicalService = {
             console.error("Erro ao buscar eventos do calendário:", error);
             throw error;
         }
+    },
+
+    // Método genérico para atualização de documentos (usado em ferramentas de manutenção)
+    async updateGeneric(collectionName: string, docId: string, data: any) {
+        try {
+            const docRef = doc(db, collectionName, docId);
+            await setDoc(docRef, {
+                ...data,
+                lastUpdated: new Date().toISOString()
+            }, { merge: true });
+        } catch (error) {
+            console.error(`Erro ao atualizar documento em ${collectionName}:`, error);
+            throw error;
+        }
     }
 };

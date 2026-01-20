@@ -9,7 +9,10 @@ import {
     ExamGuide,
     ClassMaterial,
     CalendarEvent,
-    ClassSchedule
+    ClassSchedule,
+    UNIT_LABELS,
+    SHIFT_LABELS,
+    SchoolShift
 } from '../types';
 import { db, storage } from '../firebaseConfig';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
@@ -1176,7 +1179,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                             <span className="font-medium text-gray-800">{teacher.name}</span>
                             <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                            <span className="text-xs">{activeUnit}</span>
+                            <span className="text-xs">{UNIT_LABELS[activeUnit as SchoolUnit] || activeUnit}</span>
                         </div>
                     </div>
 
@@ -1775,7 +1778,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                     <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Filtrar por:</h3>
                                     <div>
                                         <label className="text-xs text-gray-400 block mb-1">Unidade Escolar</label>
-                                        <div className="w-full text-sm p-2 border border-gray-300 rounded bg-gray-100 text-gray-600 font-medium cursor-not-allowed">{activeUnit}</div>
+                                        <div className="w-full text-sm p-2 border border-gray-300 rounded bg-gray-100 text-gray-600 font-medium cursor-not-allowed">{UNIT_LABELS[activeUnit as SchoolUnit] || activeUnit}</div>
                                     </div>
                                     <select value={filterGrade} onChange={e => setFilterGrade(e.target.value)} className="w-full text-sm p-2 border border-gray-300 rounded focus:ring-blue-950 focus:border-blue-950">
                                         <option value="">Todas as Séries</option>
@@ -1787,7 +1790,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                     </select>
                                     <select value={filterShift} onChange={e => setFilterShift(e.target.value)} className="w-full text-sm p-2 border border-gray-300 rounded focus:ring-blue-950 focus:border-blue-950">
                                         <option value="">Todos os Turnos</option>
-                                        {SCHOOL_SHIFTS_LIST.map((shift) => (<option key={shift} value={shift}>{shift}</option>))}
+                                        {SCHOOL_SHIFTS_LIST.map((shift) => (<option key={shift} value={shift}>{SHIFT_LABELS[shift as SchoolShift] || shift}</option>))}
                                     </select>
                                     <select value={filterClass} onChange={e => setFilterClass(e.target.value)} className="w-full text-sm p-2 border border-gray-300 rounded focus:ring-blue-950 focus:border-blue-950">
                                         <option value="">Todas as Turmas</option>
@@ -1810,8 +1813,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                     <span className="text-xs text-gray-500 block mt-1">Matrícula: {student.code}</span>
                                                     <span className="text-xs text-gray-400 block mt-0.5">{student.gradeLevel}</span>
                                                     <div className="flex justify-between items-center mt-1">
-                                                        <span className="text-[10px] text-white bg-blue-950 px-1.5 py-0.5 rounded">{student.unit}</span>
-                                                        <span className="text-[10px] text-gray-500">{student.schoolClass} - {student.shift}</span>
+                                                        <span className="text-[10px] text-white bg-blue-950 px-1.5 py-0.5 rounded">{UNIT_LABELS[student.unit as SchoolUnit] || student.unit}</span>
+                                                        <span className="text-[10px] text-gray-500">{student.schoolClass} - {SHIFT_LABELS[student.shift as SchoolShift] || student.shift}</span>
                                                     </div>
                                                 </li>
                                             ))
@@ -1924,7 +1927,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                             <form onSubmit={handleGradeSubmit} className="bg-white p-6 rounded-lg shadow-sm mb-8">
                                                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-6">
                                                     <label className="block text-sm font-bold text-blue-950 mb-1">Unidade Escolar</label>
-                                                    <div className="w-full border-blue-300 rounded-lg shadow-sm p-2.5 border text-blue-950 font-medium bg-blue-100 cursor-not-allowed">{activeUnit}</div>
+                                                    <div className="w-full border-blue-300 rounded-lg shadow-sm p-2.5 border text-blue-950 font-medium bg-blue-100 cursor-not-allowed">{UNIT_LABELS[activeUnit as SchoolUnit] || activeUnit}</div>
                                                 </div>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                                                     <div>
@@ -2243,18 +2246,20 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                                         return (
                                                                                             <React.Fragment key={key}>
                                                                                                 <td className="px-1 py-1 text-center text-gray-500 font-medium text-[10px] md:text-sm border-r border-gray-300 relative w-8 md:w-10">
-                                                                                                    {bData.isNotaApproved !== false ? formatGrade(bData.nota) : <span className="text-gray-300 pointer-events-none select-none cursor-help" title="Esta nota está em processo de atualização pela coordenação pedagógica.">-</span>}
+                                                                                                    {formatGrade(bData.nota)}
                                                                                                     {bData.isNotaApproved === false && (
                                                                                                         <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-400 rounded-full cursor-help" title="Esta nota está em processo de atualização pela coordenação pedagógica."></div>
                                                                                                     )}
+
                                                                                                 </td>
                                                                                                 <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 relative w-8 md:w-10">
-                                                                                                    {bData.isRecuperacaoApproved !== false ? formatGrade(bData.recuperacao) : <span className="text-gray-300 pointer-events-none select-none cursor-help" title="Esta nota está em processo de atualização pela coordenação pedagógica.">-</span>}
+                                                                                                    {formatGrade(bData.recuperacao)}
                                                                                                     {bData.isRecuperacaoApproved === false && (
                                                                                                         <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-orange-400 rounded-full cursor-help" title="Esta nota está em processo de atualização pela coordenação pedagógica."></div>
                                                                                                     )}
+
                                                                                                 </td>
-                                                                                                <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs w-8 md:w-10">{(bData.isNotaApproved !== false && bData.isRecuperacaoApproved !== false) ? formatGrade(bData.media) : '-'}</td>
+                                                                                                <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs w-8 md:w-10">{formatGrade(bData.media)}</td>
                                                                                                 <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-8 md:w-10">
                                                                                                     {Math.round(currentAbsences)}
                                                                                                 </td>
@@ -2340,7 +2345,14 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                                         );
                                                                                     })}
                                                                                     <td className="px-1 py-2 text-center font-bold text-gray-700 border-r border-gray-300 bg-gray-50 text-sm">
-                                                                                        {grade.mediaAnual >= 0 ? formatGrade(grade.mediaAnual) : '-'}
+                                                                                        {(() => {
+                                                                                            const m1 = grade.bimesters.bimester1.media >= 0 ? grade.bimesters.bimester1.media : 0;
+                                                                                            const m2 = grade.bimesters.bimester2.media >= 0 ? grade.bimesters.bimester2.media : 0;
+                                                                                            const m3 = grade.bimesters.bimester3.media >= 0 ? grade.bimesters.bimester3.media : 0;
+                                                                                            const m4 = grade.bimesters.bimester4.media >= 0 ? grade.bimesters.bimester4.media : 0;
+                                                                                            const currentAnual = (m1 + m2 + m3 + m4) / 4;
+                                                                                            return formatGrade(currentAnual);
+                                                                                        })()}
                                                                                     </td>
                                                                                     <td className={`px-1 py-1 text-center font-bold text-amber-600 text-[10px] md:text-xs border-r border-gray-300 ${grade.recuperacaoFinalApproved === false ? 'bg-yellow-100' : 'bg-amber-50/30'}`}>
                                                                                         {grade.recuperacaoFinalApproved !== false ? formatGrade(grade.recuperacaoFinal) : <span className="text-gray-300">-</span>}
@@ -2462,7 +2474,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                         <label className="text-sm font-bold text-gray-700 mb-1 block">Turno</label>
                                         <select value={attendanceShift} onChange={e => setAttendanceShift(e.target.value)} className="w-full p-2 border rounded">
                                             <option value="">Todos</option>
-                                            {SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
+                                            {SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{SHIFT_LABELS[s as SchoolShift] || s}</option>)}
                                         </select>
                                     </div>
                                     <div>
@@ -2543,8 +2555,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                             <div>
                                                                 <h4 className="font-bold text-gray-800">{student.name}</h4>
                                                                 <div className="flex items-center gap-2 mt-1">
-                                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${student.shift === 'Matutino' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-950'}`}>
-                                                                        {student.shift}
+                                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${(student.shift === SchoolShift.MORNING || student.shift === 'Matutino') ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-950'}`}>
+                                                                        {SHIFT_LABELS[student.shift as SchoolShift] || student.shift}
                                                                     </span>
                                                                     {status === AttendanceStatus.PRESENT && <span className="text-[10px] bg-blue-100 text-blue-950 px-2 py-0.5 rounded-full font-bold">PRESENTE</span>}
                                                                     {status === AttendanceStatus.ABSENT && <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">FALTOU</span>}
@@ -2630,8 +2642,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                 <td className="px-6 py-4">
                                                                     <div className="flex items-center gap-2">
                                                                         <p className="font-medium text-gray-900">{student.name}</p>
-                                                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${student.shift === 'Matutino' ? 'bg-orange-50 text-orange-800 border-orange-200' : 'bg-blue-50 text-blue-950 border-blue-200'}`}>
-                                                                            {student.shift}
+                                                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${(student.shift === SchoolShift.MORNING || student.shift === 'Matutino') ? 'bg-orange-50 text-orange-800 border-orange-200' : 'bg-blue-50 text-blue-950 border-blue-200'}`}>
+                                                                            {SHIFT_LABELS[student.shift as SchoolShift] || student.shift}
                                                                         </span>
                                                                     </div>
                                                                     <div className="text-xs text-gray-500 mt-1 font-normal flex items-center gap-x-4 gap-y-1 flex-wrap">

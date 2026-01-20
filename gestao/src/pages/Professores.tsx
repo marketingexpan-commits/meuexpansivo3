@@ -6,7 +6,8 @@ import { Select } from '../components/Select';
 import { TeacherForm } from '../components/TeacherForm';
 import { Search, Loader2, UserPlus, Pencil, Trash2, MessagesSquare, ShieldAlert, ShieldCheck, GraduationCap, BookOpen, Layers } from 'lucide-react';
 import { teacherService } from '../services/teacherService';
-import type { Teacher } from '../types';
+import type { Teacher, SchoolUnit } from '../types';
+import { UNIT_LABELS } from '../types';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { useSchoolUnits } from '../hooks/useSchoolUnits';
 
@@ -201,7 +202,7 @@ export function Professores() {
                                                 <div className="space-y-1.5">
                                                     <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
                                                         <GraduationCap className="w-3.5 h-3.5 text-slate-400" />
-                                                        {t.unit}
+                                                        {UNIT_LABELS[t.unit as SchoolUnit] || t.unit}
                                                     </div>
                                                     <button
                                                         onClick={() => handleToggleBlock(t)}

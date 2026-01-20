@@ -88,6 +88,30 @@ export const SUBJECT_LABELS: Record<Subject, string> = {
   [Subject.FRENCH]: 'Francês'
 };
 
+export const SUBJECT_SHORT_LABELS: Record<Subject, string> = {
+  [Subject.MATH]: 'Mat',
+  [Subject.PORTUGUESE]: 'Port',
+  [Subject.HISTORY]: 'His',
+  [Subject.SCIENCE]: 'Ciên',
+  [Subject.GEOGRAPHY]: 'Geo',
+  [Subject.ENGLISH]: 'Ing',
+  [Subject.ARTS]: 'Art',
+  [Subject.RELIGIOUS_ED]: 'Rel',
+  [Subject.PHYSICAL_ED]: 'E.F.',
+  [Subject.LIFE_PROJECT]: 'P.V.',
+  [Subject.ENTREPRENEURSHIP]: 'Emp',
+  [Subject.CHEMISTRY]: 'Quí',
+  [Subject.BIOLOGY]: 'Bio',
+  [Subject.PHYSICS]: 'Fís',
+  [Subject.SPANISH]: 'Esp',
+  [Subject.LITERATURE]: 'Lit',
+  [Subject.WRITING]: 'Red',
+  [Subject.PHILOSOPHY]: 'Fil',
+  [Subject.SOCIOLOGY]: 'Soc',
+  [Subject.MUSIC]: 'Mús',
+  [Subject.FRENCH]: 'Fran'
+};
+
 // NOVO: Tipos para o sistema de mensagens
 export enum MessageRecipient {
   COORDINATION = 'Coordenação',

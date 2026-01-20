@@ -1,6 +1,7 @@
 import { db } from '../firebaseConfig';
 import { collection, addDoc, getDocs, doc, setDoc, query, where } from 'firebase/firestore';
 import type { Student } from '../types';
+import { SchoolUnit, UNIT_LABELS } from '../types';
 
 const STUDENTS_COLLECTION = 'students';
 
@@ -26,12 +27,22 @@ export const studentService = {
     async getStudents(unitFilter?: string | null) {
         try {
             let q;
+            const studentsRef = collection(db, STUDENTS_COLLECTION);
+
             if (unitFilter) {
-                // Se passar filtro, busca apenas daquela unidade
-                q = query(collection(db, STUDENTS_COLLECTION), where('unit', '==', unitFilter));
+                const unitLabel = UNIT_LABELS[unitFilter as SchoolUnit];
+
+                // If it's a known ID, try to get students with either the ID or the Label
+                if (unitLabel && unitLabel !== unitFilter) {
+                    // Firestore doesn't support OR in a simple way for different fields without composite indexes, 
+                    // but here we are checking the SAME field 'unit' against two possible values.
+                    // We can use the 'in' operator for this.
+                    q = query(studentsRef, where('unit', 'in', [unitFilter, unitLabel]));
+                } else {
+                    q = query(studentsRef, where('unit', '==', unitFilter));
+                }
             } else {
-                // Se não, busca tudo
-                q = collection(db, STUDENTS_COLLECTION);
+                q = studentsRef;
             }
 
             const querySnapshot = await getDocs(q);

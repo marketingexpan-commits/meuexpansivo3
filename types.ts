@@ -10,11 +10,18 @@ export enum UserRole {
 }
 
 export enum SchoolUnit {
-  UNIT_1 = 'Boa Sorte',
-  UNIT_2 = 'Extremoz',
-  UNIT_3 = 'Zona Norte',
-  UNIT_4 = 'Quintas'
+  UNIT_BS = 'unit_bs',
+  UNIT_EXT = 'unit_ext',
+  UNIT_ZN = 'unit_zn',
+  UNIT_QUI = 'unit_qui'
 }
+
+export const UNIT_LABELS: Record<SchoolUnit, string> = {
+  [SchoolUnit.UNIT_BS]: 'Boa Sorte',
+  [SchoolUnit.UNIT_EXT]: 'Extremoz',
+  [SchoolUnit.UNIT_ZN]: 'Zona Norte',
+  [SchoolUnit.UNIT_QUI]: 'Quintas'
+};
 
 export interface SchoolUnitDetail {
   id: string; // O ID ou o valor do enum (ex: 'Zona Norte')
@@ -28,9 +35,14 @@ export interface SchoolUnitDetail {
 }
 
 export enum SchoolShift {
-  MORNING = 'Matutino',
-  AFTERNOON = 'Vespertino'
+  MORNING = 'shift_morning',
+  AFTERNOON = 'shift_afternoon'
 }
+
+export const SHIFT_LABELS: Record<SchoolShift, string> = {
+  [SchoolShift.MORNING]: 'Matutino',
+  [SchoolShift.AFTERNOON]: 'Vespertino'
+};
 
 export enum SchoolClass {
   A = 'A',
@@ -41,28 +53,76 @@ export enum SchoolClass {
 }
 
 export enum Subject {
-  MATH = 'Matemática',
-  PORTUGUESE = 'Português',
-  HISTORY = 'História',
-  SCIENCE = 'Ciências',
-  GEOGRAPHY = 'Geografia',
-  ENGLISH = 'Inglês',
-  ARTS = 'Ens. Artes',
-  RELIGIOUS_ED = 'Ens. Religioso',
-  PHYSICAL_ED = 'Ed. Física',
-  LIFE_PROJECT = 'Projeto de Vida',
-  ENTREPRENEURSHIP = 'Empreendedorismo',
-  CHEMISTRY = 'Química',
-  BIOLOGY = 'Biologia',
-  PHYSICS = 'Física',
-  SPANISH = 'Espanhol',
-  LITERATURE = 'Literatura',
-  WRITING = 'Redação',
-  PHILOSOPHY = 'Filosofia',
-  SOCIOLOGY = 'Sociologia',
-  MUSIC = 'Musicalização',
-  FRENCH = 'Francês'
+  MATH = 'sub_math',
+  PORTUGUESE = 'sub_portuguese',
+  HISTORY = 'sub_history',
+  SCIENCE = 'sub_science',
+  GEOGRAPHY = 'sub_geography',
+  ENGLISH = 'sub_english',
+  ARTS = 'sub_arts',
+  RELIGIOUS_ED = 'sub_religious_ed',
+  PHYSICAL_ED = 'sub_physical_ed',
+  LIFE_PROJECT = 'sub_life_project',
+  ENTREPRENEURSHIP = 'sub_entrepreneurship',
+  CHEMISTRY = 'sub_chemistry',
+  BIOLOGY = 'sub_biology',
+  PHYSICS = 'sub_physics',
+  SPANISH = 'sub_spanish',
+  LITERATURE = 'sub_literature',
+  WRITING = 'sub_writing',
+  PHILOSOPHY = 'sub_philosophy',
+  SOCIOLOGY = 'sub_sociology',
+  MUSIC = 'sub_music',
+  FRENCH = 'sub_french'
 }
+
+export const SUBJECT_LABELS: Record<Subject, string> = {
+  [Subject.MATH]: 'Matemática',
+  [Subject.PORTUGUESE]: 'Português',
+  [Subject.HISTORY]: 'História',
+  [Subject.SCIENCE]: 'Ciências',
+  [Subject.GEOGRAPHY]: 'Geografia',
+  [Subject.ENGLISH]: 'Inglês',
+  [Subject.ARTS]: 'Ens. Artes',
+  [Subject.RELIGIOUS_ED]: 'Ens. Religioso',
+  [Subject.PHYSICAL_ED]: 'Ed. Física',
+  [Subject.LIFE_PROJECT]: 'Projeto de Vida',
+  [Subject.ENTREPRENEURSHIP]: 'Empreendedorismo',
+  [Subject.CHEMISTRY]: 'Química',
+  [Subject.BIOLOGY]: 'Biologia',
+  [Subject.PHYSICS]: 'Física',
+  [Subject.SPANISH]: 'Espanhol',
+  [Subject.LITERATURE]: 'Literatura',
+  [Subject.WRITING]: 'Redação',
+  [Subject.PHILOSOPHY]: 'Filosofia',
+  [Subject.SOCIOLOGY]: 'Sociologia',
+  [Subject.MUSIC]: 'Musicalização',
+  [Subject.FRENCH]: 'Francês'
+};
+
+export const SUBJECT_SHORT_LABELS: Record<Subject, string> = {
+  [Subject.MATH]: 'Mat',
+  [Subject.PORTUGUESE]: 'Port',
+  [Subject.HISTORY]: 'His',
+  [Subject.SCIENCE]: 'Ciên',
+  [Subject.GEOGRAPHY]: 'Geo',
+  [Subject.ENGLISH]: 'Ing',
+  [Subject.ARTS]: 'Art',
+  [Subject.RELIGIOUS_ED]: 'Rel',
+  [Subject.PHYSICAL_ED]: 'E.F.',
+  [Subject.LIFE_PROJECT]: 'P.V.',
+  [Subject.ENTREPRENEURSHIP]: 'Emp',
+  [Subject.CHEMISTRY]: 'Quí',
+  [Subject.BIOLOGY]: 'Bio',
+  [Subject.PHYSICS]: 'Fís',
+  [Subject.SPANISH]: 'Esp',
+  [Subject.LITERATURE]: 'Lit',
+  [Subject.WRITING]: 'Red',
+  [Subject.PHILOSOPHY]: 'Fil',
+  [Subject.SOCIOLOGY]: 'Soc',
+  [Subject.MUSIC]: 'Mús',
+  [Subject.FRENCH]: 'Fran'
+};
 
 // NOVO: Tipos para o sistema de mensagens
 export enum MessageRecipient {

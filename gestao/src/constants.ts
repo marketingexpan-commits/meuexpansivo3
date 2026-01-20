@@ -43,5 +43,5 @@ export const MOCK_CALENDAR_EVENTS: CalendarEvent[] = [
     { id: 'ev10', title: 'Encerramento do Ano Letivo', startDate: '2026-12-15', type: 'school_day', units: ['all'] }
 ];
 
-export const SCHOOL_UNITS_LIST = ['Boa Sorte', 'Extremoz', 'Zona Norte', 'Quintas'];
+export const SCHOOL_UNITS_LIST = ['unit_bs', 'unit_ext', 'unit_zn', 'unit_qui'];
 

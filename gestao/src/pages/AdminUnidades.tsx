@@ -346,7 +346,7 @@ export default function AdminUnidades() {
                                                 <tr key={a.id} className="hover:bg-blue-50 transition-colors group">
                                                     <td className="p-3 font-medium text-slate-700">{a.name}</td>
                                                     <td className="p-3 font-mono text-slate-500">{a.username}</td>
-                                                    <td className="p-3"><span className="bg-slate-100 text-slate-700 px-2 py-1 rounded text-xs border border-slate-200 font-medium">{a.unit === 'admin_geral' ? 'Todas as Unidades' : a.unit}</span></td>
+                                                    <td className="p-3"><span className="bg-slate-100 text-slate-700 px-2 py-1 rounded text-xs border border-slate-200 font-medium">{a.unit === 'admin_geral' ? 'Todas as Unidades' : (UNIT_LABELS[a.unit as SchoolUnit] || a.unit)}</span></td>
                                                     <td className="p-3 text-right">
                                                         <div className="flex justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                                             <button
@@ -398,7 +398,7 @@ export default function AdminUnidades() {
                                                 <tr key={a.id} className="hover:bg-orange-100/30 transition-colors group">
                                                     <td className="p-3 font-medium text-slate-700">{a.name}</td>
                                                     <td className="p-3 font-mono text-slate-500">{a.username}</td>
-                                                    <td className="p-3"><span className="bg-slate-100 text-slate-700 px-2 py-1 rounded text-xs border border-slate-200 font-medium">{a.unit}</span></td>
+                                                    <td className="p-3"><span className="bg-slate-100 text-slate-700 px-2 py-1 rounded text-xs border border-slate-200 font-medium">{a.unit === 'admin_geral' ? 'Todas as Unidades' : (UNIT_LABELS[a.unit as SchoolUnit] || a.unit)}</span></td>
                                                     <td className="p-3 text-right">
                                                         <div className="flex justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                                             <button

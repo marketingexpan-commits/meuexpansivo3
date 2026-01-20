@@ -49,7 +49,8 @@ export const calculateTaughtClasses = (
         let weeklyClasses = 0;
         // Dynamic lookup
         if (academicSubjects) {
-            const ds = academicSubjects.find(s => s.name === subject);
+            // Support both Technical ID (s.id) and Legacy Name (s.name)
+            const ds = academicSubjects.find(s => s.id === subject || s.name === subject);
             if (ds?.weeklyHours) {
                 const k = Object.keys(ds.weeklyHours).find(key => gradeLevel.includes(key));
                 if (k) weeklyClasses = ds.weeklyHours[k];
@@ -63,6 +64,7 @@ export const calculateTaughtClasses = (
             else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
 
             if (levelKey && CURRICULUM_MATRIX[levelKey]) {
+                // CURRICULUM_MATRIX handles Subject enum keys (technical IDs)
                 weeklyClasses = CURRICULUM_MATRIX[levelKey][subject] || 0;
             }
         }

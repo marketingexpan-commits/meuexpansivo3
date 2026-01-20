@@ -9,6 +9,7 @@ import { Search, Filter, Loader2, Printer, Barcode, ShieldAlert, ShieldCheck } f
 import { studentService } from '../services/studentService';
 import type { Student } from '../types';
 import { SCHOOL_SHIFTS, SCHOOL_CLASSES_OPTIONS } from '../utils/academicDefaults';
+import { SHIFT_LABELS, SchoolShift } from '../types';
 import { useAcademicData } from '../hooks/useAcademicData';
 
 import { financialService } from '../services/financialService';
@@ -55,17 +56,9 @@ export function Matriculas() {
             const userUnit = localStorage.getItem('userUnit');
             let unitFilter: string | null = null;
 
-            // Mapeamento: Login ID -> Database Name
-            const unitMapping: Record<string, string> = {
-                'unit_zn': 'Zona Norte',
-                'unit_ext': 'Extremoz',
-                'unit_qui': 'Quintas',
-                'unit_bs': 'Boa Sorte'
-            };
-
-            // Se for admin, vê tudo (null). Se for unidade, filtra pelo nome exato.
+            // Mapping removed - studentService now handles both ID and Label
             if (userUnit && userUnit !== 'admin_geral') {
-                unitFilter = unitMapping[userUnit];
+                unitFilter = userUnit;
             }
 
             const data = await studentService.getStudents(unitFilter);
@@ -560,8 +553,9 @@ export function Matriculas() {
                                         .replace('NIVEL V', 'NÍVEL V')
                                     : 'Série não informada';
 
+                                const shiftLabel = SHIFT_LABELS[student.shift as SchoolShift] || student.shift;
                                 const key = (student.schoolClass && student.shift)
-                                    ? `${normalizedGrade} - Turma ${student.schoolClass} / ${student.shift}`
+                                    ? `${normalizedGrade} - Turma ${student.schoolClass} / ${shiftLabel}`
                                     : `${normalizedGrade} - Pendente de Enturmação`;
 
                                 if (!acc[key]) acc[key] = [];

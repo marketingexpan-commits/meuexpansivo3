@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ScheduleManagement } from '../components/ScheduleManagement';
-import { SchoolUnit } from '../types';
+import { SchoolUnit, UNIT_LABELS } from '../types';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/Card';
 import { Clock, Layout } from 'lucide-react';
 
@@ -63,7 +63,7 @@ export default function GradeHoraria() {
                             onChange={(e) => setUnit(e.target.value as SchoolUnit)}
                         >
                             {Object.values(SchoolUnit).map((u) => (
-                                <option key={u} value={u}>{u}</option>
+                                <option key={u} value={u}>{UNIT_LABELS[u] || u}</option>
                             ))}
                         </select>
                     </div>

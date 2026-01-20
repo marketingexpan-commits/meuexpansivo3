@@ -4,7 +4,7 @@ import { db } from '../firebaseConfig';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 import { SCHOOL_UNITS_LIST, ALLOW_MOCK_LOGIN, UNITS_CONTACT_INFO, SCHOOL_LOGO_URL, SCHOOL_LOGO_WHITE_URL } from '../constants';
-import { Admin, SchoolUnit, MuralItem } from '../types';
+import { Admin, SchoolUnit, MuralItem, UNIT_LABELS } from '../types';
 
 interface LoginProps {
   onLoginStudent: (code: string, pass: string) => void;
@@ -428,7 +428,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                       <option value="">Selecione...</option>
                       <option value="GERAL" className="font-bold">⭐ GERENCIADOR ADM</option>
                       {SCHOOL_UNITS_LIST.map(unit => (
-                        <option key={unit} value={unit}>{unit}</option>
+                        <option key={unit} value={unit}>{UNIT_LABELS[unit as SchoolUnit] || unit}</option>
                       ))}
                     </select>
                   </div>
@@ -444,7 +444,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                       required
                     >
                       {SCHOOL_UNITS_LIST.map(unit => (
-                        <option key={unit} value={unit}>{unit}</option>
+                        <option key={unit} value={unit}>{UNIT_LABELS[unit as SchoolUnit] || unit}</option>
                       ))}
                     </select>
                   </div>
@@ -459,7 +459,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                       required
                     >
                       {SCHOOL_UNITS_LIST.map(unit => (
-                        <option key={unit} value={unit}>{unit}</option>
+                        <option key={unit} value={unit}>{UNIT_LABELS[unit as SchoolUnit] || unit}</option>
                       ))}
                     </select>
                   </div>

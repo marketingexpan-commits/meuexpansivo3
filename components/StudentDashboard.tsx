@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
-import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial, Occurrence, DailyAgenda, ExamGuide, CalendarEvent, AcademicSubject } from '../types';
+import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial, Occurrence, DailyAgenda, ExamGuide, CalendarEvent, AcademicSubject, SUBJECT_LABELS, SUBJECT_SHORT_LABELS, SHIFT_LABELS, UNIT_LABELS } from '../types';
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
 import { getBimesterFromDate, getDynamicBimester, normalizeClass, parseGradeLevel, calculateSchoolDays, isClassScheduled, calculateEffectiveTaughtClasses, getSubjectDurationForDay, doesEventApplyToStudent } from '../src/utils/academicUtils';
 import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects, MOCK_CALENDAR_EVENTS } from '../constants'; // Import Sync Fix
@@ -41,6 +41,35 @@ import { db } from '../firebaseConfig';
 
 // --- DADOS DAS UNIDADES (Definidos localmente) ---
 const UNITS_DATA: Record<string, { address: string; cep: string; phone: string; email: string; cnpj: string }> = {
+    'unit_zn': {
+        address: 'Rua Desportista José Augusto de Freitas, 50 - Pajuçara, Natal - RN',
+        cep: '59133-400',
+        phone: '(84) 3661-4742',
+        email: 'contato.zn@expansivo.com.br',
+        cnpj: '08.693.673/0001-95'
+    },
+    'unit_bs': {
+        address: 'Av. Boa Sorte, 265 - Nossa Senhora da Apresentação, Natal - RN',
+        cep: '59114-250',
+        phone: '(84) 3661-4742',
+        email: 'contato.bs@expansivo.com.br',
+        cnpj: '08.693.673/0002-76'
+    },
+    'unit_ext': {
+        address: 'Rua do Futebol, 32 - Estivas, Extremoz - RN',
+        cep: '59575-000',
+        phone: '(84) 98186-3522',
+        email: 'expansivoextremoz@gmail.com',
+        cnpj: '08.693.673/0003-57'
+    },
+    'unit_qui': {
+        address: 'Rua Coemaçu, 1045 - Quintas, Natal - RN',
+        cep: '59035-060',
+        phone: '(84) 3653-1063',
+        email: 'contato.quintas@expansivo.com.br',
+        cnpj: '08.693.673/0004-38'
+    },
+    // Fallbacks for legacy strings (for immediate compatibility before migration)
     'Zona Norte': {
         address: 'Rua Desportista José Augusto de Freitas, 50 - Pajuçara, Natal - RN',
         cep: '59133-400',
@@ -105,29 +134,44 @@ interface StudentDashboardProps {
 }
 
 // Helper to abbreviate subject names for print
-const abbreviateSubject = (subject: string): string => {
-    const map: Record<string, string> = {
-        'Português': 'Port.',
-        'Língua Portuguesa': 'Port.',
-        'Matemática': 'Mat.',
-        'História': 'Hist.',
-        'Geografia': 'Geog.',
-        'Ciências': 'Ciên.',
-        'Ensino Religioso': 'Ens. Rel.',
-        'Educação Física': 'Ed. Fís.',
-        'Filosofia': 'Filos.',
-        'Sociologia': 'Sociol.',
-        'Biologia': 'Biol.',
-        'Literatura': 'Lit.',
-        'Produção Textual': 'Prod. Text.',
-        'Empreendedorismo': 'Empreend.',
-        'Projeto de Vida': 'Proj. Vida',
-        'Língua Inglesa': 'Inglês',
-        'Inglês': 'Inglês',
-        'Artes': 'Artes',
-        'Ens. Artes': 'Artes'
-    };
-    return map[subject] || (subject.length > 10 ? subject.substring(0, 10) + '.' : subject);
+const getSubjectLabel = (subject: string, short: boolean = false): string => {
+    // 1. Try exact match in SHORT labels if requested
+    if (short && SUBJECT_SHORT_LABELS[subject as Subject]) return SUBJECT_SHORT_LABELS[subject as Subject];
+
+    // 2. Try exact match in FULL labels
+    if (SUBJECT_LABELS[subject as Subject]) return SUBJECT_LABELS[subject as Subject];
+
+    // 3. Try exact match in SHORT labels as secondary fallback
+    if (SUBJECT_SHORT_LABELS[subject as Subject]) return SUBJECT_SHORT_LABELS[subject as Subject];
+
+    // 4. Case-insensitive normalize and fuzzy match (Safety Net for dirty DB)
+    const normalized = subject.toLowerCase().replace(/\./g, '').trim();
+
+    // Map common legacy Portuguese names to new IDs/Labels if they appear as strings
+    if (normalized.includes('math') || normalized.includes('matematica')) return short ? 'Mat' : 'Matemática';
+    if (normalized.includes('port') || normalized.includes('lingua port')) return short ? 'Port' : 'Português';
+    if (normalized.includes('hist')) return short ? 'His' : 'História';
+    if (normalized.includes('geo')) return short ? 'Geo' : 'Geografia';
+    if (normalized.includes('cienc') || normalized.includes('scienc')) return short ? 'Ciên' : 'Ciências';
+    if (normalized.includes('ing') || normalized.includes('engl')) return short ? 'Ing' : 'Inglês';
+    if (normalized.includes('art')) return short ? 'Art' : 'Artes';
+    if (normalized.includes('rel')) return short ? 'Rel' : 'Ens. Religioso';
+    if (normalized.includes('fis') && !normalized.includes('ed')) return short ? 'Fís' : 'Física';
+    if (normalized.includes('ed') && normalized.includes('fis')) return 'E.F.';
+    if (normalized.includes('bio')) return short ? 'Bio' : 'Biologia';
+    if (normalized.includes('qui')) return short ? 'Quí' : 'Química';
+    if (normalized.includes('fili')) return short ? 'Fil' : 'Filosofia';
+    if (normalized.includes('soci')) return short ? 'Soc' : 'Sociologia';
+    if (normalized.includes('lite')) return short ? 'Lit' : 'Literatura';
+    if (normalized.includes('reda')) return short ? 'Red' : 'Redação';
+
+    // 5. Raw fallback
+    return subject;
+};
+
+// Helper to translate Unit ID to Friendly Label
+const getUnitLabel = (unitId: string): string => {
+    return UNIT_LABELS[unitId as SchoolUnit] || unitId;
 };
 
 export const StudentDashboard: React.FC<StudentDashboardProps> = ({
@@ -450,14 +494,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         return foundTeacher ? foundTeacher.name.split(' ')[0] : '';
     };
 
-    const handleGetHelp = async (subject: Subject, difficultyTopic: string) => {
+    const handleGetHelp = async (subject: string, difficultyTopic: string) => {
         if (!difficultyTopic) return;
-        setModalContent({ title: `Tutor IA: ${subject}`, tip: '' });
+        const label = getSubjectLabel(subject);
+        setModalContent({ title: `Tutor Inteligente: ${label}`, tip: '' });
         setIsModalOpen(true);
         setIsLoadingAI(true);
         try {
-            const tips = await getStudyTips(subject, difficultyTopic, student.gradeLevel);
-            setModalContent({ title: `Tutor IA: ${subject}`, tip: tips });
+            const tips = await getStudyTips(label as any, difficultyTopic, student.gradeLevel);
+            setModalContent({ title: `Tutor Inteligente: ${label}`, tip: tips });
         } catch (error) {
             setModalContent({ title: 'Erro', tip: "Não foi possível conectar ao tutor IA no momento." });
         } finally {
@@ -915,12 +960,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             </div>
                                         </div>
                                         <div className="flex flex-col items-end">
-                                            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Turma / Turno</span>
+
                                             <div className="text-right">
-                                                <span className="text-xs font-bold text-gray-700 bg-white px-2 py-0.5 rounded border border-gray-200 block">
-                                                    {student.gradeLevel || 'N/A'} <span className="text-gray-300">|</span> {student.shift}
+                                                <span className="text-xs font-bold text-gray-700 block mb-1 whitespace-nowrap">
+                                                    {student.gradeLevel || 'N/A'}
                                                 </span>
-                                                <span className="text-[10px] font-semibold text-gray-500 mt-0.5 block">{student.unit}</span>
+                                                <span className="text-xs font-bold text-gray-700 bg-white px-2 py-0.5 rounded border border-gray-200 inline-block">
+                                                    {student.schoolClass} <span className="text-gray-300">|</span> {SHIFT_LABELS[student.shift as SchoolShift] || student.shift}
+                                                </span>
+                                                <span className="text-[10px] font-semibold text-gray-500 mt-0.5 block">Unid. {getUnitLabel(student.unit)}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -1173,7 +1221,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                         const countValue = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
                                                         return (
                                                             <span key={record.id} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200 shadow-sm">
-                                                                Dia {day} <span className="mx-1 text-orange-300">|</span> {record.discipline}
+                                                                Dia {day} <span className="mx-1 text-orange-300">|</span> {getSubjectLabel(record.discipline || '')}
                                                                 {countValue > 1 && <span className="ml-1 opacity-75">({countValue} faltas)</span>}
                                                             </span>
                                                         );
@@ -1231,7 +1279,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                         <div className="flex justify-between items-start">
                                                             <div>
                                                                 <div className="flex items-center gap-2 mb-1">
-                                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 uppercase tracking-wide">{mat.subject}</span>
+                                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 uppercase tracking-wide">{getSubjectLabel(mat.subject)}</span>
                                                                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-800 uppercase tracking-wide">{mat.shift}</span>
                                                                 </div>
                                                                 <h3 className="font-bold text-gray-800 text-lg leading-tight mb-1">{mat.title}</h3>
@@ -1287,7 +1335,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                                                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                                                                     <div className="flex justify-between items-start mb-2">
-                                                                        <span className="font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded text-xs uppercase tracking-wide">{item.subject}</span>
+                                                                        <span className="font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded text-xs uppercase tracking-wide">{getSubjectLabel(item.subject)}</span>
                                                                         <span className="text-[10px] text-gray-400">{item.teacherName}</span>
                                                                     </div>
 
@@ -1337,7 +1385,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-4">
                                                                 <div>
                                                                     <div className="flex items-center gap-2 mb-1">
-                                                                        <span className="font-bold text-xs uppercase tracking-wide bg-blue-50 text-blue-950 px-2 py-0.5 rounded">{guide.subject}</span>
+                                                                        <span className="font-bold text-xs uppercase tracking-wide bg-blue-50 text-blue-950 px-2 py-0.5 rounded">{getSubjectLabel(guide.subject)}</span>
                                                                         <span className="font-bold text-xs uppercase tracking-wide bg-orange-50 text-orange-700 px-2 py-0.5 rounded border border-orange-100">
                                                                             {getDynamicBimester(guide.examDate, academicSettings)}º Bim
                                                                         </span>
@@ -1489,7 +1537,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         </div>
                                         <div>
                                             <span className="font-bold text-gray-600 uppercase text-xs block">Turma/Turno</span>
-                                            <span className="text-gray-900">{student.schoolClass} - {student.shift}</span>
+                                            <span className="text-gray-900">{student.schoolClass} - {SHIFT_LABELS[student.shift as SchoolShift] || student.shift}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1608,7 +1656,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                     {studentGrades.map((grade) => (
                                                         <tr key={grade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-300">
                                                             <td className="px-2 py-2 font-bold text-gray-900 border-r border-gray-300 text-[10px] md:text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] align-top print:w-16 print:px-1 print:py-0.5">
-                                                                <span className="uppercase block leading-tight mb-1" title={grade.subject}>{abbreviateSubject(grade.subject)}</span>
+                                                                <span className="uppercase block leading-tight mb-1" title={grade.subject}>{getSubjectLabel(grade.subject, true)}</span>
                                                                 <span className="text-[9px] text-gray-500 font-normal block italic whitespace-normal leading-tight break-words">
                                                                     {getTeacherName(grade.subject)}
                                                                 </span>
@@ -1990,7 +2038,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 className="w-full bg-gradient-to-r from-blue-950 to-slate-900 text-white hover:from-blue-900 hover:to-slate-800 py-2 rounded-lg text-xs font-bold flex items-center justify-center transition-all shadow-sm hover:shadow-md transform active:scale-95"
                                                             >
                                                                 <Bot className="w-4 h-4 mr-2" />
-                                                                Ajuda da IA
+                                                                Ajuda da IA ({getSubjectLabel(grade.subject, true)})
                                                             </button>
                                                         </div>
                                                     </div>

@@ -74,6 +74,15 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
     const [rawPhoto, setRawPhoto] = useState<string | null>(null);
     const [showPassword, setShowPassword] = useState(false);
 
+    // Helper state for Level dropdown - MUST BE INITIALIZED BEFORE formData TO SYNC
+    const [selectedLevel, setSelectedLevel] = useState<string>(() => {
+        if (student && student.gradeLevel) {
+            const { level } = parseGradeLevel(student.gradeLevel);
+            return level;
+        }
+        return '';
+    });
+
     // Initial state setup
     const [formData, setFormData] = useState<Partial<Student> & any>(() => {
         // Determine initial unit based on login
@@ -211,9 +220,10 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
             initialData.telefone_responsavel = student.telefone_responsavel || student.phoneNumber || '';
         }
 
-        // Initialize gradeLevel from student if existing
+        // Initialize gradeLevel from student if existing - CRITICAL FIX
         if (student && student.gradeLevel) {
-            initialData.gradeLevel = student.gradeLevel;
+            const { grade } = parseGradeLevel(student.gradeLevel);
+            initialData.gradeLevel = grade; // Set only the Grade part
         }
 
         // Normalize schoolClass (e.g. "03" -> "C")
@@ -415,14 +425,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
         setRawPhoto(null);
     };
 
-    // Helper state for Level dropdown
-    const [selectedLevel, setSelectedLevel] = useState<string>(() => {
-        if (student && student.gradeLevel) {
-            const { level } = parseGradeLevel(student.gradeLevel);
-            return level;
-        }
-        return '';
-    });
+
 
     const handleLevelChange = (newLevel: string) => {
         const segment = Object.values(ACADEMIC_SEGMENTS).find(s => s.label === newLevel);

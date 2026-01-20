@@ -14,8 +14,10 @@ import type {
     SchoolUnit,
     SchoolClass,
     ClassSchedule,
-    ScheduleItem
+    ScheduleItem,
+    Subject
 } from '../types';
+import { SUBJECT_LABELS, UNIT_LABELS } from '../types';
 import { SCHOOL_CLASSES_OPTIONS, SCHOOL_SHIFTS } from '../utils/academicDefaults';
 import { useAcademicData } from '../hooks/useAcademicData';
 import {
@@ -48,6 +50,14 @@ const DAYS_OF_WEEK = [
     { id: 4, label: 'Quinta' },
     { id: 5, label: 'Sexta' },
     { id: 6, label: 'Sábado' },
+];
+
+const GRADE_ORDER = [
+    'Berçário',
+    'Nível I', 'Nível II', 'Nível III', 'Nível IV', 'Nível V',
+    '1º Ano', '2º Ano', '3º Ano', '4º Ano', '5º Ano',
+    '6º Ano', '7º Ano', '8º Ano', '9º Ano',
+    '1ª Série', '2ª Série', '3ª Série'
 ];
 
 export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps) {
@@ -86,7 +96,10 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
         setLoading(true);
         try {
             const schedulesRef = collection(db, 'class_schedules');
-            const q = query(
+            const unitLabel = UNIT_LABELS[unit as SchoolUnit] || unit;
+
+            // Try ID first, then Label if they differ
+            let q = query(
                 schedulesRef,
                 where('schoolId', '==', unit),
                 where('grade', '==', selectedGrade),
@@ -95,7 +108,21 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                 where('dayOfWeek', '==', selectedDay)
             );
 
-            const snap = await getDocs(q);
+            let snap = await getDocs(q);
+
+            if (snap.empty && unitLabel !== unit) {
+                // Try with legacy label
+                q = query(
+                    schedulesRef,
+                    where('schoolId', '==', unitLabel),
+                    where('grade', '==', selectedGrade),
+                    where('class', '==', selectedClass),
+                    where('shift', '==', selectedShift),
+                    where('dayOfWeek', '==', selectedDay)
+                );
+                snap = await getDocs(q);
+            }
+
             if (!snap.empty) {
                 const data = snap.docs[0].data() as ClassSchedule;
                 setItems(data.items || []);
@@ -121,7 +148,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
 
     const confirmDelete = async () => {
         if (itemToDeleteIndex === null) return;
-        
+
         const index = itemToDeleteIndex;
         const newItems = items.filter((_, i) => i !== index);
         setItems(newItems);
@@ -291,6 +318,15 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
         }
     };
 
+    const sortedGrades = [...grades].sort((a, b) => {
+        const indexA = GRADE_ORDER.indexOf(a.name);
+        const indexB = GRADE_ORDER.indexOf(b.name);
+        if (indexA === -1 && indexB === -1) return a.name.localeCompare(b.name);
+        if (indexA === -1) return 1;
+        if (indexB === -1) return -1;
+        return indexA - indexB;
+    });
+
     return (
         <div className="space-y-6">
             {/* Selection Header */}
@@ -302,7 +338,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                         onChange={(e) => setSelectedGrade(e.target.value)}
                         className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950/20 outline-none"
                     >
-                        {grades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
+                        {sortedGrades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
                     </select>
                 </div>
                 <div>
@@ -439,11 +475,11 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                                         >
                                             <option value="">Selecione...</option>
                                             {subjects.filter(s => s.isActive).map(s => (
-                                                <option key={s.id} value={s.name}>{s.name}</option>
+                                                <option key={s.id} value={s.name}>{SUBJECT_LABELS[s.name as Subject] || s.name}</option>
                                             ))}
                                             {/* Legacy support - if item.subject is not in subjects list */}
                                             {item.subject && !subjects.some(s => s.name === item.subject) && (
-                                                <option value={item.subject}>{item.subject} (Antigo)</option>
+                                                <option value={item.subject}>{SUBJECT_LABELS[item.subject as Subject] || item.subject} (Antigo)</option>
                                             )}
                                         </select>
                                     </div>
@@ -504,7 +540,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                                     onChange={(e) => setCopySourceGrade(e.target.value)}
                                     className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700"
                                 >
-                                    {grades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
+                                    {sortedGrades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
                                 </select>
                             </div>
                             <div>

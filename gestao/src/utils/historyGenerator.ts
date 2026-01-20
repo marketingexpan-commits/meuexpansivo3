@@ -1,7 +1,7 @@
 import { CURRICULUM_MATRIX } from './academicDefaults';
 import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, calculateSchoolDays, calculateEffectiveTaughtClasses, isClassScheduled } from './academicUtils';
 import type { Student, AcademicHistoryRecord, GradeEntry, AttendanceRecord, AcademicSubject, SchoolUnitDetail, AcademicSettings, CalendarEvent } from '../types';
-import { AttendanceStatus } from '../types';
+import { AttendanceStatus, SUBJECT_LABELS, Subject } from '../types';
 import { calculateGeneralFrequency as calculateUnifiedFrequency, calculateAttendancePercentage, calculateAnnualAttendancePercentage } from './frequency';
 
 // Helper to calculate frequency per subject/bimester
@@ -166,7 +166,7 @@ export const generateSchoolHistory = (
                         <tbody>
                             ${record.subjects.map(sub => `
                                 <tr>
-                                    <td class="subject-col"><strong>${sub.name}</strong></td>
+                                    <td class="subject-col"><strong>${SUBJECT_LABELS[sub.name as Subject] || sub.name}</strong></td>
                                     <td>${sub.ch || '-'}</td>
                                     <td style="background: #fdfdfd; width: 25px;">${sub.b1 || '-'}</td><td style="width: 25px;">-</td><td style="width: 35px;">-</td>
                                     <td style="background: #fdfdfd; width: 25px;">${sub.b2 || '-'}</td><td style="width: 25px;">-</td><td style="width: 35px;">-</td>
@@ -311,7 +311,7 @@ export const generateSchoolHistory = (
 
             return `
             <tr>
-                <td class="subject-col"><strong>${g.subject}</strong></td>
+                <td class="subject-col"><strong>${SUBJECT_LABELS[g.subject as Subject] || g.subject}</strong></td>
                 <td style="width: 25px;">${totalCH > 0 ? totalCH + 'h' : '-'}</td>
                 <td style="color: #444; font-weight: bold;">${ministradaWorkload > 0 ? ministradaWorkload + 'h' : '-'}</td>
                 ${renderBimesterCols(1, g.bimesters.bimester1)}
