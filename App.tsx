@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import firebase from 'firebase/compat/app';
-import { UserRole, UserSession, Student, Teacher, GradeEntry, Admin, SchoolMessage, AttendanceRecord, EarlyChildhoodReport, UnitContact, AppNotification, Mensalidade, EventoFinanceiro, AcademicSettings, Ticket, ClassMaterial, DailyAgenda, ExamGuide, CalendarEvent, ClassSchedule } from './types';
+import { UserRole, UserSession, Student, Teacher, GradeEntry, Admin, SchoolMessage, AttendanceRecord, EarlyChildhoodReport, UnitContact, AppNotification, Mensalidade, EventoFinanceiro, AcademicSettings, Ticket, ClassMaterial, DailyAgenda, ExamGuide, CalendarEvent, ClassSchedule, SchoolUnit, UNIT_LABELS } from './types';
 import { MOCK_STUDENTS, MOCK_TEACHERS, MOCK_ADMINS, FINAL_GRADES_CALCULATED, ALLOW_MOCK_LOGIN } from './constants';
 import { Login } from './components/Login';
 import { StudentDashboard } from './components/StudentDashboard';
@@ -708,8 +708,6 @@ const AppContent: React.FC = () => {
 
   const handleCoordinatorLogin = async (name: string, pass: string, unit: string) => {
     try {
-      // Verify against unitContacts where role matches potential coordinator roles?
-      // Actually, simply query unitContacts by name/pass/unit
       const snapshot = await db.collection('unitContacts')
         .where('name', '==', name.trim())
         .where('password', '==', pass)

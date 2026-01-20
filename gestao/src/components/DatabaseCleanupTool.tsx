@@ -402,7 +402,7 @@ export const DatabaseCleanupTool = () => {
         setLoading(true);
         setUnitMigrationStats([]);
         try {
-            const collectionsToScan = ['students', 'grades', 'attendance', 'calendarEvents', 'classSchedules'];
+            const collectionsToScan = ['students', 'grades', 'attendance', 'calendarEvents', 'classSchedules', 'unitContacts', 'schoolMessages', 'class_materials', 'daily_agenda', 'exam_guides', 'tickets_pedagogicos'];
             const stats: { collection: string; count: number }[] = [];
 
             const legacyUnits = ['Boa Sorte', 'Zona Norte', 'Extremoz', 'Quintas'];
@@ -476,7 +476,7 @@ export const DatabaseCleanupTool = () => {
 
             // 2. MIGRATE REFERENCES IN OTHER COLLECTIONS
             console.log("--- FASE 2: Varredura de Alunos e Notas ---");
-            const targetCollections = ['students', 'grades', 'attendance', 'calendarEvents', 'classSchedules'];
+            const targetCollections = ['students', 'grades', 'attendance', 'calendarEvents', 'classSchedules', 'unitContacts', 'schoolMessages', 'class_materials', 'daily_agenda', 'exam_guides', 'tickets_pedagogicos'];
             let migrationCount = 0;
 
             for (const collectionName of targetCollections) {
