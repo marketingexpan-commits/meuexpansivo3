@@ -237,8 +237,8 @@ export const SCHOOL_SHIFTS_LIST = ['Matutino', 'Vespertino'];
 export const SCHOOL_CLASSES_LIST = ['A', 'B', 'C', 'D', 'E'];
 
 export const SCHOOL_SHIFTS = [
-    { label: 'Matutino', value: 'Matutino' },
-    { label: 'Vespertino', value: 'Vespertino' }
+    { label: 'Matutino', value: 'shift_morning' },
+    { label: 'Vespertino', value: 'shift_afternoon' }
 ];
 
 export const SCHOOL_CLASSES_OPTIONS = [

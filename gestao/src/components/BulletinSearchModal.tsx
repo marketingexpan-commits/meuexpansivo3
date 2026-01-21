@@ -43,6 +43,7 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
     const [preparedData, setPreparedData] = useState<any[]>([]); // { student, grades, attendance }
     const [academicSettings, setAcademicSettings] = useState<AcademicSettings | null>(null);
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+    const [classSchedules, setClassSchedules] = useState<any[]>([]);
 
     const handleSearch = async () => {
         setIsLoading(true);
@@ -134,8 +135,14 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
                     const snap = await getDocs(calendarQuery);
                     const events = snap.docs.map((d: any) => ({ id: d.id, ...d.data() } as CalendarEvent));
                     setCalendarEvents(events);
+
+                    // Fetch Class Schedules for accurate calculation
+                    const schedulesSnap = await getDocs(collection(db, 'class_schedules'));
+                    const schedules = schedulesSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+                    setClassSchedules(schedules);
+
                 } catch (e) {
-                    console.error("Error fetching calendar events", e);
+                    console.error("Error fetching calendar events or schedules", e);
                 }
 
                 setFoundStudents(results);
@@ -165,9 +172,9 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
 
         try {
             if (preparedData.length === 1) {
-                generateSchoolBulletin(preparedData[0].student, preparedData[0].grades, preparedData[0].attendance, unitDetail, academicSubjects, academicSettings, calendarEvents);
+                generateSchoolBulletin(preparedData[0].student, preparedData[0].grades, preparedData[0].attendance, unitDetail, academicSubjects, academicSettings, calendarEvents, classSchedules);
             } else {
-                generateBatchSchoolBulletin(preparedData, unitDetail, academicSubjects, academicSettings, calendarEvents);
+                generateBatchSchoolBulletin(preparedData, unitDetail, academicSubjects, academicSettings, calendarEvents, classSchedules);
             }
         }
         catch (e) {

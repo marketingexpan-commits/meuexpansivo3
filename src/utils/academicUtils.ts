@@ -259,7 +259,8 @@ export const calculateEffectiveTaughtClasses = (
 ): { taught: number, isEstimated: boolean } => {
     // 1. Find Schedule for this unit/grade/class
     const scheduleMap: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
-    let hasSchedule = false;
+    let hasScheduleForSubject = false;
+    let hasAnyScheduleForClass = false;
 
     classSchedules.forEach(schedule => {
         // Filter by Grade/Class if provided
@@ -272,6 +273,9 @@ export const calculateEffectiveTaughtClasses = (
             if (normalizeClass(schedule.class) !== normalizeClass(schoolClass)) return;
         }
 
+        // If we reached here, we found at least one schedule entry for this class/grade
+        hasAnyScheduleForClass = true;
+
         // Match subject (Normalized) and sum durations
         if (schedule.items) {
             let dailyTotal = 0;
@@ -283,14 +287,16 @@ export const calculateEffectiveTaughtClasses = (
 
             if (dailyTotal > 0) {
                 scheduleMap[schedule.dayOfWeek] = dailyTotal;
-                hasSchedule = true;
+                hasScheduleForSubject = true;
             }
         }
     });
 
-    // Fallback if no schedule found
-    if (!hasSchedule) {
-        return { taught: 0, isEstimated: true };
+    // Fallback if no schedule found for this SUBJECT
+    if (!hasScheduleForSubject) {
+        // If there is ANY schedule for this class, we assume the subject is NOT scheduled
+        // and therefore should NOT be estimated.
+        return { taught: 0, isEstimated: !hasAnyScheduleForClass };
     }
 
     let taughtClasses = 0;

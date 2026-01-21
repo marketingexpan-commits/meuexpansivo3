@@ -190,7 +190,9 @@ export const doesEventApplyToStudent = (
     event: any,
     unit?: string,
     gradeLevel?: string,
-    schoolClass?: string
+    schoolClass?: string,
+    shift?: string,
+    subjectId?: string
 ): boolean => {
     // 1. Basic Unit Check
     if (unit && event.units && event.units.length > 0 && !event.units.includes(unit) && !event.units.includes('all')) {
@@ -205,19 +207,33 @@ export const doesEventApplyToStudent = (
         return normalizedStudentClass ? event.targetClasses.some((c: string) => normalizeClass(c) === normalizedStudentClass) : false;
     }
 
-    // b) Série (Grade)
+    // b) Turno (Shift) - Additive Filter
+    if (event.targetShifts && event.targetShifts.length > 0) {
+        if (shift && !event.targetShifts.includes(shift)) {
+            return false;
+        }
+    }
+
+    // c) Disciplina (Subject) - Additive Filter (CRITICAL for Repositions)
+    if (event.targetSubjectIds && event.targetSubjectIds.length > 0) {
+        if (subjectId && !event.targetSubjectIds.includes(subjectId)) {
+            return false;
+        }
+    }
+
+    // d) Série (Grade)
     if (event.targetGrades && event.targetGrades.length > 0) {
         const studentGrade = gradeLevel ? parseGradeLevel(gradeLevel).grade : null;
         return studentGrade ? event.targetGrades.some((g: string) => parseGradeLevel(g).grade === studentGrade) : false;
     }
 
-    // c) Segmento (Segment)
+    // e) Segmento (Segment)
     if (event.targetSegments && event.targetSegments.length > 0) {
         const studentSegment = gradeLevel ? parseGradeLevel(gradeLevel).level : null;
         return studentSegment ? event.targetSegments.includes(studentSegment) : false;
     }
 
-    // d) Geral da Unidade (No filters defined)
+    // f) Geral da Unidade (No filters defined)
     return true;
 };
 
@@ -229,11 +245,14 @@ export const calculateEffectiveTaughtClasses = (
     classSchedules: any[], // ClassSchedule[]
     calendarEvents: any[],
     gradeLevel?: string,
-    schoolClass?: string
+    schoolClass?: string,
+    studentShift?: string,
+    subjectId?: string // Now required for granular filtering
 ): { taught: number, isEstimated: boolean } => {
     // 1. Find Schedule for this unit/grade/class
     const scheduleMap: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
-    let hasSchedule = false;
+    let hasScheduleForSubject = false;
+    let hasAnyScheduleForClass = false;
 
     classSchedules.forEach(schedule => {
         // Filter by Grade/Class if provided
@@ -246,6 +265,9 @@ export const calculateEffectiveTaughtClasses = (
             if (normalizeClass(schedule.class) !== normalizeClass(schoolClass)) return;
         }
 
+        // If we reached here, we found at least one schedule entry for this class/grade
+        hasAnyScheduleForClass = true;
+
         // Match subject (Normalized) and sum durations
         if (schedule.items) {
             let dailyTotal = 0;
@@ -257,39 +279,40 @@ export const calculateEffectiveTaughtClasses = (
 
             if (dailyTotal > 0) {
                 scheduleMap[schedule.dayOfWeek] = dailyTotal;
-                hasSchedule = true;
+                hasScheduleForSubject = true;
             }
         }
     });
 
-    // Fallback if no schedule found
-    if (!hasSchedule) {
-        return { taught: 0, isEstimated: true };
+    // Fallback if no schedule found for this SUBJECT
+    if (!hasScheduleForSubject) {
+        // If there is ANY schedule for this class, we assume the subject is NOT scheduled
+        // and therefore should NOT be estimated.
+        return { taught: 0, isEstimated: !hasAnyScheduleForClass };
     }
 
     let taughtClasses = 0;
     const curDate = new Date(startDate + 'T00:00:00');
     const finalDate = new Date(endDate + 'T00:00:00');
 
-    // Event filtering setup
+    // Holiday and Extra School Day filtering setup
     const holidayDates = new Set<string>();
     const extraSchoolDates = new Set<string>();
 
     (calendarEvents || []).forEach(e => {
-        const isHoliday = e.type === 'holiday_national' || e.type === 'holiday_state' || e.type === 'holiday_municipal' || e.type === 'vacation' || e.type === 'recess';
-        const isExtraSchoolDay = e.type === 'school_day' || e.type === 'substitution';
+        if (!doesEventApplyToStudent(e, unit, gradeLevel, schoolClass, studentShift, subjectId)) return;
 
-        if (isHoliday || isExtraSchoolDay) {
-            if (unit && e.units && e.units.length > 0 && !e.units.includes(unit) && !e.units.includes('all')) {
-                return;
-            }
-            const s = new Date(e.startDate + 'T00:00:00');
-            const f = e.endDate ? new Date(e.endDate + 'T00:00:00') : new Date(e.startDate + 'T00:00:00');
-            if (!isNaN(s.getTime())) {
+        const s = new Date(e.startDate + 'T00:00:00');
+        const f = e.endDate ? new Date(e.endDate + 'T00:00:00') : new Date(e.startDate + 'T00:00:00');
+
+        if (!isNaN(s.getTime())) {
+            if (e.type === 'holiday_national' || e.type === 'holiday_state' || e.type === 'holiday_municipal' || e.type === 'vacation' || e.type === 'recess') {
                 for (let d = new Date(s); d <= f; d.setDate(d.getDate() + 1)) {
-                    const dStr = d.toISOString().split('T')[0];
-                    if (isHoliday) holidayDates.add(dStr);
-                    if (isExtraSchoolDay) extraSchoolDates.add(dStr);
+                    holidayDates.add(d.toISOString().split('T')[0]);
+                }
+            } else if (e.type === 'school_day' || e.type === 'substitution') {
+                for (let d = new Date(s); d <= f; d.setDate(d.getDate() + 1)) {
+                    extraSchoolDates.add(d.toISOString().split('T')[0]);
                 }
             }
         }
@@ -308,7 +331,7 @@ export const calculateEffectiveTaughtClasses = (
 
         // Find the specific event for this date to check for substitution
         const dayEvent = (calendarEvents || []).find(e => {
-            if (!doesEventApplyToStudent(e, unit, gradeLevel, schoolClass)) return false;
+            if (!doesEventApplyToStudent(e, unit, gradeLevel, schoolClass, studentShift, subjectId)) return false;
             return dateStr >= e.startDate && dateStr <= (e.endDate || e.startDate);
         });
 

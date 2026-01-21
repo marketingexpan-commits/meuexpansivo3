@@ -177,7 +177,8 @@ export const CURRICULUM_MATRIX: Record<string, Record<string, number>> = {
         [SUBJECTS_DATA.PHYSICAL_ED.id]: 1,
         [SUBJECTS_DATA.LIFE_PROJECT.id]: 1
     },
-    'Ens. Médio': {
+    'Ensino Médio': {
+
         [SUBJECTS_DATA.PORTUGUESE.id]: 2,
         [SUBJECTS_DATA.MATH.id]: 4,
         [SUBJECTS_DATA.PHYSICS.id]: 4,

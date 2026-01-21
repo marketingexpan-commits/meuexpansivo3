@@ -49,13 +49,26 @@ export function DeclarationSearchModal({ onClose }: DeclarationSearchModalProps)
                 return;
             }
 
-            // 2. Fetch Pedagogical Data (Frequency and Settings)
+            // 2. Fetch Pedagogical Data (Frequency, Settings, Events, Schedules)
             const grades = await pedagogicalService.getGrades(student.id);
             const attendance = await pedagogicalService.getAttendance(student.id);
+            const calendarEvents = await pedagogicalService.getCalendarEvents(); // Fetch events
+            const classSchedules = await pedagogicalService.getAllSchedules(); // Fetch schedules for accurate calc
 
             const settings = await getAcademicSettings(2026, student.unit);
 
-            const freq = pedagogicalService.calculateFrequencyFromGrades(grades, student.gradeLevel, attendance, academicSubjects, settings);
+            const freq = pedagogicalService.calculateFrequencyFromGrades(
+                grades,
+                student.gradeLevel,
+                attendance,
+                academicSubjects,
+                settings,
+                calendarEvents,
+                student.unit,
+                classSchedules,
+                student.schoolClass,
+                student.shift
+            );
             setStudentFrequency(freq);
 
             // 3. Fetch Financial Data (Debts)

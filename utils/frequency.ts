@@ -31,7 +31,13 @@ export const calculateTaughtClasses = (
     let isEstimated = false;
 
     // Resolve subjectId from academicSubjects if available
-    const subjectId = academicSubjects?.find(s => s.name === subject)?.id;
+    const normalizedQuery = subject.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').trim();
+    const subjectId = academicSubjects?.find(s =>
+        s.id === subject ||
+        s.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').trim() === normalizedQuery ||
+        (s.shortName && s.shortName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').trim() === normalizedQuery)
+    )?.id || (subject.startsWith('sub_') ? subject : undefined);
+
 
     if (classSchedules && classSchedules.length > 0) {
         const result = calculateEffectiveTaughtClasses(
@@ -58,7 +64,11 @@ export const calculateTaughtClasses = (
         let weeklyClasses = 0;
         // Dynamic lookup
         if (academicSubjects) {
-            const ds = academicSubjects.find(s => s.name === subject);
+            const ds = academicSubjects.find(s =>
+                s.id === subject ||
+                s.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').trim() === normalizedQuery
+            );
+
             if (ds?.weeklyHours) {
                 const k = Object.keys(ds.weeklyHours).find(key => gradeLevel.includes(key));
                 if (k) weeklyClasses = ds.weeklyHours[k];
@@ -69,7 +79,8 @@ export const calculateTaughtClasses = (
             let levelKey = '';
             if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
             else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-            else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
+            else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
+
 
             if (levelKey && CURRICULUM_MATRIX[levelKey]) {
                 weeklyClasses = CURRICULUM_MATRIX[levelKey][subject] || 0;
@@ -242,7 +253,8 @@ export const calculateGeneralFrequency = (
         let levelKey = '';
         if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
         else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-        else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
+        else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
+
 
         if (levelKey && CURRICULUM_MATRIX[levelKey]) {
             Object.keys(CURRICULUM_MATRIX[levelKey]).forEach(s => subjectsToCalculate.push(s));
@@ -271,7 +283,13 @@ export const calculateGeneralFrequency = (
         if (record.date < startDate || record.date > endDate) return acc;
         if (record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT) {
             // Verify if the day is a valid school day for this subject
-            const subjectId = academicSubjects?.find(s => s.name === record.discipline)?.id;
+            const normalizedDisc = record.discipline.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').trim();
+            const subjectId = academicSubjects?.find(s =>
+                s.id === record.discipline ||
+                s.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').trim() === normalizedDisc ||
+                (s.shortName && s.shortName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').trim() === normalizedDisc)
+            )?.id || (record.discipline.startsWith('sub_') ? record.discipline : undefined);
+
 
             if (classSchedules && classSchedules.length > 0) {
                 if (!isClassScheduled(record.date, record.discipline, classSchedules, calendarEvents || [], unit, gradeLevel, schoolClass, shift, subjectId)) {

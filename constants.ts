@@ -234,7 +234,8 @@ export const calculateFinalData = (bimesters: GradeEntry['bimesters'], recFinal?
   }
 
   // Se não for para mostrar as médias ainda, retornamos -1 como marcador
-  const finalMediaAnual = showAverages ? mediaAnual : -1;
+  // UPDATE: User requested to show calculation always.
+  const finalMediaAnual = mediaAnual;
   const finalMediaFinal = (showAverages && (mediaAnual >= 7.0 || (recFinal !== undefined && recFinal !== null))) ? mediaFinal : -1;
 
   // STRICT APPROVAL CHECK: Annual average is approved ONLY if all component bimesters are fully approved by coordinator.
@@ -332,9 +333,11 @@ export const getCurriculumSubjects = (gradeLevel: string, academicSubjects?: Aca
   const sortedMatrixKeys = Object.keys(CURRICULUM_MATRIX).sort((a, b) => b.length - a.length);
   const levelKey = sortedMatrixKeys.find(key =>
     gradeLevel.includes(key) ||
-    (key === 'Ensino Médio' && (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Médio') || gradeLevel.includes('Série')))
+    (key === 'Ensino Médio' && (gradeLevel.toLowerCase().includes('médio') || gradeLevel.toLowerCase().includes('série')))
   );
   return levelKey ? Object.keys(CURRICULUM_MATRIX[levelKey]) : [];
+
+
 };
 
 

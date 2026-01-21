@@ -6,7 +6,7 @@ import { Button } from './Button';
 import { User, Phone, Mail, GraduationCap, X, Loader2, ShieldAlert, Key, BookOpen, Layers } from 'lucide-react';
 import { teacherService } from '../services/teacherService';
 import type { Teacher } from '../types';
-import { UNIT_LABELS, SchoolUnit } from '../types';
+import { UNIT_LABELS, SchoolUnit, SUBJECT_LABELS, Subject } from '../types';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { useSchoolUnits } from '../hooks/useSchoolUnits';
 import { maskCPF, sanitizePhone } from '../utils';
@@ -336,8 +336,8 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                                         <Checkbox
                                             key={sub.id}
                                             label={sub.name}
-                                            checked={formData.subjects?.includes(sub.name)}
-                                            onChange={() => handleToggleCollection('subjects', sub.name)}
+                                            checked={formData.subjects?.includes(sub.id)}
+                                            onChange={() => handleToggleCollection('subjects', sub.id)}
                                             className="bg-white p-2 rounded-xl border border-slate-200 hover:border-blue-950/30 transition-all shadow-sm"
                                         />
                                     ))
@@ -413,7 +413,7 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                                                                 : 'bg-slate-50 text-slate-400 border-slate-100 hover:border-slate-300'
                                                                 }`}
                                                         >
-                                                            {subject}
+                                                            {subjects.find(s => s.id === subject)?.name || SUBJECT_LABELS[subject as Subject] || subject}
                                                         </button>
                                                     );
                                                 })}
@@ -423,7 +423,7 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                                 </div>
                             </section>
                         );
-                    }, [formData.gradeLevels, formData.subjects, formData.assignments, handleToggleAssignment])}
+                    }, [formData.gradeLevels, formData.subjects, formData.assignments, subjects, handleToggleAssignment])}
                 </form>
 
                 {/* Footer */}

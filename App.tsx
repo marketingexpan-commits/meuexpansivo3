@@ -735,7 +735,36 @@ const AppContent: React.FC = () => {
     localStorage.removeItem('app_session');
   };
 
-  // 3. Persist Session
+  // 3. Validation: Check if the user document still exists in Firestore on boot/refresh
+  useEffect(() => {
+    if (session.role === UserRole.NONE || !session.user || !session.user.id || ALLOW_MOCK_LOGIN) return;
+
+    const validateSession = async () => {
+      let collectionName = '';
+      switch (session.role) {
+        case UserRole.STUDENT: collectionName = 'students'; break;
+        case UserRole.TEACHER: collectionName = 'teachers'; break;
+        case UserRole.ADMIN: collectionName = 'admins'; break;
+        case UserRole.COORDINATOR: collectionName = 'unitContacts'; break;
+        default: return;
+      }
+
+      try {
+        const doc = await db.collection(collectionName).doc(session.user!.id).get();
+        if (!doc.exists) {
+          console.warn("Session user not found in database. Logging out.");
+          handleLogout();
+        }
+      } catch (error) {
+        console.error("Session validation error:", error);
+      }
+    };
+
+    validateSession();
+  }, [session.role, session.user?.id]);
+
+  // 4. Persist Session
+
   useEffect(() => {
     if (session.role !== UserRole.NONE) {
       localStorage.setItem('app_session', JSON.stringify(session));

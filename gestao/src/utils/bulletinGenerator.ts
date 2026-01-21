@@ -107,7 +107,11 @@ const generateBulletinHtml = (
             student.gradeLevel,
             academicSubjects,
             settings,
-            calendarEvents
+            calendarEvents,
+            student.unit,
+            classSchedules,
+            student.schoolClass,
+            student.shift
         );
     };
 
@@ -379,7 +383,14 @@ const generateBulletinHtml = (
                     <div><strong>CH:</strong> Carga Horária Prevista</div>
                     <div><strong>CH Min:</strong> Carga Horária Ministrada</div>
                 </div>
-                </p>
+                
+                <div style="margin-top: 10px; padding: 5px; background: #eff6ff; border: 1px solid #dbeafe; border-radius: 4px; color: #1e3a8a; font-size: 8px; line-height: 1.3;">
+                    <strong>Sobre a frequência:</strong><br>
+                    • A frequência é calculada somente com base nas aulas que já aconteceram até o momento.<br>
+                    • Disciplinas entram no cálculo conforme começam a ter aulas registradas na grade horária.<br>
+                    • O aluno é considerado presente automaticamente, exceto nos dias em que o professor registra falta.
+                </div>
+                
                 ${renderRepositionDetails()}
                 ${student.observacoes_gerais ? `<p style="margin-top: 10px; white-space: pre-wrap;"><strong>Observações:</strong> ${student.observacoes_gerais}</p>` : ''}
             </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { db } from '../firebaseConfig';
-import { ClassSchedule, SchoolUnit, ScheduleItem, SchoolClass, SchoolShift } from '../types';
+import { ClassSchedule, SchoolUnit, ScheduleItem, SchoolClass, SchoolShift, UNIT_LABELS, SHIFT_LABELS } from '../types';
 import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST } from '../constants';
 import { Button } from './Button';
 import {
@@ -11,7 +11,8 @@ import {
     Copy,
     Save,
     Calendar,
-    AlertCircle
+    AlertCircle,
+    Info
 } from 'lucide-react';
 
 interface ScheduleManagementProps {
@@ -39,6 +40,23 @@ export const ScheduleManagement: React.FC<ScheduleManagementProps> = ({ unit, is
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
 
+    // Normalize Unit Prop to Technical ID (Handle Legacy Strings)
+    const normalizedUnitProp = useMemo(() => {
+        if (!unit) return undefined;
+        // If it's already a valid SchoolUnit enum value
+        if (Object.values(SchoolUnit).includes(unit as SchoolUnit)) return unit;
+
+        // If it's a Legacy Label (e.g. "Boa Sorte"), find key
+        const found = Object.entries(UNIT_LABELS).find(([_, label]) => label === unit);
+        return found ? found[0] as SchoolUnit : unit;
+    }, [unit]);
+
+    // For General Admin: Internal State for Unit Selection
+    const [internalSelectedUnit, setInternalSelectedUnit] = useState<SchoolUnit | ''>('');
+
+    // Effective Unit to use in Logic
+    const effectiveUnit = normalizedUnitProp || (internalSelectedUnit as SchoolUnit);
+
     // Initial values once academic data is loaded
     useEffect(() => {
         if (!loadingAcademic && academicGrades.length > 0 && !selectedGrade) {
@@ -54,14 +72,19 @@ export const ScheduleManagement: React.FC<ScheduleManagementProps> = ({ unit, is
     const [copySourceShift, setCopySourceShift] = useState<SchoolShift>(SchoolShift.MORNING);
 
     useEffect(() => {
-        fetchSchedule();
-    }, [selectedGrade, selectedClass, selectedShift, selectedDay]);
+        if (effectiveUnit) {
+            fetchSchedule();
+        } else {
+            setItems([]); // Clear items if no unit selected
+        }
+    }, [effectiveUnit, selectedGrade, selectedClass, selectedShift, selectedDay]);
 
     const fetchSchedule = async () => {
+        if (!effectiveUnit) return;
         setLoading(true);
         try {
             const snapshot = await db.collection('class_schedules')
-                .where('schoolId', '==', unit)
+                .where('schoolId', '==', effectiveUnit)
                 .where('grade', '==', selectedGrade)
                 .where('class', '==', selectedClass)
                 .where('shift', '==', selectedShift)
@@ -103,10 +126,10 @@ export const ScheduleManagement: React.FC<ScheduleManagementProps> = ({ unit, is
         if (loading || saving) return;
         setSaving(true);
         try {
-            const scheduleId = `${unit}_${selectedGrade}_${selectedClass}_${selectedShift}_${selectedDay}`.replace(/\s+/g, '_');
+            const scheduleId = `${effectiveUnit}_${selectedGrade}_${selectedClass}_${selectedShift}_${selectedDay}`.replace(/\s+/g, '_');
 
             await db.collection('class_schedules').doc(scheduleId).set({
-                schoolId: unit,
+                schoolId: effectiveUnit,
                 grade: selectedGrade,
                 class: selectedClass,
                 shift: selectedShift,
@@ -136,7 +159,7 @@ export const ScheduleManagement: React.FC<ScheduleManagementProps> = ({ unit, is
         try {
             // Fetch all 5 days from source
             const snapshot = await db.collection('class_schedules')
-                .where('schoolId', '==', unit)
+                .where('schoolId', '==', effectiveUnit)
                 .where('grade', '==', copySourceGrade)
                 .where('class', '==', copySourceClass)
                 .where('shift', '==', copySourceShift)
@@ -154,11 +177,11 @@ export const ScheduleManagement: React.FC<ScheduleManagementProps> = ({ unit, is
             // We iterate 1 to 6 to ensure all days are represented
             for (let day = 1; day <= 6; day++) {
                 const sourceDay = sourceSchedules.find(s => s.dayOfWeek === day);
-                const newId = `${unit}_${selectedGrade}_${selectedClass}_${selectedShift}_${day}`.replace(/\s+/g, '_');
+                const newId = `${effectiveUnit}_${selectedGrade}_${selectedClass}_${selectedShift}_${day}`.replace(/\s+/g, '_');
                 const newRef = db.collection('class_schedules').doc(newId);
 
                 batch.set(newRef, {
-                    schoolId: unit,
+                    schoolId: effectiveUnit,
                     grade: selectedGrade,
                     class: selectedClass,
                     shift: selectedShift,
@@ -204,228 +227,277 @@ export const ScheduleManagement: React.FC<ScheduleManagementProps> = ({ unit, is
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Série</label>
-                        <select
-                            value={selectedGrade}
-                            onChange={(e) => setSelectedGrade(e.target.value)}
-                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950 shadow-sm"
-                        >
-                            {loadingAcademic ? (
-                                <option>Carregando...</option>
-                            ) : (
-                                academicGrades.map(grade => (
-                                    <option key={grade.id} value={grade.name}>{grade.name}</option>
-                                ))
-                            )}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turma</label>
-                        <select
-                            value={selectedClass}
-                            onChange={(e) => setSelectedClass(e.target.value as SchoolClass)}
-                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950 shadow-sm"
-                        >
-                            {SCHOOL_CLASSES_LIST.map(cls => (
-                                <option key={cls} value={cls}>{cls}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turno</label>
-                        <select
-                            value={selectedShift}
-                            onChange={(e) => setSelectedShift(e.target.value as SchoolShift)}
-                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950 shadow-sm"
-                        >
-                            {SCHOOL_SHIFTS_LIST.map(sh => (
-                                <option key={sh} value={sh}>{sh}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="md:col-span-2">
-                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Dia da Semana</label>
-                        <div className="flex bg-gray-100 p-1 rounded-xl gap-1 overflow-x-auto">
-                            {DAYS_OF_WEEK.map(day => (
-                                <button
-                                    key={day.id}
-                                    onClick={() => setSelectedDay(day.id)}
-                                    className={`px-4 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap flex-1 ${selectedDay === day.id
-                                        ? 'bg-blue-950 text-white shadow-md'
-                                        : 'text-gray-500 hover:bg-gray-200'
-                                        }`}
-                                >
-                                    {day.name.split('-')[0]}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="min-h-[300px] relative">
-                    {loading ? (
-                        <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10">
-                            <div className="w-8 h-8 border-4 border-blue-950 border-t-transparent rounded-full animate-spin"></div>
-                        </div>
-                    ) : null}
-
-                    <div className="space-y-3">
-                        {items.length === 0 ? (
-                            <div className="text-center py-12 border-2 border-dashed border-gray-100 rounded-2xl">
-                                <Clock className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-                                <p className="text-gray-400 font-medium">Nenhum horário cadastrado para este dia.</p>
-                                {!isReadOnly && (
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={handleAddItem}
-                                        className="mt-4"
-                                    >
-                                        <Plus className="w-4 h-4 mr-2" /> Começar Agora
-                                    </Button>
-                                )}
-                            </div>
-                        ) : (
-                            items.map((item, index) => (
-                                <div key={index} className="flex flex-col md:flex-row items-start md:items-center gap-3 p-4 bg-gray-50/50 rounded-xl border border-gray-100 animate-fade-in text-left">
-                                    <div className="flex items-center gap-2 flex-1 w-full">
-                                        <div className="flex items-center gap-1">
-                                            <input
-                                                type="time"
-                                                value={item.startTime}
-                                                onChange={(e) => handleUpdateItem(index, 'startTime', e.target.value)}
-                                                className="p-2 border border-blue-100 rounded-lg text-sm font-bold text-blue-900 bg-white"
-                                            />
-                                            <span className="text-gray-400 font-bold">às</span>
-                                            <input
-                                                type="time"
-                                                value={item.endTime}
-                                                onChange={(e) => handleUpdateItem(index, 'endTime', e.target.value)}
-                                                className="p-2 border border-blue-100 rounded-lg text-sm font-bold text-blue-900 bg-white"
-                                            />
-                                        </div>
-                                        <div className="flex-1">
-                                            <select
-                                                value={item.subject}
-                                                onChange={(e) => handleUpdateItem(index, 'subject', e.target.value)}
-                                                className="w-full p-2 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 bg-white"
-                                            >
-                                                {loadingAcademic ? (
-                                                    <option>Carregando...</option>
-                                                ) : (
-                                                    academicSubjects.map(sub => (
-                                                        <option key={sub.id} value={sub.name}>{sub.name}</option>
-                                                    ))
-                                                )}
-                                            </select>
-                                        </div>
-                                        {!isReadOnly && (
-                                            <button
-                                                onClick={() => handleRemoveItem(index)}
-                                                className="p-2 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            ))
-                        )}
-
-                        {!isReadOnly && items.length > 0 && (
-                            <button
-                                onClick={handleAddItem}
-                                className="w-full py-3 border-2 border-dashed border-blue-100 rounded-xl text-blue-950 font-bold text-sm hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
-                            >
-                                <Plus className="w-4 h-4" /> Adicionar Aula
-                            </button>
-                        )}
-                    </div>
-                </div>
-
-                {!isReadOnly && (
-                    <div className="mt-10 pt-6 border-t border-gray-100 flex justify-end">
-                        <Button
-                            onClick={handleSave}
-                            isLoading={saving}
-                            className="w-full md:w-auto px-10 gap-2"
-                        >
-                            <Save className="w-4 h-4" /> Salvar Grade de {DAYS_OF_WEEK.find(d => d.id === selectedDay)?.name}
-                        </Button>
-                    </div>
-                )}
             </div>
 
-            {/* Copy Modal */}
-            {
-                isCopyModalOpen && (
-                    <div className="fixed inset-0 bg-blue-950/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-in">
-                            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white">
-                                <h3 className="text-lg font-bold text-blue-950 flex items-center gap-2">
-                                    <Copy className="w-5 h-5" /> Copiar Grade Horária
-                                </h3>
-                                <button onClick={() => setIsCopyModalOpen(false)} className="text-gray-400 hover:text-gray-600 font-bold p-2">X</button>
-                            </div>
-                            <div className="p-6 space-y-4 bg-white text-left">
-                                <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 mb-4 flex gap-3 text-left">
-                                    <AlertCircle className="w-5 h-5 text-blue-600 shrink-0" />
-                                    <p className="text-xs text-blue-800 font-medium leading-relaxed">
-                                        Isso irá substituir **todos os horários** da turma atual (de segunda a sexta) pelos horários da turma de origem selecionada.
-                                    </p>
-                                </div>
+            {/* Unit Selector for General Admin */}
+            {!normalizedUnitProp && (
+                <div className="mb-6 p-4 bg-yellow-50 rounded-xl border border-yellow-100 animate-fade-in">
+                    <label className="block text-xs font-bold text-yellow-800 mb-1 uppercase tracking-wider">Selecione a Unidade para Gerenciar</label>
+                    <select
+                        value={internalSelectedUnit}
+                        onChange={(e) => setInternalSelectedUnit(e.target.value as SchoolUnit)}
+                        className="w-full p-2.5 bg-white border border-yellow-200 rounded-lg text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-yellow-400 shadow-sm"
+                    >
+                        <option value="">Selecione uma unidade...</option>
+                        {Object.entries(UNIT_LABELS).map(([id, label]) => (
+                            <option key={id} value={id}>{label}</option>
+                        ))}
+                    </select>
+                </div>
+            )}
 
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turma de Origem (Série)</label>
-                                    <select
-                                        value={copySourceGrade}
-                                        onChange={(e) => setCopySourceGrade(e.target.value)}
-                                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950"
-                                    >
-                                        {loadingAcademic ? (
-                                            <option>Carregando...</option>
-                                        ) : (
-                                            academicGrades.map(grade => (
-                                                <option key={grade.id} value={grade.name}>{grade.name}</option>
-                                            ))
-                                        )}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turma de Origem (Letra)</label>
-                                    <select
-                                        value={copySourceClass}
-                                        onChange={(e) => setCopySourceClass(e.target.value as SchoolClass)}
-                                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950"
-                                    >
-                                        {SCHOOL_CLASSES_LIST.map(cls => (
-                                            <option key={cls} value={cls}>{cls}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turma de Origem (Turno)</label>
-                                    <select
-                                        value={copySourceShift}
-                                        onChange={(e) => setCopySourceShift(e.target.value as SchoolShift)}
-                                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950"
-                                    >
-                                        {SCHOOL_SHIFTS_LIST.map(sh => (
-                                            <option key={sh} value={sh}>{sh}</option>
-                                        ))}
-                                    </select>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                {/* Disable inputs if Unit is not selected */}
+                <div className={!effectiveUnit ? "opacity-50 pointer-events-none grayscale" : ""}>
+                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Série</label>
+                    <select
+                        value={selectedGrade}
+                        onChange={(e) => setSelectedGrade(e.target.value)}
+                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950 shadow-sm"
+                    >
+                        {loadingAcademic ? (
+                            <option>Carregando...</option>
+                        ) : (
+                            academicGrades.map(grade => (
+                                <option key={grade.id} value={grade.name}>{grade.name}</option>
+                            ))
+                        )}
+                    </select>
+                </div>
+                <div className={!effectiveUnit ? "opacity-50 pointer-events-none grayscale" : ""}>
+                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turma</label>
+                    <select
+                        value={selectedClass}
+                        onChange={(e) => setSelectedClass(e.target.value as SchoolClass)}
+                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950 shadow-sm"
+                    >
+                        {SCHOOL_CLASSES_LIST.map(cls => (
+                            <option key={cls} value={cls}>{cls}</option>
+                        ))}
+                    </select>
+                </div>
+                <div className={!effectiveUnit ? "opacity-50 pointer-events-none grayscale" : ""}>
+                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turno</label>
+                    <select
+                        value={selectedShift}
+                        onChange={(e) => setSelectedShift(e.target.value as SchoolShift)}
+                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950 shadow-sm"
+                    >
+                        {Object.entries(SHIFT_LABELS).map(([id, label]) => (
+                            <option key={id} value={id}>{label}</option>
+                        ))}
+                    </select>
+                </div>
+                <div className={`md:col-span-2 ${!effectiveUnit ? "opacity-50 pointer-events-none grayscale" : ""}`}>
+                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Dia da Semana</label>
+                    <div className="flex bg-gray-100 p-1 rounded-xl gap-1 overflow-x-auto">
+                        {DAYS_OF_WEEK.map(day => (
+                            <button
+                                key={day.id}
+                                onClick={() => setSelectedDay(day.id)}
+                                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap flex-1 ${selectedDay === day.id
+                                    ? 'bg-blue-950 text-white shadow-md'
+                                    : 'text-gray-500 hover:bg-gray-200'
+                                    }`}
+                            >
+                                {day.name.split('-')[0]}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            <div className="min-h-[300px] relative">
+                {loading ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10">
+                        <div className="w-8 h-8 border-4 border-blue-950 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                ) : null}
+
+                <div className="space-y-3">
+                    {items.length === 0 ? (
+                        <div className="text-center py-12 border-2 border-dashed border-gray-100 rounded-2xl">
+                            <Clock className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                            <p className="text-gray-400 font-medium">Nenhum horário cadastrado para este dia.</p>
+                            {!isReadOnly && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleAddItem}
+                                    className="mt-4"
+                                >
+                                    <Plus className="w-4 h-4 mr-2" /> Começar Agora
+                                </Button>
+                            )}
+                        </div>
+                    ) : (
+                        items.map((item, index) => (
+                            <div key={index} className="flex flex-col md:flex-row items-start md:items-center gap-3 p-4 bg-gray-50/50 rounded-xl border border-gray-100 animate-fade-in text-left">
+                                <div className="flex items-center gap-2 flex-1 w-full">
+                                    <div className="flex items-center gap-1">
+                                        <input
+                                            type="time"
+                                            value={item.startTime}
+                                            onChange={(e) => handleUpdateItem(index, 'startTime', e.target.value)}
+                                            className="p-2 border border-blue-100 rounded-lg text-sm font-bold text-blue-900 bg-white"
+                                        />
+                                        <span className="text-gray-400 font-bold">às</span>
+                                        <input
+                                            type="time"
+                                            value={item.endTime}
+                                            onChange={(e) => handleUpdateItem(index, 'endTime', e.target.value)}
+                                            className="p-2 border border-blue-100 rounded-lg text-sm font-bold text-blue-900 bg-white"
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <select
+                                            value={item.subject}
+                                            onChange={(e) => handleUpdateItem(index, 'subject', e.target.value)}
+                                            className="w-full p-2 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 bg-white"
+                                        >
+                                            {loadingAcademic ? (
+                                                <option>Carregando...</option>
+                                            ) : (
+                                                academicSubjects.map(sub => (
+                                                    <option key={sub.id} value={sub.name}>{sub.name}</option>
+                                                ))
+                                            )}
+                                        </select>
+                                    </div>
+                                    {!isReadOnly && (
+                                        <button
+                                            onClick={() => handleRemoveItem(index)}
+                                            className="p-2 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
-                            <div className="p-6 bg-gray-50 flex gap-3">
-                                <Button variant="outline" className="flex-1" onClick={() => setIsCopyModalOpen(false)}>Cancelar</Button>
-                                <Button className="flex-1 gap-2" onClick={handleCopySchedule}>Confirmar Cópia</Button>
+                        ))
+                    )}
+
+                    {!isReadOnly && items.length > 0 && (
+                        <button
+                            onClick={handleAddItem}
+                            className="w-full py-3 border-2 border-dashed border-blue-100 rounded-xl text-blue-950 font-bold text-sm hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
+                        >
+                            <Plus className="w-4 h-4" /> Adicionar Aula
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {!isReadOnly && (
+                <div className="mt-10 pt-6 border-t border-gray-100 flex flex-col md:flex-row justify-end gap-4">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="text-yellow-600 border-yellow-200 hover:bg-yellow-50"
+                        onClick={async () => {
+                            if (!effectiveUnit) return;
+                            try {
+                                const snapshot = await db.collection('class_schedules')
+                                    .where('schoolId', '==', effectiveUnit)
+                                    .where('grade', '==', selectedGrade)
+                                    .where('class', '==', selectedClass)
+                                    .where('shift', '==', selectedShift)
+                                    .where('dayOfWeek', '==', selectedDay)
+                                    .get();
+
+                                if (snapshot.size > 1) {
+                                    const ids = snapshot.docs.map(d => d.id).join('\n');
+                                    alert(`⚠️ ALERTA: Foram encontradas ${snapshot.size} grades duplicadas para este dia!\n\nIDs encontrados:\n${ids}\n\nIsso explica os "fantasmas". O ideal é apagar as duplicatas.`);
+                                    console.log("DUPLICATES:", snapshot.docs.map(d => d.data()));
+                                } else if (snapshot.size === 1) {
+                                    alert(`✅ Tudo certo (aparentemente). Apenas 1 registro encontrado.\nID: ${snapshot.docs[0].id}`);
+                                } else {
+                                    alert("ℹ️ Nenhum registro encontrado para este dia.");
+                                }
+                            } catch (e) {
+                                alert("Erro ao verificar duplicatas.");
+                            }
+                        }}
+                    >
+                        <Info className="w-4 h-4 mr-2" /> Verificar Duplicatas
+                    </Button>
+
+                    <Button
+                        onClick={handleSave}
+                        isLoading={saving}
+                        className="w-full md:w-auto px-10 gap-2"
+                    >
+                        <Save className="w-4 h-4" /> Salvar Grade de {DAYS_OF_WEEK.find(d => d.id === selectedDay)?.name}
+                    </Button>
+                </div>
+            )}
+
+            {/* Copy Modal */}
+            {isCopyModalOpen && (
+                <div className="fixed inset-0 bg-blue-950/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-in">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white">
+                            <h3 className="text-lg font-bold text-blue-950 flex items-center gap-2">
+                                <Copy className="w-5 h-5" /> Copiar Grade Horária
+                            </h3>
+                            <button onClick={() => setIsCopyModalOpen(false)} className="text-gray-400 hover:text-gray-600 font-bold p-2">X</button>
+                        </div>
+                        <div className="p-6 space-y-4 bg-white text-left">
+                            <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 mb-4 flex gap-3 text-left">
+                                <AlertCircle className="w-5 h-5 text-blue-600 shrink-0" />
+                                <p className="text-xs text-blue-800 font-medium leading-relaxed">
+                                    Isso irá substituir **todos os horários** da turma atual (de segunda a sexta) pelos horários da turma de origem selecionada.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turma de Origem (Série)</label>
+                                <select
+                                    value={copySourceGrade}
+                                    onChange={(e) => setCopySourceGrade(e.target.value)}
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950"
+                                >
+                                    {loadingAcademic ? (
+                                        <option>Carregando...</option>
+                                    ) : (
+                                        academicGrades.map(grade => (
+                                            <option key={grade.id} value={grade.name}>{grade.name}</option>
+                                        ))
+                                    )}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turma de Origem (Letra)</label>
+                                <select
+                                    value={copySourceClass}
+                                    onChange={(e) => setCopySourceClass(e.target.value as SchoolClass)}
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950"
+                                >
+                                    {SCHOOL_CLASSES_LIST.map(cls => (
+                                        <option key={cls} value={cls}>{cls}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turma de Origem (Turno)</label>
+                                <select
+                                    value={copySourceShift}
+                                    onChange={(e) => setCopySourceShift(e.target.value as SchoolShift)}
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950"
+                                >
+                                    {SCHOOL_SHIFTS_LIST.map(sh => (
+                                        <option key={sh} value={sh}>{sh}</option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
+                        <div className="p-6 bg-gray-50 flex gap-3">
+                            <Button variant="outline" className="flex-1" onClick={() => setIsCopyModalOpen(false)}>Cancelar</Button>
+                            <Button className="flex-1 gap-2" onClick={handleCopySchedule}>Confirmar Cópia</Button>
+                        </div>
                     </div>
-                )
-            }
+                </div>
+            )}
         </div>
     );
 };

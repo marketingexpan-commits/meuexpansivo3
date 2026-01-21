@@ -51,12 +51,35 @@ export const pedagogicalService = {
     },
 
     // Calcular frequência percentual baseada nas faltas (Regra Logs-First Sincronizada)
-    calculateFrequencyFromGrades(grades: GradeEntry[], gradeLevel: string = "Fundamental I", attendanceRecords: AttendanceRecord[] = [], academicSubjects?: AcademicSubject[], settings?: AcademicSettings | null) {
+    calculateFrequencyFromGrades(
+        grades: GradeEntry[],
+        gradeLevel: string = "Fundamental I",
+        attendanceRecords: AttendanceRecord[] = [],
+        academicSubjects?: AcademicSubject[],
+        settings?: AcademicSettings | null,
+        calendarEvents?: any[],
+        unit?: string,
+        classSchedules?: any[],
+        schoolClass?: string,
+        shift?: string
+    ) {
         if (!grades || grades.length === 0) return 100;
 
         // Delegamos para a função unificada que é usada no App do Aluno
         const studentId = grades[0].studentId;
-        const freqString = calculateGeneralFrequency(grades, attendanceRecords, studentId, gradeLevel, academicSubjects, settings);
+        const freqString = calculateGeneralFrequency(
+            grades,
+            attendanceRecords,
+            studentId,
+            gradeLevel,
+            academicSubjects,
+            settings,
+            calendarEvents,
+            unit,
+            classSchedules,
+            schoolClass,
+            shift
+        );
 
         // Converte "95.5%" para 95.5
         return parseFloat(freqString.replace('%', '')) || 100;

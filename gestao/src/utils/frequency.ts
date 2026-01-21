@@ -22,7 +22,8 @@ export const calculateTaughtClasses = (
     academicSubjects?: AcademicSubject[],
     classSchedules?: any[],
     calendarEvents?: any[],
-    schoolClass?: string
+    schoolClass?: string,
+    shift?: string
 ): { taught: number, isEstimated: boolean } => {
     let taughtClasses = 0;
     let isEstimated = false;
@@ -36,7 +37,9 @@ export const calculateTaughtClasses = (
             classSchedules,
             calendarEvents || [],
             gradeLevel,
-            schoolClass
+            schoolClass,
+            shift,
+            subject // Passing subject as subjectId for granular filtering
         );
         taughtClasses = result.taught;
         isEstimated = result.isEstimated;
@@ -102,7 +105,8 @@ export const calculateAttendancePercentage = (
     calendarEvents?: any[],
     unit?: string,
     classSchedules?: any[],
-    schoolClass?: string
+    schoolClass?: string,
+    shift?: string
 ): { percent: number, isEstimated: boolean } | null => {
 
     if (!unit) return null; // Unit is mandatory for strict calculation
@@ -139,7 +143,8 @@ export const calculateAttendancePercentage = (
         academicSubjects,
         classSchedules,
         calendarEvents,
-        schoolClass
+        schoolClass,
+        shift
     );
 
     // 4. Apply Strict Rules
@@ -169,7 +174,8 @@ export const calculateAnnualAttendancePercentage = (
     calendarEvents?: any[],
     unit?: string,
     classSchedules?: any[],
-    schoolClass?: string
+    schoolClass?: string,
+    shift?: string
 ): { percent: number, isEstimated: boolean } | null => {
 
     if (!unit) return null;
@@ -187,7 +193,8 @@ export const calculateAnnualAttendancePercentage = (
         calendarEvents,
         unit,
         classSchedules,
-        schoolClass
+        schoolClass,
+        shift
     );
 };
 
@@ -204,7 +211,8 @@ export const calculateGeneralFrequency = (
     calendarEvents?: any[],
     unit?: string,
     classSchedules?: any[],
-    schoolClass?: string
+    schoolClass?: string,
+    shift?: string
 ): string => {
     const currentYear = getCurrentSchoolYear();
     const startDate = settings?.bimesters?.[0]?.startDate || `${currentYear}-01-01`;
@@ -242,7 +250,8 @@ export const calculateGeneralFrequency = (
             academicSubjects,
             classSchedules,
             calendarEvents,
-            schoolClass
+            schoolClass,
+            shift
         );
         totalTaughtClasses += taught;
     });
@@ -286,7 +295,8 @@ export const calculateBimesterGeneralFrequency = (
     calendarEvents?: any[],
     unit?: string,
     classSchedules?: any[],
-    schoolClass?: string
+    schoolClass?: string,
+    shift?: string
 ): string => {
     const currentYear = getCurrentSchoolYear();
 
@@ -333,7 +343,8 @@ export const calculateBimesterGeneralFrequency = (
             academicSubjects,
             classSchedules,
             calendarEvents,
-            schoolClass
+            schoolClass,
+            shift
         );
         totalTaughtClasses += taught;
     });

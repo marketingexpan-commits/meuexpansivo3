@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebaseConfig';
-import { ClassSchedule, ScheduleItem, Student } from '../types';
+import { ClassSchedule, ScheduleItem, Student, SchoolUnit, SchoolShift, UNIT_LABELS, SHIFT_LABELS, AcademicSubject } from '../types';
+import { parseGradeLevel } from '../src/utils/academicUtils';
 import { Clock, Calendar, ChevronLeft, ChevronRight, Info, Printer } from 'lucide-react';
+import { useAcademicData } from '../hooks/useAcademicData';
 
 interface ScheduleTimelineProps {
     student: Student;
@@ -17,28 +19,44 @@ const DAYS_OF_WEEK = [
 ];
 
 export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({ student }) => {
-    const [selectedDay, setSelectedDay] = useState(() => {
-        const today = new Date().getDay();
-        // 1 = Segunda, 2 = Terça, ..., 6 = Sábado. 
-        // Se for Domingo (0), retorna Segunda (1).
-        return (today >= 1 && today <= 6) ? today : 1;
-    });
+    const { subjects: academicSubjects } = useAcademicData();
+    const [selectedDay, setSelectedDay] = useState<number>(new Date().getDay() === 0 ? 1 : new Date().getDay());
     const [schedule, setSchedule] = useState<ClassSchedule | null>(null);
     const [loading, setLoading] = useState(false);
     const [fullScheduleForPrint, setFullScheduleForPrint] = useState<ClassSchedule[] | null>(null);
 
+    // HELPER: Normalize inputs to ensure we query with Technical IDs (what is in DB)
+    // but handle legacy "Matutino" strings if they exist in student object.
+    const normalizedUnit = Object.values(SchoolUnit).includes(student.unit as SchoolUnit)
+        ? student.unit
+        : (Object.keys(UNIT_LABELS).find(key => UNIT_LABELS[key as SchoolUnit] === student.unit) || student.unit);
+
+    const normalizedShift = Object.values(SchoolShift).includes(student.shift as SchoolShift)
+        ? student.shift
+        : (student.shift === 'Matutino' ? SchoolShift.MORNING :
+            student.shift === 'Vespertino' ? SchoolShift.AFTERNOON : student.shift);
+
+    // HELPER: Normalize Grade Level (e.g. "8º Ano - Fundamental II" -> "8º Ano")
+    // We query for BOTH to be safe.
+    const parsedGradeInfo = parseGradeLevel(student.gradeLevel);
+    const possibleGrades = Array.from(new Set([student.gradeLevel, parsedGradeInfo.grade]));
+
     useEffect(() => {
         fetchSchedule();
-    }, [selectedDay, student.unit, student.gradeLevel, student.schoolClass, student.shift]);
+    }, [selectedDay, normalizedUnit, student.gradeLevel, student.schoolClass, normalizedShift]);
+
+
 
     const fetchSchedule = async () => {
         setLoading(true);
         try {
+            // STRICT QUERY: We trust that normalizedUnit and normalizedShift are the correct Technical IDs.
+            // Data in Firestore MUST match these IDs.
             const snapshot = await db.collection('class_schedules')
-                .where('schoolId', '==', student.unit)
-                .where('grade', '==', student.gradeLevel)
+                .where('schoolId', '==', normalizedUnit)
+                .where('grade', 'in', possibleGrades)
                 .where('class', '==', student.schoolClass)
-                .where('shift', '==', student.shift)
+                .where('shift', '==', normalizedShift)
                 .where('dayOfWeek', '==', selectedDay)
                 .limit(1)
                 .get();
@@ -59,10 +77,10 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({ student }) =
         setLoading(true);
         try {
             const snapshot = await db.collection('class_schedules')
-                .where('schoolId', '==', student.unit)
-                .where('grade', '==', student.gradeLevel)
+                .where('schoolId', '==', normalizedUnit)
+                .where('grade', 'in', possibleGrades)
                 .where('class', '==', student.schoolClass)
-                .where('shift', '==', student.shift)
+                .where('shift', '==', normalizedShift)
                 .get();
 
             if (snapshot.empty) {
@@ -157,7 +175,9 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({ student }) =
                                             {item.startTime} <span className="mx-1 opacity-30 text-xs">às</span> {item.endTime}
                                         </span>
                                     </div>
-                                    <h4 className="text-lg font-bold text-gray-800 tracking-tight">{item.subject}</h4>
+                                    <h4 className="text-lg font-bold text-gray-800 tracking-tight">
+                                        {academicSubjects?.find((s: AcademicSubject) => s.id === item.subject)?.name || item.subject}
+                                    </h4>
                                 </div>
                             </div>
                         ))}
@@ -184,11 +204,11 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({ student }) =
                                 {student.name}
                             </p>
                             <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                                {student.gradeLevel} - Turma {student.schoolClass} ({student.shift})
+                                {student.gradeLevel} - Turma {student.schoolClass} ({SHIFT_LABELS[normalizedShift as SchoolShift] || student.shift})
                             </p>
                         </div>
                         <div className="text-right">
-                            <p className="text-xs font-black text-blue-950 uppercase tracking-widest mb-1">Unidade {student.unit}</p>
+                            <p className="text-xs font-black text-blue-950 uppercase tracking-widest mb-1">Unidade {UNIT_LABELS[normalizedUnit as SchoolUnit] || student.unit}</p>
                             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Ano Letivo 2026</p>
                             <div className="mt-2 h-1 w-full bg-blue-950/10 rounded-full"></div>
                         </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebaseConfig';
 import {
     collection,
@@ -17,7 +17,7 @@ import type {
     ScheduleItem,
     Subject
 } from '../types';
-import { SUBJECT_LABELS, UNIT_LABELS } from '../types';
+import { SUBJECT_LABELS, UNIT_LABELS, SHIFT_LABELS } from '../types';
 import { SCHOOL_CLASSES_OPTIONS, SCHOOL_SHIFTS } from '../utils/academicDefaults';
 import { useAcademicData } from '../hooks/useAcademicData';
 import {
@@ -73,6 +73,21 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [itemToDeleteIndex, setItemToDeleteIndex] = useState<number | null>(null);
     const [fullScheduleForPrint, setFullScheduleForPrint] = useState<ClassSchedule[] | null>(null);
+    const [legacyIdFound, setLegacyIdFound] = useState<string | null>(null);
+
+    // --- NORMALIZATION LOGIC ---
+    const normalizedUnitProp = useMemo(() => {
+        if (!unit) return undefined;
+        // If it's already a technical ID (key), return it
+        if (Object.keys(UNIT_LABELS).includes(unit as string)) return unit as SchoolUnit;
+        // If it's a label (value), find the ID
+        const found = Object.entries(UNIT_LABELS).find(([_, label]) => label === unit);
+        return found ? found[0] as SchoolUnit : unit as SchoolUnit;
+    }, [unit]);
+
+    const [internalSelectedUnit, setInternalSelectedUnit] = useState<SchoolUnit | ''>('');
+    const effectiveUnit = normalizedUnitProp || (internalSelectedUnit as SchoolUnit);
+    // ----------------------------
 
     // Copy feature state
     const [copySourceGrade, setCopySourceGrade] = useState('');
@@ -87,10 +102,10 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
     }, [loadingAcademic, grades]);
 
     useEffect(() => {
-        if (unit && selectedGrade && selectedClass && selectedShift && selectedDay) {
+        if (effectiveUnit && selectedGrade && selectedClass && selectedShift && selectedDay) {
             fetchSchedule();
         }
-    }, [unit, selectedGrade, selectedClass, selectedShift, selectedDay]);
+    }, [effectiveUnit, selectedGrade, selectedClass, selectedShift, selectedDay]);
 
     const fetchSchedule = async () => {
         setLoading(true);
@@ -98,10 +113,10 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
             const schedulesRef = collection(db, 'class_schedules');
             const unitLabel = UNIT_LABELS[unit as SchoolUnit] || unit;
 
-            // Try ID first, then Label if they differ
+            // STRICT QUERY: Always use effectiveUnit
             let q = query(
                 schedulesRef,
-                where('schoolId', '==', unit),
+                where('schoolId', '==', effectiveUnit),
                 where('grade', '==', selectedGrade),
                 where('class', '==', selectedClass),
                 where('shift', '==', selectedShift),
@@ -124,10 +139,19 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
             }
 
             if (!snap.empty) {
-                const data = snap.docs[0].data() as ClassSchedule;
+                const doc = snap.docs[0];
+                const data = doc.data() as ClassSchedule;
                 setItems(data.items || []);
+                // If the ID isn't the standard ID, it's legacy
+                const standardId = `${effectiveUnit}_${selectedGrade}_${selectedClass}_${selectedShift}_${selectedDay}`;
+                if (doc.id !== standardId) {
+                    setLegacyIdFound(doc.id);
+                } else {
+                    setLegacyIdFound(null);
+                }
             } else {
                 setItems([]);
+                setLegacyIdFound(null);
             }
         } catch (error) {
             console.error("Error fetching schedule:", error);
@@ -158,15 +182,20 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
         // Auto-save after removal
         setSaving(true);
         try {
-            const scheduleId = `${unit}_${selectedGrade}_${selectedClass}_${selectedShift}_${selectedDay}`;
+            const scheduleId = `${effectiveUnit}_${selectedGrade}_${selectedClass}_${selectedShift}_${selectedDay}`;
             const scheduleRef = doc(db, 'class_schedules', scheduleId);
 
             if (newItems.length === 0) {
                 await deleteDoc(scheduleRef);
+                // Also delete legacy if found
+                if (legacyIdFound) {
+                    await deleteDoc(doc(db, 'class_schedules', legacyIdFound));
+                    setLegacyIdFound(null);
+                }
             } else {
                 const sortedItems = [...newItems].sort((a, b) => a.startTime.localeCompare(b.startTime));
                 await setDoc(scheduleRef, {
-                    schoolId: unit,
+                    schoolId: effectiveUnit,
                     grade: selectedGrade,
                     class: selectedClass,
                     shift: selectedShift,
@@ -174,6 +203,13 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                     items: sortedItems,
                     lastUpdated: new Date().toISOString()
                 });
+
+                // If we saved the new one, delete the legacy one to avoid "ghosts"
+                if (legacyIdFound && legacyIdFound !== scheduleId) {
+                    await deleteDoc(doc(db, 'class_schedules', legacyIdFound));
+                    setLegacyIdFound(null);
+                }
+
                 setItems(sortedItems);
             }
         } catch (error) {
@@ -194,27 +230,39 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
         if (isReadOnly) return;
         setSaving(true);
         try {
-            const scheduleId = `${unit}_${selectedGrade}_${selectedClass}_${selectedShift}_${selectedDay}`;
+            const scheduleId = `${effectiveUnit}_${selectedGrade}_${selectedClass}_${selectedShift}_${selectedDay}`;
             const scheduleRef = doc(db, 'class_schedules', scheduleId);
 
             if (items.length === 0) {
                 await deleteDoc(scheduleRef);
+                // Clean legacy
+                if (legacyIdFound) await deleteDoc(doc(db, 'class_schedules', legacyIdFound));
+                setLegacyIdFound(null);
                 alert("Grade vazia detectada. Registro removido do banco de dados.");
             } else {
                 // Sort items by start time before saving
                 const sortedItems = [...items].sort((a, b) => a.startTime.localeCompare(b.startTime));
 
-                await setDoc(scheduleRef, {
-                    schoolId: unit,
+                const payload = {
+                    schoolId: effectiveUnit,
                     grade: selectedGrade,
                     class: selectedClass,
                     shift: selectedShift,
                     dayOfWeek: selectedDay,
                     items: sortedItems,
                     lastUpdated: new Date().toISOString()
-                });
+                };
+
+                await setDoc(scheduleRef, payload);
+
+                // Cleanup legacy
+                if (legacyIdFound && legacyIdFound !== scheduleId) {
+                    await deleteDoc(doc(db, 'class_schedules', legacyIdFound));
+                    setLegacyIdFound(null);
+                }
+
                 setItems(sortedItems);
-                alert("Grade salva com sucesso!");
+                alert("Grade salva com sucesso! O registro antigo foi atualizado para o novo formato.");
             }
         } catch (error) {
             console.error("Error saving schedule:", error);
@@ -237,11 +285,11 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
 
         setSaving(true);
         try {
-            // 1. Fetch all 5 days from source
+            // 1. Fetch all source days
             const schedulesRef = collection(db, 'class_schedules');
             const q = query(
                 schedulesRef,
-                where('schoolId', '==', unit),
+                where('schoolId', '==', effectiveUnit),
                 where('grade', '==', copySourceGrade),
                 where('class', '==', copySourceClass),
                 where('shift', '==', copySourceShift)
@@ -253,14 +301,13 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
             // 2. Prepare batch write
             const batch = writeBatch(db);
 
-            // We iterate 1 to 6 to ensure all days are represented
             for (let day = 1; day <= 6; day++) {
                 const sourceDay = sourceSchedules.find(s => s.dayOfWeek === day);
-                const targetId = `${unit}_${selectedGrade}_${selectedClass}_${selectedShift}_${day}`;
+                const targetId = `${effectiveUnit}_${selectedGrade}_${selectedClass}_${selectedShift}_${day}`;
                 const targetRef = doc(db, 'class_schedules', targetId);
 
                 batch.set(targetRef, {
-                    schoolId: unit,
+                    schoolId: effectiveUnit,
                     grade: selectedGrade,
                     class: selectedClass,
                     shift: selectedShift,
@@ -273,7 +320,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
             await batch.commit();
             alert("Grade copiada com sucesso para todos os dias!");
             setIsCopyModalOpen(false);
-            fetchSchedule(); // Refresh current day
+            fetchSchedule();
         } catch (error) {
             console.error("Error copying schedule:", error);
             alert("Erro ao copiar a grade.");
@@ -288,7 +335,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
             const schedulesRef = collection(db, 'class_schedules');
             const q = query(
                 schedulesRef,
-                where('schoolId', '==', unit),
+                where('schoolId', '==', effectiveUnit),
                 where('grade', '==', selectedGrade),
                 where('class', '==', selectedClass),
                 where('shift', '==', selectedShift)
@@ -305,7 +352,6 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
 
             setFullScheduleForPrint(allDays);
 
-            // Wait for render
             setTimeout(() => {
                 window.print();
                 setFullScheduleForPrint(null);
@@ -329,8 +375,23 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
 
     return (
         <div className="space-y-6">
-            {/* Selection Header */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+            {!normalizedUnitProp && (
+                <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl animate-fade-in mb-6">
+                    <label className="block text-xs font-bold text-orange-800 uppercase tracking-wider mb-2">Unidade Alvo (Admin Geral)</label>
+                    <select
+                        value={internalSelectedUnit}
+                        onChange={(e) => setInternalSelectedUnit(e.target.value as SchoolUnit)}
+                        className="w-full p-3 bg-white border border-orange-300 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-orange-500 outline-none"
+                    >
+                        <option value="">Selecione uma unidade...</option>
+                        {Object.entries(UNIT_LABELS).map(([id, label]) => (
+                            <option key={id} value={id}>{label}</option>
+                        ))}
+                    </select>
+                </div>
+            )}
+
+            <div className={`grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm ${!effectiveUnit ? 'opacity-40 pointer-events-none grayscale' : ''}`}>
                 <div>
                     <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Série</label>
                     <select
@@ -358,7 +419,9 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                         onChange={(e) => setSelectedShift(e.target.value)}
                         className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950/20 outline-none"
                     >
-                        {SCHOOL_SHIFTS_LIST.map((s: string) => <option key={s} value={s}>{s}</option>)}
+                        {Object.entries(SHIFT_LABELS).map(([id, label]) => (
+                            <option key={id} value={id}>{label}</option>
+                        ))}
                     </select>
                 </div>
                 <div className="flex items-end gap-2">
@@ -389,8 +452,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                 </div>
             </div>
 
-            {/* Day Selector */}
-            <div className="flex flex-wrap gap-2 p-1 bg-gray-100 rounded-xl">
+            <div className={`flex flex-wrap gap-2 p-1 bg-gray-100 rounded-xl ${!effectiveUnit ? 'opacity-0 pointer-events-none' : ''}`}>
                 {DAYS_OF_WEEK.map(day => (
                     <button
                         key={day.id}
@@ -405,7 +467,6 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                 ))}
             </div>
 
-            {/* Schedule Items */}
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden min-h-[400px]">
                 <div className="p-4 border-b border-gray-50 bg-gray-50/30 flex justify-between items-center">
                     <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
@@ -431,64 +492,69 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                             <p className="text-sm text-gray-400 font-medium">Carregando horários...</p>
                         </div>
                     ) : items.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 opacity-40">
-                            <AlertCircle className="w-12 h-12 text-gray-300 mb-2" />
-                            <p className="text-sm font-medium text-gray-400">Nenhum horário registrado para este dia.</p>
+                        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+                            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center text-gray-300">
+                                <Calendar className="w-8 h-8" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-900">Nenhuma aula cadastrada</h4>
+                                <p className="text-xs text-gray-400 mt-1 max-w-[200px]">Clique em 'Nova Aula' para começar a montar este horário.</p>
+                            </div>
                         </div>
                     ) : (
                         <div className="space-y-3">
                             {items.map((item, index) => (
-                                <div key={index} className="flex flex-wrap md:flex-nowrap gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 items-center animate-fade-in-down">
-                                    <div className="w-full md:w-32">
-                                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase mb-1">
-                                            <Clock className="w-3 h-3" /> Início
+                                <div key={index} className="flex flex-col md:flex-row gap-3 p-4 bg-gray-50/50 rounded-2xl border border-gray-100 group hover:border-blue-900/10 hover:bg-white transition-all shadow-sm hover:shadow-md animate-fade-in">
+                                    <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-3">
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Início</label>
+                                            <div className="relative">
+                                                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                                                <input
+                                                    type="time"
+                                                    value={item.startTime}
+                                                    onChange={(e) => handleItemChange(index, 'startTime', e.target.value)}
+                                                    className="w-full pl-9 p-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950/10"
+                                                    disabled={isReadOnly}
+                                                />
+                                            </div>
                                         </div>
-                                        <input
-                                            type="time"
-                                            value={item.startTime}
-                                            onChange={(e) => handleItemChange(index, 'startTime', e.target.value)}
-                                            readOnly={isReadOnly}
-                                            className="w-full p-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950/10 outline-none"
-                                        />
-                                    </div>
-                                    <div className="w-full md:w-32">
-                                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase mb-1">
-                                            <Clock className="w-3 h-3" /> Fim
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Fim</label>
+                                            <div className="relative">
+                                                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                                                <input
+                                                    type="time"
+                                                    value={item.endTime}
+                                                    onChange={(e) => handleItemChange(index, 'endTime', e.target.value)}
+                                                    className="w-full pl-9 p-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950/10"
+                                                    disabled={isReadOnly}
+                                                />
+                                            </div>
                                         </div>
-                                        <input
-                                            type="time"
-                                            value={item.endTime}
-                                            onChange={(e) => handleItemChange(index, 'endTime', e.target.value)}
-                                            readOnly={isReadOnly}
-                                            className="w-full p-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950/10 outline-none"
-                                        />
-                                    </div>
-                                    <div className="flex-1 min-w-[200px]">
-                                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase mb-1">
-                                            Disciplina
+                                        <div className="col-span-2 md:col-span-1">
+                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Disciplina</label>
+                                            <select
+                                                value={item.subject}
+                                                onChange={(e) => handleItemChange(index, 'subject', e.target.value)}
+                                                className="w-full p-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950/10"
+                                                disabled={isReadOnly}
+                                            >
+                                                <option value="">Selecione...</option>
+                                                {subjects.map(s => (
+                                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                                ))}
+                                                {item.subject && !subjects.find(s => s.id === item.subject) && (
+                                                    <option value={item.subject}>{subjects.find(s => s.name === item.subject)?.name || SUBJECT_LABELS[item.subject as Subject] || item.subject} (Antigo)</option>
+                                                )}
+                                            </select>
                                         </div>
-                                        <select
-                                            value={item.subject}
-                                            onChange={(e) => handleItemChange(index, 'subject', e.target.value)}
-                                            disabled={isReadOnly}
-                                            className="w-full p-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950/10 outline-none"
-                                        >
-                                            <option value="">Selecione...</option>
-                                            {subjects.filter(s => s.isActive).map(s => (
-                                                <option key={s.id} value={s.name}>{SUBJECT_LABELS[s.name as Subject] || s.name}</option>
-                                            ))}
-                                            {/* Legacy support - if item.subject is not in subjects list */}
-                                            {item.subject && !subjects.some(s => s.name === item.subject) && (
-                                                <option value={item.subject}>{SUBJECT_LABELS[item.subject as Subject] || item.subject} (Antigo)</option>
-                                            )}
-                                        </select>
                                     </div>
                                     {!isReadOnly && (
                                         <div className="flex items-end self-end md:self-center">
                                             <button
                                                 onClick={() => handleRemoveItem(index)}
                                                 className="p-2 text-red-500 hover:text-red-700 hover:bg-slate-100 rounded-xl transition-colors"
-                                                title="Remover aula"
                                             >
                                                 <Trash2 className="w-5 h-5" />
                                             </button>
@@ -500,21 +566,21 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                     )}
                 </div>
 
-                <div className="p-4 border-t border-gray-50 bg-gray-50/20 flex justify-end gap-3">
-                    {!isReadOnly && (
+                {!isReadOnly && items.length > 0 && (
+                    <div className="p-4 border-t border-gray-50 bg-gray-50/20 flex justify-end">
                         <button
                             onClick={handleSave}
                             disabled={loading || saving}
-                            className="flex items-center gap-2 px-6 py-2.5 bg-blue-950 text-white rounded-xl text-sm font-bold hover:bg-black transition-all shadow-lg shadow-blue-950/20 disabled:opacity-50"
+                            className="flex items-center justify-center gap-2 px-6 py-2.5 bg-blue-950 text-white rounded-xl text-sm font-bold hover:bg-black transition-all shadow-lg shadow-blue-950/20 disabled:opacity-50"
                         >
                             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                             Salvar Alterações
                         </button>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
 
-            {/* Copy Modal */}
+            {/* Modals */}
             {isCopyModalOpen && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
                     <div className="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden animate-fade-in-up">
@@ -622,7 +688,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                     </div>
                 </div>
             )}
-            {/* Delete Confirmation Modal */}
+
             {isDeleteModalOpen && (
                 <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
                     <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden animate-fade-in-up">
@@ -655,3 +721,5 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
         </div>
     );
 }
+
+export default ScheduleManagement;

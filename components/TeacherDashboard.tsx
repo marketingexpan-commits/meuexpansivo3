@@ -10,7 +10,10 @@ import {
     ClassMaterial,
     CalendarEvent,
     ClassSchedule,
+    AcademicSubject,
     UNIT_LABELS,
+    SUBJECT_LABELS,
+    SUBJECT_SHORT_LABELS,
     SHIFT_LABELS,
     SchoolShift
 } from '../types';
@@ -59,29 +62,90 @@ const formatWorkload = (hours: number) => {
 };
 
 // Helper to abbreviate subject names for print/screen
-const abbreviateSubject = (subject: string): string => {
-    const map: Record<string, string> = {
-        'Português': 'Port.',
-        'Língua Portuguesa': 'Port.',
-        'Matemática': 'Mat.',
-        'História': 'Hist.',
-        'Geografia': 'Geog.',
-        'Ciências': 'Ciên.',
-        'Ensino Religioso': 'Ens. Rel.',
-        'Educação Física': 'Ed. Fís.',
-        'Filosofia': 'Filos.',
-        'Sociologia': 'Sociol.',
-        'Biologia': 'Biol.',
-        'Literatura': 'Lit.',
-        'Produção Textual': 'Prod. Text.',
-        'Empreendedorismo': 'Empreend.',
-        'Projeto de Vida': 'Proj. Vida',
-        'Língua Inglesa': 'Inglês',
-        'Inglês': 'Inglês',
-        'Artes': 'Artes',
-        'Ens. Artes': 'Artes'
-    };
-    return map[subject] || (subject.length > 10 ? subject.substring(0, 10) + '.' : subject);
+const getSubjectLabel = (subject: string, short: boolean = false, academicSubjects?: AcademicSubject[]): string => {
+    // 1. Try exact match in labels if subject is a canonical ID
+    if (short && SUBJECT_SHORT_LABELS[subject as Subject]) return SUBJECT_SHORT_LABELS[subject as Subject];
+    if (SUBJECT_LABELS[subject as Subject]) return SUBJECT_LABELS[subject as Subject];
+    if (SUBJECT_SHORT_LABELS[subject as Subject]) return SUBJECT_SHORT_LABELS[subject as Subject];
+
+    // 2. Search in academicSubjects (by ID first, then name/shortName)
+    const normalized = subject.toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/\./g, '')
+        .trim();
+
+    const dbMatch = academicSubjects?.find(s =>
+        s.id === subject ||
+        s.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').trim() === normalized ||
+        (s.shortName && s.shortName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').trim() === normalized)
+    );
+
+    if (dbMatch) {
+        return short ? (dbMatch.shortName || dbMatch.name) : dbMatch.name;
+    }
+
+    // 3. Heuristic matching for common variations (Safety Net)
+    if (normalized.includes('math') || normalized.includes('matematica')) return short ? 'Mat' : 'Matemática';
+    if (normalized.includes('port') || normalized.includes('lingua port')) return short ? 'Port' : 'Português';
+    if (normalized.includes('hist')) return short ? 'His' : 'História';
+    if (normalized.includes('geo')) return short ? 'Geo' : 'Geografia';
+    if (normalized.includes('cienc') || normalized.includes('scienc')) return short ? 'Ciên' : 'Ciências';
+    if (normalized.includes('ing') || normalized.includes('engl')) return short ? 'Ing' : 'Inglês';
+    if (normalized.includes('art')) return short ? 'Art' : 'Artes';
+    if (normalized.includes('rel')) return short ? 'Rel' : 'Ens. Religioso';
+    if (normalized.includes('fis') && !normalized.includes('ed')) return short ? 'Fís' : 'Física';
+    if (normalized.includes('ed') && normalized.includes('fis')) return 'E.F.';
+    if (normalized.includes('bio')) return short ? 'Bio' : 'Biologia';
+    if (normalized.includes('qui')) return short ? 'Quí' : 'Química';
+    if (normalized.includes('fili')) return short ? 'Fil' : 'Filosofia';
+    if (normalized.includes('soci')) return short ? 'Soc' : 'Sociologia';
+    if (normalized.includes('lite')) return short ? 'Lit' : 'Literatura';
+    if (normalized.includes('reda')) return short ? 'Red' : 'Redação';
+
+    // 4. Raw fallback
+    return subject.length > 15 ? subject.substring(0, 15) + '...' : subject;
+};
+
+/**
+ * Normalizes a subject identifier to its canonical ID or a common string.
+ */
+const normalizeSubjectId = (subjectStr: string, academicSubjects?: AcademicSubject[]): string => {
+    if (!subjectStr) return subjectStr;
+    const validSubjects = Object.values(Subject);
+    if (validSubjects.includes(subjectStr as Subject)) return subjectStr;
+
+    const normalized = subjectStr.toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/\./g, '')
+        .trim();
+
+    const dbMatch = academicSubjects?.find(s =>
+        s.id === subjectStr ||
+        s.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').trim() === normalized ||
+        (s.shortName && s.shortName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').trim() === normalized)
+    );
+    if (dbMatch) return dbMatch.id;
+
+    if (normalized.includes('math') || normalized.includes('matematica')) return Subject.MATH;
+    if (normalized.includes('port') || normalized.includes('lingua')) return Subject.PORTUGUESE;
+    if (normalized.includes('hist')) return Subject.HISTORY;
+    if (normalized.includes('geo')) return Subject.GEOGRAPHY;
+    if (normalized.includes('cienc')) return Subject.SCIENCE;
+    if (normalized.includes('ing') || normalized.includes('engl')) return Subject.ENGLISH;
+    if (normalized.includes('art')) return Subject.ARTS;
+    if (normalized.includes('rel')) return Subject.RELIGIOUS_ED;
+    if (normalized.includes('fis') && !normalized.includes('ed')) return Subject.PHYSICS;
+    if (normalized.includes('ed') && normalized.includes('fis')) return Subject.PHYSICAL_ED;
+    if (normalized.includes('bio')) return Subject.BIOLOGY;
+    if (normalized.includes('qui')) return Subject.CHEMISTRY;
+    if (normalized.includes('empreend')) return Subject.ENTREPRENEURSHIP;
+    if (normalized.includes('vida')) return Subject.LIFE_PROJECT;
+    if (normalized.includes('fili')) return Subject.PHILOSOPHY;
+    if (normalized.includes('soci')) return Subject.SOCIOLOGY;
+    if (normalized.includes('lite')) return Subject.LITERATURE;
+    if (normalized.includes('reda')) return Subject.WRITING;
+
+    return subjectStr;
 };
 
 export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
@@ -1401,7 +1465,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Disciplina</label>
                                         <select value={materialSubject} onChange={(e) => setMaterialSubject(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
                                             <option value="">Selecione...</option>
-                                            {filteredSubjectsForMaterials.map(subject => (<option key={subject} value={subject as string}>{subject as string}</option>))}
+                                            {filteredSubjectsForMaterials.map(subject => (<option key={subject} value={subject as string}>{getSubjectLabel(subject as string, false, academicSubjects)}</option>))}
                                         </select>
                                     </div>
                                     <div>
@@ -1475,7 +1539,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                     <div>
                                                         <h3 className="font-bold text-gray-800 text-lg">{mat.title}</h3>
                                                         <div className="text-sm text-gray-500 mt-1 space-y-0.5">
-                                                            <p><span className="font-semibold text-gray-600">Disciplina:</span> {mat.subject}</p>
+                                                            <p><span className="font-semibold text-gray-600">Disciplina:</span> {getSubjectLabel(mat.subject, false, academicSubjects)}</p>
                                                             <p><span className="font-semibold text-gray-600">Destino:</span> {mat.gradeLevel} - {mat.schoolClass} ({mat.shift})</p>
                                                             <p className="text-xs text-gray-400 mt-2">{new Date(mat.timestamp).toLocaleDateString()} às {new Date(mat.timestamp).toLocaleTimeString()}</p>
                                                         </div>
@@ -1528,7 +1592,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Disciplina</label>
                                         <select value={agendaSubject} onChange={e => setAgendaSubject(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
                                             <option value="">Selecione...</option>
-                                            {filteredSubjectsForAgenda.map(s => <option key={s} value={s as string}>{s as string}</option>)}
+                                            {filteredSubjectsForAgenda.map(s => <option key={s} value={s as string}>{getSubjectLabel(s as string, false, academicSubjects)}</option>)}
                                         </select>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
@@ -1597,7 +1661,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Disciplina</label>
                                         <select value={examSubject} onChange={e => setExamSubject(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
                                             <option value="">Selecione...</option>
-                                            {filteredSubjectsForExams.map(s => <option key={s} value={s as string}>{s as string}</option>)}
+                                            {filteredSubjectsForExams.map(s => <option key={s} value={s as string}>{getSubjectLabel(s as string, false, academicSubjects)}</option>)}
                                         </select>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
@@ -1664,7 +1728,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                         <h3 className="font-bold text-gray-800 text-lg">{guide.title}</h3>
                                                         <p className="text-sm font-semibold text-orange-600 mb-2">Data da Prova: {new Date(guide.examDate).toLocaleDateString()}</p>
                                                         <div className="text-sm text-gray-600 space-y-1">
-                                                            <p><span className="font-medium">Disciplina:</span> {guide.subject}</p>
+                                                            <p><span className="font-medium">Disciplina:</span> {getSubjectLabel(guide.subject, false, academicSubjects)}</p>
                                                             <p><span className="font-medium">Turma:</span> {guide.gradeLevel} - {guide.schoolClass}</p>
                                                         </div>
                                                     </div>
@@ -1725,7 +1789,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                     <div className="grid grid-cols-2 gap-4 text-sm">
                                         <div className="bg-gray-50 p-3 rounded-lg">
                                             <label className="block text-gray-500 text-xs uppercase font-bold mb-1">Disciplina</label>
-                                            <p className="font-semibold text-gray-800">{viewingGuide.subject}</p>
+                                            <p className="font-semibold text-gray-800">{getSubjectLabel(viewingGuide.subject, false, academicSubjects)}</p>
                                         </div>
                                         <div className="bg-gray-50 p-3 rounded-lg">
                                             <label className="block text-gray-500 text-xs uppercase font-bold mb-1">Turma</label>
@@ -1941,7 +2005,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                             required
                                                         >
                                                             <option value="">Selecione...</option>
-                                                            {filteredSubjectsForGrades.map(subject => (<option key={subject} value={subject as string}>{subject as string}</option>))}
+                                                            {filteredSubjectsForGrades.map(subject => (<option key={subject} value={subject as string}>{getSubjectLabel(subject as string, false, academicSubjects)}</option>))}
                                                         </select>
                                                     </div>
                                                     <div>
@@ -2163,7 +2227,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                             {finalGrades.map((grade) => (
                                                                                 <tr key={grade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-300">
                                                                                     <td className="px-2 py-2 font-bold text-gray-900 border-r border-gray-300 text-[10px] md:text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] align-top">
-                                                                                        <span className="uppercase block leading-tight mb-1" title={grade.subject}>{abbreviateSubject(grade.subject)}</span>
+                                                                                        <span className="uppercase block leading-tight mb-1" title={grade.subject}>{getSubjectLabel(grade.subject, true, academicSubjects)}</span>
                                                                                     </td>
                                                                                     {(() => {
                                                                                         let weeklyClasses = 0;
@@ -2496,7 +2560,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                         <label className="text-sm font-bold text-gray-700 mb-1 block">Disciplina</label>
                                         <select value={attendanceSubject} onChange={e => setAttendanceSubject(e.target.value)} className="w-full p-2 border rounded">
                                             <option value="">Selecione...</option>
-                                            {filteredSubjectsForAttendance.map(subj => <option key={subj} value={subj as string}>{subj as string}</option>)}
+                                            {filteredSubjectsForAttendance.map(subj => <option key={subj} value={subj as string}>{getSubjectLabel(subj as string, false, academicSubjects)}</option>)}
                                         </select>
                                     </div>
                                     <div>
@@ -2742,7 +2806,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                     </div>
                                                     <h4 className="font-bold text-lg text-gray-900">{ticket.studentName}</h4>
                                                     <p className="text-xs text-blue-950 font-medium bg-blue-50 px-2 py-1 rounded inline-block mt-1">
-                                                        {ticket.gradeLevel} - {ticket.schoolClass} | {ticket.subject}
+                                                        {ticket.gradeLevel} - {ticket.schoolClass} | {getSubjectLabel(ticket.subject as string, false, academicSubjects)}
                                                     </p>
                                                 </div>
 

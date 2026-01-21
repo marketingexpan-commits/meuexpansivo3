@@ -7,7 +7,7 @@ import { TeacherForm } from '../components/TeacherForm';
 import { Search, Loader2, UserPlus, Pencil, Trash2, MessagesSquare, ShieldAlert, ShieldCheck, GraduationCap, BookOpen, Layers } from 'lucide-react';
 import { teacherService } from '../services/teacherService';
 import type { Teacher, SchoolUnit } from '../types';
-import { UNIT_LABELS } from '../types';
+import { UNIT_LABELS, SUBJECT_LABELS, Subject } from '../types';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { useSchoolUnits } from '../hooks/useSchoolUnits';
 
@@ -139,7 +139,7 @@ export function Professores() {
                             onChange={(e) => setFilterSubject(e.target.value)}
                             options={[
                                 { label: 'Todas as Disciplinas', value: '' },
-                                ...subjects.map(s => ({ label: s.name, value: s.name }))
+                                ...subjects.map(s => ({ label: s.name, value: s.id }))
                             ]}
                             className="h-10"
                         />
@@ -217,7 +217,7 @@ export function Professores() {
                                                 <div className="flex flex-wrap gap-1.5 max-w-[300px]">
                                                     {t.subjects?.slice(0, 3).map(s => (
                                                         <span key={s} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-xl text-[10px] font-bold border border-blue-100 flex items-center gap-1">
-                                                            <BookOpen className="w-2.5 h-2.5" /> {s}
+                                                            <BookOpen className="w-2.5 h-2.5" /> {subjects.find(sub => sub.id === s)?.name || SUBJECT_LABELS[s as Subject] || s}
                                                         </span>
                                                     ))}
                                                     {t.gradeLevels?.slice(0, 2).map(g => (
