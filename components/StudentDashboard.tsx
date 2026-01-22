@@ -417,6 +417,39 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     }, [student.id, student.gradeLevel, grades, academicSubjects, matrices, academicSettings, isYearFinished, calendarEvents, classSchedules, student.unit, student.shift]);
 
 
+    // NEW: Filter grades to only show subjects present in the Class Schedule
+    const filteredStudentGrades = useMemo(() => {
+        if (!classSchedules || classSchedules.length === 0) return studentGrades;
+
+        const validSubjects = new Set<string>();
+        const sGrade = parseGradeLevel(student.gradeLevel).grade;
+        const sClass = normalizeClass(student.schoolClass);
+
+        let hasScheduleForClass = false;
+
+        classSchedules.forEach(sch => {
+            const schGrade = parseGradeLevel(sch.grade).grade;
+            const schClass = normalizeClass(sch.class);
+
+            if (schGrade === sGrade && schClass === sClass) {
+                if (sch.items && sch.items.length > 0) {
+                    hasScheduleForClass = true; // Found matching schedule with items
+                    sch.items.forEach((item: any) => {
+                        if (item.subject) {
+                            validSubjects.add(item.subject); // This must be the academic_subject.id
+                        }
+                    });
+                }
+            }
+        });
+
+        // Safety: If !hasScheduleForClass, return studentGrades (show all).
+        if (!hasScheduleForClass) return studentGrades;
+
+        return studentGrades.filter(g => validSubjects.has(g.subject));
+    }, [studentGrades, classSchedules, student.gradeLevel, student.schoolClass]);
+
+
     const { settings: contactSettings } = useFinancialSettings(student.unit);
 
     const currentUnitInfo = useMemo(() => {
@@ -557,7 +590,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
 
     // CORREÇÃO: Adicionar verificação de segurança para bimesters e filtrar por bimestre selecionado
-    const supportNeededGrades = studentGrades.filter(g => {
+    const supportNeededGrades = filteredStudentGrades.filter(g => {
         if (!g.bimesters) return false;
 
         const media = g.mediaAnual || 0;
@@ -1136,7 +1169,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider mb-1">Frequência Geral Anual</span>
                                         <div className="flex items-baseline gap-2">
                                             {(() => {
-                                                const freqStr = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices);
+                                                const freqStr = calculateGeneralFrequency(filteredStudentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices);
                                                 const freqNum = parseFloat(freqStr.replace('%', ''));
                                                 const isLow = !isNaN(freqNum) && freqNum < 75;
                                                 return (
@@ -1594,7 +1627,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 </div>
 
                                 <div className="mb-6 flex items-center gap-4 print:hidden">
-                                    {studentGrades.length > 0 && (
+                                    {filteredStudentGrades.length > 0 && (
                                         <div className="flex items-center gap-2 text-xs text-orange-800 bg-orange-100 p-2 rounded border border-orange-200">
                                             <div className="w-2.5 h-2.5 bg-yellow-400 rounded-full flex-shrink-0"></div>
                                             <span>= Nota em processo de atualização pela coordenação pedagógica.</span>
@@ -1711,7 +1744,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                     </tr>
                                                 </thead>
                                                 <tbody className="bg-white divide-y divide-gray-200">
-                                                    {studentGrades.map((grade) => (
+                                                    {filteredStudentGrades.map((grade) => (
                                                         <tr key={grade.id} className="hover:bg-gray-50 transition-colors border-b border-gray-300">
                                                             <td className="px-2 py-2 font-bold text-gray-900 border-r border-gray-300 text-[10px] md:text-xs sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] align-top print:w-16 print:px-1 print:py-0.5">
                                                                 {(() => {
@@ -1987,8 +2020,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             </td>
                                                         </tr>
                                                     ))}
-                                                    {studentGrades.length > 0 && (() => {
-                                                        const generalFreq = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices);
+                                                    {filteredStudentGrades.length > 0 && (() => {
+                                                        const generalFreq = calculateGeneralFrequency(filteredStudentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices);
                                                         return (
                                                             <tr className="bg-gray-100/80 font-bold border-t-2 border-gray-400">
                                                                 <td colSpan={31} className="px-4 py-1 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[11px]">
@@ -2001,8 +2034,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             </tr>
                                                         );
                                                     })()}
-                                                    {studentGrades.length === 0 && (
-                                                        <tr><td colSpan={33} className="px-6 py-8 text-center text-gray-500 italic">Nenhuma nota lançada para este período letivo.</td></tr>
+                                                    {filteredStudentGrades.length === 0 && (
+                                                        <tr><td colSpan={33} className="px-6 py-8 text-center text-gray-500 italic">Nenhuma nota disponível para as disciplinas agendadas.</td></tr>
                                                     )}
                                                 </tbody>
                                             </table>
@@ -2010,7 +2043,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                     </>
                                 )}
-                                {studentGrades.length > 0 && (
+                                {filteredStudentGrades.length > 0 && (
                                     <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded text-[10px] text-gray-500 leading-relaxed text-center print:text-xs">
                                         <p className="font-bold mb-1">Sobre a frequência</p>
                                         <p>A frequência é calculada somente com base nas aulas que já aconteceram até o momento.</p>
@@ -2096,7 +2129,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         return (
                                             <div key={grade.id} className={`p-5 border-l-4 rounded-lg bg-white shadow-md transition-shadow hover:shadow-lg ${statusConfig.color} flex flex-col`}>
                                                 <div className="flex justify-between items-start mb-3">
-                                                    <h4 className="text-lg font-bold text-gray-800">{grade.subject}</h4>
+                                                    <h4 className="text-lg font-bold text-gray-800">{getSubjectLabel(grade.subject, academicSubjects)}</h4>
                                                     {statusConfig.badge && <span className={`${statusConfig.badgeColor} text-xs font-bold px-2 py-1 rounded`}>{statusConfig.badge}</span>}
                                                 </div>
 
