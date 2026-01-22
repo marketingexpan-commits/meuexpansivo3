@@ -15,6 +15,23 @@ import { SCHOOL_CLASSES_OPTIONS, ACADEMIC_SEGMENTS, ACADEMIC_GRADES } from '../u
 import { useAcademicData } from '../hooks/useAcademicData';
 import { useSchoolUnits } from '../hooks/useSchoolUnits';
 import { financialService } from '../services/financialService';
+import { generateCarne } from '../utils/carneGenerator';
+import { Modal } from './Modal';
+
+const MONTHS = [
+    { label: 'Janeiro', value: '1' },
+    { label: 'Fevereiro', value: '2' },
+    { label: 'Março', value: '3' },
+    { label: 'Abril', value: '4' },
+    { label: 'Maio', value: '5' },
+    { label: 'Junho', value: '6' },
+    { label: 'Julho', value: '7' },
+    { label: 'Agosto', value: '8' },
+    { label: 'Setembro', value: '9' },
+    { label: 'Outubro', value: '10' },
+    { label: 'Novembro', value: '11' },
+    { label: 'Dezembro', value: '12' }
+];
 
 const STUDENT_STATUS_OPTIONS = [
     { label: 'CURSANDO', value: 'CURSANDO' },
@@ -73,6 +90,13 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
     const [isCropperOpen, setIsCropperOpen] = useState(false);
     const [rawPhoto, setRawPhoto] = useState<string | null>(null);
     const [showPassword, setShowPassword] = useState(false);
+    const [isCarneConfigOpen, setIsCarneConfigOpen] = useState(false);
+    const [carneConfig, setCarneConfig] = useState({
+        year: new Date().getFullYear(),
+        startMonth: '1',
+        endMonth: '12',
+        withBoletos: false
+    });
 
     // Helper state for Level dropdown - MUST BE INITIALIZED BEFORE formData TO SYNC
     const [selectedLevel, setSelectedLevel] = useState<string>(() => {
@@ -545,6 +569,89 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
         }
     };
 
+    const handleGenerateCarne = async () => {
+        if (!student?.id) {
+            alert("A matrícula precisa estar salva antes de gerar o carnê.");
+            return;
+        }
+        setIsCarneConfigOpen(true);
+    };
+
+    const handleConfirmGenerateCarne = async () => {
+        if (!student?.id) return;
+
+        try {
+            setIsLoading(true);
+            // Removido setIsCarneConfigOpen(false) daqui para manter o modal aberto com feedback visual
+
+            // --- LÓGICA DE VALOR: Usar o valor do cadastro atual ---
+            const parseCurrency = (val: any) => {
+                if (typeof val === 'number') return val;
+                if (!val) return 0;
+                const clean = String(val).replace(/[^\d,.]/g, '');
+                if (clean.includes(',') && clean.includes('.')) {
+                    return parseFloat(clean.replace(/\./g, '').replace(',', '.'));
+                } else if (clean.includes(',')) {
+                    return parseFloat(clean.replace(',', '.'));
+                }
+                return parseFloat(clean) || 0;
+            };
+
+            const tuitionValue = parseCurrency(formData.valor_mensalidade);
+
+            // 1. GERAR/GARANTIR PARCELAS NO BANCO (Isso reflete no App do Aluno)
+            await financialService.generateInstallments(
+                student.id,
+                parseInt(carneConfig.startMonth),
+                parseInt(carneConfig.endMonth),
+                carneConfig.year,
+                tuitionValue,
+                carneConfig.withBoletos
+            );
+
+            // 2. BUSCAR PARCELAS PARA IMPRESSÃO
+            const rawInstallments = await financialService.getInstallmentsForPrint(student.id, carneConfig.year) as any[];
+
+            // Filtrar pelo range solicitado para garantir exatidão no print
+            const monthsList = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            const startIdx = parseInt(carneConfig.startMonth) - 1;
+            const endIdx = parseInt(carneConfig.endMonth);
+            const requestedMonths = monthsList.slice(startIdx, endIdx);
+
+            const filteredInstallments = rawInstallments.filter(inst => {
+                const m = inst.month.split('/')[0];
+                return requestedMonths.includes(m);
+            });
+
+            if (filteredInstallments.length === 0) {
+                alert("Nenhuma parcela encontrada ou gerada para este período.");
+                return;
+            }
+
+            // Garantir que todas as parcelas têm Código de Baixa Sequencial e Valor do Cadastro
+            const installmentsWithCorrectValue = filteredInstallments.map(inst => ({
+                ...inst,
+                value: tuitionValue // Forçar o valor que está no cadastro no carnê impresso
+            }));
+
+            const installments = await financialService.ensureSequentialDocumentNumbers(installmentsWithCorrectValue);
+
+            const unitDetail = getUnitById(formData.unit || '');
+            if (!unitDetail) {
+                alert("Dados da unidade não encontrados.");
+                return;
+            }
+
+            generateCarne(formData as Student, installments, unitDetail);
+            setIsCarneConfigOpen(false);
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao processar e gerar o carnê.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleSubmit = async () => {
         try {
             setIsLoading(true);
@@ -659,7 +766,24 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
             });
 
             if (student && student.id) {
+                const oldTuition = student.valor_mensalidade;
                 await studentService.updateStudent(student.id, finalData);
+
+                // Se o valor da mensalidade mudou, sincroniza as parcelas pendentes do ano atual
+                if (oldTuition !== cleanTuition) {
+                    try {
+                        const year = new Date().getFullYear();
+                        const pending = await financialService.getMensalidades({ studentId: student.id, status: 'Pendente' });
+                        const thisYearPending = pending.filter(p => p.month.endsWith(`/${year}`));
+
+                        for (const inst of thisYearPending) {
+                            await financialService.updateInstallment(inst.id, { value: cleanTuition });
+                        }
+                    } catch (err) {
+                        console.error("Erro ao sincronizar parcelas:", err);
+                    }
+                }
+
                 alert("Matrícula atualizada com sucesso!");
             } else {
                 await studentService.createStudent(finalData);
@@ -1469,6 +1593,16 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                             Gerar Boletos
                         </Button>
                         <Button
+                            variant="outline"
+                            onClick={handleGenerateCarne}
+                            disabled={isLoading || !student?.id}
+                            className="cursor-pointer flex items-center gap-2 border-orange-600 text-orange-600 font-bold hover:bg-orange-50"
+                            title="Gerar Carnê Escolar (PDF)"
+                        >
+                            <FileText className="w-4 h-4" />
+                            Gerar Carnê
+                        </Button>
+                        <Button
                             onClick={handleSubmit}
                             disabled={isLoading}
                             className="cursor-pointer flex items-center gap-2"
@@ -1507,6 +1641,85 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                     }}
                     onCropComplete={handleCropComplete}
                 />
+
+                {/* Configuração de Carnê Modal */}
+                <Modal
+                    isOpen={isCarneConfigOpen}
+                    onClose={() => setIsCarneConfigOpen(false)}
+                    title="Configurar Geração de Carnê"
+                    maxWidth="max-w-md"
+                >
+                    <div className="space-y-4">
+                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-center justify-between">
+                            <div>
+                                <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Valor Atual da Mensalidade</p>
+                                <p className="text-xl font-black text-blue-950">R$ {
+                                    typeof formData.valor_mensalidade === 'number'
+                                        ? formData.valor_mensalidade.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+                                        : formData.valor_mensalidade || '0,00'
+                                }</p>
+                            </div>
+                            <FileText className="w-8 h-8 text-blue-200" />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="col-span-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Ano Letivo</label>
+                                <Input
+                                    type="number"
+                                    value={carneConfig.year}
+                                    onChange={(e) => setCarneConfig({ ...carneConfig, year: parseInt(e.target.value) })}
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Mês Inicial</label>
+                                <Select
+                                    value={carneConfig.startMonth}
+                                    onChange={(e) => setCarneConfig({ ...carneConfig, startMonth: e.target.value })}
+                                    options={MONTHS.map(m => ({ label: m.label, value: m.value }))}
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Mês Final</label>
+                                <Select
+                                    value={carneConfig.endMonth}
+                                    onChange={(e) => setCarneConfig({ ...carneConfig, endMonth: e.target.value })}
+                                    options={MONTHS.map(m => ({ label: m.label, value: m.value }))}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                            <input
+                                type="checkbox"
+                                id="withBoletos"
+                                checked={carneConfig.withBoletos}
+                                onChange={(e) => setCarneConfig({ ...carneConfig, withBoletos: e.target.checked })}
+                                className="w-4 h-4 text-blue-950 rounded border-gray-300 focus:ring-blue-900 cursor-pointer"
+                            />
+                            <label htmlFor="withBoletos" className="text-sm font-medium text-blue-950 cursor-pointer select-none">
+                                Gerar Boletos Digitais Automaticamente (Mercado Pago)
+                            </label>
+                        </div>
+
+                        <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl">
+                            <p className="text-[10px] text-amber-700 leading-tight">
+                                <strong>Nota:</strong> Ao confirmar, as parcelas serão criadas/atualizadas no banco de dados e aparecerão no Financeiro do App do Aluno.
+                            </p>
+                        </div>
+
+                        <div className="flex gap-3 pt-2">
+                            <Button variant="outline" className="flex-1" onClick={() => setIsCarneConfigOpen(false)}>Cancelar</Button>
+                            <Button
+                                className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
+                                onClick={handleConfirmGenerateCarne}
+                                isLoading={isLoading}
+                            >
+                                Confirmar e Gerar
+                            </Button>
+                        </div>
+                    </div>
+                </Modal>
             </div>
         </div>
     );
