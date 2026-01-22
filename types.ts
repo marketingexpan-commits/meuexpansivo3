@@ -546,6 +546,7 @@ export interface DailyAgenda {
   date: string; // YYYY-MM-DD
   contentInClass: string; // Conteúdo dado em sala
   homework: string; // Tarefa de casa
+  shift: string; // Novo: Turno da agenda
   timestamp: string;
   unit: SchoolUnit;
 }
@@ -562,6 +563,7 @@ export interface ExamGuide {
   content: string; // Tópicos da prova
   fileUrl?: string; // URL do arquivo PDF anexado
   fileName?: string; // Nome original do arquivo
+  shift: string; // Novo: Turno do roteiro
   timestamp: string;
   unit: SchoolUnit;
 }

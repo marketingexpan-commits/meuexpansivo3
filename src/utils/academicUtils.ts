@@ -1,7 +1,7 @@
 /**
  * Centralized Academic Utility for Bimester mapping and Data Normalization.
  */
-import { AcademicSettings } from "../types";
+import { AcademicSettings, SchoolUnit } from "../types";
 
 /**
  * Bimester Ranges (Approximate to Academic Calendar):
@@ -71,19 +71,47 @@ export const normalizeClass = (schoolClass: any): string => {
 };
 
 /**
+ * Normalizes shift strings to internal IDs (e.g. "Matutino" -> "shift_morning").
+ * Handles both enum IDs and display labels for robust comparison.
+ */
+export const normalizeShift = (shift: any): string => {
+    if (!shift) return '';
+    const s = String(shift).trim().toLowerCase();
+    if (s.includes('morning') || s === 'matutino') return 'shift_morning';
+    if (s.includes('afternoon') || s === 'vespertino') return 'shift_afternoon';
+    return s;
+};
+
+/**
+ * Normalizes unit strings to internal IDs (e.g. "Zona Norte" -> "unit_zn").
+ */
+export const normalizeUnit = (unit: any): SchoolUnit | string => {
+    if (!unit) return '';
+    const u = String(unit).trim().toLowerCase();
+    if (u.includes('zona norte') || u === 'unit_zn') return SchoolUnit.UNIT_ZN;
+    if (u.includes('boa sorte') || u === 'unit_bs') return SchoolUnit.UNIT_BS;
+    if (u.includes('extremoz') || u === 'unit_ext') return SchoolUnit.UNIT_EXT;
+    if (u.includes('quintas') || u === 'unit_qui') return SchoolUnit.UNIT_QUI;
+    return u;
+};
+
+/**
  * Parses a grade level string into its grade and level components.
  * Rigorous version: Expects "GradeLabel - SegmentLabel" or a valid Grade ID.
  * Returns official Labels only to maintain UI consistency.
  */
 export const parseGradeLevel = (gradeLevel: string) => {
-    if (!gradeLevel) return { grade: '', level: ACADEMIC_SEGMENTS.FUND_1.label };
+    if (!gradeLevel) return { grade: '', level: ACADEMIC_SEGMENTS.FUND_1.label, segmentId: ACADEMIC_SEGMENTS.FUND_1.id };
 
-    // 1. Try to find by official "Grade - Segment" string
-    const [gradePart, levelPart] = gradeLevel.split(' - ');
+    // 1. Try to find by official "Grade - Segment" or "Segment - Grade" string
+    const parts = gradeLevel.split(' - ').map(p => p.trim());
+    const gradePart = parts[0];
+    const levelPart = parts[1];
 
-    // 2. Validate against official list
-    const officialGrade = Object.values(ACADEMIC_GRADES).find(
-        g => g.label === gradePart && (levelPart ? ACADEMIC_SEGMENTS[Object.keys(ACADEMIC_SEGMENTS).find(k => ACADEMIC_SEGMENTS[k as keyof typeof ACADEMIC_SEGMENTS].label === levelPart) as keyof typeof ACADEMIC_SEGMENTS]?.label === levelPart : true)
+    // Try to match any of the parts against the official grade labels
+    const officialGrade = Object.values(ACADEMIC_GRADES).find(g =>
+        (g.label === gradePart && (!levelPart || ACADEMIC_SEGMENTS[Object.keys(ACADEMIC_SEGMENTS).find(k => ACADEMIC_SEGMENTS[k as keyof typeof ACADEMIC_SEGMENTS].label === levelPart) as keyof typeof ACADEMIC_SEGMENTS]?.id === g.segmentId)) ||
+        (levelPart && g.label === levelPart && (!gradePart || ACADEMIC_SEGMENTS[Object.keys(ACADEMIC_SEGMENTS).find(k => ACADEMIC_SEGMENTS[k as keyof typeof ACADEMIC_SEGMENTS].label === gradePart) as keyof typeof ACADEMIC_SEGMENTS]?.id === g.segmentId))
     );
 
     if (officialGrade) {
@@ -95,7 +123,7 @@ export const parseGradeLevel = (gradeLevel: string) => {
         };
     }
 
-    // Fallback logic for legacy cases
+    // Fallback logic for legacy cases or partial strings
     let level = ACADEMIC_SEGMENTS.FUND_1.label;
     let segmentId = ACADEMIC_SEGMENTS.FUND_1.id;
 
@@ -103,7 +131,7 @@ export const parseGradeLevel = (gradeLevel: string) => {
         level = ACADEMIC_SEGMENTS.FUND_2.label;
         segmentId = ACADEMIC_SEGMENTS.FUND_2.id;
     }
-    else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) {
+    else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio')) {
         level = ACADEMIC_SEGMENTS.MEDIO.label;
         segmentId = ACADEMIC_SEGMENTS.MEDIO.id;
     }
@@ -112,8 +140,12 @@ export const parseGradeLevel = (gradeLevel: string) => {
         segmentId = ACADEMIC_SEGMENTS.INFANTIL.id;
     }
 
+    // Try to extract the most likely grade part (the one that is not a segment name)
+    const segmentLabels = Object.values(ACADEMIC_SEGMENTS).map(s => s.label.toLowerCase());
+    const gradeCandidate = parts.find(p => !segmentLabels.includes(p.toLowerCase())) || parts[0] || gradeLevel;
+
     return {
-        grade: gradeLevel.split(' - ')[0] || gradeLevel,
+        grade: gradeCandidate,
         level,
         segmentId
     };
@@ -499,3 +531,21 @@ export const getSubjectDurationForDay = (
     return (totalDuration / totalSessions) * lessonCount;
 };
 
+
+/**
+ * Formats an ISO timestamp or Date object to Brazilian format (DD/MM/YYYY HH:mm).
+ */
+export const formatDateWithTimeBr = (dateInput: string | Date | undefined): string => {
+    if (!dateInput) return '-';
+    const date = new Date(dateInput);
+    if (isNaN(date.getTime())) return '-';
+
+    return date.toLocaleString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+};

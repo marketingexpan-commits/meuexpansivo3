@@ -21,7 +21,7 @@ import { db, storage } from '../firebaseConfig';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 import { getAttendanceBreakdown, AttendanceBreakdown } from '../src/utils/attendanceUtils';
-import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, parseGradeLevel, normalizeClass, calculateSchoolDays, isClassScheduled, getSubjectDurationForDay } from '../src/utils/academicUtils';
+import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, parseGradeLevel, normalizeClass, normalizeShift, normalizeUnit, calculateSchoolDays, isClassScheduled, getSubjectDurationForDay, formatDateWithTimeBr } from '../src/utils/academicUtils';
 import { calculateBimesterMedia, calculateFinalData, getCurriculumSubjects, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST, EARLY_CHILDHOOD_REPORT_TEMPLATE, CURRICULUM_MATRIX } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateTaughtClasses } from '../utils/frequency';
 import { getSubjectLabel } from '../utils/subjectUtils';
@@ -89,7 +89,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     const [activeTab, setActiveTab] = useState<'menu' | 'grades' | 'attendance' | 'tickets' | 'materials'>('menu');
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [isSaving, setIsSaving] = useState(false);
-    const activeUnit = teacher.unit;
+    const activeUnit = normalizeUnit(teacher.unit) as SchoolUnit;
     const [filterGrade, setFilterGrade] = useState<string>('');
     const [filterShift, setFilterShift] = useState<string>('');
     const [filterClass, setFilterClass] = useState<string>('');
@@ -185,7 +185,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     const [materialTitle, setMaterialTitle] = useState('');
     const [materialFile, setMaterialFile] = useState<File | null>(null);
     const [materialGrade, setMaterialGrade] = useState('');
-    const [materialShift, setMaterialShift] = useState('');
+    const [materialShift, setMaterialShift] = useState<string>('');
     const [materialClass, setMaterialClass] = useState<SchoolClass>(SchoolClass.A);
     const [materialSubject, setMaterialSubject] = useState<string>('');
     const [isUploading, setIsUploading] = useState(false);
@@ -198,6 +198,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     const [agendaDate, setAgendaDate] = useState(new Date().toLocaleDateString('en-CA'));
     const [agendaSubject, setAgendaSubject] = useState('');
     const [agendaGrade, setAgendaGrade] = useState('');
+    const [agendaShift, setAgendaShift] = useState('');
     const [agendaClass, setAgendaClass] = useState('A');
     const [contentInClass, setContentInClass] = useState('');
     const [homework, setHomework] = useState('');
@@ -208,6 +209,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     const [examContent, setExamContent] = useState('');
     const [examSubject, setExamSubject] = useState('');
     const [examGrade, setExamGrade] = useState('');
+    const [examShift, setExamShift] = useState('');
     const [examClass, setExamClass] = useState('A');
     const [examFile, setExamFile] = useState<File | null>(null);
     const [isSavingExam, setIsSavingExam] = useState(false);
@@ -260,7 +262,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             setAgendaGrade(onlyGrade);
             setExamGrade(onlyGrade);
         }
-    }, [teacherSubjects, teacher.gradeLevels]);
+
+        if (teacher.shift) {
+            setMaterialShift(teacher.shift);
+            setAgendaShift(teacher.shift);
+            setExamShift(teacher.shift);
+        }
+    }, [teacherSubjects, teacher.gradeLevels, teacher.shift]);
 
     const getFilteredSubjects = useCallback((gradeLevel: string) => {
         if (!teacher.assignments || teacher.assignments.length === 0) return teacher.subjects;
@@ -611,7 +619,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         const record: AttendanceRecord = {
             id: recordId,
             date: attendanceDate,
-            unit: activeUnit,
+            unit: activeUnit as SchoolUnit,
             gradeLevel: attendanceGrade,
             schoolClass: attendanceClass,
             teacherId: teacher.id,
@@ -922,10 +930,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                 teacherId: teacher.id,
                                 teacherName: teacher.name,
                                 subject: materialSubject,
-                                unit: activeUnit,
+                                unit: activeUnit as SchoolUnit,
                                 gradeLevel: materialGrade,
                                 schoolClass: materialClass,
-                                shift: materialShift,
+                                shift: normalizeShift(materialShift),
                                 timestamp: new Date().toISOString()
                             };
 
@@ -1012,12 +1020,25 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         }
     };
 
+    const handleDeleteAgenda = async (agenda: DailyAgenda) => {
+        if (!window.confirm("Tem certeza que deseja excluir esta agenda?")) return;
+
+        try {
+            await db.collection('daily_agenda').doc(agenda.id).delete();
+            alert("Agenda removida.");
+        } catch (error) {
+            console.error("Erro ao deletar agenda:", error);
+            alert("Erro ao deletar agenda.");
+        }
+    };
+
     const handleEditExamGuide = (guide: ExamGuide) => {
         setEditingGuideId(guide.id);
         setExamTitle(guide.title);
         setExamDate(guide.examDate);
         setExamSubject(guide.subject);
         setExamGrade(guide.gradeLevel);
+        setExamShift(guide.shift || '');
         setExamClass(guide.schoolClass);
         setExamContent(guide.content);
         setExamFile(null); // Reset file input, user must re-upload if they want to change it
@@ -1037,6 +1058,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         setExamDate('');
         setExamSubject('');
         setExamGrade('');
+        setExamShift('');
         setExamClass('A');
         setExamContent('');
         setExamFile(null);
@@ -1045,7 +1067,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     // --- HANDLERS PARA AGENDA E ROTEIROS ---
     const handleSaveAgenda = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!agendaSubject || !agendaGrade || !agendaClass || !contentInClass || !agendaDate) {
+        if (!agendaSubject || !agendaGrade || !agendaShift || !agendaClass || !contentInClass || !agendaDate) {
             alert("Preencha todos os campos obrigatórios.");
             return;
         }
@@ -1058,12 +1080,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 teacherName: teacher.name,
                 gradeLevel: agendaGrade,
                 schoolClass: agendaClass,
+                shift: normalizeShift(agendaShift),
                 subject: agendaSubject,
                 date: agendaDate,
                 contentInClass,
                 homework,
                 timestamp: new Date().toISOString(),
-                unit: activeUnit
+                unit: activeUnit as SchoolUnit
             };
 
             await db.collection('daily_agenda').doc(newAgenda.id).set(newAgenda);
@@ -1082,7 +1105,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
     const handleSaveExamGuide = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!examSubject || !examGrade || !examClass || !examDate || !examTitle || !examContent) {
+        if (!examSubject || !examGrade || !examShift || !examClass || !examDate || !examTitle || !examContent) {
             alert("Preencha todos os campos obrigatórios.");
             return;
         }
@@ -1123,12 +1146,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 teacherName: teacher.name,
                 gradeLevel: examGrade,
                 schoolClass: examClass,
+                shift: normalizeShift(examShift),
                 subject: examSubject,
                 examDate,
                 title: examTitle,
                 content: examContent,
                 timestamp: new Date().toISOString(),
-                unit: activeUnit,
+                unit: activeUnit as SchoolUnit,
                 fileUrl,
                 fileName
             };
@@ -1409,8 +1433,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                             <label className="block text-sm font-bold text-gray-700 mb-1">Turno</label>
                                             <select value={materialShift} onChange={(e) => setMaterialShift(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
                                                 <option value="">Selecione...</option>
-                                                <option value="Matutino">Matutino</option>
-                                                <option value="Vespertino">Vespertino</option>
+                                                {Object.entries(SHIFT_LABELS).map(([value, label]) => (
+                                                    <option key={value} value={value}>{label}</option>
+                                                ))}
                                             </select>
                                         </div>
                                         <div>
@@ -1465,7 +1490,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                         <h3 className="font-bold text-gray-800 text-lg">{mat.title}</h3>
                                                         <div className="text-sm text-gray-500 mt-1 space-y-0.5">
                                                             <p><span className="font-semibold text-gray-600">Disciplina:</span> {getSubjectLabel(mat.subject, academicSubjects)}</p>
-                                                            <p><span className="font-semibold text-gray-600">Destino:</span> {mat.gradeLevel} - {mat.schoolClass} ({mat.shift})</p>
+                                                            <p><span className="font-semibold text-gray-600">Destino:</span> {mat.gradeLevel} - {mat.schoolClass} ({SHIFT_LABELS[mat.shift as SchoolShift] || mat.shift})</p>
                                                             <p className="text-xs text-gray-400 mt-2">{new Date(mat.timestamp).toLocaleDateString()} às {new Date(mat.timestamp).toLocaleTimeString()}</p>
                                                         </div>
                                                     </div>
@@ -1533,11 +1558,20 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-1">Turma</label>
-                                            <select value={agendaClass} onChange={e => setAgendaClass(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
-                                                {SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+                                            <label className="block text-sm font-bold text-gray-700 mb-1">Turno</label>
+                                            <select value={agendaShift} onChange={e => setAgendaShift(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
+                                                <option value="">Selecione...</option>
+                                                {Object.entries(SHIFT_LABELS).map(([value, label]) => (
+                                                    <option key={value} value={value}>{label}</option>
+                                                ))}
                                             </select>
                                         </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Turma</label>
+                                        <select value={agendaClass} onChange={e => setAgendaClass(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
+                                            {SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+                                        </select>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Conteúdo em Sala</label>
@@ -1552,8 +1586,59 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                     </Button>
                                 </form>
                             </div>
-                            <div className="w-full md:w-2/3 p-6 border rounded-lg shadow-md bg-gray-50 flex items-center justify-center text-gray-400">
-                                <p>Histórico de agendas será exibido aqui (Em breve).</p>
+                            {/* LISTA DE AGENDAS */}
+                            <div className="w-full md:w-2/3 p-6 border rounded-lg shadow-md bg-gray-50 flex flex-col h-[600px]">
+                                <h2 className="text-xl font-bold mb-4 text-blue-950 flex items-center gap-2">
+                                    Minhas Agendas Recentes
+                                </h2>
+
+                                <div className="flex-1 overflow-y-auto pr-2">
+                                    {teacherAgendas.length > 0 ? (
+                                        <div className="grid grid-cols-1 gap-4">
+                                            {teacherAgendas.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(agenda => (
+                                                <div key={agenda.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex justify-between items-start">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className="bg-blue-50 text-blue-900 px-2 py-0.5 rounded text-[10px] font-bold border border-blue-100 uppercase">
+                                                                {getSubjectLabel(agenda.subject, academicSubjects)}
+                                                            </span>
+                                                            <div className="flex flex-col">
+                                                                <span className="text-[10px] text-gray-400 font-medium">
+                                                                    Data da Aula: {new Date(agenda.date + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                                                </span>
+                                                                <span className="text-[10px] text-gray-400">
+                                                                    Postado em: {formatDateWithTimeBr(agenda.timestamp)}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <h3 className="font-bold text-gray-800 text-sm">
+                                                            {agenda.gradeLevel} - {agenda.schoolClass} ({SHIFT_LABELS[agenda.shift as SchoolShift] || agenda.shift})
+                                                        </h3>
+                                                        <div className="mt-2 space-y-1">
+                                                            <p className="text-xs text-gray-600 line-clamp-2"><span className="font-bold">Sala:</span> {agenda.contentInClass}</p>
+                                                            {agenda.homework && (
+                                                                <p className="text-xs text-orange-700 font-medium bg-orange-50 px-2 py-0.5 rounded inline-block">
+                                                                    <span className="font-bold text-orange-800">✉ Casa:</span> {agenda.homework}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => handleDeleteAgenda(agenda)}
+                                                        className="ml-4 p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                                                        title="Excluir Agenda"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-20 text-gray-400 italic">
+                                            Nenhuma agenda enviada ainda.
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     )}
@@ -1589,7 +1674,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                             {filteredSubjectsForExams.map(s => <option key={s} value={s as string}>{getSubjectLabel(s as string, academicSubjects)}</option>)}
                                         </select>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-2">
+                                    <div className="grid grid-cols-3 gap-2">
                                         <div>
                                             <label className="block text-sm font-bold text-gray-700 mb-1">Série</label>
                                             <select value={examGrade} onChange={e => setExamGrade(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
@@ -1599,6 +1684,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                 ) : (
                                                     filteredGrades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)
                                                 )}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1">Turno</label>
+                                            <select value={examShift} onChange={e => setExamShift(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
+                                                <option value="">Selecione...</option>
+                                                {Object.entries(SHIFT_LABELS).map(([value, label]) => (
+                                                    <option key={value} value={value}>{label}</option>
+                                                ))}
                                             </select>
                                         </div>
                                         <div>
@@ -1651,10 +1745,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                 <div className="flex justify-between items-start">
                                                     <div>
                                                         <h3 className="font-bold text-gray-800 text-lg">{guide.title}</h3>
-                                                        <p className="text-sm font-semibold text-orange-600 mb-2">Data da Prova: {new Date(guide.examDate).toLocaleDateString()}</p>
+                                                        <p className="text-sm font-semibold text-orange-600 mb-2">Data da Prova: {new Date(guide.examDate + 'T12:00:00').toLocaleDateString()}</p>
                                                         <div className="text-sm text-gray-600 space-y-1">
                                                             <p><span className="font-medium">Disciplina:</span> {getSubjectLabel(guide.subject, academicSubjects)}</p>
-                                                            <p><span className="font-medium">Turma:</span> {guide.gradeLevel} - {guide.schoolClass}</p>
+                                                            <p><span className="font-medium">Turma:</span> {guide.gradeLevel} - {guide.schoolClass} ({SHIFT_LABELS[guide.shift as SchoolShift] || guide.shift})</p>
                                                         </div>
                                                     </div>
                                                     <div className="flex flex-col gap-2">
@@ -1718,7 +1812,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                         </div>
                                         <div className="bg-gray-50 p-3 rounded-lg">
                                             <label className="block text-gray-500 text-xs uppercase font-bold mb-1">Turma</label>
-                                            <p className="font-semibold text-gray-800">{viewingGuide.gradeLevel} - {viewingGuide.schoolClass}</p>
+                                            <p className="font-semibold text-gray-800">{viewingGuide.gradeLevel} - {viewingGuide.schoolClass} ({SHIFT_LABELS[viewingGuide.shift as SchoolShift] || viewingGuide.shift})</p>
                                         </div>
                                     </div>
 
@@ -1779,7 +1873,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                     </select>
                                     <select value={filterShift} onChange={e => setFilterShift(e.target.value)} className="w-full text-sm p-2 border border-gray-300 rounded focus:ring-blue-950 focus:border-blue-950">
                                         <option value="">Todos os Turnos</option>
-                                        {SCHOOL_SHIFTS_LIST.map((shift) => (<option key={shift} value={shift}>{SHIFT_LABELS[shift as SchoolShift] || shift}</option>))}
+                                        {Object.entries(SHIFT_LABELS).map(([value, label]) => (
+                                            <option key={value} value={value}>{label}</option>
+                                        ))}
                                     </select>
                                     <select value={filterClass} onChange={e => setFilterClass(e.target.value)} className="w-full text-sm p-2 border border-gray-300 rounded focus:ring-blue-950 focus:border-blue-950">
                                         <option value="">Todas as Turmas</option>
@@ -2467,7 +2563,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                         <label className="text-sm font-bold text-gray-700 mb-1 block">Turno</label>
                                         <select value={attendanceShift} onChange={e => setAttendanceShift(e.target.value)} className="w-full p-2 border rounded">
                                             <option value="">Todos</option>
-                                            {SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{SHIFT_LABELS[s as SchoolShift] || s}</option>)}
+                                            {Object.entries(SHIFT_LABELS).map(([value, label]) => (
+                                                <option key={value} value={value}>{label}</option>
+                                            ))}
                                         </select>
                                     </div>
                                     <div>
@@ -2548,7 +2646,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                             <div>
                                                                 <h4 className="font-bold text-gray-800">{student.name}</h4>
                                                                 <div className="flex items-center gap-2 mt-1">
-                                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${(student.shift === SchoolShift.MORNING || student.shift === 'Matutino') ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-950'}`}>
+                                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${normalizeShift(student.shift) === SchoolShift.MORNING ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-950'}`}>
                                                                         {SHIFT_LABELS[student.shift as SchoolShift] || student.shift}
                                                                     </span>
                                                                     {status === AttendanceStatus.PRESENT && <span className="text-[10px] bg-blue-100 text-blue-950 px-2 py-0.5 rounded-full font-bold">PRESENTE</span>}
@@ -2635,7 +2733,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                 <td className="px-6 py-4">
                                                                     <div className="flex items-center gap-2">
                                                                         <p className="font-medium text-gray-900">{student.name}</p>
-                                                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${(student.shift === SchoolShift.MORNING || student.shift === 'Matutino') ? 'bg-orange-50 text-orange-800 border-orange-200' : 'bg-blue-50 text-blue-950 border-blue-200'}`}>
+                                                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${normalizeShift(student.shift) === SchoolShift.MORNING ? 'bg-orange-50 text-orange-800 border-orange-200' : 'bg-blue-50 text-blue-950 border-blue-200'}`}>
                                                                             {SHIFT_LABELS[student.shift as SchoolShift] || student.shift}
                                                                         </span>
                                                                     </div>

@@ -15,6 +15,7 @@ import { BackToTopButton } from './components/BackToTopButton';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { SchoolLogo } from './components/SchoolLogo';
 import { subscribeToAcademicSettings } from './src/services/academicSettings';
+import { normalizeUnit } from './src/utils/academicUtils';
 
 import { ValidateReceipt } from './components/ValidateReceipt';
 import { StudentDashboardSkeleton, TeacherDashboardSkeleton, AdminDashboardSkeleton, CoordinatorDashboardSkeleton } from './components/Skeleton';
@@ -133,7 +134,7 @@ const AppContent: React.FC = () => {
     }
 
     const unsubs: (() => void)[] = [];
-    const userUnit = (session.user as any).unit;
+    const userUnit = normalizeUnit((session.user as any).unit);
     const userId = session.user.id;
 
     if (session.role === UserRole.STUDENT) {

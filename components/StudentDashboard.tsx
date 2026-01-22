@@ -3,7 +3,7 @@ import { useAcademicData } from '../hooks/useAcademicData';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
 import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial, Occurrence, DailyAgenda, ExamGuide, CalendarEvent, AcademicSubject, SUBJECT_LABELS, SUBJECT_SHORT_LABELS, SHIFT_LABELS, UNIT_LABELS } from '../types';
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
-import { getBimesterFromDate, getDynamicBimester, normalizeClass, parseGradeLevel, calculateSchoolDays, isClassScheduled, calculateEffectiveTaughtClasses, getSubjectDurationForDay, doesEventApplyToStudent } from '../src/utils/academicUtils';
+import { getBimesterFromDate, getDynamicBimester, normalizeClass, normalizeShift, normalizeUnit, parseGradeLevel, calculateSchoolDays, isClassScheduled, calculateEffectiveTaughtClasses, getSubjectDurationForDay, doesEventApplyToStudent, formatDateWithTimeBr } from '../src/utils/academicUtils';
 import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects, MOCK_CALENDAR_EVENTS } from '../constants'; // Import Sync Fix
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency, calculateBimesterGeneralFrequency, calculateTaughtClasses } from '../utils/frequency';
 import { getSubjectLabel, getSubjectShortLabel } from '../utils/subjectUtils';
@@ -216,13 +216,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             const materialGrade = parseGradeLevel(mat.gradeLevel).grade.trim();
             const studentClass = normalizeClass(student.schoolClass);
             const materialClass = normalizeClass(mat.schoolClass);
-            const studentShift = (student.shift || '').toString().trim().toLowerCase();
-            const materialShift = (mat.shift || '').toString().trim().toLowerCase();
+            const studentShift = normalizeShift(student.shift);
+            const materialShift = normalizeShift(mat.shift);
 
             return studentGrade === materialGrade &&
                 studentClass === materialClass &&
                 studentShift === materialShift &&
-                mat.unit === student.unit;
+                normalizeUnit(mat.unit) === normalizeUnit(student.unit);
         }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     }, [propsMaterials, student.gradeLevel, student.schoolClass, student.shift, student.unit]);
 
@@ -233,9 +233,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             const aGrade = parseGradeLevel(a.gradeLevel).grade.trim();
             const sClass = normalizeClass(student.schoolClass);
             const aClass = normalizeClass(a.schoolClass);
-            return sGrade === aGrade && sClass === aClass && a.unit === student.unit;
+            const sShift = normalizeShift(student.shift);
+            const aShift = normalizeShift(a.shift);
+
+            return sGrade === aGrade && sClass === aClass && sShift === aShift && normalizeUnit(a.unit) === normalizeUnit(student.unit);
         }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [propsAgendas, student.gradeLevel, student.schoolClass, student.unit]);
+    }, [propsAgendas, student.gradeLevel, student.schoolClass, student.shift, student.unit]);
 
     const studentExamGuides = useMemo(() => {
         if (!propsExamGuides) return [];
@@ -244,9 +247,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             const eGrade = parseGradeLevel(e.gradeLevel).grade.trim();
             const sClass = normalizeClass(student.schoolClass);
             const eClass = normalizeClass(e.schoolClass);
-            return sGrade === eGrade && sClass === eClass && e.unit === student.unit;
+            const sShift = normalizeShift(student.shift);
+            const eShift = normalizeShift(e.shift);
+
+            return sGrade === eGrade && sClass === eClass && sShift === eShift && normalizeUnit(e.unit) === normalizeUnit(student.unit);
         }).sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime());
-    }, [propsExamGuides, student.gradeLevel, student.schoolClass, student.unit]);
+    }, [propsExamGuides, student.gradeLevel, student.schoolClass, student.shift, student.unit]);
 
     const [materialsTab, setMaterialsTab] = useState<'files' | 'agenda' | 'exams'>('files');
 
@@ -1083,36 +1089,42 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         <h3 className="font-bold text-gray-800 text-sm">{isEarlyChildhood ? 'Relatório de Desenvolvimento' : 'Boletim Escolar'}</h3>
                                     </button>
 
-                                    <button
-                                        onClick={() => setCurrentView('attendance')}
-                                        className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
-                                    >
-                                        <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
-                                            <CalendarDays className="w-6 h-6 text-blue-950" />
-                                        </div>
-                                        <h3 className="font-bold text-gray-800 text-sm text-center">Registro de frequência</h3>
-                                    </button>
+                                    {!isEarlyChildhood && (
+                                        <button
+                                            onClick={() => setCurrentView('attendance')}
+                                            className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                                        >
+                                            <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
+                                                <CalendarDays className="w-6 h-6 text-blue-950" />
+                                            </div>
+                                            <h3 className="font-bold text-gray-800 text-sm text-center">Registro de frequência</h3>
+                                        </button>
+                                    )}
 
-                                    <button
-                                        onClick={() => setCurrentView('schedule')}
-                                        className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
-                                    >
-                                        <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
-                                            <Clock className="w-6 h-6 text-blue-950" />
-                                        </div>
-                                        <h3 className="font-bold text-gray-800 text-sm text-center">Grade Horária</h3>
-                                    </button>
+                                    {!isEarlyChildhood && (
+                                        <button
+                                            onClick={() => setCurrentView('schedule')}
+                                            className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                                        >
+                                            <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
+                                                <Clock className="w-6 h-6 text-blue-950" />
+                                            </div>
+                                            <h3 className="font-bold text-gray-800 text-sm text-center">Grade Horária</h3>
+                                        </button>
+                                    )}
 
 
-                                    <button
-                                        onClick={() => setCurrentView('support')}
-                                        className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
-                                    >
-                                        <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
-                                            <LifeBuoy className="w-6 h-6 text-blue-950" />
-                                        </div>
-                                        <h3 className="font-bold text-gray-800 text-sm text-center leading-tight">Centro de Suporte ao Aluno</h3>
-                                    </button>
+                                    {!isEarlyChildhood && (
+                                        <button
+                                            onClick={() => setCurrentView('support')}
+                                            className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                                        >
+                                            <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
+                                                <LifeBuoy className="w-6 h-6 text-blue-950" />
+                                            </div>
+                                            <h3 className="font-bold text-gray-800 text-sm text-center leading-tight">Centro de Suporte ao Aluno</h3>
+                                        </button>
+                                    )}
 
                                     <button
                                         onClick={() => setCurrentView('messages')}
@@ -1154,15 +1166,17 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Calendário Escolar</h3>
                                     </button>
 
-                                    <button
-                                        onClick={() => setCurrentView('occurrences')}
-                                        className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
-                                    >
-                                        <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
-                                            <ClipboardList className="w-6 h-6 text-blue-950" />
-                                        </div>
-                                        <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Ocorrências</h3>
-                                    </button>
+                                    {!isEarlyChildhood && (
+                                        <button
+                                            onClick={() => setCurrentView('occurrences')}
+                                            className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                                        >
+                                            <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
+                                                <ClipboardList className="w-6 h-6 text-blue-950" />
+                                            </div>
+                                            <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Ocorrências</h3>
+                                        </button>
+                                    )}
 
                                     <button
                                         onClick={() => setCurrentView('financeiro')}
@@ -1387,7 +1401,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             <div>
                                                                 <div className="flex items-center gap-2 mb-1">
                                                                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 uppercase tracking-wide">{getSubjectShortLabel(mat.subject, academicSubjects)}</span>
-                                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-800 uppercase tracking-wide">{mat.shift}</span>
+                                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-800 uppercase tracking-wide">
+                                                                        {SHIFT_LABELS[mat.shift as SchoolShift] || mat.shift}
+                                                                    </span>
                                                                 </div>
                                                                 <h3 className="font-bold text-gray-800 text-lg leading-tight mb-1">{mat.title}</h3>
                                                                 <p className="text-xs text-gray-500">
@@ -1431,7 +1447,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 <div className="flex items-center gap-4 mb-4 mt-6 first:mt-0">
                                                                     <div className="bg-blue-50 text-blue-900 px-3 py-1 rounded-full text-sm font-bold border border-blue-100 shadow-sm flex items-center gap-2">
                                                                         <CalendarDays className="w-4 h-4" />
-                                                                        {new Date(item.date).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                                                                        {new Date(item.date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
                                                                     </div>
                                                                     <div className="h-px bg-gray-200 flex-1"></div>
                                                                 </div>
@@ -1443,7 +1459,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                                                                     <div className="flex justify-between items-start mb-2">
                                                                         <span className="font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded text-xs uppercase tracking-wide">{getSubjectShortLabel(item.subject, academicSubjects)}</span>
-                                                                        <span className="text-[10px] text-gray-400">{item.teacherName}</span>
+                                                                        <div className="flex flex-col items-end">
+                                                                            <span className="text-[10px] text-gray-400">{item.teacherName}</span>
+                                                                            <span className="text-[9px] text-gray-400">Postado em: {formatDateWithTimeBr(item.timestamp)}</span>
+                                                                        </div>
                                                                     </div>
 
                                                                     <div className="space-y-3">
@@ -1482,7 +1501,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                 {studentExamGuides.map(guide => {
                                                     const today = new Date();
                                                     today.setHours(0, 0, 0, 0);
-                                                    const examDate = new Date(guide.examDate + 'T00:00:00'); // Fix timezone offset issue simple
+                                                    const examDate = new Date(guide.examDate + 'T12:00:00'); // Fix timezone offset issue simple
                                                     const diffTime = examDate.getTime() - today.getTime();
                                                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                                                     const isPast = diffDays < 0;
@@ -1505,11 +1524,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                         )}
                                                                     </div>
                                                                     <h3 className="font-bold text-xl text-gray-800">{guide.title}</h3>
-                                                                    <p className="text-sm text-gray-500">{new Date(guide.examDate).toLocaleDateString()} • {guide.teacherName}</p>
+                                                                    <p className="text-sm text-gray-500">{new Date(guide.examDate + 'T12:00:00').toLocaleDateString()} • {guide.teacherName}</p>
                                                                 </div>
                                                                 <div className="text-center bg-blue-50 p-3 rounded-lg min-w-[80px]">
-                                                                    <span className="block text-blue-950 font-bold text-2xl leading-none">{new Date(guide.examDate).getDate()}</span>
-                                                                    <span className="block text-blue-800 text-[10px] uppercase font-bold">{new Date(guide.examDate).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</span>
+                                                                    <span className="block text-blue-950 font-bold text-2xl leading-none">{new Date(guide.examDate + 'T12:00:00').getDate()}</span>
+                                                                    <span className="block text-blue-800 text-[10px] uppercase font-bold">{new Date(guide.examDate + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</span>
                                                                 </div>
                                                             </div>
 
