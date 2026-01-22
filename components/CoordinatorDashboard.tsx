@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { db } from '../firebaseConfig';
-import { UnitContact, SchoolUnit, CoordinationSegment, Subject, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket, SchoolMessage, MessageRecipient, CalendarEvent, ClassSchedule } from '../types';
+import { UnitContact, SchoolUnit, UNIT_LABELS, CoordinationSegment, Subject, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket, SchoolMessage, MessageRecipient, CalendarEvent, ClassSchedule } from '../types';
 import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, CURRICULUM_MATRIX, getCurriculumSubjects, calculateBimesterMedia, calculateFinalData, SCHOOL_CLASSES_OPTIONS, SCHOOL_SHIFTS } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency } from '../utils/frequency';
 import { getDynamicBimester, isClassScheduled } from '../src/utils/academicUtils';
@@ -663,7 +663,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                 )}
                                 <span className="font-bold text-gray-800">{coordinator.name}</span>
                                 <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
-                                <span className="text-gray-500">{coordinator.unit}</span>
+                                <span className="text-gray-500">{UNIT_LABELS[coordinator.unit as SchoolUnit] || coordinator.unit}</span>
                                 {coordinator.segment && (
                                     <>
                                         <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
@@ -1575,7 +1575,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                         <div>
                                                             <h4 className="font-bold text-gray-900 text-base">{msg.studentName}</h4>
                                                             <div className="flex items-center gap-2">
-                                                                <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">{msg.unit}</span>
+                                                                <span className="text-[10px] text-blue-600 font-bold tracking-wider">{UNIT_LABELS[msg.unit as SchoolUnit] || msg.unit}</span>
                                                                 <span className="w-1 h-1 rounded-full bg-gray-300"></span>
                                                                 <span className="text-[10px] text-gray-400 font-bold flex items-center gap-1">
                                                                     <Clock className="w-3 h-3" />
