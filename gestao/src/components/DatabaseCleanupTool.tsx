@@ -156,7 +156,7 @@ export const DatabaseCleanupTool = () => {
         if (!confirm("Deseja migrar as cargas horárias de academic_subjects para a nova coleção academic_matrices? Isso criará matrizes para todas as unidades e turnos.")) return;
         setLoading(true);
         try {
-            const batch = []; // We will use sets because batch has limit of 500
+            // We will use sets because batch has limit of 500
             const year = getCurrentSchoolYear().toString();
 
             // 1. Get all grades and units

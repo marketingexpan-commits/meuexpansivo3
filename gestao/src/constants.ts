@@ -7,25 +7,58 @@ export { CURRICULUM_MATRIX, UNIT_DETAILS };
 import type { CurriculumMatrix } from "./types";
 
 // --- HELPER PARA OBTER MATÉRIAS DA MATRIZ ---
-export const getCurriculumSubjects = (gradeLevel: string, _academicSubjects?: AcademicSubject[], matrices?: CurriculumMatrix[], unit?: string, shift?: string): string[] => {
-    // STRICT IMPLEMENTATION: NO HEURISTICS, NO LEGACY FALLBACKS.
-    if (!gradeLevel || !matrices || !unit || !shift) return [];
+export const getCurriculumSubjects = (gradeLevel: string, academicSubjects?: AcademicSubject[], matrices?: CurriculumMatrix[], unit?: string, shift?: string): string[] => {
+    if (!gradeLevel) return [];
 
-    // 1. Strict Matrix Lookup
-    const matchingMatrix = matrices.find(m =>
-        m.unit === unit &&
-        m.shift === shift &&
-        (gradeLevel.includes(m.gradeId) || m.gradeId.includes(gradeLevel))
-    );
+    let subjects: string[] = [];
 
-    if (matchingMatrix) {
-        return matchingMatrix.subjects
+    // 1. Strict Matrix Lookup (Primary)
+    if (matrices && unit && shift) {
+        const matchingMatrix = matrices.find(m =>
+            m.unit === unit &&
+            m.shift === shift &&
+            (gradeLevel.includes(m.gradeId) || m.gradeId.includes(gradeLevel))
+        );
+
+        if (matchingMatrix) {
+            // Filter: Must have weeklyHours > 0
+            subjects = matchingMatrix.subjects
+                .filter(s => s.weeklyHours && s.weeklyHours > 0)
+                .sort((a, b) => (a.order || 0) - (b.order || 0))
+                .map(s => s.id);
+        }
+    }
+
+    // 2. Fallback to Dynamic Subjects (academicSubjects)
+    if (subjects.length === 0 && academicSubjects && academicSubjects.length > 0) {
+        subjects = academicSubjects
+            .filter(s => {
+                if (!s.isActive) return false;
+                // Workload Check
+                if (!s.weeklyHours) return false;
+                // Find a key in weeklyHours that matches the gradeLevel (e.g. "1º Ano" matches "1º Ano - E.M.")
+                const gradeKey = Object.keys(s.weeklyHours).find(key => gradeLevel.includes(key));
+                return gradeKey ? (s.weeklyHours[gradeKey] > 0) : false;
+            })
             .sort((a, b) => (a.order || 0) - (b.order || 0))
             .map(s => s.id);
     }
 
-    // 2. Strict Empty Return if no matrix found
-    return [];
+    // 3. Fallback to Legacy Hardcoded Matrix
+    if (subjects.length === 0) {
+        let levelKey = '';
+        if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
+        else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
+        else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Médio') || gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
+
+        if (levelKey && CURRICULUM_MATRIX[levelKey]) {
+            subjects = Object.entries(CURRICULUM_MATRIX[levelKey])
+                .filter(([_, hours]) => hours > 0) // Filter: Must have workload > 0
+                .map(([subjectId]) => subjectId);
+        }
+    }
+
+    return subjects;
 };
 
 import type { CalendarEvent } from "./types";
