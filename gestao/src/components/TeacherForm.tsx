@@ -155,12 +155,28 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
             return alert("Por favor, defina uma senha para o novo professor.");
         }
 
-        if (!formData.subjects || formData.subjects.length === 0) {
-            return alert("Selecione pelo menos uma disciplina.");
-        }
+        const isInfantilTeacher = formData.gradeLevels?.some(gl => {
+            const grade = grades.find(g => g.name === gl);
+            const segment = segments.find(s => s.id === grade?.segmentId);
+            return segment?.name === 'Educação Infantil';
+        });
 
-        if (!formData.assignments || formData.assignments.length === 0) {
-            return alert("É necessário vincular pelo menos uma matéria a uma série no quadro de 'Vínculos de Aula'.");
+        const hasNonInfantilGrade = formData.gradeLevels?.some(gl => {
+            const grade = grades.find(g => g.name === gl);
+            const segment = segments.find(s => s.id === grade?.segmentId);
+            return segment && segment.name !== 'Educação Infantil';
+        });
+
+        const isOnlyInfantil = isInfantilTeacher && !hasNonInfantilGrade;
+
+        if (!isOnlyInfantil) {
+            if (!formData.subjects || formData.subjects.length === 0) {
+                return alert("Selecione pelo menos uma disciplina.");
+            }
+
+            if (!formData.assignments || formData.assignments.length === 0) {
+                return alert("É necessário vincular pelo menos uma matéria a uma série no quadro de 'Vínculos de Aula'.");
+            }
         }
 
         setIsLoading(true);
