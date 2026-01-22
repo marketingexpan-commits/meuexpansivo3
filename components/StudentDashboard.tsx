@@ -468,8 +468,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
     // Verifica se o aluno é da educação infantil
     const isEarlyChildhood = useMemo(() => {
-        const grade = student.gradeLevel.toLowerCase();
-        return grade.includes('nível') || grade.includes('infantil') || grade.includes('edu. infantil');
+        return parseGradeLevel(student.gradeLevel).segmentId === 'seg_infantil';
     }, [student.gradeLevel]);
 
     // Busca o relatório correspondente (apenas se for Ed. Infantil)
@@ -1651,7 +1650,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 </div>
 
                                 <div className="mb-6 flex items-center gap-4 print:hidden">
-                                    {filteredStudentGrades.length > 0 && (
+                                    {!isEarlyChildhood && filteredStudentGrades.length > 0 && (
                                         <div className="flex items-center gap-2 text-xs text-orange-800 bg-orange-100 p-2 rounded border border-orange-200">
                                             <div className="w-2.5 h-2.5 bg-yellow-400 rounded-full flex-shrink-0"></div>
                                             <span>= Nota em processo de atualização pela coordenação pedagógica.</span>
@@ -2077,7 +2076,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                     </>
                                 )}
-                                {filteredStudentGrades.length > 0 && (
+                                {!isEarlyChildhood && filteredStudentGrades.length > 0 && (
                                     <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded text-[10px] text-gray-500 leading-relaxed text-center print:text-xs">
                                         <p className="font-bold mb-1">Sobre a frequência</p>
                                         <p>A frequência é calculada somente com base nas aulas que já aconteceram até o momento.</p>

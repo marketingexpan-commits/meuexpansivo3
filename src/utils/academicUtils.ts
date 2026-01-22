@@ -90,19 +90,32 @@ export const parseGradeLevel = (gradeLevel: string) => {
         const segment = Object.values(ACADEMIC_SEGMENTS).find(s => s.id === officialGrade.segmentId);
         return {
             grade: officialGrade.label,
-            level: segment?.label || ACADEMIC_SEGMENTS.FUND_1.label
+            level: segment?.label || ACADEMIC_SEGMENTS.FUND_1.label,
+            segmentId: officialGrade.segmentId
         };
     }
 
     // Fallback logic for legacy cases
     let level = ACADEMIC_SEGMENTS.FUND_1.label;
-    if (gradeLevel.includes('Fundamental II')) level = ACADEMIC_SEGMENTS.FUND_2.label;
-    else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) level = ACADEMIC_SEGMENTS.MEDIO.label;
-    else if (gradeLevel.includes('Infantil')) level = ACADEMIC_SEGMENTS.INFANTIL.label;
+    let segmentId = ACADEMIC_SEGMENTS.FUND_1.id;
+
+    if (gradeLevel.includes('Fundamental II')) {
+        level = ACADEMIC_SEGMENTS.FUND_2.label;
+        segmentId = ACADEMIC_SEGMENTS.FUND_2.id;
+    }
+    else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) {
+        level = ACADEMIC_SEGMENTS.MEDIO.label;
+        segmentId = ACADEMIC_SEGMENTS.MEDIO.id;
+    }
+    else if (gradeLevel.includes('Infantil')) {
+        level = ACADEMIC_SEGMENTS.INFANTIL.label;
+        segmentId = ACADEMIC_SEGMENTS.INFANTIL.id;
+    }
 
     return {
         grade: gradeLevel.split(' - ')[0] || gradeLevel,
-        level
+        level,
+        segmentId
     };
 };
 

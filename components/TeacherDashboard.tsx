@@ -296,7 +296,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     const filteredSubjectsForMaterials = useMemo(() => getFilteredSubjects(materialGrade), [materialGrade, getFilteredSubjects]);
     const filteredSubjectsForExams = useMemo(() => getFilteredSubjects(examGrade), [examGrade, getFilteredSubjects]);
 
-    const isEarlyChildhoodStudent = useMemo(() => selectedStudent?.gradeLevel.toLowerCase().includes('edu. infantil'), [selectedStudent]);
+    const isEarlyChildhoodTeacher = useMemo(() => {
+        if (!teacher.gradeLevels || teacher.gradeLevels.length === 0) return false;
+        return teacher.gradeLevels.some(grade => parseGradeLevel(grade).segmentId === 'seg_infantil');
+    }, [teacher.gradeLevels]);
+
+    const isEarlyChildhoodStudent = useMemo(() => {
+        if (!selectedStudent) return false;
+        return parseGradeLevel(selectedStudent.gradeLevel).segmentId === 'seg_infantil';
+    }, [selectedStudent]);
 
     // NEW: Calculate absences per bimester for the selected student (BY SUBJECT)
     const calculatedAbsences = useMemo(() => {
@@ -1290,7 +1298,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                         <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
                                             <svg className="w-7 h-7 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                                         </div>
-                                        <h3 className="font-bold text-gray-800 text-sm text-center">Lançar Notas</h3>
+                                        <h3 className="font-bold text-gray-800 text-sm text-center">
+                                            {isEarlyChildhoodTeacher ? 'Relatório' : 'Lançar Notas'}
+                                        </h3>
                                     </button>
 
                                     <button
