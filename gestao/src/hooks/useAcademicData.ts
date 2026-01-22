@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebaseConfig';
 import { collection, getDocs } from 'firebase/firestore';
-import type { AcademicSegment, AcademicGrade, AcademicSubject } from '../types';
+import type { AcademicSegment, AcademicGrade, AcademicSubject, CurriculumMatrix } from '../types';
 import { ACADEMIC_SEGMENTS, ACADEMIC_GRADES, SUBJECTS_DATA } from '../utils/academicDefaults';
 
 export function useAcademicData() {
     const [segments, setSegments] = useState<AcademicSegment[]>([]);
     const [grades, setGrades] = useState<AcademicGrade[]>([]);
     const [subjects, setSubjects] = useState<AcademicSubject[]>([]);
+    const [matrices, setMatrices] = useState<CurriculumMatrix[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -17,6 +18,7 @@ export function useAcademicData() {
                 let segmentsData: AcademicSegment[] = [];
                 let gradesData: AcademicGrade[] = [];
                 let subjectsData: AcademicSubject[] = [];
+                let matricesData: CurriculumMatrix[] = [];
 
                 // Fetch Segments
                 const segSnap = await getDocs(collection(db, 'academic_segments'));
@@ -64,6 +66,11 @@ export function useAcademicData() {
                 subjectsData.sort((a, b) => (a.order || 0) - (b.order || 0));
                 setSubjects(subjectsData);
 
+                // Fetch Matrices
+                const matrixSnap = await getDocs(collection(db, 'academic_matrices'));
+                matricesData = matrixSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as CurriculumMatrix));
+                setMatrices(matricesData);
+
             } catch (error) {
                 console.error("Error loading academic data:", error);
 
@@ -96,5 +103,5 @@ export function useAcademicData() {
         fetchData();
     }, []);
 
-    return { segments, grades, subjects, loading };
+    return { segments, grades, subjects, matrices, loading };
 }

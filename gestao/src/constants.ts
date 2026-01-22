@@ -3,29 +3,29 @@ import { CURRICULUM_MATRIX, UNIT_DETAILS } from "./utils/academicDefaults";
 export { CURRICULUM_MATRIX, UNIT_DETAILS };
 
 // --- HELPER PARA OBTER MATÉRIAS DA MATRIZ ---
-export const getCurriculumSubjects = (gradeLevel: string, academicSubjects?: AcademicSubject[]): string[] => {
-    if (!gradeLevel) return [];
+// --- HELPER PARA OBTER MATÉRIAS DA MATRIZ ---
+import type { CurriculumMatrix } from "./types";
 
-    // 1. Try Dynamic Lookup
-    if (academicSubjects && academicSubjects.length > 0) {
-        const matchingSubjects = academicSubjects.filter(s => {
-            if (!s.isActive || !s.weeklyHours) return false;
-            return Object.keys(s.weeklyHours).some(key => gradeLevel.includes(key));
-        });
-        if (matchingSubjects.length > 0) {
-            return matchingSubjects
-                .sort((a, b) => (a.order || 0) - (b.order || 0))
-                .map(s => s.name);
-        }
+// --- HELPER PARA OBTER MATÉRIAS DA MATRIZ ---
+export const getCurriculumSubjects = (gradeLevel: string, _academicSubjects?: AcademicSubject[], matrices?: CurriculumMatrix[], unit?: string, shift?: string): string[] => {
+    // STRICT IMPLEMENTATION: NO HEURISTICS, NO LEGACY FALLBACKS.
+    if (!gradeLevel || !matrices || !unit || !shift) return [];
+
+    // 1. Strict Matrix Lookup
+    const matchingMatrix = matrices.find(m =>
+        m.unit === unit &&
+        m.shift === shift &&
+        (gradeLevel.includes(m.gradeId) || m.gradeId.includes(gradeLevel))
+    );
+
+    if (matchingMatrix) {
+        return matchingMatrix.subjects
+            .sort((a, b) => (a.order || 0) - (b.order || 0))
+            .map(s => s.id);
     }
 
-    // 2. Fallback to Matrix
-    const sortedMatrixKeys = Object.keys(CURRICULUM_MATRIX).sort((a, b) => b.length - a.length);
-    const levelKey = sortedMatrixKeys.find(key =>
-        gradeLevel.includes(key) ||
-        (key === 'Ensino Médio' && (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Médio') || gradeLevel.includes('Série')))
-    );
-    return levelKey ? Object.keys(CURRICULUM_MATRIX[levelKey]) : [];
+    // 2. Strict Empty Return if no matrix found
+    return [];
 };
 
 import type { CalendarEvent } from "./types";

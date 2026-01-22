@@ -1,8 +1,10 @@
-import { CURRICULUM_MATRIX } from './academicDefaults';
+
 import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, calculateSchoolDays, calculateEffectiveTaughtClasses, isClassScheduled } from './academicUtils';
-import type { Student, AcademicHistoryRecord, GradeEntry, AttendanceRecord, AcademicSubject, SchoolUnitDetail, AcademicSettings, CalendarEvent } from '../types';
+import type { Student, AcademicHistoryRecord, GradeEntry, AttendanceRecord, AcademicSubject, SchoolUnitDetail, AcademicSettings, CalendarEvent, CurriculumMatrix } from '../types';
 import { AttendanceStatus, SUBJECT_LABELS, Subject } from '../types';
 import { calculateGeneralFrequency as calculateUnifiedFrequency, calculateAttendancePercentage, calculateAnnualAttendancePercentage } from './frequency';
+import { getCurriculumSubjects } from '../constants';
+import { getSubjectLabel } from './subjectUtils';
 
 // Helper to calculate frequency per subject/bimester
 const calculateSubjectFrequency = (
@@ -66,8 +68,9 @@ export const generateSchoolHistory = (
     unitDetail: SchoolUnitDetail,
     academicSubjects?: AcademicSubject[],
     settings?: AcademicSettings | null,
-    calendarEvents?: CalendarEvent[],
-    classSchedules?: any[]
+    calendarEvents?: CalendarEvent[], // Deduped
+    classSchedules?: any[],
+    matrices?: CurriculumMatrix[]
 ) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -192,26 +195,42 @@ export const generateSchoolHistory = (
             return `<tr><td colspan="15" style="text-align: center; font-style: italic; color: #666; padding: 20px;">Nenhuma nota lançada no sistema para o ano vigente.</td></tr>`;
         }
 
-        return currentGrades.map(g => {
+
+
+        // STRICT: Get subjects strictly from Matrix
+        const matrixSubjects = getCurriculumSubjects(student.gradeLevel, academicSubjects, matrices, student.unit, student.shift);
+
+        // Filter and Sort grades
+        const sortedGrades = matrixSubjects.map((subjectId: string) => {
+            const grade = currentGrades.find(g => g.subject === subjectId);
+            // Create empty entry if missing (strict mode requires matrix subjects to be shown)
+            return grade || {
+                id: `virtual_${subjectId}`,
+                studentId: student.id,
+                subject: subjectId,
+                bimesters: {
+                    bimester1: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                    bimester2: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                    bimester3: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                    bimester4: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                },
+                mediaAnual: 0, mediaFinal: 0, situacaoFinal: 'Cursando', lastUpdated: new Date().toISOString()
+            } as GradeEntry;
+        });
+
+        if (sortedGrades.length === 0) {
+            return `<tr><td colspan="15" style="text-align: center; font-style: italic; color: #666; padding: 20px;">Nenhuma disciplina encontrada na matriz curricular.</td></tr>`;
+        }
+
+        return sortedGrades.map((g: GradeEntry) => {
+            // Fetch Weekly Hours from Matrix directly (Strict)
             let weeklyClasses = 0;
-            let foundDynamic = false;
-
-            if (academicSubjects && academicSubjects.length > 0) {
-                const dynamicSubject = academicSubjects.find(s => s.name === g.subject);
-                if (dynamicSubject && dynamicSubject.weeklyHours) {
-                    const gradeKey = Object.keys(dynamicSubject.weeklyHours).find(key => student.gradeLevel.includes(key));
-                    if (gradeKey) {
-                        weeklyClasses = dynamicSubject.weeklyHours[gradeKey];
-                        foundDynamic = true;
-                    }
+            if (matrices) {
+                const m = matrices.find(mat => mat.unit === student.unit && mat.shift === student.shift && (student.gradeLevel.includes(mat.gradeId) || mat.gradeId.includes(student.gradeLevel)));
+                if (m) {
+                    const s = m.subjects.find(sub => sub.id === g.subject);
+                    if (s) weeklyClasses = s.weeklyHours;
                 }
-            }
-
-            if (!foundDynamic) {
-                let levelKey = 'Fundamental I';
-                if (student.gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-                else if (student.gradeLevel.includes('Ensino Médio') || student.gradeLevel.includes('Ens. Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
-                weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[g.subject] || 0;
             }
 
             const currentYear = getCurrentSchoolYear();
@@ -311,7 +330,7 @@ export const generateSchoolHistory = (
 
             return `
             <tr>
-                <td class="subject-col"><strong>${SUBJECT_LABELS[g.subject as Subject] || g.subject}</strong></td>
+                <td class="subject-col"><strong>${SUBJECT_LABELS[g.subject as Subject] || getSubjectLabel(g.subject, academicSubjects)}</strong></td>
                 <td style="width: 25px;">${totalCH > 0 ? totalCH + 'h' : '-'}</td>
                 <td style="color: #444; font-weight: bold;">${ministradaWorkload > 0 ? ministradaWorkload + 'h' : '-'}</td>
                 ${renderBimesterCols(1, g.bimesters.bimester1)}

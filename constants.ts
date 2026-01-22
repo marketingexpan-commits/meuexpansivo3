@@ -1,6 +1,6 @@
 // src/constants.ts
 
-import { Student, Teacher, GradeEntry, BimesterData, Admin, SchoolUnit, SchoolShift, SchoolClass, Subject, ExperienceField, AcademicSubject } from './types';
+import { Student, Teacher, GradeEntry, BimesterData, Admin, SchoolUnit, SchoolShift, SchoolClass, Subject, ExperienceField, AcademicSubject, CurriculumMatrix } from './types';
 import { CURRICULUM_MATRIX } from './src/utils/academicDefaults';
 export { CURRICULUM_MATRIX };
 
@@ -311,33 +311,64 @@ export const FINAL_GRADES_CALCULATED: GradeEntry[] = ALLOW_MOCK_LOGIN ? INITIAL_
 }) : [];
 
 // --- HELPER PARA OBTER MATÉRIAS DA MATRIZ ---
-export const getCurriculumSubjects = (gradeLevel: string, academicSubjects?: AcademicSubject[]): string[] => {
-  if (!gradeLevel) return [];
 
-  // 1. Try Dynamic Lookup
-  if (academicSubjects && academicSubjects.length > 0) {
-    const matchingSubjects = academicSubjects.filter(s => {
-      if (!s.isActive || !s.weeklyHours) return false;
-      return Object.keys(s.weeklyHours).some(key => gradeLevel.includes(key));
+export const getCurriculumSubjects = (
+  gradeLevel: string,
+  stockSubjects?: AcademicSubject[],
+  matrices?: CurriculumMatrix[],
+  unit?: string,
+  shift?: string,
+  gradeNameLegacy?: string,
+  getFullListFallback: boolean = false
+): string[] => {
+  // 1. Strict Matrix Lookup (Priority)
+  // Tries to match by ID or Name (fuzzy) to ensure robustness
+  if (matrices && unit && shift) {
+    const matchingMatrix = matrices.find(m => {
+      const unitMatch = m.unit === unit || m.unit === 'all';
+      const shiftMatch = m.shift === shift || m.shift === 'all';
+      const gradeMatch = (gradeLevel && m.gradeId) ? (gradeLevel.includes(m.gradeId) || m.gradeId.includes(gradeLevel)) : false;
+      return unitMatch && shiftMatch && gradeMatch;
     });
-    if (matchingSubjects.length > 0) {
-      // Sort by order or name
-      return matchingSubjects
+
+    if (matchingMatrix) {
+      return matchingMatrix.subjects
         .sort((a, b) => (a.order || 0) - (b.order || 0))
-        .map(s => s.name);
+        .map(s => s.id);
     }
   }
 
-  // 2. Fallback to Matrix
-  // Ordena as chaves por comprimento descrescente para evitar que "Fundamental II" bata no "Fundamental I"
-  const sortedMatrixKeys = Object.keys(CURRICULUM_MATRIX).sort((a, b) => b.length - a.length);
-  const levelKey = sortedMatrixKeys.find(key =>
-    gradeLevel.includes(key) ||
-    (key === 'Ensino Médio' && (gradeLevel.toLowerCase().includes('médio') || gradeLevel.toLowerCase().includes('série')))
-  );
-  return levelKey ? Object.keys(CURRICULUM_MATRIX[levelKey]) : [];
+  // 2. Fallback: "Disciplinas diretamente associadas à turma"
+  // If no matrix, check if we have stock subjects with weeklyHours for this grade
+  if (stockSubjects && stockSubjects.length > 0) {
+    const searchName = gradeNameLegacy || gradeLevel;
 
+    const heuristicSubjects = stockSubjects.filter(s => {
+      if (!s.isActive) return false;
+      // Legacy check: weeklyHours usage
+      if (s.weeklyHours) {
+        const hasHours = Object.keys(s.weeklyHours).some(k =>
+          searchName.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(searchName.toLowerCase())
+        );
+        if (hasHours) return true;
+      }
+      return false;
+    });
 
+    if (heuristicSubjects.length > 0) {
+      console.warn('getCurriculumSubjects: Running in Fallback Mode (Legacy WeeklyHours)', { searchName, count: heuristicSubjects.length });
+      return heuristicSubjects
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
+        .map(s => s.id);
+    }
+
+    // 3. Ultimate Fallback: Return ALL active subjects if absolutely nothing matched
+    // This ensures "O sistema NÃO pode exibir boletim vazio" rule.
+    console.warn('getCurriculumSubjects: Running in Ultimate Fallback Mode (All Active)', { searchName });
+    return stockSubjects.filter(s => s.isActive !== false).map(s => s.id);
+  }
+
+  return [];
 };
 
 

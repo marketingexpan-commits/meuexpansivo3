@@ -6,6 +6,7 @@ import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import
 import { getBimesterFromDate, getDynamicBimester, normalizeClass, parseGradeLevel, calculateSchoolDays, isClassScheduled, calculateEffectiveTaughtClasses, getSubjectDurationForDay, doesEventApplyToStudent } from '../src/utils/academicUtils';
 import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects, MOCK_CALENDAR_EVENTS } from '../constants'; // Import Sync Fix
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency, calculateBimesterGeneralFrequency, calculateTaughtClasses } from '../utils/frequency';
+import { getSubjectLabel, getSubjectShortLabel } from '../utils/subjectUtils';
 import { getStudyTips } from '../services/geminiService';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
@@ -133,93 +134,6 @@ interface StudentDashboardProps {
     [key: string]: any;
 }
 
-// Helper to abbreviate subject names for print
-const getSubjectLabel = (subject: string, short: boolean = false): string => {
-    // 1. Try exact match in SHORT labels if requested
-    if (short && SUBJECT_SHORT_LABELS[subject as Subject]) return SUBJECT_SHORT_LABELS[subject as Subject];
-
-    // 2. Try exact match in FULL labels
-    if (SUBJECT_LABELS[subject as Subject]) return SUBJECT_LABELS[subject as Subject];
-
-    // 3. Try exact match in SHORT labels as secondary fallback
-    if (SUBJECT_SHORT_LABELS[subject as Subject]) return SUBJECT_SHORT_LABELS[subject as Subject];
-
-    // 4. Case-insensitive normalize and fuzzy match (Safety Net for dirty DB)
-    const normalized = subject.toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-        .replace(/\./g, '')
-        .trim();
-
-
-    // Map common legacy Portuguese names to new IDs/Labels if they appear as strings
-    if (normalized.includes('math') || normalized.includes('matematica')) return short ? 'Mat' : 'Matemática';
-    if (normalized.includes('port') || normalized.includes('lingua port')) return short ? 'Port' : 'Português';
-    if (normalized.includes('hist')) return short ? 'His' : 'História';
-    if (normalized.includes('geo')) return short ? 'Geo' : 'Geografia';
-    if (normalized.includes('cienc') || normalized.includes('scienc')) return short ? 'Ciên' : 'Ciências';
-    if (normalized.includes('ing') || normalized.includes('engl')) return short ? 'Ing' : 'Inglês';
-    if (normalized.includes('art')) return short ? 'Art' : 'Artes';
-    if (normalized.includes('rel')) return short ? 'Rel' : 'Ens. Religioso';
-    if (normalized.includes('fis') && !normalized.includes('ed')) return short ? 'Fís' : 'Física';
-    if (normalized.includes('ed') && normalized.includes('fis')) return 'E.F.';
-    if (normalized.includes('bio')) return short ? 'Bio' : 'Biologia';
-    if (normalized.includes('qui')) return short ? 'Quí' : 'Química';
-    if (normalized.includes('fili')) return short ? 'Fil' : 'Filosofia';
-    if (normalized.includes('soci')) return short ? 'Soc' : 'Sociologia';
-    if (normalized.includes('lite')) return short ? 'Lit' : 'Literatura';
-    if (normalized.includes('reda')) return short ? 'Red' : 'Redação';
-
-    // 5. Raw fallback
-    return subject;
-};
-
-/**
- * Normalizes a subject identifier to its canonical ID (e.g., 'sub_math').
- * Crucial for deduplicating grades data stored with inconsistent names.
- */
-const normalizeSubjectId = (subjectStr: string, academicSubjects?: AcademicSubject[]): string => {
-    if (!subjectStr) return subjectStr;
-
-    // 1. Direct match in Subject enum
-    const validSubjects = Object.values(Subject);
-    if (validSubjects.includes(subjectStr as Subject)) return subjectStr;
-
-    // 2. Search in academicSubjects (by ID first, then name/shortName)
-    const normalized = subjectStr.toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-        .replace(/\./g, '')
-        .trim();
-
-    const dbMatch = academicSubjects?.find(s =>
-        s.id === subjectStr ||
-        s.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').trim() === normalized ||
-        (s.shortName && s.shortName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').trim() === normalized)
-    );
-    if (dbMatch) return dbMatch.id;
-
-    // 3. Heuristic matching to Subject enum (Fallback to defaults)
-    if (normalized.includes('math') || normalized.includes('matematica')) return Subject.MATH;
-    if (normalized.includes('port') || normalized.includes('lingua')) return Subject.PORTUGUESE;
-    if (normalized.includes('hist')) return Subject.HISTORY;
-    if (normalized.includes('geo')) return Subject.GEOGRAPHY;
-    if (normalized.includes('cienc')) return Subject.SCIENCE;
-    if (normalized.includes('ing') || normalized.includes('engl')) return Subject.ENGLISH;
-    if (normalized.includes('art')) return Subject.ARTS;
-    if (normalized.includes('rel')) return Subject.RELIGIOUS_ED;
-    if (normalized.includes('fis') && !normalized.includes('ed')) return Subject.PHYSICS;
-    if (normalized.includes('ed') && normalized.includes('fis')) return Subject.PHYSICAL_ED;
-    if (normalized.includes('bio')) return Subject.BIOLOGY;
-    if (normalized.includes('qui')) return Subject.CHEMISTRY;
-    if (normalized.includes('empreend')) return Subject.ENTREPRENEURSHIP;
-    if (normalized.includes('vida')) return Subject.LIFE_PROJECT;
-    if (normalized.includes('fili')) return Subject.PHILOSOPHY;
-    if (normalized.includes('soci')) return Subject.SOCIOLOGY;
-    if (normalized.includes('lite')) return Subject.LITERATURE;
-    if (normalized.includes('reda')) return Subject.WRITING;
-
-
-    return subjectStr;
-};
 
 
 // Helper to translate Unit ID to Friendly Label
@@ -268,7 +182,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     };
 
 
-    const { subjects: academicSubjects } = useAcademicData();
+    const { subjects: academicSubjects, matrices, grades: allGrades } = useAcademicData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState({ title: '', tip: '' });
     const [isLoadingAI, setIsLoadingAI] = useState(false);
@@ -391,7 +305,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
     // CORREÇÃO DE SINCRONIZAÇÃO: Recalcular médias dinamicamente e normalizar/mesclar IDs
     const studentGrades = useMemo(() => {
-        const subjectsInCurriculum = getCurriculumSubjects(student.gradeLevel || "", academicSubjects);
+        // Resolve Grade ID from name
+        const studentGradeObj = allGrades.find(g => g.name === student.gradeLevel);
+        const gradeIdToUse = studentGradeObj ? studentGradeObj.id : student.gradeLevel;
+
+        const matrixSubjects = getCurriculumSubjects(gradeIdToUse, academicSubjects, matrices, student.unit, student.shift, student.gradeLevel);
 
 
         // --- NOVO: NORMALIZAÇÃO E MESCLAGEM DE NOTAS DUPLICADAS ---
@@ -399,11 +317,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         const mergedGradesMap = new Map<string, GradeEntry>();
 
         rawGrades.forEach(g => {
-            const normalizedId = normalizeSubjectId(g.subject, academicSubjects);
-            const existing = mergedGradesMap.get(normalizedId);
+            const subjectId = g.subject;
+            const existing = mergedGradesMap.get(subjectId);
 
             if (!existing) {
-                mergedGradesMap.set(normalizedId, { ...g, subject: normalizedId });
+                mergedGradesMap.set(subjectId, { ...g, subject: subjectId });
             } else {
                 // Mesclar as notas bimetrais (pegar a que tiver valor se uma for null ou maior valor)
                 const mergedBimesters = { ...existing.bimesters };
@@ -431,7 +349,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     }
                 });
 
-                mergedGradesMap.set(normalizedId, {
+                mergedGradesMap.set(subjectId, {
                     ...existing,
                     bimesters: mergedBimesters,
                     recuperacaoFinal: g.recuperacaoFinal ?? existing.recuperacaoFinal,
@@ -444,10 +362,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         const existingGrades = Array.from(mergedGradesMap.values())
             .filter(g => {
                 // Filtra apenas matérias que pertencem à grade curricular do nível do aluno
-                if (subjectsInCurriculum.length > 0) {
-                    // Normalizamos também a lista da matriz para comparação justa
-                    const normalizedCurriculum = subjectsInCurriculum.map(s => normalizeSubjectId(s, academicSubjects));
-                    return normalizedCurriculum.some(sId => sId === g.subject);
+                if (matrixSubjects.length > 0) {
+                    return matrixSubjects.some(sId => sId === g.subject);
 
                 }
                 return true;
@@ -464,12 +380,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             });
 
         // 2. Se houver matriz curricular, garante que TODAS as matérias apareçam, mesmo sem nota
-        if (subjectsInCurriculum.length > 0) {
+        if (matrixSubjects.length > 0) {
             const finalGrades: GradeEntry[] = [...existingGrades];
-            const normalizedCurriculum = subjectsInCurriculum.map(s => normalizeSubjectId(s, academicSubjects));
-
-            normalizedCurriculum.forEach((normalizedId, idx) => {
-                const exists = existingGrades.some(g => g.subject === normalizedId);
+            matrixSubjects.forEach((subjectId, idx) => {
+                const exists = existingGrades.some(g => g.subject === subjectId);
                 if (!exists) {
                     // Cria uma entrada "vazia" para a matéria faltante
                     const emptyGradesBimesters = {
@@ -480,9 +394,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     };
                     const finalData = calculateFinalData(emptyGradesBimesters, null, isYearFinished);
                     const emptyGrade: GradeEntry = {
-                        id: `empty_${normalizedId}_${student.id}`,
+                        id: `empty_${subjectId}_${student.id}`,
                         studentId: student.id,
-                        subject: normalizedId,
+                        subject: subjectId,
                         bimesters: emptyGradesBimesters,
                         ...finalData,
                         lastUpdated: new Date().toISOString()
@@ -493,15 +407,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
             // Ordena as notas finais de acordo com a ordem da matriz curricular
             return finalGrades.sort((a, b) => {
-                const normalizedCurriculum = subjectsInCurriculum.map(s => normalizeSubjectId(s, academicSubjects));
-                const indexA = normalizedCurriculum.indexOf(a.subject);
-                const indexB = normalizedCurriculum.indexOf(b.subject);
+                const indexA = matrixSubjects.indexOf(a.subject);
+                const indexB = matrixSubjects.indexOf(b.subject);
                 return indexA - indexB;
             });
         }
 
         return existingGrades;
-    }, [student.id, student.gradeLevel, grades, academicSubjects, academicSettings, isYearFinished, calendarEvents, classSchedules]);
+    }, [student.id, student.gradeLevel, grades, academicSubjects, matrices, academicSettings, isYearFinished, calendarEvents, classSchedules, student.unit, student.shift]);
 
 
     const { settings: contactSettings } = useFinancialSettings(student.unit);
@@ -621,7 +534,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
     const handleGetHelp = async (subject: string, difficultyTopic: string) => {
         if (!difficultyTopic) return;
-        const label = getSubjectLabel(subject);
+        const label = getSubjectShortLabel(subject, academicSubjects);
         setModalContent({ title: `Tutor Inteligente: ${label}`, tip: '' });
         setIsModalOpen(true);
         setIsLoadingAI(true);
@@ -1223,7 +1136,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider mb-1">Frequência Geral Anual</span>
                                         <div className="flex items-baseline gap-2">
                                             {(() => {
-                                                const freqStr = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift);
+                                                const freqStr = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices);
                                                 const freqNum = parseFloat(freqStr.replace('%', ''));
                                                 const isLow = !isNaN(freqNum) && freqNum < 75;
                                                 return (
@@ -1256,7 +1169,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                     student.unit,
                                                     classSchedules,
                                                     student.schoolClass,
-                                                    student.shift
+                                                    student.shift,
+                                                    matrices
                                                 );
                                                 const freqNum = parseFloat(freqStr.replace('%', ''));
                                                 const isLow = !isNaN(freqNum) && freqNum < 75;
@@ -1358,7 +1272,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                         const countValue = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
                                                         return (
                                                             <span key={record.id} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200 shadow-sm">
-                                                                Dia {day} <span className="mx-1 text-orange-300">|</span> {getSubjectLabel(record.discipline || '')}
+                                                                Dia {day} <span className="mx-1 text-orange-300">|</span> {getSubjectShortLabel(record.discipline || '', academicSubjects)}
                                                                 {countValue > 1 && <span className="ml-1 opacity-75">({countValue} faltas)</span>}
                                                             </span>
                                                         );
@@ -1416,7 +1330,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                         <div className="flex justify-between items-start">
                                                             <div>
                                                                 <div className="flex items-center gap-2 mb-1">
-                                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 uppercase tracking-wide">{getSubjectLabel(mat.subject)}</span>
+                                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 uppercase tracking-wide">{getSubjectShortLabel(mat.subject, academicSubjects)}</span>
                                                                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-800 uppercase tracking-wide">{mat.shift}</span>
                                                                 </div>
                                                                 <h3 className="font-bold text-gray-800 text-lg leading-tight mb-1">{mat.title}</h3>
@@ -1472,7 +1386,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                                                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                                                                     <div className="flex justify-between items-start mb-2">
-                                                                        <span className="font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded text-xs uppercase tracking-wide">{getSubjectLabel(item.subject)}</span>
+                                                                        <span className="font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded text-xs uppercase tracking-wide">{getSubjectShortLabel(item.subject, academicSubjects)}</span>
                                                                         <span className="text-[10px] text-gray-400">{item.teacherName}</span>
                                                                     </div>
 
@@ -1522,7 +1436,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-4">
                                                                 <div>
                                                                     <div className="flex items-center gap-2 mb-1">
-                                                                        <span className="font-bold text-xs uppercase tracking-wide bg-blue-50 text-blue-950 px-2 py-0.5 rounded">{getSubjectLabel(guide.subject)}</span>
+                                                                        <span className="font-bold text-xs uppercase tracking-wide bg-blue-50 text-blue-950 px-2 py-0.5 rounded">{getSubjectShortLabel(guide.subject, academicSubjects)}</span>
                                                                         <span className="font-bold text-xs uppercase tracking-wide bg-orange-50 text-orange-700 px-2 py-0.5 rounded border border-orange-100">
                                                                             {getDynamicBimester(guide.examDate, academicSettings)}º Bim
                                                                         </span>
@@ -1804,7 +1718,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                     const subjectName = academicSubjects?.find(s => s.id === grade.subject)?.name || grade.subject;
                                                                     return (
                                                                         <>
-                                                                            <span className="uppercase block leading-tight mb-1" title={subjectName}>{getSubjectLabel(subjectName, true)}</span>
+                                                                            <span className="uppercase block leading-tight mb-1" title={subjectName}>{getSubjectLabel(subjectName, academicSubjects)}</span>
                                                                             <span className="text-[9px] text-gray-500 font-normal block italic whitespace-normal leading-tight break-words">
                                                                                 {getTeacherName(subjectName)}
                                                                             </span>
@@ -1854,7 +1768,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                     academicSubjects,
                                                                     classSchedules || [],
                                                                     calendarEvents || [],
-                                                                    student.schoolClass
+                                                                    student.schoolClass,
+                                                                    student.shift,
+                                                                    matrices
                                                                 );
 
 
@@ -1875,8 +1791,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                                                 // RULE: Count absences strictly from logs
                                                                 const currentAbsences = studentAttendance.reduce((acc, att) => {
-                                                                    const normalizedAttDiscipline = normalizeSubjectId(att.discipline, academicSubjects);
-                                                                    if (normalizedAttDiscipline !== grade.subject) return acc;
+                                                                    const attDiscipline = att.discipline;
+                                                                    if (attDiscipline !== grade.subject) return acc;
 
                                                                     if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
                                                                         if (getDynamicBimester(att.date, academicSettings) === bimesterNum) {
@@ -1937,7 +1853,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                             }
                                                                             const bimesterFaltasH = currentAbsences * (weeklyClasses > 0 ? 1 : 0); // Assuming 1h per absence locally or direct weight if available. Using 1 for simplicity consistent with previous logic.
 
-                                                                            const freqResult = calculateAttendancePercentage(grade.subject, currentAbsences, student.gradeLevel, bimesterNum, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift);
+                                                                            const freqResult = calculateAttendancePercentage(grade.subject, currentAbsences, student.gradeLevel, bimesterNum, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices);
                                                                             const freqPercent = freqResult?.percent ?? null;
                                                                             const isFreqEstimated = freqResult?.isEstimated ?? false;
                                                                             const isLowFreq = freqPercent !== null && freqPercent < 75;
@@ -1963,7 +1879,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                                         classSchedules || [],
                                                                                         calendarEvents || [],
                                                                                         student.schoolClass,
-                                                                                        student.shift
+                                                                                        student.shift,
+                                                                                        matrices
                                                                                     );
                                                                                     bMin = taught;
                                                                                 }
@@ -1997,8 +1914,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 const totalAbsences = [1, 2, 3, 4].reduce((sum, bNum) => {
                                                                     if (bNum > elapsedBimesters) return sum;
                                                                     return sum + studentAttendance.reduce((acc, att) => {
-                                                                        const nAttDiscipline = normalizeSubjectId(att.discipline, academicSubjects);
-                                                                        if (nAttDiscipline !== grade.subject) return acc;
+                                                                        const attDiscipline = att.discipline;
+                                                                        if (attDiscipline !== grade.subject) return acc;
 
                                                                         if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
                                                                             if (getDynamicBimester(att.date, academicSettings) === bNum) {
@@ -2036,7 +1953,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                     weeklyClasses = (CURRICULUM_MATRIX[lk] || {})[grade.subject] || 0;
                                                                 }
 
-                                                                const annualResult = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel, elapsedBimesters, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift);
+                                                                const annualResult = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel, elapsedBimesters, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices);
                                                                 const annualFreq = annualResult?.percent ?? null;
                                                                 const isAnnualEstimated = annualResult?.isEstimated ?? false;
                                                                 const isCritical = annualFreq !== null && annualFreq < 75;
@@ -2071,7 +1988,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                         </tr>
                                                     ))}
                                                     {studentGrades.length > 0 && (() => {
-                                                        const generalFreq = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift);
+                                                        const generalFreq = calculateGeneralFrequency(studentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices);
                                                         return (
                                                             <tr className="bg-gray-100/80 font-bold border-t-2 border-gray-400">
                                                                 <td colSpan={31} className="px-4 py-1 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[11px]">
@@ -2206,7 +2123,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 className="w-full bg-gradient-to-r from-blue-950 to-slate-900 text-white hover:from-blue-900 hover:to-slate-800 py-2 rounded-lg text-xs font-bold flex items-center justify-center transition-all shadow-sm hover:shadow-md transform active:scale-95"
                                                             >
                                                                 <Bot className="w-4 h-4 mr-2" />
-                                                                Ajuda da IA ({getSubjectLabel(grade.subject, true)})
+                                                                Ajuda da IA ({getSubjectLabel(grade.subject, academicSubjects)})
                                                             </button>
                                                         </div>
                                                     </div>

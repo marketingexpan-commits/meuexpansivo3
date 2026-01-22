@@ -1,8 +1,10 @@
 import { CURRICULUM_MATRIX } from './academicDefaults';
 import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, getSubjectDurationForDay, doesEventApplyToStudent } from './academicUtils';
-import type { Student, GradeEntry, AttendanceRecord, AcademicSubject, SchoolUnitDetail, AcademicSettings, CalendarEvent } from '../types';
+import type { Student, GradeEntry, AttendanceRecord, AcademicSubject, SchoolUnitDetail, AcademicSettings, CalendarEvent, CurriculumMatrix } from '../types';
 import { AttendanceStatus } from '../types';
 import { calculateGeneralFrequency as calculateUnifiedFrequency, calculateTaughtClasses, calculateAttendancePercentage } from './frequency';
+import { getSubjectShortLabel } from './subjectUtils';
+import { getCurriculumSubjects } from '../constants';
 
 // Helper to calculate frequency per subject/bimester
 const calculateSubjectFrequency = (
@@ -14,7 +16,8 @@ const calculateSubjectFrequency = (
     academicSubjects?: AcademicSubject[],
     settings?: AcademicSettings | null,
     calendarEvents?: CalendarEvent[],
-    classSchedules?: any[]
+    classSchedules?: any[],
+    matrices?: CurriculumMatrix[]
 ): { percent: string, absences: number } => {
     // 1. Calculate absences weighted by duration if schedules exist
     const absencesHours = attendanceRecords.reduce((acc, record) => {
@@ -53,9 +56,9 @@ const calculateSubjectFrequency = (
         return acc;
     }, 0);
 
-    if (absencesCount === 0) return { percent: '-', absences: 0 };
-
-
+    if (absencesCount === 0 && absencesHours === 0) {
+        // Even if no absences, we still want to calculate frequency based on taught classes
+    }
 
     const result = calculateAttendancePercentage(
         subject,
@@ -67,7 +70,9 @@ const calculateSubjectFrequency = (
         calendarEvents,
         student.unit,
         classSchedules,
-        student.schoolClass
+        student.schoolClass,
+        student.shift,
+        matrices
     );
 
     return {
@@ -85,7 +90,8 @@ const generateBulletinHtml = (
     academicSubjects?: AcademicSubject[],
     settings?: AcademicSettings | null,
     calendarEvents?: CalendarEvent[],
-    classSchedules?: any[]
+    classSchedules?: any[],
+    matrices?: CurriculumMatrix[]
 ) => {
     const unitInfo = unitDetail;
     const currentDate = new Date().toLocaleDateString('pt-BR');
@@ -111,7 +117,8 @@ const generateBulletinHtml = (
             student.unit,
             classSchedules,
             student.schoolClass,
-            student.shift
+            student.shift,
+            matrices
         );
     };
 
@@ -120,12 +127,31 @@ const generateBulletinHtml = (
             return `<tr><td colspan="30" style="text-align: center; font-style: italic; color: #666; padding: 20px;">Nenhuma nota lançada no sistema para o ano vigente.</td></tr>`;
         }
 
-        return currentGrades.map(g => {
-            let levelKey = '';
-            if (student.gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
-            else if (student.gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-            else if (student.gradeLevel.includes('Ensino Médio') || student.gradeLevel.includes('Ens. Médio') || student.gradeLevel.includes('Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
+        // STRICT: Get subjects strictly from Matrix
+        const matrixSubjects = getCurriculumSubjects(student.gradeLevel, academicSubjects, matrices, student.unit, student.shift);
 
+        // Filter and Sort grades based on Matrix Order
+        const sortedGrades = matrixSubjects.map((subjectId: string) => {
+            const grade = currentGrades.find(g => g.subject === subjectId);
+            return grade || {
+                id: `virtual_${subjectId}`,
+                studentId: student.id,
+                subject: subjectId,
+                bimesters: {
+                    bimester1: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                    bimester2: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                    bimester3: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                    bimester4: { nota: null, recuperacao: null, media: 0, faltas: 0 },
+                },
+                mediaAnual: 0, mediaFinal: 0, situacaoFinal: 'Cursando', lastUpdated: new Date().toISOString()
+            } as GradeEntry;
+        });
+
+        if (sortedGrades.length === 0) {
+            return `<tr><td colspan="30" style="text-align: center; font-style: italic; color: #666; padding: 20px;">Nenhuma disciplina encontrada na matriz curricular.</td></tr>`;
+        }
+
+        return sortedGrades.map((g: GradeEntry) => {
             const getBimesterAbsences = (bim: number) => {
                 return attendanceRecords.reduce((acc, record) => {
                     const rYear = parseInt(record.date.split('-')[0], 10);
@@ -175,7 +201,9 @@ const generateBulletinHtml = (
                     academicSubjects,
                     classSchedules,
                     calendarEvents,
-                    student.schoolClass
+                    student.schoolClass,
+                    student.shift,
+                    matrices
                 );
                 return taught;
             };
@@ -210,28 +238,54 @@ const generateBulletinHtml = (
                 ? `${Math.round(((totalTaughtHours - totalAbsenceHours) / totalTaughtHours) * 100)}%`
                 : '-';
 
-            const bfreq1 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 1, currentYear, academicSubjects, settings, calendarEvents, classSchedules);
-            const bfreq2 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 2, currentYear, academicSubjects, settings, calendarEvents, classSchedules);
-            const bfreq3 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 3, currentYear, academicSubjects, settings, calendarEvents, classSchedules);
-            const bfreq4 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 4, currentYear, academicSubjects, settings, calendarEvents, classSchedules);
+            const bfreq1 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 1, currentYear, academicSubjects, settings, calendarEvents, classSchedules, matrices);
+            const bfreq2 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 2, currentYear, academicSubjects, settings, calendarEvents, classSchedules, matrices);
+            const bfreq3 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 3, currentYear, academicSubjects, settings, calendarEvents, classSchedules, matrices);
+            const bfreq4 = calculateSubjectFrequency(g.subject, student, attendanceRecords, 4, currentYear, academicSubjects, settings, calendarEvents, classSchedules, matrices);
 
             // C.H. Prevista Anual
             let weeklyClasses = 0;
-            if (academicSubjects && academicSubjects.length > 0) {
-                const dynamicSubject = academicSubjects.find(s => s.name === g.subject);
+
+            // 1. Matrix lookup (Primary)
+            if (matrices) {
+                const matchingMatrix = matrices.find(m =>
+                    m.unit === student.unit &&
+                    m.shift === student.shift &&
+                    (student.gradeLevel.includes(m.gradeId) || m.gradeId.includes(student.gradeLevel))
+                );
+                if (matchingMatrix) {
+                    const ms = matchingMatrix.subjects.find(s => s.id === g.subject);
+                    if (ms) weeklyClasses = ms.weeklyHours;
+                }
+            }
+
+            // 2. Fallback to academicSubjects
+            if (weeklyClasses === 0 && academicSubjects && academicSubjects.length > 0) {
+                const dynamicSubject = academicSubjects.find(s => s.id === g.subject);
                 if (dynamicSubject && dynamicSubject.weeklyHours) {
                     const gradeKey = Object.keys(dynamicSubject.weeklyHours).find(key => student.gradeLevel.includes(key));
                     if (gradeKey) weeklyClasses = dynamicSubject.weeklyHours[gradeKey];
                 }
-            } else if (levelKey) {
-                weeklyClasses = (CURRICULUM_MATRIX[levelKey as keyof typeof CURRICULUM_MATRIX] || {})[g.subject] || 0;
             }
+
+            // 3. Fallback to Legacy Matrix
+            if (weeklyClasses === 0) {
+                let levelKey = '';
+                if (student.gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
+                else if (student.gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
+                else if (student.gradeLevel.includes('Ensino Médio') || student.gradeLevel.includes('Ens. Médio') || student.gradeLevel.includes('Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
+
+                if (levelKey && CURRICULUM_MATRIX[levelKey]) {
+                    weeklyClasses = CURRICULUM_MATRIX[levelKey][g.subject] || 0;
+                }
+            }
+
             const totalCH = weeklyClasses > 0 ? (weeklyClasses * 40) : '-';
 
             return `
             <tr>
                 <td class="subject-col">
-                    <strong>${g.subject}</strong>
+                    <strong>${getSubjectShortLabel(g.subject, academicSubjects)}</strong>
                 </td>
                 <td style="font-size: 8px;">${totalCH}${totalCH !== '-' ? 'h' : ''}</td>
                 <td style="font-size: 8px; background: #fafafa;">${fW(totalTaughtHours)}</td>
@@ -388,7 +442,7 @@ const generateBulletinHtml = (
                     <strong>Sobre a frequência:</strong><br>
                     • A frequência é calculada somente com base nas aulas que já aconteceram até o momento.<br>
                     • Disciplinas entram no cálculo conforme começam a ter aulas registradas na grade horária.<br>
-                    • O aluno é considerado presente automaticamente, exceto nos dias em que o professor registra falta.
+                    • O aluno é considerado presente automaticamente, except nos dias em que o professor registra falta.
                 </div>
                 
                 ${renderRepositionDetails()}
@@ -410,27 +464,6 @@ const generateBulletinHtml = (
     `;
 };
 
-const getBulletinStyle = () => `
-    @page { size: A4 landscape; margin: 10mm; }
-    body { font-family: 'Inter', sans-serif; color: #1e293b; margin: 0; padding: 0; background: #f1f5f9; }
-    .page { background: white; width: 277mm; padding: 10mm; margin: 10px auto; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); border-radius: 4px; }
-    .section { margin-bottom: 12px; }
-    .section-title { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #475569; border-left: 4px solid #1a426f; padding-left: 8px; margin-bottom: 6px; background: #f8fafc; padding-block: 4px; }
-    .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; font-size: 10px; }
-    .label { font-weight: 700; color: #64748b; }
-    .grades-table { width: 100%; border-collapse: collapse; font-size: 8.5px; table-layout: fixed; }
-    .grades-table th, .grades-table td { border: 1px solid #e2e8f0; padding: 3px 1px; text-align: center; overflow: hidden; }
-    .grades-table th { background: #f1f5f9; color: #475569; font-weight: 800; font-size: 7.5px; text-transform: uppercase; }
-    .subject-col { text-align: left !important; padding-left: 5px !important; width: 140px; font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
-    .footer-notes { margin-top: 12px; font-size: 8.5px; color: #64748b; }
-    .notes-title { font-weight: 800; color: #475569; margin-bottom: 3px; text-transform: uppercase; font-size: 9px; }
-    @media print {
-        body { background: none; }
-        .page { margin: 0; box-shadow: none; width: 100%; }
-        .no-print { display: none; }
-    }
-`;
-
 export const generateSchoolBulletin = (
     student: Student,
     currentGrades: GradeEntry[] = [],
@@ -439,9 +472,10 @@ export const generateSchoolBulletin = (
     academicSubjects?: AcademicSubject[],
     settings?: AcademicSettings | null,
     calendarEvents?: CalendarEvent[],
-    classSchedules?: any[]
+    classSchedules?: any[],
+    matrices?: CurriculumMatrix[]
 ) => {
-    generateBatchSchoolBulletin([{ student, grades: currentGrades, attendance: attendanceRecords }], unitDetail, academicSubjects, settings, calendarEvents, classSchedules);
+    generateBatchSchoolBulletin([{ student, grades: currentGrades, attendance: attendanceRecords }], unitDetail, academicSubjects, settings, calendarEvents, classSchedules, matrices);
 };
 
 export const generateBatchSchoolBulletin = (
@@ -450,7 +484,8 @@ export const generateBatchSchoolBulletin = (
     academicSubjects?: AcademicSubject[],
     settings?: AcademicSettings | null,
     calendarEvents?: CalendarEvent[],
-    classSchedules?: any[]
+    classSchedules?: any[],
+    matrices?: CurriculumMatrix[]
 ) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -459,7 +494,7 @@ export const generateBatchSchoolBulletin = (
     }
 
     const pagesHtml = data.map((item, index) =>
-        generateBulletinHtml(item.student, item.grades, item.attendance, unitDetail, index < data.length - 1, academicSubjects, settings, calendarEvents, classSchedules)
+        generateBulletinHtml(item.student, item.grades, item.attendance, unitDetail, index < data.length - 1, academicSubjects, settings, calendarEvents, classSchedules, matrices)
     ).join('');
 
     const content = `
@@ -485,3 +520,24 @@ export const generateBatchSchoolBulletin = (
     printWindow.document.write(content);
     printWindow.document.close();
 };
+
+const getBulletinStyle = () => `
+    @page { size: A4 landscape; margin: 10mm; }
+    body { font-family: 'Inter', sans-serif; color: #1e293b; margin: 0; padding: 0; background: #f1f5f9; }
+    .page { background: white; width: 277mm; padding: 10mm; margin: 10px auto; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); border-radius: 4px; }
+    .section { margin-bottom: 12px; }
+    .section-title { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #475569; border-left: 4px solid #1a426f; padding-left: 8px; margin-bottom: 6px; background: #f8fafc; padding-block: 4px; }
+    .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; font-size: 10px; }
+    .label { font-weight: 700; color: #64748b; }
+    .grades-table { width: 100%; border-collapse: collapse; font-size: 8.5px; table-layout: fixed; }
+    .grades-table th, .grades-table td { border: 1px solid #e2e8f0; padding: 3px 1px; text-align: center; overflow: hidden; }
+    .grades-table th { background: #f1f5f9; color: #475569; font-weight: 800; font-size: 7.5px; text-transform: uppercase; }
+    .subject-col { text-align: left !important; padding-left: 5px !important; width: 140px; font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
+    .footer-notes { margin-top: 12px; font-size: 8.5px; color: #64748b; }
+    .notes-title { font-weight: 800; color: #475569; margin-bottom: 3px; text-transform: uppercase; font-size: 9px; }
+    @media print {
+        body { background: none; }
+        .page { margin: 0; box-shadow: none; width: 100%; }
+        .no-print { display: none; }
+    }
+`;

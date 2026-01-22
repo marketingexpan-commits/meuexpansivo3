@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebaseConfig';
-import { AcademicSegment, AcademicGrade, AcademicSubject, ClassSchedule } from '../types';
+import { AcademicSegment, AcademicGrade, AcademicSubject, ClassSchedule, CurriculumMatrix } from '../types';
 import { EDUCATION_LEVELS, GRADES_BY_LEVEL, DEFAULT_SUBJECTS } from '../src/utils/academicDefaults';
 
 export function useAcademicData() {
     const [segments, setSegments] = useState<AcademicSegment[]>([]);
     const [grades, setGrades] = useState<AcademicGrade[]>([]);
     const [subjects, setSubjects] = useState<AcademicSubject[]>([]);
-    const [schedules, setSchedules] = useState<ClassSchedule[]>([]); // New State
+    const [schedules, setSchedules] = useState<ClassSchedule[]>([]);
+    const [matrices, setMatrices] = useState<CurriculumMatrix[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -75,7 +76,8 @@ export function useAcademicData() {
                         name: name,
                         shortName: name.substring(0, 3).toUpperCase(),
                         isActive: true,
-                        order: (index + 1) * 10
+                        order: (index + 1) * 10,
+                        weeklyHours: {}
                     }));
                 } else {
                     subjectsData = subSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AcademicSubject));
@@ -88,6 +90,13 @@ export function useAcademicData() {
                 if (!scheduleSnap.empty) {
                     const schedulesData = scheduleSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ClassSchedule));
                     setSchedules(schedulesData);
+                }
+
+                // Fetch Academic Matrices (NEW)
+                const matrixSnap = await db.collection('academic_matrices').get();
+                if (!matrixSnap.empty) {
+                    const matricesData = matrixSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as CurriculumMatrix));
+                    setMatrices(matricesData);
                 }
 
             } catch (error) {
@@ -109,7 +118,8 @@ export function useAcademicData() {
                     name: s,
                     shortName: s.substring(0, 3).toUpperCase(),
                     isActive: true,
-                    order: idx
+                    order: idx,
+                    weeklyHours: {}
                 })));
             } finally {
                 setLoading(false);
@@ -119,5 +129,5 @@ export function useAcademicData() {
         fetchData();
     }, []);
 
-    return { segments, grades, subjects, schedules, loading };
+    return { segments, grades, subjects, schedules, matrices, loading };
 }

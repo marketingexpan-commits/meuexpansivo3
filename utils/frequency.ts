@@ -1,4 +1,3 @@
-
 /**
  * 🔒 CRITICAL LOGIC: Unit-Specific Frequency Calculation
  * DO NOT REVERT TO STATIC ESTIMATION.
@@ -6,11 +5,10 @@
  * Refer to ARCHITECTURE.md for details.
  */
 
-import { CURRICULUM_MATRIX } from "../src/utils/academicDefaults";
+import { CURRICULUM_MATRIX } from "../constants";
 import { AttendanceStatus } from "../types";
-import type { GradeEntry, AttendanceRecord, AcademicSubject } from "../types";
-import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, calculateSchoolDays, calculateEffectiveTaughtClasses, getSubjectDurationForDay, isClassScheduled } from "../src/utils/academicUtils";
-import type { AcademicSettings } from "../types";
+import type { GradeEntry, AttendanceRecord, AcademicSubject, AcademicSettings, CurriculumMatrix } from "../types";
+import { getCurrentSchoolYear, getDynamicBimester, calculateSchoolDays, calculateEffectiveTaughtClasses, getSubjectDurationForDay, isClassScheduled } from "../src/utils/academicUtils";
 
 /**
  * Calculates the number of taught classes for a given period and subject.
@@ -25,19 +23,14 @@ export const calculateTaughtClasses = (
     classSchedules?: any[],
     calendarEvents?: any[],
     schoolClass?: string,
-    shift?: string
+    shift?: string,
+    matrices?: CurriculumMatrix[]
 ): { taught: number, isEstimated: boolean } => {
     let taughtClasses = 0;
     let isEstimated = false;
 
-    // Resolve subjectId from academicSubjects if available
-    const normalizedQuery = subject.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').trim();
-    const subjectId = academicSubjects?.find(s =>
-        s.id === subject ||
-        s.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').trim() === normalizedQuery ||
-        (s.shortName && s.shortName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').trim() === normalizedQuery)
-    )?.id || (subject.startsWith('sub_') ? subject : undefined);
-
+    // Resolve subjectId strictly from academicSubjects by exact ID match
+    const subjectId = academicSubjects?.find(s => s.id === subject || s.name === subject)?.id || (subject.startsWith('sub_') ? subject : undefined);
 
     if (classSchedules && classSchedules.length > 0) {
         const result = calculateEffectiveTaughtClasses(
@@ -60,35 +53,45 @@ export const calculateTaughtClasses = (
 
     // Fallback to Estimation if Schedule Missing
     if (isEstimated) {
-        // Legacy: Weekly Classes * School Days / 5
         let weeklyClasses = 0;
-        // Dynamic lookup
-        if (academicSubjects) {
-            const ds = academicSubjects.find(s =>
-                s.id === subject ||
-                s.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').trim() === normalizedQuery
-            );
 
+        // 1. Dynamic Subject override (if still exists as legacy)
+        if (academicSubjects) {
+            const ds = academicSubjects.find(s => s.id === subject || s.name === subject);
             if (ds?.weeklyHours) {
                 const k = Object.keys(ds.weeklyHours).find(key => gradeLevel.includes(key));
                 if (k) weeklyClasses = ds.weeklyHours[k];
             }
         }
-        // Matrix lookup
+
+        // 2. Matrix lookup (Dynamic Collection) - PRIMARY
+        if (weeklyClasses === 0 && matrices) {
+            const matchingMatrix = matrices.find(m =>
+                m.unit === unit &&
+                m.shift === shift &&
+                (gradeLevel.includes(m.gradeId) || m.gradeId.includes(gradeLevel))
+            );
+
+            if (matchingMatrix) {
+                const matrixSubject = matchingMatrix.subjects.find(s => s.id === subject);
+                if (matrixSubject) weeklyClasses = matrixSubject.weeklyHours;
+            }
+        }
+
+        // 3. Legacy Matrix lookup (Fallback)
         if (weeklyClasses === 0) {
             let levelKey = '';
             if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
             else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-            else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
-
+            else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
 
             if (levelKey && CURRICULUM_MATRIX[levelKey]) {
-                weeklyClasses = CURRICULUM_MATRIX[levelKey][subject] || 0;
+                const matrixName = subjectId || subject;
+                weeklyClasses = CURRICULUM_MATRIX[levelKey][matrixName] || 0;
             }
         }
 
         if (weeklyClasses > 0) {
-            // FIXED: Pass gradeLevel, schoolClass, shift, and subjectId for hierarchical filtering
             const schoolDays = calculateSchoolDays(startDate, endDate, calendarEvents || [], unit, gradeLevel, schoolClass, shift, subjectId);
             taughtClasses = Math.round((weeklyClasses / 5) * schoolDays);
         }
@@ -100,7 +103,7 @@ export const calculateTaughtClasses = (
 /**
  * Calculates the attendance percentage for a given subject and student grade level.
  * STRICT FORMULA: (Effective Taught Classes - Absences) / Effective Taught Classes * 100
- *
+ * 
  * @param subject The subject name
  * @param absences Total NUMBER of absence hours (not days)
  * @param gradeLevel The student's grade level
@@ -122,7 +125,8 @@ export const calculateAttendancePercentage = (
     unit?: string,
     classSchedules?: any[],
     schoolClass?: string,
-    shift?: string
+    shift?: string,
+    matrices?: CurriculumMatrix[]
 ): { percent: number, isEstimated: boolean } | null => {
 
     if (!unit) return null; // Unit is mandatory for strict calculation
@@ -160,7 +164,8 @@ export const calculateAttendancePercentage = (
         classSchedules,
         calendarEvents,
         schoolClass,
-        shift
+        shift,
+        matrices
     );
 
     // 4. Apply Strict Rules
@@ -184,23 +189,18 @@ export const calculateAnnualAttendancePercentage = (
     subject: string,
     totalAbsences: number, // Sum of absence hours from logs
     gradeLevel: string,
-    elapsedBimesters: number = 4,
+    _elapsedBimesters: number = 4,
     academicSubjects?: AcademicSubject[],
     settings?: AcademicSettings | null,
     calendarEvents?: any[],
     unit?: string,
     classSchedules?: any[],
     schoolClass?: string,
-    shift?: string
+    shift?: string,
+    matrices?: CurriculumMatrix[]
 ): { percent: number, isEstimated: boolean } | null => {
 
     if (!unit) return null;
-
-    // Range: Start of Year -> Today (or end of year if past)
-    const startDate = `${getCurrentSchoolYear()}-01-01`;
-    let endDate = new Date().toLocaleDateString('en-CA');
-
-    // Check if year ended (optional optimization, keeping simple for now: effective up to today)
 
     // Reuse shared logic
     return calculateAttendancePercentage(
@@ -214,9 +214,9 @@ export const calculateAnnualAttendancePercentage = (
         unit,
         classSchedules,
         schoolClass,
-        shift
+        shift,
+        matrices
     );
-
 };
 
 /**
@@ -233,7 +233,8 @@ export const calculateGeneralFrequency = (
     unit?: string,
     classSchedules?: any[],
     schoolClass?: string,
-    shift?: string
+    shift?: string,
+    matrices?: CurriculumMatrix[]
 ): string => {
     const currentYear = getCurrentSchoolYear();
     const startDate = settings?.bimesters?.[0]?.startDate || `${currentYear}-01-01`;
@@ -245,16 +246,33 @@ export const calculateGeneralFrequency = (
 
     // Determine which subjects to iterate over
     const subjectsToCalculate: string[] = [];
-    if (academicSubjects && academicSubjects.length > 0) {
+
+    // 1. Resolve from Matrix (Primary)
+    if (matrices && unit && shift) {
+        const matchingMatrix = matrices.find(m =>
+            m.unit === unit &&
+            m.shift === shift &&
+            (gradeLevel.includes(m.gradeId) || m.gradeId.includes(gradeLevel))
+        );
+
+        if (matchingMatrix) {
+            matchingMatrix.subjects.forEach(s => subjectsToCalculate.push(s.id));
+        }
+    }
+
+    // 2. Fallback to academicSubjects
+    if (subjectsToCalculate.length === 0 && academicSubjects && academicSubjects.length > 0) {
         academicSubjects.forEach(s => {
-            if (s.isActive) subjectsToCalculate.push(s.name);
+            if (s.isActive) subjectsToCalculate.push(s.id);
         });
-    } else {
+    }
+
+    // 3. Fallback to Legacy Matrix
+    if (subjectsToCalculate.length === 0) {
         let levelKey = '';
         if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
         else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-        else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
-
+        else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
 
         if (levelKey && CURRICULUM_MATRIX[levelKey]) {
             Object.keys(CURRICULUM_MATRIX[levelKey]).forEach(s => subjectsToCalculate.push(s));
@@ -268,28 +286,22 @@ export const calculateGeneralFrequency = (
             gradeLevel,
             startDate,
             endDate,
-            unit || '', // If unit missing, calculateTaughtClasses will fallback to estimation
+            unit || '',
             academicSubjects,
             classSchedules,
             calendarEvents,
             schoolClass,
-            shift
+            shift,
+            matrices
         );
         totalTaughtClasses += taught;
     });
 
-    // Sum absences (Total across all subjects in the range)
     const totalAbsences = (attendanceRecords || []).reduce((acc, record) => {
         if (record.date < startDate || record.date > endDate) return acc;
         if (record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT) {
             // Verify if the day is a valid school day for this subject
-            const normalizedDisc = record.discipline.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').trim();
-            const subjectId = academicSubjects?.find(s =>
-                s.id === record.discipline ||
-                s.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').trim() === normalizedDisc ||
-                (s.shortName && s.shortName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').trim() === normalizedDisc)
-            )?.id || (record.discipline.startsWith('sub_') ? record.discipline : undefined);
-
+            const subjectId = academicSubjects?.find(s => s.id === record.discipline || s.name === record.discipline)?.id || (record.discipline.startsWith('sub_') ? record.discipline : undefined);
 
             if (classSchedules && classSchedules.length > 0) {
                 if (!isClassScheduled(record.date, record.discipline, classSchedules, calendarEvents || [], unit, gradeLevel, schoolClass, shift, subjectId)) {
@@ -327,7 +339,8 @@ export const calculateBimesterGeneralFrequency = (
     unit?: string,
     classSchedules?: any[],
     schoolClass?: string,
-    shift?: string
+    shift?: string,
+    matrices?: CurriculumMatrix[]
 ): string => {
     const currentYear = getCurrentSchoolYear();
 
@@ -348,11 +361,29 @@ export const calculateBimesterGeneralFrequency = (
 
     // Determine which subjects to iterate over
     const subjectsToCalculate: string[] = [];
-    if (academicSubjects && academicSubjects.length > 0) {
+
+    // 1. Resolve from Matrix (Primary)
+    if (matrices && unit && shift) {
+        const matchingMatrix = matrices.find(m =>
+            m.unit === unit &&
+            m.shift === shift &&
+            (gradeLevel.includes(m.gradeId) || m.gradeId.includes(gradeLevel))
+        );
+
+        if (matchingMatrix) {
+            matchingMatrix.subjects.forEach(s => subjectsToCalculate.push(s.id));
+        }
+    }
+
+    // 2. Fallback to academicSubjects
+    if (subjectsToCalculate.length === 0 && academicSubjects && academicSubjects.length > 0) {
         academicSubjects.forEach(s => {
-            if (s.isActive) subjectsToCalculate.push(s.name);
+            if (s.isActive) subjectsToCalculate.push(s.id);
         });
-    } else {
+    }
+
+    // 3. Fallback to Legacy Matrix
+    if (subjectsToCalculate.length === 0) {
         let levelKey = '';
         if (gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
         else if (gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
@@ -375,7 +406,8 @@ export const calculateBimesterGeneralFrequency = (
             classSchedules,
             calendarEvents,
             schoolClass,
-            shift
+            shift,
+            matrices
         );
         totalTaughtClasses += taught;
     });
@@ -385,7 +417,7 @@ export const calculateBimesterGeneralFrequency = (
         const rBim = getDynamicBimester(record.date, settings);
         if (rYear === currentYear && rBim === bimester && record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT) {
             // Verify if the day is a valid school day for this subject
-            const subjectId = academicSubjects?.find(s => s.name === record.discipline)?.id;
+            const subjectId = academicSubjects?.find(s => s.id === record.discipline || s.name === record.discipline)?.id;
 
             if (classSchedules && classSchedules.length > 0) {
                 if (!isClassScheduled(record.date, record.discipline, classSchedules, calendarEvents || [], unit, gradeLevel, schoolClass, shift, subjectId)) {
@@ -408,4 +440,3 @@ export const calculateBimesterGeneralFrequency = (
     const freq = ((totalTaughtClasses - totalAbsences) / totalTaughtClasses) * 100;
     return Math.max(0, Math.min(100, freq)).toFixed(2) + '%';
 };
-

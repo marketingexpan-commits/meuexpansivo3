@@ -64,55 +64,60 @@ export enum SchoolClass {
   E = 'E'
 }
 
-export enum Subject {
-  MATH = 'sub_math',
-  PORTUGUESE = 'sub_portuguese',
-  HISTORY = 'sub_history',
-  SCIENCE = 'sub_science',
-  GEOGRAPHY = 'sub_geography',
-  ENGLISH = 'sub_english',
-  ARTS = 'sub_arts',
-  RELIGIOUS_ED = 'sub_religious_ed',
-  PHYSICAL_ED = 'sub_physical_ed',
-  LIFE_PROJECT = 'sub_life_project',
-  ENTREPRENEURSHIP = 'sub_entrepreneurship',
-  CHEMISTRY = 'sub_chemistry',
-  BIOLOGY = 'sub_biology',
-  PHYSICS = 'sub_physics',
-  SPANISH = 'sub_spanish',
-  LITERATURE = 'sub_literature',
-  WRITING = 'sub_writing',
-  PHILOSOPHY = 'sub_philosophy',
-  SOCIOLOGY = 'sub_sociology',
-  MUSIC = 'sub_music',
-  FRENCH = 'sub_french'
-}
+// Auxiliares para evitar typos no código (Opcionais)
+export const Subject = {
+  MATH: 'disc_matematica',
+  PORTUGUESE: 'disc_portugues',
+  HISTORY: 'disc_historia',
+  SCIENCE: 'disc_ciencias',
+  GEOGRAPHY: 'disc_geografia',
+  ENGLISH: 'disc_ingles',
+  ARTS: 'disc_artes',
+  RELIGIOUS_ED: 'disc_ensino_religioso',
+  PHYSICAL_ED: 'disc_educacao_fisica',
+  LIFE_PROJECT: 'disc_projeto_vida',
+  ENTREPRENEURSHIP: 'disc_empreendedorismo',
+  CHEMISTRY: 'disc_quimica',
+  BIOLOGY: 'disc_biologia',
+  PHYSICS: 'disc_fisica',
+  SPANISH: 'disc_espanhol',
+  LITERATURE: 'disc_literatura',
+  WRITING: 'disc_redacao',
+  PHILOSOPHY: 'disc_filosofia',
+  SOCIOLOGY: 'disc_sociologia',
+  MUSIC: 'disc_musica',
+  FRENCH: 'disc_frances'
+} as const;
 
-export const SUBJECT_LABELS: Record<Subject, string> = {
-  [Subject.MATH]: 'Matemática',
-  [Subject.PORTUGUESE]: 'Português',
-  [Subject.HISTORY]: 'História',
-  [Subject.SCIENCE]: 'Ciências',
-  [Subject.GEOGRAPHY]: 'Geografia',
-  [Subject.ENGLISH]: 'Inglês',
-  [Subject.ARTS]: 'Ens. Artes',
-  [Subject.RELIGIOUS_ED]: 'Ens. Religioso',
-  [Subject.PHYSICAL_ED]: 'Ed. Física',
-  [Subject.LIFE_PROJECT]: 'Projeto de Vida',
-  [Subject.ENTREPRENEURSHIP]: 'Empreendedorismo',
-  [Subject.CHEMISTRY]: 'Química',
-  [Subject.BIOLOGY]: 'Biologia',
-  [Subject.PHYSICS]: 'Física',
-  [Subject.SPANISH]: 'Espanhol',
-  [Subject.LITERATURE]: 'Literatura',
-  [Subject.WRITING]: 'Redação',
-  [Subject.PHILOSOPHY]: 'Filosofia',
-  [Subject.SOCIOLOGY]: 'Sociologia',
-  [Subject.MUSIC]: 'Musicalização',
-  [Subject.FRENCH]: 'Francês'
+export type Subject = typeof Subject[keyof typeof Subject];
+
+// Helper para labels padrão (Pode ser removido após migração do banco)
+export const SUBJECT_LABELS: Record<string, string> = {
+  'disc_matematica': 'Matemática',
+  'disc_portugues': 'Português',
+  'disc_historia': 'História',
+  'disc_ciencias': 'Ciências',
+  'disc_geografia': 'Geografia',
+  'disc_ingles': 'Inglês',
+  'disc_artes': 'Ens. Artes',
+  'disc_ensino_religioso': 'Ens. Religioso',
+  'disc_educacao_fisica': 'Ed. Física',
+  'disc_projeto_vida': 'Projeto de Vida',
+  'disc_empreendedorismo': 'Empreendedorismo',
+  'disc_quimica': 'Química',
+  'disc_biologia': 'Biologia',
+  'disc_fisica': 'Física',
+  'disc_espanhol': 'Espanhol',
+  'disc_literatura': 'Literatura',
+  'disc_redacao': 'Redação',
+  'disc_filosofia': 'Filosofia',
+  'disc_sociologia': 'Sociologia',
+  'disc_musica': 'Musicalização',
+  'disc_frances': 'Francês'
 };
 
-export const SUBJECT_SHORT_LABELS: Record<Subject, string> = {
+// Helper para siglas padrão (Pode ser removido após migração do banco)
+export const SUBJECT_SHORT_LABELS: Record<string, string> = {
   [Subject.MATH]: 'Mat',
   [Subject.PORTUGUESE]: 'Port',
   [Subject.HISTORY]: 'His',
@@ -144,11 +149,13 @@ export enum MessageRecipient {
 }
 
 export interface AcademicSubject {
-  id: string;      // Firestore ID
-  name: string;    // Display name (e.g., "Matemática")
-  shortName?: string; // Abbreviation (e.g., "MAT")
+  id: string; // Ex: disc_matematica
+  name: string; // Ex: Matemática (Antigo 'name', manter por compatibilidade)
+  label?: string; // NOVO: Nome amigável
+  shortLabel?: string; // NOVO: Sigla
   isActive: boolean;
-  order?: number;   // For sorting in reports/logs
+  order: number;
+  shortName?: string; // Sigla antiga, manter por compatibilidade
   weeklyHours?: Record<string, number>; // Mapping: gradeName -> hoursPerWeek
 }
 
@@ -165,6 +172,19 @@ export interface AcademicGrade {
   name: string;      // e.g., "1ª Série"
   isActive: boolean;
   order: number;
+}
+
+export interface CurriculumMatrix {
+  id: string; // matrix_{unitId}_{gradeId}_{shift}_{academicYear}
+  gradeId: string;
+  shift: string;
+  unit: string;
+  academicYear: string; // ex: "2026"
+  subjects: {
+    id: string; // Subject ID (disc_...)
+    weeklyHours: number;
+    order: number;
+  }[];
 }
 
 export enum MessageType {
@@ -212,7 +232,7 @@ export interface GradeEntry {
   recuperacaoFinalApproved?: boolean; // Novo: Indica se a recuperação final foi aprovada
   mediaAnual: number;
   mediaFinal: number;
-  situacaoFinal: 'Aprovado' | 'Recuperação' | 'Reprovado';
+  situacaoFinal: 'Aprovado' | 'Recuperação' | 'Reprovado' | 'Cursando';
   situacao?: string;
   year?: number;
   subjectId?: string;

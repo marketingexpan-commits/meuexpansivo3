@@ -2,11 +2,15 @@ import { useState, useEffect, useCallback, memo } from 'react';
 import { db } from '../firebaseConfig';
 import { collection, query, getDocs, addDoc, updateDoc, doc, writeBatch, deleteDoc, orderBy } from 'firebase/firestore';
 import type { AcademicSubject, AcademicGrade } from '../types';
-import { CURRICULUM_MATRIX, GRADES_BY_LEVEL } from '../utils/academicDefaults';
+import { GRADES_BY_LEVEL } from '../utils/academicDefaults';
 import { Card, CardContent, CardHeader } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
-import { Loader2, Plus, Edit2, ToggleLeft, ToggleRight, Trash2, Search, Database, LayoutGrid, List as ListIcon } from 'lucide-react';
+import { Loader2, Plus, Edit2, ToggleLeft, ToggleRight, Trash2, Search, LayoutGrid, List as ListIcon, Filter, Clock } from 'lucide-react';
+import { SchoolUnit, SchoolShift, UNIT_LABELS, SHIFT_LABELS } from '../types';
+import type { CurriculumMatrix } from '../types';
+import { getCurrentSchoolYear } from '../utils/academicUtils';
+import { setDoc } from 'firebase/firestore';
 
 export default function Disciplinas() {
     const [subjects, setSubjects] = useState<AcademicSubject[]>([]);
@@ -22,9 +26,14 @@ export default function Disciplinas() {
         name: '',
         shortName: '',
         order: 0,
-        isActive: true,
-        weeklyHours: {} as Record<string, number>
+        isActive: true
     });
+
+    // Matrix Context Filters
+    const [selectedUnit, setSelectedUnit] = useState<SchoolUnit>(SchoolUnit.UNIT_BS);
+    const [selectedShift, setSelectedShift] = useState<SchoolShift>(SchoolShift.MORNING);
+    const [selectedYear] = useState(getCurrentSchoolYear().toString());
+    const [matrices, setMatrices] = useState<CurriculumMatrix[]>([]);
 
     const loadData = async () => {
         setLoading(true);
@@ -53,6 +62,11 @@ export default function Disciplinas() {
             });
 
             setGrades(gradeData);
+
+            // Load Matrices
+            const matrixSnap = await getDocs(collection(db, 'academic_matrices'));
+            const matrixData = matrixSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as CurriculumMatrix));
+            setMatrices(matrixData);
         } catch (error) {
             console.error("Error loading data:", error);
         } finally {
@@ -64,53 +78,6 @@ export default function Disciplinas() {
         loadData();
     }, []);
 
-    const handleSeedData = async () => {
-        if (!confirm("Deseja sincronizar a matriz legada com o Firestore? Isso criará as disciplinas com carga horária pré-definida para cada série.")) return;
-
-        setLoading(true);
-        try {
-            const batch = writeBatch(db);
-
-            // Map legacy matrix to dynamic subjects
-            // Group by subject name to avoid duplicates across segments and merge hours
-            const subjectMap: Record<string, Record<string, number>> = {};
-
-            Object.entries(CURRICULUM_MATRIX).forEach(([segment, subjects]) => {
-                const levelConfig = GRADES_BY_LEVEL.find(l => l.level === segment || (segment === 'Ens. Médio' && l.level === 'Ensino Médio'));
-                const segmentGrades = levelConfig ? levelConfig.grades : [];
-
-                Object.entries(subjects).forEach(([subjectName, hours]) => {
-                    if (!subjectMap[subjectName]) {
-                        subjectMap[subjectName] = {};
-                    }
-                    segmentGrades.forEach(gradeName => {
-                        subjectMap[subjectName][gradeName] = hours;
-                    });
-                });
-            });
-
-            // Create subjects in Firestore
-            Object.entries(subjectMap).forEach(([name, hours], index) => {
-                const newDocRef = doc(collection(db, 'academic_subjects'));
-                batch.set(newDocRef, {
-                    name,
-                    shortName: name.substring(0, 3).toUpperCase(),
-                    isActive: true,
-                    order: (index + 1) * 10,
-                    weeklyHours: hours
-                });
-            });
-
-            await batch.commit();
-            alert("Matriz sincronizada com sucesso!");
-            loadData();
-        } catch (error) {
-            console.error("Error seeding subjects:", error);
-            alert("Erro ao sincronizar dados.");
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -123,7 +90,7 @@ export default function Disciplinas() {
             }
             setIsModalOpen(false);
             setEditingSubject(null);
-            setFormData({ name: '', shortName: '', order: 0, isActive: true, weeklyHours: {} });
+            setFormData({ name: '', shortName: '', order: 0, isActive: true });
             loadData();
         } catch (error) {
             console.error("Error saving subject:", error);
@@ -170,7 +137,8 @@ export default function Disciplinas() {
             await deleteBatch.commit();
 
             // 2. Import defaults
-            await handleSeedData();
+            // await handleSeedData(); // REMOVED: Function not available in this scope
+            console.log("Reset complete (seed disabled)");
         } catch (error) {
             console.error("Error resetting subjects:", error);
             alert("Erro ao resetar disciplinas.");
@@ -179,28 +147,54 @@ export default function Disciplinas() {
         }
     };
 
-    const handleUpdateMatrixHour = useCallback(async (subjectId: string, gradeName: string, hours: number) => {
+    const handleUpdateMatrixHour = useCallback(async (subjectId: string, gradeId: string, hours: number) => {
         try {
-            const subject = subjects.find(s => s.id === subjectId);
-            if (!subject) return;
+            const matrixId = `matrix_${selectedUnit}_${gradeId}_${selectedShift}_${selectedYear}`;
+            const existingMatrix = matrices.find(m => m.id === matrixId);
 
-            const updatedWeeklyHours = {
-                ...(subject.weeklyHours || {}),
-                [gradeName]: hours
+            let newSubjects = existingMatrix ? [...existingMatrix.subjects] : [];
+            const subjectIdx = newSubjects.findIndex(s => s.id === subjectId);
+
+            if (subjectIdx >= 0) {
+                if (hours > 0) {
+                    newSubjects[subjectIdx] = { ...newSubjects[subjectIdx], weeklyHours: hours };
+                } else {
+                    newSubjects = newSubjects.filter(s => s.id !== subjectId);
+                }
+            } else if (hours > 0) {
+                const subjectInfo = subjects.find(s => s.id === subjectId);
+                newSubjects.push({
+                    id: subjectId,
+                    weeklyHours: hours,
+                    order: subjectInfo?.order || 0
+                });
+            }
+
+            // Re-sort by order
+            newSubjects.sort((a, b) => a.order - b.order);
+
+            const updatedMatrix: CurriculumMatrix = {
+                id: matrixId,
+                unit: selectedUnit,
+                gradeId,
+                shift: selectedShift,
+                academicYear: selectedYear,
+                subjects: newSubjects
             };
 
-            await updateDoc(doc(db, 'academic_subjects', subjectId), {
-                weeklyHours: updatedWeeklyHours
-            });
+            await setDoc(doc(db, 'academic_matrices', matrixId), updatedMatrix);
 
             // Optimistic local update
-            setSubjects(prev => prev.map(s => s.id === subjectId ? { ...s, weeklyHours: updatedWeeklyHours } : s));
+            setMatrices(prev => {
+                const others = prev.filter(m => m.id !== matrixId);
+                return [...others, updatedMatrix];
+            });
         } catch (error) {
             console.error("Error updating matrix hour:", error);
             alert("Erro ao atualizar carga horária.");
             loadData(); // Rollback
         }
-    }, [subjects]);
+    }, [selectedUnit, selectedShift, selectedYear, matrices, subjects]);
 
     // Isolated Input Component to handle local state and prevent page-wide re-renders during typing
     const MatrixInput = memo(({ value, onUpdate }: { value: number, onUpdate: (val: number) => void }) => {
@@ -227,25 +221,32 @@ export default function Disciplinas() {
     });
 
     // Memoized Row to prevent re-rendering all rows when one changes
-    const MatrixRow = memo(({ subject, grades, onUpdate }: { subject: AcademicSubject, grades: AcademicGrade[], onUpdate: (subjectId: string, gradeName: string, val: number) => void }) => {
+    const MatrixRow = memo(({ subject, grades, matrices, onUpdate }: { subject: AcademicSubject, grades: AcademicGrade[], matrices: CurriculumMatrix[], onUpdate: (subjectId: string, gradeId: string, val: number) => void }) => {
         return (
             <tr className="hover:bg-blue-50/30 transition-colors group">
                 <td className="sticky left-0 z-10 bg-white group-hover:bg-blue-50/30 py-4 px-6 font-bold text-blue-950 border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
                     {subject.name}
                 </td>
-                {grades.map(grade => (
-                    <td key={grade.id} className="p-2 border-r border-slate-50">
-                        <div className="relative flex items-center justify-center">
-                            <MatrixInput
-                                value={subject.weeklyHours?.[grade.name] || 0}
-                                onUpdate={(val) => onUpdate(subject.id, grade.name, val)}
-                            />
-                            <div className="absolute -bottom-1 text-[7px] font-bold text-slate-400 uppercase pointer-events-none tracking-tighter">
-                                {(subject.weeklyHours?.[grade.name] || 0) * 40}h/ano
+                {grades.map(grade => {
+                    const matrixId = `matrix_${selectedUnit}_${grade.id}_${selectedShift}_${selectedYear}`;
+                    const matrix = matrices.find(m => m.id === matrixId);
+                    const subjectInMatrix = matrix?.subjects.find(s => s.id === subject.id);
+                    const hours = subjectInMatrix?.weeklyHours || 0;
+
+                    return (
+                        <td key={grade.id} className="p-2 border-r border-slate-50">
+                            <div className="relative flex items-center justify-center">
+                                <MatrixInput
+                                    value={hours}
+                                    onUpdate={(val) => onUpdate(subject.id, grade.id, val)}
+                                />
+                                <div className="absolute -bottom-1 text-[7px] font-bold text-slate-400 uppercase pointer-events-none tracking-tighter">
+                                    {hours * 40}h/ano
+                                </div>
                             </div>
-                        </div>
-                    </td>
-                ))}
+                        </td>
+                    );
+                })}
             </tr>
         );
     });
@@ -288,13 +289,10 @@ export default function Disciplinas() {
                                     Limpar e Reiniciar
                                 </Button>
                             )}
-                            <Button variant="outline" onClick={handleSeedData} className="gap-2 text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100 shadow-sm">
-                                <Database className="w-4 h-4" />
-                                Sincronizar Matriz Legada
-                            </Button>
+
                             <Button onClick={() => {
                                 setEditingSubject(null);
-                                setFormData({ name: '', shortName: '', order: (subjects.length + 1) * 10, isActive: true, weeklyHours: {} });
+                                setFormData({ name: '', shortName: '', order: (subjects.length + 1) * 10, isActive: true });
                                 setIsModalOpen(true);
                             }} className="gap-2">
                                 <Plus className="w-4 h-4" />
@@ -376,7 +374,6 @@ export default function Disciplinas() {
                                                                         shortName: subject.shortName || '',
                                                                         order: subject.order || 0,
                                                                         isActive: subject.isActive,
-                                                                        weeklyHours: subject.weeklyHours || {}
                                                                     });
                                                                     setIsModalOpen(true);
                                                                 }}
@@ -404,37 +401,94 @@ export default function Disciplinas() {
                     </Card>
                 </>
             ) : (
-                <Card>
-                    <CardContent className="p-0">
-                        <div className="overflow-x-auto custom-scrollbar">
-                            <table className="w-full text-left border-collapse min-w-[1200px]">
-                                <thead>
-                                    <tr className="bg-slate-50 border-b border-slate-200">
-                                        <th className="sticky left-0 z-20 bg-slate-50 py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-widest border-r border-slate-200 min-w-[200px]">Disciplina</th>
-                                        {grades.map(grade => (
-                                            <th key={grade.id} className="py-4 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-tighter text-center border-r border-slate-100 min-w-[100px]">
-                                                <div className="text-slate-600 mb-1">{grade.name}</div>
-                                                <div className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-xl text-[9px]">
-                                                    {subjects.reduce((sum, s) => sum + (s.isActive ? (s.weeklyHours?.[grade.name] || 0) : 0), 0)} aulas
-                                                </div>
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {subjects.filter(s => s.isActive).map(subject => (
-                                        <MatrixRow
-                                            key={subject.id}
-                                            subject={subject}
-                                            grades={grades}
-                                            onUpdate={handleUpdateMatrixHour}
-                                        />
-                                    ))}
-                                </tbody>
-                            </table>
+                <div className="space-y-4">
+                    {/* Matrix Filters */}
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap items-center gap-6">
+                        <div className="flex items-center gap-2">
+                            <Filter className="w-4 h-4 text-slate-400" />
+                            <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Configuração da Matriz:</span>
                         </div>
-                    </CardContent>
-                </Card>
+
+                        <div className="flex items-center gap-4">
+                            <div className="flex flex-col">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1">Unidade</label>
+                                <select
+                                    className="bg-slate-50 border-none rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-500 py-1.5"
+                                    value={selectedUnit}
+                                    onChange={(e) => setSelectedUnit(e.target.value as SchoolUnit)}
+                                >
+                                    {Object.values(SchoolUnit).map(unit => (
+                                        <option key={unit} value={unit}>{UNIT_LABELS[unit]}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="flex flex-col">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1">Turno</label>
+                                <select
+                                    className="bg-slate-50 border-none rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-500 py-1.5"
+                                    value={selectedShift}
+                                    onChange={(e) => setSelectedShift(e.target.value as SchoolShift)}
+                                >
+                                    {Object.values(SchoolShift).map(shift => (
+                                        <option key={shift} value={shift}>{SHIFT_LABELS[shift]}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="flex flex-col">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1">Ano Letivo</label>
+                                <div className="px-3 py-1.5 bg-slate-100 rounded-lg text-sm font-black text-slate-500">
+                                    {selectedYear}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="ml-auto flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl">
+                            <Clock className="w-4 h-4" />
+                            <span className="text-xs font-bold italic">As alterações são salvas automaticamente</span>
+                        </div>
+                    </div>
+
+                    <Card>
+                        <CardContent className="p-0">
+                            <div className="overflow-x-auto custom-scrollbar">
+                                <table className="w-full text-left border-collapse min-w-[1200px]">
+                                    <thead>
+                                        <tr className="bg-slate-50 border-b border-slate-200">
+                                            <th className="sticky left-0 z-20 bg-slate-50 py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-widest border-r border-slate-200 min-w-[200px]">Disciplina</th>
+                                            {grades.map(grade => {
+                                                const matrixId = `matrix_${selectedUnit}_${grade.id}_${selectedShift}_${selectedYear}`;
+                                                const matrix = matrices.find(m => m.id === matrixId);
+                                                const totalHours = matrix?.subjects.reduce((sum, s) => sum + s.weeklyHours, 0) || 0;
+
+                                                return (
+                                                    <th key={grade.id} className="py-4 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-tighter text-center border-r border-slate-100 min-w-[100px]">
+                                                        <div className="text-slate-600 mb-1">{grade.name}</div>
+                                                        <div className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-xl text-[9px]">
+                                                            {totalHours} aulas
+                                                        </div>
+                                                    </th>
+                                                );
+                                            })}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {subjects.filter(s => s.isActive).map(subject => (
+                                            <MatrixRow
+                                                key={subject.id}
+                                                subject={subject}
+                                                grades={grades}
+                                                matrices={matrices}
+                                                onUpdate={handleUpdateMatrixHour}
+                                            />
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
             )}
 
             {/* Modal */}
@@ -485,42 +539,6 @@ export default function Disciplinas() {
                                     className="w-4 h-4 rounded border-slate-300 text-blue-950 focus:ring-blue-950"
                                 />
                                 <label htmlFor="isActive" className="text-sm font-medium text-slate-700">Disciplina Ativa</label>
-                            </div>
-
-                            {/* Horas Semanais por Série */}
-                            <div className="pt-4 border-t border-slate-100">
-                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Carga Horária Semanal (Matriz)</label>
-                                <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                                    {grades.length === 0 ? (
-                                        <p className="text-xs text-slate-400 italic">Nenhuma série configurada em "Séries e Segmentos".</p>
-                                    ) : (
-                                        grades.map(grade => (
-                                            <div key={grade.id} className="flex items-center justify-between gap-4 p-2 rounded-xl bg-slate-50 border border-slate-100 transition-colors hover:border-blue-200">
-                                                <span className="text-sm font-medium text-blue-950">{grade.name}</span>
-                                                <div className="flex items-center gap-2">
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        max="20"
-                                                        value={formData.weeklyHours[grade.name] || 0}
-                                                        onChange={(e) => {
-                                                            const hours = parseInt(e.target.value) || 0;
-                                                            setFormData({
-                                                                ...formData,
-                                                                weeklyHours: {
-                                                                    ...formData.weeklyHours,
-                                                                    [grade.name]: hours
-                                                                }
-                                                            });
-                                                        }}
-                                                        className="w-16 h-8 px-2 text-center rounded border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm font-bold text-blue-700"
-                                                    />
-                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">aulas</span>
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
                             </div>
 
                             <div className="flex gap-3 pt-4">
