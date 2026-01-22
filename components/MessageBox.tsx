@@ -1,12 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
-import { Student, SchoolMessage, MessageRecipient, MessageType, UnitContact, ContactRole, Teacher } from '../types';
+import { Student, SchoolMessage, MessageRecipient, MessageType, UnitContact, ContactRole, Teacher, TicketStatus } from '../types';
 import { Button } from './Button';
 
 import { UNITS_DATA, DEFAULT_UNIT_DATA } from '../src/constants';
 import { MessageCircle } from 'lucide-react';
 
-export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: Omit<SchoolMessage, 'id'>) => Promise<void>; unitContacts: UnitContact[]; teachers?: Teacher[]; }> = ({ student, onSendMessage, unitContacts, teachers = [] }) => {
+export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: Omit<SchoolMessage, 'id'>) => Promise<void>; unitContacts: UnitContact[]; teachers?: Teacher[]; onSubmitTicket?: (subject: string, message: string) => Promise<void>; }> = ({ student, onSendMessage, unitContacts, teachers = [], onSubmitTicket }) => {
   const [recipient, setRecipient] = useState<MessageRecipient>(MessageRecipient.COORDINATION);
   const [messageType, setMessageType] = useState<MessageType>(MessageType.SUGGESTION);
   const [content, setContent] = useState('');
@@ -107,6 +107,31 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
         }
       }
 
+      // 2. Envio de Ticket (Mensagem para Professor)
+      // Se o destinatário for um professor e tivermos a função de criar ticket
+      if (recipient === MessageRecipient.TEACHERS && selectedTeacherId && onSubmitTicket) {
+        const teacher = unitTeachers.find(t => t.id === selectedTeacherId);
+        if (teacher) {
+          // Se o professor tiver disciplinas (Fund/Médio), usa a primeira; senão usa fallback
+          const targetSubject = teacher.subjects.length > 0 ? teacher.subjects[0] : 'general_early_childhood';
+
+          // Prefixamos o tipo de mensagem para contexto
+          const ticketMessage = `[${messageType}] ${content}`;
+          await onSubmitTicket(targetSubject, ticketMessage);
+
+          setIsSent(true);
+          setContent('');
+          setMessageType(MessageType.SUGGESTION);
+
+          setRecipient(MessageRecipient.COORDINATION);
+          setSelectedTeacherId('');
+          setTimeout(() => setIsSent(false), 5000);
+          setIsSending(false);
+          return;
+        }
+      }
+
+      // 3. Envio Normal (Mensagem para Escola/Coordenação)
       // O envio ao banco ocorre em paralelo/background relativo à janela aberta
       await onSendMessage({
         studentId: student.id,
@@ -116,7 +141,7 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
         messageType,
         content: finalContent,
         timestamp: new Date().toISOString(),
-        status: 'new',
+        status: 'new', // Mantemos 'new' para SchoolMessage, pois ela usa string literal 'new' | 'read' ...
       });
 
       setIsSent(true);

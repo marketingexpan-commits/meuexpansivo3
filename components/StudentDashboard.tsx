@@ -2235,7 +2235,42 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                     {currentView === 'messages' && (
                         <div className="animate-fade-in-up space-y-8">
-                            <MessageBox student={student} onSendMessage={onSendMessage} unitContacts={unitContacts || []} teachers={teachers} />
+                            <MessageBox student={student} onSendMessage={onSendMessage} unitContacts={unitContacts || []} teachers={teachers} onSubmitTicket={async (subject, message) => {
+                                // Reusing the ticket creation logic for MessageBox
+                                try {
+                                    const ticket: Ticket = {
+                                        id: `ticket-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                                        studentId: student.id,
+                                        studentName: student.name,
+                                        gradeLevel: student.gradeLevel,
+                                        schoolClass: student.schoolClass,
+                                        unit: student.unit,
+                                        subject: subject,
+                                        message: message,
+                                        timestamp: new Date().toISOString(),
+                                        status: TicketStatus.PENDING
+                                    };
+
+                                    await db.collection('tickets_pedagogicos').doc(ticket.id).set(ticket);
+
+                                    // Notify Teachers
+                                    if (onCreateNotification && (teachers || []).length > 0) {
+                                        const teachersToNotify = (teachers || []).filter(t => t.subjects.includes(subject as any) && t.unit === student.unit);
+                                        for (const t of teachersToNotify) {
+                                            await onCreateNotification(
+                                                `Nova Dúvida: ${student.name}`,
+                                                `Assunto: ${subject}`,
+                                                undefined,
+                                                t.id
+                                            );
+                                        }
+                                    }
+                                    return true;
+                                } catch (error) {
+                                    console.error("Error creating ticket via MessageBox:", error);
+                                    throw error;
+                                }
+                            }} />
 
                             <div>
                                 <h3 className="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2 border-b border-gray-100 pb-2">
@@ -2243,67 +2278,99 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     Minhas Mensagens e Respostas
                                 </h3>
 
-                                {schoolMessages.length === 0 ? (
-                                    <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-100">
-                                        <p className="text-gray-400 italic">Você ainda não possui histórico de mensagens com a escola.</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {schoolMessages.map(msg => (
-                                            <div key={msg.id} className="bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                                                <div className="p-5">
-                                                    <div className="flex justify-between items-start mb-3">
-                                                        <div>
-                                                            <div className="flex items-center gap-2 mb-1">
-                                                                <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-black border ${msg.messageType === 'Elogio' ? 'bg-green-50 text-green-600 border-green-100' :
-                                                                    msg.messageType === 'Sugestão' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                                        'bg-red-50 text-red-600 border-red-100'
-                                                                    }`}>
-                                                                    {msg.messageType}
-                                                                </span>
-                                                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                                                                    Para: {msg.recipient}
-                                                                </span>
-                                                            </div>
-                                                            <p className="text-[10px] text-gray-400 font-medium">
-                                                                {new Date(msg.timestamp).toLocaleDateString('pt-BR')} às {new Date(msg.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                                            </p>
-                                                        </div>
-                                                        <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide ${msg.status === 'new' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500'}`}>
-                                                            {msg.status === 'new' ? 'Aguardando Leitura' : 'Lida pela Escola'}
-                                                        </span>
-                                                    </div>
+                                {(() => {
+                                    // MERGE: Combine authentic SchoolMessages with "General Early Childhood" Tickets
+                                    // This ensures Early Childhood students see their "Tickets" as "Messages" in this view.
+                                    const mergedMessages: any[] = [...schoolMessages];
 
-                                                    <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-700 border border-gray-100 whitespace-pre-wrap">
-                                                        {msg.content && msg.content.includes(']') ? msg.content.substring(msg.content.indexOf(']') + 1).trim() : (msg.content || '(Sem conteúdo)')}
-                                                    </div>
+                                    if (isEarlyChildhood) {
+                                        const childhoodTickets = studentTickets.filter(t => t.subject === 'general_early_childhood');
+                                        const mappedTickets = childhoodTickets.map(t => ({
+                                            id: t.id,
+                                            studentId: t.studentId,
+                                            studentName: t.studentName,
+                                            unit: t.unit,
+                                            recipient: MessageRecipient.TEACHERS, // As it was sent to teachers
+                                            messageType: MessageType.SUGGESTION, // Generic fallback
+                                            content: `[DÚVIDA] ${t.message}`, // Distinguish
+                                            timestamp: t.timestamp,
+                                            read: true, // Tickets don't have read status for students usually
+                                            status: t.status === TicketStatus.PENDING ? 'new' : 'read',
+                                            response: t.response,
+                                            responseTimestamp: t.responseTimestamp
+                                        }));
+                                        mergedMessages.push(...mappedTickets);
+                                    }
 
-                                                    {msg.response ? (
-                                                        <div className="mt-4 bg-blue-50 border border-blue-100 p-4 rounded-lg relative">
-                                                            <div className="absolute -top-3 left-4 bg-white px-2 py-0.5 rounded text-[9px] font-black text-blue-500 border border-blue-100 shadow-sm flex items-center gap-1">
-                                                                <Mail className="w-3 h-3" />
-                                                                RESPOSTA DA COORDENAÇÃO
-                                                            </div>
-                                                            <div className="bg-white/40 p-4 rounded-xl border border-blue-200/50 mt-2 shadow-sm">
-                                                                <p className="text-gray-900 text-sm font-semibold leading-relaxed">
-                                                                    {msg.response}
+                                    // Sort by timestamp desc
+                                    mergedMessages.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+                                    if (mergedMessages.length === 0) {
+                                        return (
+                                            <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-100">
+                                                <p className="text-gray-400 italic">Você ainda não possui histórico de mensagens com a escola.</p>
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <div className="space-y-4">
+                                            {mergedMessages.map(msg => (
+                                                <div key={msg.id} className="bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                                                    <div className="p-5">
+                                                        <div className="flex justify-between items-start mb-3">
+                                                            <div>
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                    <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-black border ${msg.messageType === 'Elogio' ? 'bg-green-50 text-green-600 border-green-100' :
+                                                                        msg.messageType === 'Sugestão' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                                            'bg-red-50 text-red-600 border-red-100'
+                                                                        }`}>
+                                                                        {msg.messageType}
+                                                                    </span>
+                                                                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                                                                        Para: {msg.recipient}
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-[10px] text-gray-400 font-medium">
+                                                                    {new Date(msg.timestamp).toLocaleDateString('pt-BR')} às {new Date(msg.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                                                 </p>
                                                             </div>
-                                                            <p className="text-[10px] text-blue-400 mt-2 text-right font-bold uppercase tracking-wider">
-                                                                Respondido em {new Date(msg.responseTimestamp!).toLocaleDateString('pt-BR')}
-                                                            </p>
+                                                            <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide ${msg.status === 'new' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500'}`}>
+                                                                {msg.status === 'new' ? 'Aguardando Leitura' : 'Lida pela Escola'}
+                                                            </span>
                                                         </div>
-                                                    ) : (
-                                                        <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50/50 p-2 rounded-lg border border-dashed border-gray-200 justify-center">
-                                                            <Clock className="w-3 h-3" />
-                                                            Aguardando resposta da equipe pedagógica
+
+                                                        <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-700 border border-gray-100 whitespace-pre-wrap">
+                                                            {msg.content && msg.content.includes(']') ? msg.content.substring(msg.content.indexOf(']') + 1).trim() : (msg.content || '(Sem conteúdo)')}
                                                         </div>
-                                                    )}
+
+                                                        {msg.response ? (
+                                                            <div className="mt-4 bg-blue-50 border border-blue-100 p-4 rounded-lg relative">
+                                                                <div className="absolute -top-3 left-4 bg-white px-2 py-0.5 rounded text-[9px] font-black text-blue-500 border border-blue-100 shadow-sm flex items-center gap-1">
+                                                                    <Mail className="w-3 h-3" />
+                                                                    RESPOSTA DA COORDENAÇÃO
+                                                                </div>
+                                                                <div className="bg-white/40 p-4 rounded-xl border border-blue-200/50 mt-2 shadow-sm">
+                                                                    <p className="text-gray-900 text-sm font-semibold leading-relaxed">
+                                                                        {msg.response}
+                                                                    </p>
+                                                                </div>
+                                                                <p className="text-[10px] text-blue-400 mt-2 text-right font-bold uppercase tracking-wider">
+                                                                    Respondido em {new Date(msg.responseTimestamp!).toLocaleDateString('pt-BR')}
+                                                                </p>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50/50 p-2 rounded-lg border border-dashed border-gray-200 justify-center">
+                                                                <Clock className="w-3 h-3" />
+                                                                Aguardando resposta da equipe pedagógica
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                                            ))}
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         </div>
                     )}
@@ -2319,7 +2386,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 Minhas Dúvidas
                             </h3>
 
-                            {studentTickets.length === 0 ? (
+                            {studentTickets.filter(t => t.subject !== 'general_early_childhood').length === 0 ? (
                                 <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-100">
                                     <p className="text-gray-500">Você ainda não enviou dúvidas.</p>
                                     <Button onClick={() => setCurrentView('grades')} className="mt-4">
@@ -2328,7 +2395,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    {studentTickets.map(ticket => (
+                                    {studentTickets.filter(t => t.subject !== 'general_early_childhood').map(ticket => (
                                         <div key={ticket.id} className="bg-white border rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
                                             <div className="flex justify-between items-start mb-3">
                                                 <div>

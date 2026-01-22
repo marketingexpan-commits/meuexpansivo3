@@ -1,9 +1,11 @@
 // src/components/TeacherDashboard.tsx
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
+import { MessageCircle } from 'lucide-react';
 import {
     Teacher, Student, GradeEntry, BimesterData, SchoolUnit, Subject, SchoolClass, AttendanceRecord, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, Ticket,
     TicketStatus,
+    SchoolMessage, MessageType, MessageRecipient,
     AppNotification,
     DailyAgenda,
     ExamGuide,
@@ -148,13 +150,29 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
     const tickets = useMemo(() => {
         if (!propsTickets) return [];
-        const filtered = propsTickets.filter(t => teacher.subjects.includes(t.subject as any) && t.unit === teacher.unit);
+        const filtered = propsTickets.filter(t => {
+            if (t.unit !== teacher.unit) return false;
+
+            // 1. Match by Subject (Default)
+            if (teacher.subjects.includes(t.subject as any)) return true;
+
+            // 2. Early Childhood / No Subjects Fallback
+            // If the teacher has no specific subjects assigned (common in Early Childhood),
+            // show tickets that match their assigned grade levels OR the generic fallback subject.
+            if (teacher.subjects.length === 0) {
+                if (t.subject === 'general_early_childhood') return true;
+                if (teacher.gradeLevels?.includes(t.gradeLevel)) return true;
+            }
+
+            return false;
+        });
+
         return filtered.sort((a, b) => {
             if (a.status === TicketStatus.PENDING && b.status !== TicketStatus.PENDING) return -1;
             if (a.status !== TicketStatus.PENDING && b.status === TicketStatus.PENDING) return 1;
             return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
         });
-    }, [propsTickets, teacher.subjects, teacher.unit]);
+    }, [propsTickets, teacher.subjects, teacher.unit, teacher.gradeLevels]);
 
     const uploadedMaterials = useMemo(() => {
         if (!propsMaterials) return [];
@@ -823,6 +841,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             });
 
             // 2. Create Notification for Student
+            // 2. Create Notification for Student
             const ticket = tickets.find(t => t.id === ticketId);
             if (ticket) {
                 const notification: AppNotification = {
@@ -834,6 +853,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     read: false
                 };
                 await db.collection('notifications').add(notification);
+
+                // 3. [NEW] Duplicate to SchoolMessages (Fale com a Escola) - ONLY for Early Childhood
+                // Logic moved to StudentDashboard frontend merging for better UX
+
             }
 
 
@@ -872,7 +895,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         e.preventDefault();
 
         // Validação básica
-        if (!materialFile || !materialTitle || !materialGrade || !materialSubject) {
+        // Para Ed. Infantil, subject não é obrigatório na UI, usamos fallback
+        const isSubjectValid = isEarlyChildhoodTeacher ? true : !!materialSubject;
+
+        if (!materialFile || !materialTitle || !materialGrade || !isSubjectValid) {
             alert("Preencha todos os campos e selecione um arquivo.");
             return;
         }
@@ -929,7 +955,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                 filename: sanitizedFilename,
                                 teacherId: teacher.id,
                                 teacherName: teacher.name,
-                                subject: materialSubject,
+                                subject: isEarlyChildhoodTeacher ? 'general_early_childhood' : materialSubject,
                                 unit: activeUnit as SchoolUnit,
                                 gradeLevel: materialGrade,
                                 schoolClass: materialClass,
@@ -1067,7 +1093,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     // --- HANDLERS PARA AGENDA E ROTEIROS ---
     const handleSaveAgenda = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!agendaSubject || !agendaGrade || !agendaShift || !agendaClass || !contentInClass || !agendaDate) {
+
+        // Validation: Subject is optional for Early Childhood
+        const isSubjectValid = isEarlyChildhoodTeacher ? true : !!agendaSubject;
+
+        if (!isSubjectValid || !agendaGrade || !agendaShift || !agendaClass || !contentInClass || !agendaDate) {
             alert("Preencha todos os campos obrigatórios.");
             return;
         }
@@ -1081,7 +1111,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 gradeLevel: agendaGrade,
                 schoolClass: agendaClass,
                 shift: normalizeShift(agendaShift),
-                subject: agendaSubject,
+                subject: isEarlyChildhoodTeacher ? 'general_early_childhood' : agendaSubject,
                 date: agendaDate,
                 contentInClass,
                 homework,
@@ -1323,19 +1353,21 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                             <svg className="w-7 h-7 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm text-center">
-                                            {isEarlyChildhoodTeacher ? 'Relatório' : 'Lançar Notas'}
+                                            {isEarlyChildhoodTeacher ? 'Relatório de Desenvolvimento' : 'Lançar Notas'}
                                         </h3>
                                     </button>
 
-                                    <button
-                                        onClick={() => setActiveTab('attendance')}
-                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
-                                    >
-                                        <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                                            <svg className="w-7 h-7 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
-                                        </div>
-                                        <h3 className="font-bold text-gray-800 text-sm text-center">Chamada Diária</h3>
-                                    </button>
+                                    {!isEarlyChildhoodTeacher && (
+                                        <button
+                                            onClick={() => setActiveTab('attendance')}
+                                            className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                                        >
+                                            <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                                <svg className="w-7 h-7 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                                            </div>
+                                            <h3 className="font-bold text-gray-800 text-sm text-center">Chamada Diária</h3>
+                                        </button>
+                                    )}
 
                                     <button
                                         onClick={() => setActiveTab('tickets')}
@@ -1343,9 +1375,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                     >
                                         {/* Global Style for File Inputs removed - using Tailwind file: modifier instead */}
                                         <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                                            <svg className="w-7 h-7 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                            <MessageCircle className="w-7 h-7 text-blue-950" />
                                         </div>
-                                        <h3 className="font-bold text-gray-800 text-sm text-center">Dúvidas dos Alunos</h3>
+                                        <h3 className="font-bold text-gray-800 text-sm text-center">{isEarlyChildhoodTeacher ? 'Mensagens dos Pais e Responsáveis' : 'Dúvidas dos Alunos'}</h3>
                                     </button>
 
                                     <button
@@ -1368,15 +1400,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                         <h3 className="font-bold text-gray-800 text-sm text-center">Agenda Diária</h3>
                                     </button>
 
-                                    <button
-                                        onClick={() => setActiveTab('exam_guides')}
-                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
-                                    >
-                                        <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                                            <svg className="w-7 h-7 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                        </div>
-                                        <h3 className="font-bold text-gray-800 text-sm text-center">Roteiros de Prova</h3>
-                                    </button>
+                                    {!isEarlyChildhoodTeacher && (
+                                        <button
+                                            onClick={() => setActiveTab('exam_guides')}
+                                            className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                                        >
+                                            <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                                <svg className="w-7 h-7 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                            </div>
+                                            <h3 className="font-bold text-gray-800 text-sm text-center">Roteiros de Prova</h3>
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -1410,13 +1444,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                             required
                                         />
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">Disciplina</label>
-                                        <select value={materialSubject} onChange={(e) => setMaterialSubject(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
-                                            <option value="">Selecione...</option>
-                                            {filteredSubjectsForMaterials.map(subject => (<option key={subject} value={subject as string}>{getSubjectLabel(subject as string, academicSubjects)}</option>))}
-                                        </select>
-                                    </div>
+                                    {!isEarlyChildhoodTeacher && (
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1">Disciplina</label>
+                                            <select value={materialSubject} onChange={(e) => setMaterialSubject(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required={!isEarlyChildhoodTeacher}>
+                                                <option value="">Selecione...</option>
+                                                {filteredSubjectsForMaterials.map(subject => (<option key={subject} value={subject as string}>{getSubjectLabel(subject as string, academicSubjects)}</option>))}
+                                            </select>
+                                        </div>
+                                    )}
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Série</label>
                                         <select value={materialGrade} onChange={(e) => setMaterialGrade(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
@@ -1538,13 +1574,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Data</label>
                                         <input type="date" value={agendaDate} onChange={e => setAgendaDate(e.target.value)} className="w-full p-2 border border-blue-200 rounded focus:ring-purple-500 focus:border-purple-500" required />
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">Disciplina</label>
-                                        <select value={agendaSubject} onChange={e => setAgendaSubject(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
-                                            <option value="">Selecione...</option>
-                                            {filteredSubjectsForAgenda.map(s => <option key={s} value={s as string}>{getSubjectLabel(s as string, academicSubjects)}</option>)}
-                                        </select>
-                                    </div>
+                                    {!isEarlyChildhoodTeacher && (
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1">Disciplina</label>
+                                            <select value={agendaSubject} onChange={e => setAgendaSubject(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required={!isEarlyChildhoodTeacher}>
+                                                <option value="">Selecione...</option>
+                                                {filteredSubjectsForAgenda.map(s => <option key={s} value={s as string}>{getSubjectLabel(s as string, academicSubjects)}</option>)}
+                                            </select>
+                                        </div>
+                                    )}
                                     <div className="grid grid-cols-2 gap-2">
                                         <div>
                                             <label className="block text-sm font-bold text-gray-700 mb-1">Série</label>
@@ -2810,7 +2848,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                     <div className="w-8 h-8 bg-blue-950/10 rounded-full flex items-center justify-center">
                                         <svg className="w-5 h-5 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                     </div>
-                                    Dúvidas e Perguntas
+                                    {isEarlyChildhoodTeacher ? 'Mensagens dos Pais e Responsáveis' : 'Dúvidas e Perguntas'}
                                 </h2>
 
                                 {tickets.length === 0 ? (
