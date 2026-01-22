@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { db } from '../firebaseConfig';
-import { UnitContact, SchoolUnit, UNIT_LABELS, CoordinationSegment, Subject, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket, SchoolMessage, MessageRecipient, CalendarEvent, ClassSchedule } from '../types';
-import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, CURRICULUM_MATRIX, getCurriculumSubjects, calculateBimesterMedia, calculateFinalData, SCHOOL_CLASSES_OPTIONS, SCHOOL_SHIFTS } from '../constants';
+import { UnitContact, SchoolUnit, UNIT_LABELS, SHIFT_LABELS, CoordinationSegment, Subject, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket, SchoolMessage, MessageRecipient, CalendarEvent, ClassSchedule } from '../types';
+import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, CURRICULUM_MATRIX, getCurriculumSubjects, calculateBimesterMedia, calculateFinalData, SCHOOL_CLASSES_OPTIONS } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency } from '../utils/frequency';
-import { getDynamicBimester, isClassScheduled } from '../src/utils/academicUtils';
+import { getDynamicBimester, isClassScheduled, normalizeClass } from '../src/utils/academicUtils';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 import { SchoolCalendar } from './SchoolCalendar';
@@ -427,21 +427,22 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
         setLoading(true);
         try {
-            // Buscar alunos filtrando apenas por UNIDADE e TURMA inicialmente para evitar problemas de formatação de strings no banco
+            // Buscar alunos filtrando apenas por UNIDADE inicialmente para ser mais robusto contra divergências no banco
             const snap = await db.collection('students')
                 .where('unit', '==', coordinator.unit)
-                .where('schoolClass', '==', occFilters.class)
                 .get();
 
-            let students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            let students = snap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
 
-            // Refinar filtros em memória (mais seguro contra divergências de string e UTF-8)
+            // Refinar filtros em memória (mais seguro contra divergências de string, normalização de turmas e UTF-8)
             students = students.filter((s: any) => {
                 // Verificar Turno
                 if (s.shift !== occFilters.shift) return false;
 
+                // Verificar Turma (Normalized) - Resolve problema de "A" vs "01"
+                if (normalizeClass(s.schoolClass) !== normalizeClass(occFilters.class)) return false;
+
                 // Verificar Série (Grade) - Tenta correspondência exata ou parcial para ser robusto
-                // Ex: "3ª Série" deve bater com "3ª Série" ou "3ª Série - Ensino Médio"
                 const dbGrade = (s.gradeLevel || '').trim();
                 const filterGrade = occFilters.grade.trim();
 
@@ -1288,8 +1289,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                             onChange={(e) => setOccFilters({ ...occFilters, shift: (e.target.value as SchoolShift) })}
                                                         >
                                                             <option value="">Selecione o turno</option>
-                                                            {SCHOOL_SHIFTS.map(opt => (
-                                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                            {SCHOOL_SHIFTS_LIST.map(shift => (
+                                                                <option key={shift} value={shift}>{SHIFT_LABELS[shift as SchoolShift] || shift}</option>
                                                             ))}
                                                         </select>
                                                     </div>
