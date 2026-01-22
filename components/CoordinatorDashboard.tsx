@@ -367,10 +367,12 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 const studentName = student?.name || 'o aluno';
 
                 try {
+                    const subjectName = academicSubjects?.find(s => s.id === grade.subject)?.name || grade.subject;
+
                     // 1. Notify Student (Always)
                     await onCreateNotification(
                         'Nota Aprovada',
-                        `Sua nota de ${grade.subject} foi aprovada pela coordenação.`,
+                        `Sua nota de ${subjectName} foi aprovada pela coordenação.`,
                         grade.studentId,
                         undefined
                     );
@@ -380,12 +382,12 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                         console.log('[CoordinatorDashboard] Criando notificação para professor:', {
                             teacherId: grade.teacherId,
                             studentName,
-                            subject: grade.subject
+                            subject: subjectName
                         });
 
                         await onCreateNotification(
                             'Nota Aprovada',
-                            `Sua nota de ${grade.subject} para ${studentName} foi aprovada pela coordenação.`,
+                            `Sua nota de ${subjectName} para ${studentName} foi aprovada pela coordenação.`,
                             undefined,
                             grade.teacherId
                         );

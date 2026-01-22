@@ -799,7 +799,8 @@ const AppContent: React.FC = () => {
       };
 
       await db.collection('grades').doc(grade.id).set(gradeToSave);
-      // Cria notificação automática
+      // Let display side (StudentDashboard) handle ID-to-Name mapping for notifications
+      // as App.tsx doesn't always have the full academicSubjects list loaded yet.
       await createNotification(
         'Boletim Atualizado',
         `Sua nota de ${grade.subject} foi atualizada pelo professor.`,

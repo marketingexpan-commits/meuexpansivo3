@@ -776,46 +776,58 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             </div>
                                         )}
                                         {notifications.length > 0 ? (
-                                            notifications.map(n => (
-                                                <div
-                                                    key={n.id}
-                                                    className={`p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer ${!n.read ? 'bg-blue-50/30' : ''}`}
-                                                    onClick={() => {
-                                                        if (onDeleteNotification) onDeleteNotification(n.id);
-
-                                                        // Normalize strings to ignore accents (e.g. 'ê' -> 'e')
-                                                        const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-                                                        const titleNorm = normalize(n.title);
-                                                        const messageNorm = normalize(n.message);
-
-                                                        // Check for occurrence keywords (accent-insensitive)
-                                                        if (titleNorm.includes('ocorrencia') || titleNorm.includes('advertencia') || messageNorm.includes('ocorrencia')) {
-                                                            console.log("Navigating to occurrences", n); // Debug
-                                                            setCurrentView('occurrences');
-                                                        } else if (titleNorm.includes('boletim') || titleNorm.includes('nota')) {
-                                                            setCurrentView(isEarlyChildhood ? 'early_childhood' : 'grades');
-                                                        } else if (titleNorm.includes('frequencia') || titleNorm.includes('falta')) {
-                                                            setCurrentView('attendance');
-                                                        } else if (titleNorm.includes('financeiro') || titleNorm.includes('mensalidade') || titleNorm.includes('pagamento')) {
-                                                            setCurrentView('financeiro');
-                                                        } else if (titleNorm.includes('material') || titleNorm.includes('conteudo') || titleNorm.includes('aula')) {
-                                                            setCurrentView('materials');
-                                                        } else {
-                                                            // Default fallback
-                                                            setCurrentView('tickets');
+                                            notifications.map(n => {
+                                                const formatNotificationMessage = (msg: string) => {
+                                                    if (!msg || !academicSubjects) return msg;
+                                                    let formatted = msg;
+                                                    academicSubjects.forEach(s => {
+                                                        if (s.id && formatted.includes(s.id)) {
+                                                            formatted = formatted.replace(new RegExp(s.id, 'g'), s.name);
                                                         }
+                                                    });
+                                                    return formatted;
+                                                };
+                                                return (
+                                                    <div
+                                                        key={n.id}
+                                                        className={`p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer ${!n.read ? 'bg-blue-50/30' : ''}`}
+                                                        onClick={() => {
+                                                            if (onDeleteNotification) onDeleteNotification(n.id);
 
-                                                        setShowNotifications(false);
-                                                    }}
-                                                >
-                                                    <div className="flex justify-between items-start mb-1">
-                                                        <span className="font-bold text-xs text-gray-800">{n.title}</span>
-                                                        <span className="text-[10px] text-gray-400">{new Date(n.timestamp).toLocaleDateString()}</span>
+                                                            // Normalize strings to ignore accents (e.g. 'ê' -> 'e')
+                                                            const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+                                                            const titleNorm = normalize(n.title);
+                                                            const messageNorm = normalize(n.message);
+
+                                                            // Check for occurrence keywords (accent-insensitive)
+                                                            if (titleNorm.includes('ocorrencia') || titleNorm.includes('advertencia') || messageNorm.includes('ocorrencia')) {
+                                                                console.log("Navigating to occurrences", n); // Debug
+                                                                setCurrentView('occurrences');
+                                                            } else if (titleNorm.includes('boletim') || titleNorm.includes('nota')) {
+                                                                setCurrentView(isEarlyChildhood ? 'early_childhood' : 'grades');
+                                                            } else if (titleNorm.includes('frequencia') || titleNorm.includes('falta')) {
+                                                                setCurrentView('attendance');
+                                                            } else if (titleNorm.includes('financeiro') || titleNorm.includes('mensalidade') || titleNorm.includes('pagamento')) {
+                                                                setCurrentView('financeiro');
+                                                            } else if (titleNorm.includes('material') || titleNorm.includes('conteudo') || titleNorm.includes('aula')) {
+                                                                setCurrentView('materials');
+                                                            } else {
+                                                                // Default fallback
+                                                                setCurrentView('tickets');
+                                                            }
+
+                                                            setShowNotifications(false);
+                                                        }}
+                                                    >
+                                                        <div className="flex justify-between items-start mb-1">
+                                                            <span className="font-bold text-xs text-gray-800">{n.title}</span>
+                                                            <span className="text-[10px] text-gray-400">{new Date(n.timestamp).toLocaleDateString()}</span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-600 line-clamp-2">{formatNotificationMessage(n.message)}</p>
                                                     </div>
-                                                    <p className="text-xs text-gray-600 line-clamp-2">{n.message}</p>
-                                                </div>
-                                            ))
+                                                );
+                                            })
                                         ) : (
                                             <div className="p-4 text-center text-gray-500 text-xs italic">
                                                 Nenhuma notificação.
@@ -908,43 +920,55 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                         </div>
                                                     )}
                                                     {notifications.length > 0 ? (
-                                                        notifications.map(n => (
-                                                            <div
-                                                                key={n.id}
-                                                                className={`p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer ${!n.read ? 'bg-blue-50/30' : ''}`}
-                                                                onClick={() => {
-                                                                    if (onDeleteNotification) onDeleteNotification(n.id);
-
-                                                                    const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                                                                    const titleNorm = normalize(n.title);
-                                                                    const messageNorm = normalize(n.message);
-
-                                                                    if (titleNorm.includes('ocorrencia') || titleNorm.includes('advertencia') || messageNorm.includes('ocorrencia')) {
-                                                                        setCurrentView('occurrences');
-                                                                    } else if (titleNorm.includes('boletim') || titleNorm.includes('nota') || messageNorm.includes('boletim')) {
-                                                                        setCurrentView(isEarlyChildhood ? 'early_childhood' : 'grades');
-                                                                    } else if (titleNorm.includes('frequencia') || titleNorm.includes('falta')) {
-                                                                        setCurrentView('attendance');
-                                                                    } else if (titleNorm.includes('financeiro') || titleNorm.includes('mensalidade') || titleNorm.includes('pagamento')) {
-                                                                        setCurrentView('financeiro');
-                                                                    } else if (titleNorm.includes('material') || titleNorm.includes('conteudo') || titleNorm.includes('aula')) {
-                                                                        setCurrentView('materials');
-                                                                    } else if (titleNorm.includes('coordenacao') || titleNorm.includes('coordenação') || titleNorm.includes('escola')) {
-                                                                        setCurrentView('messages');
-                                                                    } else {
-                                                                        setCurrentView('tickets');
+                                                        notifications.map(n => {
+                                                            const formatNotificationMessage = (msg: string) => {
+                                                                if (!msg || !academicSubjects) return msg;
+                                                                let formatted = msg;
+                                                                academicSubjects.forEach(s => {
+                                                                    if (s.id && formatted.includes(s.id)) {
+                                                                        formatted = formatted.replace(new RegExp(s.id, 'g'), s.name);
                                                                     }
+                                                                });
+                                                                return formatted;
+                                                            };
+                                                            return (
+                                                                <div
+                                                                    key={n.id}
+                                                                    className={`p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer ${!n.read ? 'bg-blue-50/30' : ''}`}
+                                                                    onClick={() => {
+                                                                        if (onDeleteNotification) onDeleteNotification(n.id);
 
-                                                                    setShowNotifications(false);
-                                                                }}
-                                                            >
-                                                                <div className="flex justify-between items-start mb-1">
-                                                                    <span className="font-bold text-xs text-gray-800">{n.title}</span>
-                                                                    <span className="text-[10px] text-gray-400">{new Date(n.timestamp).toLocaleDateString()}</span>
+                                                                        const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                                                                        const titleNorm = normalize(n.title);
+                                                                        const messageNorm = normalize(n.message);
+
+                                                                        if (titleNorm.includes('ocorrencia') || titleNorm.includes('advertencia') || messageNorm.includes('ocorrencia')) {
+                                                                            setCurrentView('occurrences');
+                                                                        } else if (titleNorm.includes('boletim') || titleNorm.includes('nota') || messageNorm.includes('boletim')) {
+                                                                            setCurrentView(isEarlyChildhood ? 'early_childhood' : 'grades');
+                                                                        } else if (titleNorm.includes('frequencia') || titleNorm.includes('falta')) {
+                                                                            setCurrentView('attendance');
+                                                                        } else if (titleNorm.includes('financeiro') || titleNorm.includes('mensalidade') || titleNorm.includes('pagamento')) {
+                                                                            setCurrentView('financeiro');
+                                                                        } else if (titleNorm.includes('material') || titleNorm.includes('conteudo') || titleNorm.includes('aula')) {
+                                                                            setCurrentView('materials');
+                                                                        } else if (titleNorm.includes('coordenacao') || titleNorm.includes('coordenação') || titleNorm.includes('escola')) {
+                                                                            setCurrentView('messages');
+                                                                        } else {
+                                                                            setCurrentView('tickets');
+                                                                        }
+
+                                                                        setShowNotifications(false);
+                                                                    }}
+                                                                >
+                                                                    <div className="flex justify-between items-start mb-1">
+                                                                        <span className="font-bold text-xs text-gray-800">{n.title}</span>
+                                                                        <span className="text-[10px] text-gray-400">{new Date(n.timestamp).toLocaleDateString()}</span>
+                                                                    </div>
+                                                                    <p className="text-xs text-gray-600 line-clamp-2">{formatNotificationMessage(n.message)}</p>
                                                                 </div>
-                                                                <p className="text-xs text-gray-600 line-clamp-2">{n.message}</p>
-                                                            </div>
-                                                        ))
+                                                            );
+                                                        })
                                                     ) : (
                                                         <div className="p-4 text-center text-gray-500 text-xs italic">
                                                             Nenhuma notificação.
