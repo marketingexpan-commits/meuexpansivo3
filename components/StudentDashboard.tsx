@@ -1959,13 +1959,23 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 );
                                                             })}
                                                             <td className="px-1 py-2 text-center font-bold text-gray-700 border-r border-gray-300 bg-gray-50 text-sm">
-                                                                {grade.mediaAnual >= 0 ? formatGrade(grade.mediaAnual) : '-'}
+                                                                {(() => {
+                                                                    const hasPending = Object.values(grade.bimesters).some((b: any) =>
+                                                                        b.isNotaApproved === false || b.isRecuperacaoApproved === false
+                                                                    );
+                                                                    return (!hasPending && grade.mediaAnual >= 0) ? formatGrade(grade.mediaAnual) : '-';
+                                                                })()}
                                                             </td>
                                                             <td className={`px-1 py-1 text-center font-bold text-amber-600 text-[10px] md:text-xs border-r border-gray-300 ${grade.recuperacaoFinalApproved === false ? 'bg-yellow-100' : 'bg-amber-50/30'}`}>
                                                                 {grade.recuperacaoFinalApproved !== false ? formatGrade(grade.recuperacaoFinal) : <span className="text-gray-300">-</span>}
                                                             </td>
                                                             <td className="px-1 py-1 text-center font-extrabold text-blue-900 bg-blue-50/50 text-xs md:text-sm border-r border-gray-300">
-                                                                {grade.mediaFinal >= 0 ? formatGrade(grade.mediaFinal) : '-'}
+                                                                {(() => {
+                                                                    const hasPending = Object.values(grade.bimesters).some((b: any) =>
+                                                                        b.isNotaApproved === false || b.isRecuperacaoApproved === false
+                                                                    ) || grade.recuperacaoFinalApproved === false;
+                                                                    return (!hasPending && grade.mediaFinal !== null && grade.mediaFinal >= 0) ? formatGrade(grade.mediaFinal) : '-';
+                                                                })()}
                                                             </td>
                                                             {(() => {
                                                                 const totalAbsences = [1, 2, 3, 4].reduce((sum, bNum) => {
