@@ -15,10 +15,13 @@ import {
 } from 'lucide-react';
 import {
     SchoolUnit,
+    SchoolShift,
     Student,
     Mensalidade,
     UnitContact,
-    ContactRole
+    ContactRole,
+    UNIT_LABELS,
+    SHIFT_LABELS
 } from '../../types';
 import { SCHOOL_UNITS_LIST } from '../../constants';
 import { Button } from '../Button';
@@ -214,10 +217,10 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
                                 onChange={e => setContactUnit(e.target.value as SchoolUnit)}
                                 className="w-full p-2.5 border rounded-lg bg-gray-50"
                             >
-                                {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}
+                                {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{UNIT_LABELS[u as SchoolUnit] || u}</option>)}
                             </select>
                         ) : (
-                            <div className="p-2.5 bg-gray-100 rounded-lg text-gray-600 font-medium border border-gray-200">{adminUnit}</div>
+                            <div className="p-2.5 bg-gray-100 rounded-lg text-gray-600 font-medium border border-gray-200">{UNIT_LABELS[adminUnit as SchoolUnit] || adminUnit}</div>
                         )}
                     </div>
                     <div>
@@ -276,11 +279,11 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
                                         className="w-full p-2.5 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-blue-950 transition-all font-medium"
                                     >
                                         <option value="">Selecione...</option>
-                                        {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}
+                                        {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{UNIT_LABELS[u as SchoolUnit] || u}</option>)}
                                     </select>
                                 ) : (
                                     <div className="w-full p-2.5 border border-gray-200 rounded-lg bg-gray-100 text-gray-700 font-bold">
-                                        {adminUnit}
+                                        {UNIT_LABELS[adminUnit as SchoolUnit] || adminUnit}
                                     </div>
                                 )}
                             </div>
@@ -319,7 +322,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
                                         return {
                                             Data: rec.paymentDate ? new Date(rec.paymentDate).toLocaleDateString() : 'Pendente',
                                             Aluno: s?.name || 'Desconhecido',
-                                            Unidade: s?.unit,
+                                            Unidade: UNIT_LABELS[s?.unit as SchoolUnit] || s?.unit,
                                             Referencia: rec.month,
                                             Valor: rec.value,
                                             Status: rec.status,
@@ -451,7 +454,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
                                                 {delinquentStudents.map((st, idx) => (
                                                     <tr key={idx} className="hover:bg-orange-50/30">
                                                         <td className="px-6 py-3 text-sm font-bold text-gray-800">{st.studentName}</td>
-                                                        <td className="px-6 py-3 text-sm text-gray-600">{st.studentClass} ({st.studentShift})</td>
+                                                        <td className="px-6 py-3 text-sm text-gray-600">{st.studentClass} ({SHIFT_LABELS[st.studentShift as SchoolShift] || st.studentShift})</td>
                                                         <td className="px-6 py-3 text-right">
                                                             <div className="flex flex-col items-end">
                                                                 <span className="text-sm font-bold text-orange-600">R$ {st.value.toFixed(2)}</span>
@@ -550,7 +553,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
                                                 </td>
                                                 <td className="px-6 py-4 text-sm">
                                                     <span className="bg-blue-50 text-blue-800 text-xs px-2 py-1 rounded font-medium">
-                                                        {s?.unit || '-'}
+                                                        {UNIT_LABELS[s?.unit as SchoolUnit] || s?.unit || '-'}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 text-sm text-gray-600">
@@ -655,7 +658,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({
                                             <span className="text-4xl">👨‍🎓</span>
                                         </div>
                                         <h2 className="text-xl font-bold text-gray-800 mb-1">{currentStudent.studentName}</h2>
-                                        <p className="text-sm text-gray-500 mb-4">{currentStudent.studentClass} ({currentStudent.studentShift})</p>
+                                        <p className="text-sm text-gray-500 mb-4">{currentStudent.studentClass} ({SHIFT_LABELS[currentStudent.studentShift as SchoolShift] || currentStudent.studentShift})</p>
                                         <div className="bg-red-50 border border-red-100 p-4 rounded-xl w-full mb-6 relative overflow-hidden">
                                             <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded-bl">Atrasado</div>
                                             <p className="text-xs font-bold text-red-400 uppercase tracking-widest mb-1">Valor Atualizado</p>

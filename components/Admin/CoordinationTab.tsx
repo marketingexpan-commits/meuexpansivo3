@@ -5,7 +5,8 @@ import {
     GradeEntry,
     Student,
     SchoolClass,
-    UnitContact
+    UnitContact,
+    UNIT_LABELS
 } from '../../types';
 import {
     Check,
@@ -115,7 +116,7 @@ export const CoordinationTab: React.FC<CoordinationTabProps> = ({
                             className={`w-full p-2 border rounded-lg text-sm ${!isGeneralAdmin ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
                             disabled={!isGeneralAdmin}
                         >
-                            {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}
+                            {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{UNIT_LABELS[u as SchoolUnit] || u}</option>)}
                         </select>
                     </div>
                     <div>

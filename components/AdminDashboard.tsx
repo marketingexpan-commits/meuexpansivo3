@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useMemo } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
 import * as XLSX from 'xlsx';
-import { Admin, Student, Teacher, SchoolUnit, Subject, SchoolShift, SchoolClass, SchoolMessage, MessageType, MessageRecipient, AttendanceRecord, AttendanceStatus, UnitContact, ContactRole, GradeEntry, Mensalidade, Ticket, TicketStatus } from '../types';
+import { Admin, Student, Teacher, SchoolUnit, Subject, SchoolShift, SchoolClass, SchoolMessage, MessageType, MessageRecipient, AttendanceRecord, AttendanceStatus, UnitContact, ContactRole, GradeEntry, Mensalidade, Ticket, TicketStatus, UNIT_LABELS, SHIFT_LABELS } from '../types';
 import { SCHOOL_UNITS_LIST, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST, SCHOOL_LOGO_URL } from '../constants';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
@@ -1494,7 +1494,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                         {activeTab === 'messages' && (<div className="animate-fade-in-up"><div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-4 border-b border-gray-200"><h2 className="text-2xl font-bold text-gray-900 mb-3 sm:mb-0">Central de Mensagens</h2><div className="flex items-center gap-2 p-1 bg-gray-100 rounded-lg border border-gray-200"><button onClick={() => setMessageFilter('new')} className={`px-3 py-1 text-sm rounded-md font-bold transition-all ${messageFilter === 'new' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Não Lidas</button><button onClick={() => setMessageFilter('all')} className={`px-3 py-1 text-sm rounded-md font-bold transition-all ${messageFilter === 'all' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>Todas</button></div></div>{filteredMessages.length > 0 ? (<div className="space-y-4">{filteredMessages.map(message => {
                             const sender = students.find(s => s.id === message.studentId);
-                            const typeStyles = { [MessageType.COMPLIMENT]: { bg: 'bg-orange-600/10', border: 'border-orange-600/20', text: 'text-orange-600' }, [MessageType.SUGGESTION]: { bg: 'bg-blue-950/10', border: 'border-blue-950/20', text: 'text-blue-950' }, [MessageType.COMPLAINT]: { bg: 'bg-orange-600/10', border: 'border-orange-600/20', text: 'text-orange-600' }, }; const style = typeStyles[message.messageType]; return (<div key={message.id} className={`p-5 rounded-lg shadow-sm border ${message.status === 'new' ? 'bg-white border-l-4 border-l-blue-950' : 'bg-gray-50 border-gray-200'}`}><div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 pb-3 border-b"><div><p className="font-bold text-gray-800">{message.studentName}</p><p className="text-xs text-gray-500">Unidade: <span className="font-semibold">{message.unit}</span></p> {sender && (<p className="text-xs text-gray-600 font-medium mt-0.5">{sender.gradeLevel} - {sender.schoolClass} ({sender.shift})</p>)}</div><p className="text-xs text-gray-400 mt-2 sm:mt-0">{formatDate(message.timestamp)}</p></div><div className="flex gap-4 mb-4"><span className={`px-2 py-1 text-xs font-bold rounded ${style.bg} ${style.border} ${style.text}`}>{message.messageType}</span><span className="text-xs text-gray-500 font-medium self-center">Para: <span className="font-bold text-gray-700">{message.recipient}</span></span></div><p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p><div className="mt-4 pt-3 border-t flex justify-end"><button onClick={() => onUpdateMessageStatus(message.id, message.status === 'new' ? 'read' : 'new')} className={`text-xs font-bold py-1 px-3 rounded-full transition-colors ${message.status === 'new' ? 'bg-blue-950/10 text-blue-950 hover:bg-blue-950/20' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>{message.status === 'new' ? 'Marcar como Lida' : 'Marcar como Não Lida'}</button></div></div>);
+                            const typeStyles = { [MessageType.COMPLIMENT]: { bg: 'bg-orange-600/10', border: 'border-orange-600/20', text: 'text-orange-600' }, [MessageType.SUGGESTION]: { bg: 'bg-blue-950/10', border: 'border-blue-950/20', text: 'text-blue-950' }, [MessageType.COMPLAINT]: { bg: 'bg-orange-600/10', border: 'border-orange-600/20', text: 'text-orange-600' }, }; const style = typeStyles[message.messageType]; return (<div key={message.id} className={`p-5 rounded-lg shadow-sm border ${message.status === 'new' ? 'bg-white border-l-4 border-l-blue-950' : 'bg-gray-50 border-gray-200'}`}><div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 pb-3 border-b"><div><p className="font-bold text-gray-800">{message.studentName}</p><p className="text-xs text-gray-500">Unidade: <span className="font-semibold">{UNIT_LABELS[message.unit as SchoolUnit] || message.unit}</span></p> {sender && (<p className="text-xs text-gray-600 font-medium mt-0.5">{sender.gradeLevel} - {sender.schoolClass} ({SHIFT_LABELS[sender.shift as SchoolShift] || sender.shift})</p>)}</div><p className="text-xs text-gray-400 mt-2 sm:mt-0">{formatDate(message.timestamp)}</p></div><div className="flex gap-4 mb-4"><span className={`px-2 py-1 text-xs font-bold rounded ${style.bg} ${style.border} ${style.text}`}>{message.messageType}</span><span className="text-xs text-gray-500 font-medium self-center">Para: <span className="font-bold text-gray-700">{message.recipient}</span></span></div><p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p><div className="mt-4 pt-3 border-t flex justify-end"><button onClick={() => onUpdateMessageStatus(message.id, message.status === 'new' ? 'read' : 'new')} className={`text-xs font-bold py-1 px-3 rounded-full transition-colors ${message.status === 'new' ? 'bg-blue-950/10 text-blue-950 hover:bg-blue-950/20' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>{message.status === 'new' ? 'Marcar como Lida' : 'Marcar como Não Lida'}</button></div></div>);
                         })}</div>) : (<div className="text-center py-16"><p className="text-gray-500">Nenhuma mensagem {messageFilter === 'new' ? 'não lida' : ''} encontrada.</p></div>)}</div>)}
 
                         {activeTab === 'attendance' && (
@@ -1507,7 +1507,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 <label className="text-sm font-medium text-gray-700">Unidade</label>
                                                 <select value={attendanceFilterUnit} onChange={e => setAttendanceFilterUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded mt-1">
                                                     <option value="">Todas</option>
-                                                    {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}
+                                                    {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{UNIT_LABELS[u as SchoolUnit] || u}</option>)}
                                                 </select>
                                             </div>
                                         )}
@@ -1551,7 +1551,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                         <div>
                                                             <p className="font-bold text-blue-950">{record.gradeLevel} - Turma {record.schoolClass}</p>
                                                             <p className="text-sm text-gray-800 font-semibold my-0.5">Prof. {record.teacherName}</p>
-                                                            <p className="text-xs text-gray-500">{record.unit} | Data: {formatDate(record.date, false)}</p>
+                                                            <p className="text-xs text-gray-500">{UNIT_LABELS[record.unit as SchoolUnit] || record.unit} | Data: {formatDate(record.date, false)}</p>
                                                         </div>
                                                         <div className="flex items-center gap-4 mt-2 md:mt-0 text-sm">
                                                             <span className="font-bold text-blue-950">{presents} Presentes</span>
@@ -1568,7 +1568,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                                         <li key={studentId} className="flex justify-between items-center py-2 px-1">
                                                                             <div>
                                                                                 <span className="text-sm text-gray-800 font-medium">{student ? student.name : 'Aluno Removido'}</span>
-                                                                                {student && <span className="text-xs text-gray-400 ml-2">({student.shift})</span>}
+                                                                                {student && <span className="text-xs text-gray-400 ml-2">({SHIFT_LABELS[student.shift as SchoolShift] || student.shift})</span>}
                                                                             </div>
                                                                             <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${status === AttendanceStatus.PRESENT ? 'bg-blue-100 text-blue-950' : 'bg-red-100 text-red-800'}`}>{status}</span>
                                                                         </li>
@@ -1664,8 +1664,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 <div>
                                                     <label className="text-sm font-medium">Unidade</label>
                                                     {isGeneralAdmin ? (
-                                                        <select value={contactUnit} onChange={e => setContactUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select>
-                                                    ) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}
+                                                        <select value={contactUnit} onChange={e => setContactUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{UNIT_LABELS[u as SchoolUnit] || u}</option>)}</select>
+                                                    ) : <div className="p-2 bg-gray-100 rounded text-gray-600">{UNIT_LABELS[adminUnit as SchoolUnit] || adminUnit}</div>}
                                                 </div>
 
                                                 {/* NOVO: Seletor de Segmento (Apenas relevante para Coordenação) */}
@@ -1712,7 +1712,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                             <tr key={c.id} className="border-b last:border-0 hover:bg-gray-50">
                                                                 <td className="p-3 font-medium">{c.name}</td>
                                                                 <td className="p-3 font-mono text-gray-600">{c.phoneNumber}</td>
-                                                                <td className="p-3"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{c.unit}</span></td>
+                                                                <td className="p-3"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{UNIT_LABELS[c.unit as SchoolUnit] || c.unit}</span></td>
                                                                 <td className="p-3 text-right flex justify-end gap-2">
                                                                     <button onClick={() => startEditingContact(c)} className="text-slate-800 hover:text-black hover:underline text-xs font-bold px-2 py-1">Editar</button>
                                                                     <button onClick={() => onDeleteUnitContact && onDeleteUnitContact(c.id)} className="text-red-600 hover:text-red-800 text-xs font-bold bg-red-50 px-2 py-1 rounded border border-red-100">Remover</button>
@@ -1749,7 +1749,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                                     )}
                                                                 </td>
                                                                 <td className="p-3 font-mono text-gray-600">{c.phoneNumber}</td>
-                                                                <td className="p-3"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{c.unit}</span></td>
+                                                                <td className="p-3"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{UNIT_LABELS[c.unit as SchoolUnit] || c.unit}</span></td>
                                                                 <td className="p-3 text-right flex justify-end gap-2">
                                                                     <button onClick={() => startEditingContact(c)} className="text-slate-800 hover:text-black hover:underline text-xs font-bold px-2 py-1">Editar</button>
                                                                     <button onClick={() => onDeleteUnitContact && onDeleteUnitContact(c.id)} className="text-red-600 hover:text-red-800 text-xs font-bold bg-red-50 px-2 py-1 rounded border border-red-100">Remover</button>
@@ -1812,9 +1812,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 <label className="text-sm font-medium">Unidade</label>
                                                 {isGeneralAdmin ? (
                                                     <select value={tUnit} onChange={e => setTUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">
-                                                        {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}
+                                                        {SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{UNIT_LABELS[u as SchoolUnit] || u}</option>)}
                                                     </select>
-                                                ) : <div className="p-2 bg-gray-100 rounded text-gray-600">{adminUnit}</div>}
+                                                ) : <div className="p-2 bg-gray-100 rounded text-gray-600">{UNIT_LABELS[adminUnit as SchoolUnit] || adminUnit}</div>}
                                             </div>
                                             <div>
                                                 <label className="text-sm font-medium">Senha</label>
@@ -1842,7 +1842,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                     >
                                                         <option value="all">Todas as Unidades</option>
                                                         {SCHOOL_UNITS_LIST.map(unit => (
-                                                            <option key={unit} value={unit}>{unit}</option>
+                                                            <option key={unit} value={unit}>{UNIT_LABELS[unit as SchoolUnit] || unit}</option>
                                                         ))}
                                                     </select>
                                                 )}
@@ -1879,7 +1879,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                                     ))}
                                                                 </div>
                                                             </td>
-                                                            <td className="p-3"><span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">{t.unit}</span></td>
+                                                            <td className="p-3"><span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">{UNIT_LABELS[t.unit as SchoolUnit] || t.unit}</span></td>
                                                             <td className="p-3 flex gap-2">
                                                                 {/* EDITAR */}
                                                                 <div className="relative group">
@@ -1913,7 +1913,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             </div>
                         )}
 
-                        {activeTab === 'admins' && isGeneralAdmin && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-1"><div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"><h2 className="text-lg font-bold text-gray-900 mb-4">{editingAdminId ? 'Editar Admin' : 'Novo Admin de Unidade'}</h2><form onSubmit={handleAdminSubmit} className="space-y-4"><div><label className="text-sm font-medium">Nome (Descrição)</label><input type="text" value={aName} onChange={e => setAName(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Usuário de Login</label><input type="text" value={aUser} onChange={e => setAUser(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Unidade Responsável</label><select value={aUnit} onChange={e => setAUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{u}</option>)}</select></div><div><label className="text-sm font-medium">Senha</label><div className="flex gap-2 relative"><input type={showAdminPassword ? "text" : "password"} value={aPass} onChange={e => setAPass(e.target.value)} required={!editingAdminId} className="w-full p-2 border rounded" /><button type="button" onClick={() => setShowAdminPassword(!showAdminPassword)} className="absolute right-16 top-2 text-gray-500">{showAdminPassword ? <EyeOffIcon /> : <EyeIcon />}</button><button type="button" onClick={handleGenerateAdminPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button></div></div><Button type="submit" className="w-full bg-gray-900 hover:bg-black">Salvar Admin</Button></form></div></div><div className="lg:col-span-2"><div className="bg-white rounded-xl shadow-sm border border-gray-200"><div className="p-4 bg-gray-50 border-b border-gray-100"><h3 className="font-bold text-gray-900">Administradores Cadastrados</h3></div><div className="overflow-x-auto"><table className="w-full min-w-[600px] text-sm text-left"><thead className="bg-gray-50"><tr><th className="p-3">Nome</th><th className="p-3">Usuário</th><th className="p-3">Unidade</th><th className="p-3">Ações</th></tr></thead><tbody>{filteredAdmins.map(a => (<tr key={a.id} className="border-b"><td className="p-3 font-medium">{a.name}</td><td className="p-3 font-mono text-gray-600">{a.username}</td><td className="p-3"><span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded border border-gray-200">{a.unit}</span></td><td className="p-3 flex gap-2"><button onClick={() => startEditingAdmin(a)} className="text-slate-800 hover:text-black hover:underline">Editar</button><button onClick={() => initiateDeleteAdmin(a.id)} className="text-red-600 hover:underline">Excluir</button></td></tr>))}</tbody></table></div></div></div></div>)}
+                        {activeTab === 'admins' && isGeneralAdmin && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-1"><div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"><h2 className="text-lg font-bold text-gray-900 mb-4">{editingAdminId ? 'Editar Admin' : 'Novo Admin de Unidade'}</h2><form onSubmit={handleAdminSubmit} className="space-y-4"><div><label className="text-sm font-medium">Nome (Descrição)</label><input type="text" value={aName} onChange={e => setAName(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Usuário de Login</label><input type="text" value={aUser} onChange={e => setAUser(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Unidade Responsável</label><select value={aUnit} onChange={e => setAUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{UNIT_LABELS[u as SchoolUnit] || u}</option>)}</select></div><div><label className="text-sm font-medium">Senha</label><div className="flex gap-2 relative"><input type={showAdminPassword ? "text" : "password"} value={aPass} onChange={e => setAPass(e.target.value)} required={!editingAdminId} className="w-full p-2 border rounded" /><button type="button" onClick={() => setShowAdminPassword(!showAdminPassword)} className="absolute right-16 top-2 text-gray-500">{showAdminPassword ? <EyeOffIcon /> : <EyeIcon />}</button><button type="button" onClick={handleGenerateAdminPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button></div></div><Button type="submit" className="w-full bg-gray-900 hover:bg-black">Salvar Admin</Button></form></div></div><div className="lg:col-span-2"><div className="bg-white rounded-xl shadow-sm border border-gray-200"><div className="p-4 bg-gray-50 border-b border-gray-100"><h3 className="font-bold text-gray-900">Administradores Cadastrados</h3></div><div className="overflow-x-auto"><table className="w-full min-w-[600px] text-sm text-left"><thead className="bg-gray-50"><tr><th className="p-3">Nome</th><th className="p-3">Usuário</th><th className="p-3">Unidade</th><th className="p-3">Ações</th></tr></thead><tbody>{filteredAdmins.map(a => (<tr key={a.id} className="border-b"><td className="p-3 font-medium">{a.name}</td><td className="p-3 font-mono text-gray-600">{a.username}</td><td className="p-3"><span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded border border-gray-200">{UNIT_LABELS[a.unit as SchoolUnit] || a.unit}</span></td><td className="p-3 flex gap-2"><button onClick={() => startEditingAdmin(a)} className="text-slate-800 hover:text-black hover:underline">Editar</button><button onClick={() => initiateDeleteAdmin(a.id)} className="text-red-600 hover:underline">Excluir</button></td></tr>))}</tbody></table></div></div></div></div>)}
                         {
                             activeTab === 'rematricula' && (
                                 <Rematricula
@@ -1962,7 +1962,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             >
                                                 <option value="all">Todas as Unidades</option>
                                                 {SCHOOL_UNITS_LIST.map(unit => (
-                                                    <option key={unit} value={unit}>{unit}</option>
+                                                    <option key={unit} value={unit}>{UNIT_LABELS[unit as SchoolUnit] || unit}</option>
                                                 ))}
                                             </select>
                                         </div>
@@ -2004,7 +2004,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                                     </td>
                                                                     <td className="px-6 py-4">
                                                                         <div className="font-bold text-gray-800">{ticket.studentName}</div>
-                                                                        <div className="text-xs text-gray-500">{ticket.gradeLevel} - {ticket.schoolClass} ({ticket.unit})</div>
+                                                                        <div className="text-xs text-gray-500">{ticket.gradeLevel} - {ticket.schoolClass} ({UNIT_LABELS[ticket.unit as SchoolUnit] || ticket.unit})</div>
                                                                     </td>
                                                                     <td className="px-6 py-4">
                                                                         <span className="px-2 py-1 rounded bg-blue-950/10 text-blue-950 text-xs font-bold border border-blue-950/20">{ticket.subject}</span>
@@ -2113,7 +2113,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         >
                                             <option value="all">Todas as Unidades (Global)</option>
                                             {SCHOOL_UNITS_LIST.map(u => (
-                                                <option key={u} value={u}>{u}</option>
+                                                <option key={u} value={u}>{UNIT_LABELS[u as SchoolUnit] || u}</option>
                                             ))}
                                         </select>
                                         <div className="bg-slate-100 px-4 py-3 rounded-lg border border-slate-200 flex items-center gap-3">
@@ -2121,7 +2121,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             <p className="text-xs font-medium text-slate-700">
                                                 {maintenanceUnit === 'all'
                                                     ? "Impacto: Todos os dados do sistema serão afetados."
-                                                    : `Impacto: Apenas dados da unidade ${maintenanceUnit} serão afetados.`
+                                                    : `Impacto: Apenas dados da unidade ${UNIT_LABELS[maintenanceUnit as SchoolUnit] || maintenanceUnit} serão afetados.`
                                                 }
                                             </p>
                                         </div>
@@ -2329,7 +2329,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         <Button variant="danger" onClick={async () => {
                                             const confirmMsg = maintenanceUnit === 'all'
                                                 ? "VOCÊ É O ADMINISTRADOR GERAL.\n\nEsta ação apagará TODAS as notas, faltas e relatórios de TODAS as unidades para iniciar um novo ano.\n\nTem certeza absoluta?"
-                                                : `ATENÇÃO: Você selecionou a unidade: ${maintenanceUnit}.\n\nEsta ação apagará apenas notas, faltas e relatórios desta unidade.\n\nTem certeza?`;
+                                                : `ATENÇÃO: Você selecionou a unidade: ${UNIT_LABELS[maintenanceUnit as SchoolUnit] || maintenanceUnit}.\n\nEsta ação apagará apenas notas, faltas e relatórios desta unidade.\n\nTem certeza?`;
 
                                             if (!window.confirm(confirmMsg)) return;
                                             if (!window.confirm("CONFIRMAÇÃO FINAL: Você já baixou o backup dos dados atuais? Se não, cancele agora.")) return;

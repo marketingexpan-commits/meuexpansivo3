@@ -1633,7 +1633,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             </div>
                                             <div>
                                                 <h2 className="text-2xl font-extrabold text-blue-950 uppercase tracking-wide print:text-lg">EXPANSIVO REDE DE ENSINO</h2>
-                                                <h3 className="text-lg font-bold text-gray-700 uppercase print:text-sm">UNIDADE: {student.unit}</h3>
+                                                <h3 className="text-lg font-bold text-gray-700 uppercase print:text-sm">UNIDADE: {getUnitLabel(student.unit)}</h3>
 
                                                 <div className="mt-2 text-xs text-gray-500 space-y-0.5 font-medium print:mt-1 print:text-[10px]">
                                                     <p>{currentUnitInfo.address} - CEP: {currentUnitInfo.cep}</p>
