@@ -813,7 +813,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     id: `notif-${Date.now()}`,
                     studentId: ticket.studentId,
                     title: 'Dúvida Respondida',
-                    message: `O professor ${teacher.name} respondeu sua dúvida em ${ticket.subject}.`,
+                    message: `O professor ${teacher.name} respondeu sua dúvida em ${getSubjectLabel(ticket.subject, academicSubjects)}.`,
                     timestamp: timestamp,
                     read: false
                 };
