@@ -13,16 +13,8 @@ export default function GradeHoraria() {
         const userUnit = localStorage.getItem('userUnit');
         setIsAdminGeral(userUnit === 'admin_geral');
 
-        // Mapping unit codes to SchoolUnit enum if necessary
-        const unitMapping: Record<string, SchoolUnit> = {
-            'unit_zn': SchoolUnit.UNIT_ZN, // Zona Norte
-            'unit_ext': SchoolUnit.UNIT_EXT, // Extremoz
-            'unit_qui': SchoolUnit.UNIT_QUI, // Quintas
-            'unit_bs': SchoolUnit.UNIT_BS  // Boa Sorte
-        };
-
-        if (userUnit && unitMapping[userUnit]) {
-            setUnit(unitMapping[userUnit]);
+        if (userUnit && Object.values(SchoolUnit).includes(userUnit as SchoolUnit)) {
+            setUnit(userUnit as SchoolUnit);
         } else if (userUnit === 'admin_geral') {
             // If admin_geral, we can default to Boa Sorte and allow selection
             setUnit(SchoolUnit.UNIT_BS);
@@ -49,7 +41,7 @@ export default function GradeHoraria() {
                         Grade Horária
                     </h1>
                     <p className="text-slate-500 mt-2 font-medium">
-                        Gerenciamento de horários e disciplinas para {isAdminGeral ? 'Administração Geral' : (localStorage.getItem('userUnitLabel') || 'Unidade')}.
+                        Gerenciamento de horários e disciplinas para {isAdminGeral ? 'Administração Geral' : (UNIT_LABELS[unit as SchoolUnit] || 'Unidade')}.
                     </p>
                 </div>
 

@@ -53,35 +53,15 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
             const allStudents = await studentService.getStudents();
             let results: Student[] = [];
 
-            // Filter by logged user unit using correct mapping
-            const userUnitCode = localStorage.getItem('userUnit') || 'Zona Norte';
-
-
-            // Support both Legacy and New IDs for transition safety
-            // If user has 'unit_bs' and student has 'unit_bs' -> Match
-            // If user has 'Boa Sorte' and student has 'unit_bs' -> We need a map for that, 
-            // BUT the original code was mapping 'unit_bs' -> 'Boa Sorte' which broke the check against 'unit_bs'.
-
-            // We'll trust that after migration, students have technical IDs.
-            // If the user's localstorage has technical ID, direct comparison works.
-            // If user has legacy in localstorage, we might need to map Legacy -> Tech.
-
-            const legacyToTechCtx: Record<string, string> = {
-                'Boa Sorte': 'unit_bs',
-                'Zona Norte': 'unit_zn',
-                'Extremoz': 'unit_ext',
-                'Quintas': 'unit_qui'
-            };
-
-            // Normalize user unit to Technical ID if possible
-            const normalizedUserUnit = legacyToTechCtx[userUnitCode] || userUnitCode;
+            // Filter by logged user unit
+            const userUnit = localStorage.getItem('userUnit');
 
             if (searchType === 'INDIVIDUAL') {
                 if (!code.trim()) { setError('Digite o código de matrícula'); setIsLoading(false); return; }
                 const s = allStudents.find(stu => stu.code?.trim() === code.trim());
 
                 if (s) {
-                    if (userUnitCode !== 'admin_geral' && s.unit !== normalizedUserUnit) {
+                    if (userUnit !== 'admin_geral' && s.unit !== userUnit) {
                         setError('Aluno pertence a outra unidade.');
                     } else {
                         results = [s];
@@ -94,7 +74,7 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
                 if (!gradeLevel || !shift || !schoolClass) { setError('Selecione Série, Turno e Turma.'); setIsLoading(false); return; }
 
                 results = allStudents.filter(s => {
-                    const isUnitMatch = (userUnitCode === 'admin_geral' || s.unit === normalizedUserUnit);
+                    const isUnitMatch = (userUnit === 'admin_geral' || s.unit === userUnit);
                     if (!isUnitMatch) return false;
 
                     // Grade match logic: Check if DB value INCLUDES the selected value (e.g. "3ª Série - Ens. Médio" includes "3ª Série")

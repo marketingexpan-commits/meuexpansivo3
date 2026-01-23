@@ -5,10 +5,9 @@ import { UNIT_DETAILS } from './academicDefaults';
 export const generateSchoolCalendar = (
     events: CalendarEvent[],
     settings: AcademicSettings | null,
-    unitName: string
+    unitId: string
 ) => {
-    const rawUnitKey = unitName === 'all' ? 'Zona Norte' : unitName; // Fallback for header if 'all'
-    const unitInfo = UNIT_DETAILS[rawUnitKey] || UNIT_DETAILS['Zona Norte'];
+    const unitInfo = UNIT_DETAILS[unitId] || UNIT_DETAILS['unit_zn'];
     const logoUrl = 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png';
     const currentYear = settings?.year || new Date().getFullYear();
 
@@ -109,7 +108,7 @@ export const generateSchoolCalendar = (
     const html = `
         <html>
         <head>
-            <title>Calendário Escolar ${currentYear} - ${unitName}</title>
+            <title>Calendário Escolar ${currentYear} - ${unitId}</title>
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
                 @page { size: A4 portrait; margin: 1cm; }
@@ -278,7 +277,7 @@ export const generateSchoolCalendar = (
 
                 <div class="title-section">
                     <h2>CALENDÁRIO ESCOLAR ${currentYear}</h2>
-                    <p>${unitName === 'all' ? 'Cronograma Geral da Rede' : `Unidade ${unitName}`}</p>
+                    <p>${unitId === 'all' ? 'Cronograma Geral da Rede' : `Unidade: ${unitInfo.name.replace('Expansivo - ', '')}`}</p>
                 </div>
 
                 <div class="section-header">

@@ -21,22 +21,13 @@ export function Coordenadores() {
     const userUnit = localStorage.getItem('userUnit');
     const isAdminGeral = userUnit === 'admin_geral';
 
-    const unitMapping: Record<string, string> = {
-        'unit_zn': 'Zona Norte',
-        'unit_ext': 'Extremoz',
-        'unit_qui': 'Quintas',
-        'unit_bs': 'Boa Sorte'
-    };
-
-    const mappedUnit = (userUnit && !isAdminGeral) ? unitMapping[userUnit] : userUnit;
-
     // Filters
-    const [filterUnit, setFilterUnit] = useState(isAdminGeral ? '' : mappedUnit || '');
+    const [filterUnit, setFilterUnit] = useState(isAdminGeral ? '' : userUnit || '');
 
     const loadCoordinators = async () => {
         try {
             setIsLoading(true);
-            const data = await coordinatorService.getCoordinators(isAdminGeral ? null : mappedUnit);
+            const data = await coordinatorService.getCoordinators(isAdminGeral ? null : userUnit);
             setCoordinators(data);
         } catch (error) {
             console.error(error);
@@ -124,7 +115,7 @@ export function Coordenadores() {
                             options={isAdminGeral ? [
                                 { label: 'Todas as Unidades', value: '' },
                                 ...units.map(u => ({ label: u.fullName, value: u.id }))
-                            ] : units.filter(u => u.id === mappedUnit || u.fullName === mappedUnit).map(u => ({ label: u.fullName, value: u.id }))}
+                            ] : units.filter(u => u.id === userUnit).map(u => ({ label: u.fullName, value: u.id }))}
                             className="h-10 border-slate-200"
                             disabled={!isAdminGeral}
                             startIcon={<GraduationCap className="w-4 h-4 text-slate-400" />}

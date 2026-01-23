@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { db } from '../firebaseConfig';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import type { SchoolUnitDetail } from '../types';
-import { SchoolUnit, UNIT_LABELS } from '../types';
 
 export function useSchoolUnits() {
     const [units, setUnits] = useState<SchoolUnitDetail[]>([]);
@@ -24,15 +23,7 @@ export function useSchoolUnits() {
     }, []);
 
     const getUnitById = (id: string) => {
-        const found = units.find(u => u.id === id);
-        if (found) return found;
-
-        // Resilience: if provided 'unit_bs', try to find 'Boa Sorte' doc
-        const legacyLabel = UNIT_LABELS[id as SchoolUnit];
-        if (legacyLabel) {
-            return units.find(u => u.id === legacyLabel);
-        }
-        return undefined;
+        return units.find(u => u.id === id);
     };
 
     return { units, loading, getUnitById };
@@ -40,17 +31,8 @@ export function useSchoolUnits() {
 
 export async function fetchUnitDetail(unitId: string): Promise<SchoolUnitDetail | null> {
     try {
-        let docRef = doc(db, 'school_units', unitId);
-        let docSnap = await getDoc(docRef);
-
-        if (!docSnap.exists()) {
-            // Try legacy label mapping
-            const legacyLabel = UNIT_LABELS[unitId as SchoolUnit];
-            if (legacyLabel) {
-                docRef = doc(db, 'school_units', legacyLabel);
-                docSnap = await getDoc(docRef);
-            }
-        }
+        const docRef = doc(db, 'school_units', unitId);
+        const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
             return { id: docSnap.id, ...docSnap.data() } as SchoolUnitDetail;
