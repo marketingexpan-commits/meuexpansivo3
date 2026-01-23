@@ -21,6 +21,7 @@ import {
     Building2,
     UserCheck,
     Smartphone,
+    Globe, // Import Globe for year selector
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -29,6 +30,7 @@ import { DeclarationSearchModal } from '../components/DeclarationSearchModal';
 import { HistorySearchModal } from '../components/HistorySearchModal';
 import { BulletinSearchModal } from '../components/BulletinSearchModal'; // Import new modal
 import { CalendarManagement } from '../components/CalendarManagement';
+import { getCurrentSchoolYear } from '../utils/academicUtils';
 
 interface SidebarItemProps {
     icon: React.ElementType;
@@ -81,6 +83,14 @@ export function Sidebar() {
     const [isArquivosOpen, setIsArquivosOpen] = useState(true);
     const [isFinanceiroOpen, setIsFinanceiroOpen] = useState(true);
     const [isConfigOpen, setIsConfigOpen] = useState(true);
+    const [academicYear, setAcademicYear] = useState(getCurrentSchoolYear().toString());
+
+    const handleYearChange = (year: string) => {
+        setAcademicYear(year);
+        localStorage.setItem('academicYear', year);
+        // Refresh the page to re-filter all data across all components
+        window.location.reload();
+    };
 
     const userUnit = localStorage.getItem('userUnit');
     const isAdmin = userUnit === 'admin_geral';
@@ -214,6 +224,22 @@ export function Sidebar() {
 
                     {isArquivosOpen && !collapsed && (
                         <div className="ml-4 pl-4 border-l border-slate-100 space-y-0.5 animate-in slide-in-from-top-2 duration-200">
+                            <div className="flex items-center w-full p-2 rounded-xl text-slate-500 bg-slate-50 border border-slate-100 mb-2">
+                                <Globe className="w-4 h-4 mr-2 text-blue-950" />
+                                <div className="flex-1">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase block leading-none mb-1">Ano Letivo</label>
+                                    <select
+                                        value={academicYear}
+                                        onChange={(e) => handleYearChange(e.target.value)}
+                                        className="w-full bg-transparent text-sm font-bold text-blue-950 focus:outline-none cursor-pointer"
+                                    >
+                                        <option value="2025">Ano Letivo 2025</option>
+                                        <option value="2026">Ano Letivo 2026</option>
+                                        <option value="2027">Ano Letivo 2027</option>
+                                    </select>
+                                </div>
+                            </div>
+
                             <button
                                 onClick={() => setShowDeclarationModal(true)}
                                 className="flex items-center w-full p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all text-xs font-medium cursor-pointer"

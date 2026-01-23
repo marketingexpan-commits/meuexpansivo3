@@ -2,6 +2,7 @@
 import { db } from '../firebaseConfig';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { studentService } from './studentService';
+import { getCurrentSchoolYear } from '../utils/academicUtils';
 
 export const statsService = {
     async getDashboardStats(unitFilter?: string | null) {
@@ -39,7 +40,13 @@ export const statsService = {
                 }
 
                 const snap = await getDocs(qMensalidades);
-                const allMensalidades = snap.docs.map(d => d.data());
+                const currentYear = getCurrentSchoolYear().toString();
+                const allMensalidades = snap.docs
+                    .map(d => d.data())
+                    .filter(m => {
+                        if (!m.month) return true;
+                        return m.month.endsWith(`/${currentYear}`);
+                    });
 
                 let pendingCount = 0;
                 let totalCount = allMensalidades.length;

@@ -2,6 +2,7 @@
 import { db } from '../firebaseConfig';
 import { collection, getDocs, query, where, doc, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import type { Mensalidade, Student, EventoFinanceiro } from '../types';
+import { getCurrentSchoolYear } from '../utils/academicUtils';
 
 const MENSALIDADES_COLLECTION = 'mensalidades';
 
@@ -23,8 +24,15 @@ export const financialService = {
                 q = query(q, where('studentId', '==', filters.studentId));
             }
 
+            const currentYear = getCurrentSchoolYear().toString();
             const snap = await getDocs(q);
             let results = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Mensalidade[];
+
+            // Filter results by year (assuming month format "MMMM/YYYY")
+            results = results.filter(m => {
+                if (!m.month) return true; // Legacy fallback
+                return m.month.endsWith(`/${currentYear}`);
+            });
 
             // O Firestore não permite filtros complexos em coleções diferentes facilmente.
             if (filters.unit && !filters.studentId) {
@@ -400,7 +408,16 @@ export const financialService = {
             }
 
             const snap = await getDocs(q);
-            return snap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+            let results = snap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+
+            // Client-side filter for year based on dueDate (YYYY-MM-DD or DD/MM/YYYY)
+            const currentYear = getCurrentSchoolYear().toString();
+            results = results.filter(e => {
+                if (!e.dueDate) return true;
+                return e.dueDate.includes(currentYear);
+            });
+
+            return results;
         } catch (error) {
             console.error("Erro ao buscar despesas:", error);
             throw error;
@@ -516,7 +533,14 @@ export const financialService = {
             }
 
             const snap = await getDocs(q);
+            const currentYear = getCurrentSchoolYear().toString();
             let results = snap.docs.map(d => ({ id: d.id, ...d.data() })) as EventoFinanceiro[];
+
+            // Filter results by year
+            results = results.filter(e => {
+                if (!e.dueDate) return true;
+                return e.dueDate.includes(currentYear);
+            });
 
             if (filters.unit && !filters.studentId) {
                 const studentsRef = collection(db, 'students');

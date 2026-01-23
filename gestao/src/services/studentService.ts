@@ -1,6 +1,7 @@
 import { db } from '../firebaseConfig';
 import { collection, addDoc, getDocs, doc, setDoc, query, where } from 'firebase/firestore';
 import type { Student } from '../types';
+import { getCurrentSchoolYear } from '../utils/academicUtils';
 
 const STUDENTS_COLLECTION = 'students';
 
@@ -25,6 +26,7 @@ export const studentService = {
     // Listar todos os alunos (com filtro opcional de unidade)
     async getStudents(unitFilter?: string | null) {
         try {
+            const currentYear = getCurrentSchoolYear().toString();
             let q;
             const studentsRef = collection(db, STUDENTS_COLLECTION);
 
@@ -35,10 +37,24 @@ export const studentService = {
             }
 
             const querySnapshot = await getDocs(q);
-            return querySnapshot.docs.map(doc => ({
+            const allStudents = querySnapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             })) as Student[];
+
+            // Client-side filtering for year to avoid complex indexes for now
+            // Students are shown if they don't have enrolledYears yet (legacy) 
+            // or if the current year is in their enrolledYears.
+            return allStudents.filter(s => {
+                if (!s.createdAt) return true; // Legacy
+                const createdYear = new Date(s.createdAt).getFullYear().toString();
+
+                // If the student's creation year is greater than the filtered year, they shouldn't appear
+                if (parseInt(createdYear) > parseInt(currentYear)) return false;
+
+                // Future: add 'enrolledYears' array to student to handle re-enrollments
+                return true;
+            });
         } catch (error) {
             console.error("Erro ao buscar alunos:", error);
             throw error;
