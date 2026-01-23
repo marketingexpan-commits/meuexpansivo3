@@ -158,11 +158,6 @@ export function Login() {
 
                 // Mapa para normalizar nomes de unidade para códigos (compatibilidade legado)
                 const unitNormalization: Record<string, string> = {
-                    'Quintas': 'unit_qui',
-                    'Zona Norte': 'unit_zn',
-                    'Extremoz': 'unit_ext',
-                    'Boa Sorte': 'unit_bs',
-                    // Mapeamento reverso/identidade caso já esteja salvo correto
                     'unit_qui': 'unit_qui',
                     'unit_zn': 'unit_zn',
                     'unit_ext': 'unit_ext',

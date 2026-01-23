@@ -56,7 +56,6 @@ export function Matriculas() {
             const userUnit = localStorage.getItem('userUnit');
             let unitFilter: string | null = null;
 
-            // Mapping removed - studentService now handles both ID and Label
             if (userUnit && userUnit !== 'admin_geral') {
                 unitFilter = userUnit;
             }

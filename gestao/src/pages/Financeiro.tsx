@@ -144,15 +144,8 @@ export function Financeiro() {
     // Auto-select unit based on user login
     useEffect(() => {
         const userUnit = localStorage.getItem('userUnit');
-        const unitMapping: Record<string, string> = {
-            'unit_zn': 'Zona Norte',
-            'unit_ext': 'Extremoz',
-            'unit_qui': 'Quintas',
-            'unit_bs': 'Boa Sorte'
-        };
-
-        if (userUnit && userUnit !== 'admin_geral' && unitMapping[userUnit]) {
-            setEventTarget(prev => ({ ...prev, unit: unitMapping[userUnit] }));
+        if (userUnit && userUnit !== 'admin_geral') {
+            setEventTarget(prev => ({ ...prev, unit: userUnit }));
         }
     }, [isEventModalOpen]);
 
@@ -206,26 +199,13 @@ export function Financeiro() {
 
 
     // Helper functions for robust filtering
-    const normalize = (str: string) => str ? str.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() : '';
 
     const isFilterMatch = (studentValue: string | undefined, filterValue: string) => {
         if (filterValue === 'all') return true;
         if (!studentValue) return false;
 
-        const sVal = normalize(studentValue);
-        const fVal = normalize(filterValue);
-
-        // Exact match
-        if (sVal === fVal) return true;
-
-        // Partial match (includes)
-        if (sVal.includes(fVal) || fVal.includes(sVal)) return true;
-
-        // Specific unit handling
-        if (fVal.includes('zona norte') && sVal.includes('zn')) return true;
-        if (fVal.includes('zn') && sVal.includes('zona norte')) return true;
-
-        return false;
+        // Com a padronização, a comparação agora é direta via ID (unit_bs, unit_zn, etc)
+        return studentValue === filterValue;
     };
 
     const [isInstallmentModalOpen, setIsInstallmentModalOpen] = useState(false);
@@ -274,21 +254,61 @@ export function Financeiro() {
         "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
     ];
 
+    // --- TEMPORARY MIGRATION LOGIC (REMOVE AFTER RUNNING) ---
+    useEffect(() => {
+        const runMigration = async () => {
+            const userUnit = localStorage.getItem('userUnit');
+            const hasMigrated = localStorage.getItem('fin_migrated_v1');
+
+            if (userUnit === 'admin_geral' && !hasMigrated) {
+                console.log("🚀 Iniciando migração financeira automática...");
+                const unitMap: Record<string, string> = {
+                    'Zona Norte': 'unit_zn',
+                    'Extremoz': 'unit_ext',
+                    'Quintas': 'unit_qui',
+                    'Boa Sorte': 'unit_bs'
+                };
+
+                try {
+                    // 1. Despesas
+                    const expSnap = await financialService.getExpenses({ unit: null });
+                    let expCount = 0;
+                    for (const exp of expSnap) {
+                        if (exp.unit && unitMap[exp.unit]) {
+                            await financialService.updateExpense(exp.id, { unit: unitMap[exp.unit] });
+                            expCount++;
+                        }
+                    }
+
+                    // 2. Eventos
+                    const evtSnap = await financialService.getEventos({ unit: null });
+                    let evtCount = 0;
+                    for (const evt of evtSnap) {
+                        const evtAny = evt as any;
+                        if (evtAny.unit && unitMap[evtAny.unit]) {
+                            await financialService.updateEvento(evt.id, { unit: unitMap[evtAny.unit] });
+                            evtCount++;
+                        }
+                    }
+                    console.log(`✅ Migração concluída: ${expCount} despesas e ${evtCount} eventos atualizados.`);
+                    localStorage.setItem('fin_migrated_v1', 'true');
+                    loadData();
+                } catch (err) {
+                    console.error("❌ Erro na migração:", err);
+                }
+            }
+        };
+        runMigration();
+    }, []);
+
     const loadData = async () => {
         setIsLoading(true);
         try {
             const userUnit = localStorage.getItem('userUnit');
             let unitFilter: string | null = null;
 
-            const unitMapping: Record<string, string> = {
-                'unit_zn': 'Zona Norte',
-                'unit_ext': 'Extremoz',
-                'unit_qui': 'Quintas',
-                'unit_bs': 'Boa Sorte'
-            };
-
             if (userUnit && userUnit !== 'admin_geral') {
-                unitFilter = unitMapping[userUnit];
+                unitFilter = userUnit;
             }
 
             // 1. Carregar Dados baseados na aba ativa
@@ -2020,10 +2040,10 @@ export function Financeiro() {
                                 disabled={localStorage.getItem('userUnit') !== 'admin_geral' && !!localStorage.getItem('userUnit')}
                                 options={[
                                     { label: 'Todas', value: 'all' },
-                                    { label: 'Zona Norte', value: 'Zona Norte' },
-                                    { label: 'Extremoz', value: 'Extremoz' },
-                                    { label: 'Quintas', value: 'Quintas' },
-                                    { label: 'Boa Sorte', value: 'Boa Sorte' }
+                                    { label: 'Boa Sorte', value: 'unit_bs' },
+                                    { label: 'Extremoz', value: 'unit_ext' },
+                                    { label: 'Quintas', value: 'unit_qui' },
+                                    { label: 'Zona Norte', value: 'unit_zn' }
                                 ]}
                             />
                             <Select

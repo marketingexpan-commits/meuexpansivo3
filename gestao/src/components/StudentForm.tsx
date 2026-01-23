@@ -113,15 +113,8 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
         const userUnit = localStorage.getItem('userUnit');
         let initialUnit = '';
 
-        const unitMapping: Record<string, string> = {
-            'unit_zn': 'Zona Norte',
-            'unit_ext': 'Extremoz',
-            'unit_qui': 'Quintas',
-            'unit_bs': 'Boa Sorte'
-        };
-
         if (userUnit && userUnit !== 'admin_geral') {
-            initialUnit = unitMapping[userUnit] || '';
+            initialUnit = userUnit;
         }
 
         const initialData = student ? { ...student } : {

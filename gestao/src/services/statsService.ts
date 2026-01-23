@@ -7,6 +7,7 @@ export const statsService = {
     async getDashboardStats(unitFilter?: string | null) {
         try {
             // 1. Total de Alunos
+            // O unitFilter já deve ser o ID (ex: unit_bs) ou nulo/admin_geral
             const allStudents = await studentService.getStudents(unitFilter);
             const totalStudents = allStudents.length;
 

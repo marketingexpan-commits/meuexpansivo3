@@ -17,15 +17,8 @@ export function Dashboard() {
             const userUnit = localStorage.getItem('userUnit');
             let unitFilter: string | null = null;
 
-            const unitMapping: Record<string, string> = {
-                'unit_zn': 'Zona Norte',
-                'unit_ext': 'Extremoz',
-                'unit_qui': 'Quintas',
-                'unit_bs': 'Boa Sorte'
-            };
-
             if (userUnit && userUnit !== 'admin_geral') {
-                unitFilter = unitMapping[userUnit];
+                unitFilter = userUnit;
             }
 
             const data = await statsService.getDashboardStats(unitFilter);

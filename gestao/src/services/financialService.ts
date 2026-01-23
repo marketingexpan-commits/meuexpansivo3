@@ -582,5 +582,18 @@ export const financialService = {
             console.error("Erro ao deletar evento:", error);
             throw error;
         }
+    },
+
+    async updateEvento(id: string, updates: any) {
+        try {
+            const docRef = doc(db, 'eventos_escola', id);
+            await updateDoc(docRef, {
+                ...updates,
+                lastUpdated: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error("Erro ao atualizar evento:", error);
+            throw error;
+        }
     }
 };
