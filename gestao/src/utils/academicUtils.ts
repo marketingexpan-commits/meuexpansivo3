@@ -45,9 +45,26 @@ export const getDynamicBimester = (dateStr: string, settings?: AcademicSettings 
  * Returns the current school year for attendance filtering.
  * Reads from localStorage for dynamic switching, defaults to 2026.
  */
-export const getCurrentSchoolYear = (): number => {
+export const getCurrentSchoolYear = (): string => {
     const savedYear = localStorage.getItem('academicYear');
-    return savedYear ? parseInt(savedYear, 10) : 2026;
+    return savedYear || '2026';
+};
+
+/**
+ * Checks if the selected year identifier represents historical data.
+ */
+export const isHistoricalYear = (year: string): boolean => {
+    return year === 'HISTORICAL';
+};
+
+/**
+ * Checks if a specific numeric year matches the selected academic year identifier.
+ */
+export const isYearMatch = (recordYear: number, selectedYear: string): boolean => {
+    if (selectedYear === 'HISTORICAL') {
+        return recordYear < 2024;
+    }
+    return recordYear.toString() === selectedYear;
 };
 
 import { ACADEMIC_GRADES, ACADEMIC_SEGMENTS } from "./academicDefaults";

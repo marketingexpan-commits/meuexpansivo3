@@ -49,6 +49,18 @@ export const studentService = {
             return allStudents.filter(s => {
                 const selectedYear = currentYear;
 
+                // SPECIAL CASE: Historical Data (Years before 2024)
+                if (selectedYear === 'HISTORICAL') {
+                    if (s.enrolledYears && Array.isArray(s.enrolledYears)) {
+                        // Any year strictly before 2024
+                        return s.enrolledYears.some(y => parseInt(y) < 2024);
+                    }
+                    // Legacy records without enrolledYears might still be relevant if they have an old creation date or no date
+                    if (!s.createdAt) return true;
+                    const createdYear = new Date(s.createdAt).getFullYear();
+                    return createdYear < 2024;
+                }
+
                 // Priority 1: Check enrolledYears (if exists)
                 // If this property exists, we trust it as the source of truth for all years.
                 if (s.enrolledYears && Array.isArray(s.enrolledYears)) {

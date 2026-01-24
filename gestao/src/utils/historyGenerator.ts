@@ -1,5 +1,5 @@
 
-import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, calculateSchoolDays, calculateEffectiveTaughtClasses, isClassScheduled } from './academicUtils';
+import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, calculateSchoolDays, calculateEffectiveTaughtClasses, isClassScheduled, isYearMatch } from './academicUtils';
 import type { Student, AcademicHistoryRecord, GradeEntry, AttendanceRecord, AcademicSubject, SchoolUnitDetail, AcademicSettings, CalendarEvent, CurriculumMatrix } from '../types';
 import { AttendanceStatus, SUBJECT_LABELS, Subject } from '../types';
 import { calculateGeneralFrequency as calculateUnifiedFrequency, calculateAttendancePercentage, calculateAnnualAttendancePercentage } from './frequency';
@@ -23,7 +23,7 @@ const calculateSubjectFrequency = (
 
     const absences = attendanceRecords.reduce((acc, record) => {
         const rYear = parseInt(record.date.split('-')[0], 10);
-        if (rYear === currentYear &&
+        if (isYearMatch(rYear, currentYear) &&
             record.discipline.trim().toLowerCase() === subject.trim().toLowerCase() &&
             (settings ? getDynamicBimester(record.date, settings) : getBimesterFromDate(record.date)) === bimesterIndex &&
             record.studentStatus &&
@@ -86,7 +86,7 @@ export const generateSchoolHistory = (
 
     const maxDataBim = (attendanceRecords || []).reduce((max, record) => {
         const rYear = parseInt(record.date.split('-')[0], 10);
-        if (rYear !== currentYear) return max;
+        if (!isYearMatch(rYear, currentYear)) return max;
         if (!record.studentStatus || !record.studentStatus[student.id]) return max;
         const b = settings ? getDynamicBimester(record.date, settings) : getBimesterFromDate(record.date);
         return b > max ? b : max;
@@ -239,7 +239,7 @@ export const generateSchoolHistory = (
             const totalAbsences = attendanceRecords.reduce((acc, record) => {
                 const rYear = parseInt(record.date.split('-')[0], 10);
                 const rBim = settings ? getDynamicBimester(record.date, settings) : getBimesterFromDate(record.date);
-                if (rYear === currentYear &&
+                if (isYearMatch(rYear, currentYear) &&
                     record.discipline.trim().toLowerCase() === g.subject.trim().toLowerCase() &&
                     rBim <= elapsedBimesters &&
                     record.studentStatus &&
@@ -285,7 +285,7 @@ export const generateSchoolHistory = (
             const renderBimesterCols = (bim: number, bData: any) => {
                 const bAbs = attendanceRecords.reduce((acc, record) => {
                     const rYear = parseInt(record.date.split('-')[0], 10);
-                    if (rYear === currentYear &&
+                    if (isYearMatch(rYear, currentYear) &&
                         record.discipline.trim().toLowerCase() === g.subject.trim().toLowerCase() &&
                         (settings ? getDynamicBimester(record.date, settings) : getBimesterFromDate(record.date)) === bim &&
                         record.studentStatus &&

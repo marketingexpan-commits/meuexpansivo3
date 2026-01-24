@@ -2,7 +2,7 @@
 import { db } from '../firebaseConfig';
 import { collection, getDocs, query, where, doc, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import type { Mensalidade, Student, EventoFinanceiro } from '../types';
-import { getCurrentSchoolYear } from '../utils/academicUtils';
+import { getCurrentSchoolYear, isHistoricalYear } from '../utils/academicUtils';
 
 const MENSALIDADES_COLLECTION = 'mensalidades';
 
@@ -24,14 +24,18 @@ export const financialService = {
                 q = query(q, where('studentId', '==', filters.studentId));
             }
 
-            const currentYear = getCurrentSchoolYear().toString();
+            const currentYear = getCurrentSchoolYear();
             const snap = await getDocs(q);
             let results = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Mensalidade[];
 
             // Filter results by year (assuming month format "MMMM/YYYY")
             results = results.filter(m => {
                 if (!m.month) return true; // Legacy fallback
-                return m.month.endsWith(`/${currentYear}`);
+                const yearPart = m.month.split('/')[1];
+                if (isHistoricalYear(currentYear)) {
+                    return parseInt(yearPart) < 2024;
+                }
+                return yearPart === currentYear;
             });
 
             // O Firestore não permite filtros complexos em coleções diferentes facilmente.
@@ -411,9 +415,14 @@ export const financialService = {
             let results = snap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
 
             // Client-side filter for year based on dueDate (YYYY-MM-DD or DD/MM/YYYY)
-            const currentYear = getCurrentSchoolYear().toString();
+            const currentYear = getCurrentSchoolYear();
             results = results.filter(e => {
                 if (!e.dueDate) return true;
+                if (isHistoricalYear(currentYear)) {
+                    // Try to extract year from YYYY-MM-DD or DD/MM/YYYY
+                    const yearMatch = e.dueDate.match(/\d{4}/);
+                    return yearMatch ? parseInt(yearMatch[0]) < 2024 : true;
+                }
                 return e.dueDate.includes(currentYear);
             });
 
@@ -533,12 +542,16 @@ export const financialService = {
             }
 
             const snap = await getDocs(q);
-            const currentYear = getCurrentSchoolYear().toString();
+            const currentYear = getCurrentSchoolYear();
             let results = snap.docs.map(d => ({ id: d.id, ...d.data() })) as EventoFinanceiro[];
 
             // Filter results by year
-            results = results.filter(e => {
+            results = results.filter((e: EventoFinanceiro) => {
                 if (!e.dueDate) return true;
+                if (isHistoricalYear(currentYear)) {
+                    const yearMatch = e.dueDate.match(/\d{4}/);
+                    return yearMatch ? parseInt(yearMatch[0]) < 2024 : true;
+                }
                 return e.dueDate.includes(currentYear);
             });
 

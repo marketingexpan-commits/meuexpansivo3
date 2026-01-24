@@ -8,7 +8,7 @@
 
 import { AttendanceStatus } from "../types";
 import type { GradeEntry, AttendanceRecord, AcademicSubject, AcademicSettings, CurriculumMatrix } from "../types";
-import { getCurrentSchoolYear, getDynamicBimester, calculateSchoolDays, calculateEffectiveTaughtClasses, getSubjectDurationForDay, isClassScheduled } from "./academicUtils";
+import { getCurrentSchoolYear, getDynamicBimester, calculateSchoolDays, calculateEffectiveTaughtClasses, getSubjectDurationForDay, isClassScheduled, isYearMatch } from "./academicUtils";
 
 /**
  * Calculates the number of taught classes for a given period and subject.
@@ -381,7 +381,7 @@ export const calculateBimesterGeneralFrequency = (
     const totalAbsences = (attendanceRecords || []).reduce((acc, record) => {
         const rYear = parseInt(record.date.split('-')[0], 10);
         const rBim = getDynamicBimester(record.date, settings);
-        if (rYear === currentYear && rBim === bimester && record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT) {
+        if (isYearMatch(rYear, currentYear) && rBim === bimester && record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT) {
             // Verify if the day is a valid school day for this subject
             if (classSchedules && classSchedules.length > 0) {
                 if (!isClassScheduled(record.date, record.discipline, classSchedules, calendarEvents || [], unit, gradeLevel, schoolClass)) {

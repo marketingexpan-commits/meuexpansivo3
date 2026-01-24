@@ -1,5 +1,5 @@
 import { CURRICULUM_MATRIX } from './academicDefaults';
-import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, getSubjectDurationForDay, doesEventApplyToStudent } from './academicUtils';
+import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, getSubjectDurationForDay, doesEventApplyToStudent, isYearMatch } from './academicUtils';
 import type { Student, GradeEntry, AttendanceRecord, AcademicSubject, SchoolUnitDetail, AcademicSettings, CalendarEvent, CurriculumMatrix } from '../types';
 import { AttendanceStatus } from '../types';
 import { calculateGeneralFrequency as calculateUnifiedFrequency, calculateTaughtClasses, calculateAttendancePercentage } from './frequency';
@@ -12,7 +12,7 @@ const calculateSubjectFrequency = (
     student: Student,
     attendanceRecords: AttendanceRecord[],
     bimester: number,
-    currentYear: number,
+    currentYear: string,
     academicSubjects?: AcademicSubject[],
     settings?: AcademicSettings | null,
     calendarEvents?: CalendarEvent[],
@@ -24,7 +24,7 @@ const calculateSubjectFrequency = (
         const rYear = parseInt(record.date.split('-')[0], 10);
         const b = settings ? getDynamicBimester(record.date, settings) : getBimesterFromDate(record.date);
 
-        if (rYear === currentYear &&
+        if (isYearMatch(rYear, currentYear) &&
             record.discipline === subject &&
             b === bimester &&
             record.studentStatus &&
@@ -45,7 +45,7 @@ const calculateSubjectFrequency = (
     const absencesCount = attendanceRecords.reduce((acc, record) => {
         const rYear = parseInt(record.date.split('-')[0], 10);
         const b = settings ? getDynamicBimester(record.date, settings) : getBimesterFromDate(record.date);
-        if (rYear === currentYear &&
+        if (isYearMatch(rYear, currentYear) &&
             record.discipline === subject &&
             b === bimester &&
             record.studentStatus &&
@@ -155,7 +155,7 @@ const generateBulletinHtml = (
             const getBimesterAbsences = (bim: number) => {
                 return attendanceRecords.reduce((acc, record) => {
                     const rYear = parseInt(record.date.split('-')[0], 10);
-                    if (rYear === currentYear &&
+                    if (isYearMatch(rYear, currentYear) &&
                         record.discipline === g.subject &&
                         (settings ? getDynamicBimester(record.date, settings) : getBimesterFromDate(record.date)) === bim &&
                         record.studentStatus &&
@@ -176,7 +176,7 @@ const generateBulletinHtml = (
             const getBimesterAbsenceCount = (bim: number) => {
                 return attendanceRecords.reduce((acc, record) => {
                     const rYear = parseInt(record.date.split('-')[0], 10);
-                    if (rYear === currentYear &&
+                    if (isYearMatch(rYear, currentYear) &&
                         record.discipline === g.subject &&
                         (settings ? getDynamicBimester(record.date, settings) : getBimesterFromDate(record.date)) === bim &&
                         record.studentStatus &&

@@ -233,6 +233,7 @@ export function Sidebar() {
                                         onChange={(e) => handleYearChange(e.target.value)}
                                         className="w-full bg-transparent text-sm font-bold text-blue-950 focus:outline-none cursor-pointer"
                                     >
+                                        <option value="HISTORICAL">Anos anteriores</option>
                                         <option value="2024">Ano Letivo 2024</option>
                                         <option value="2025">Ano Letivo 2025</option>
                                         <option value="2026">Ano Letivo 2026</option>
