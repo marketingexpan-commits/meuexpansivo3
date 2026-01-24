@@ -158,6 +158,16 @@ async function deepSync() {
             if (sql.ACEP && data.cep !== sql.ACEP) updates.cep = sql.ACEP;
             if (sql.PROCEDENCIA && data.procedencia_escolar !== sql.PROCEDENCIA) updates.procedencia_escolar = sql.PROCEDENCIA;
             if (sql.RELIGIAO && data.religiao !== sql.RELIGIAO) updates.religiao = sql.RELIGIAO;
+            if (sql.ALOCAL) {
+                const val = String(sql.ALOCAL).trim().toUpperCase();
+                let zona = null;
+                if (val === 'U') zona = 'Urbana';
+                else if (val === 'R') zona = 'Rural';
+
+                if (zona && data.localizacao_tipo !== zona) {
+                    updates.localizacao_tipo = zona;
+                }
+            }
 
             // Scholarship & Authorization
             if (sql.BOLSA && data.bolsa_percentual !== sql.BOLSA) {

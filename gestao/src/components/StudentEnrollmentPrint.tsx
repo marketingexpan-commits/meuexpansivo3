@@ -207,6 +207,7 @@ export function StudentEnrollmentPrint({ student, unitDetail, isBlank = false }:
                         </div>
                         <div className="flex items-baseline gap-4">
                             <div className="flex items-baseline whitespace-nowrap"><strong>CEP:</strong> {val(student.cep, 'md')}</div>
+                            <div className="flex items-baseline whitespace-nowrap"><strong>Zona:</strong> {val(student.localizacao_tipo, 'sm')}</div>
                             <div className="flex-grow flex items-baseline"><strong>Complemento:</strong> {val(student.endereco_complemento, 'flex')}</div>
                         </div>
                     </div>
