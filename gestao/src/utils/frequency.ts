@@ -55,14 +55,14 @@ export const calculateTaughtClasses = (
         // 1. Dynamic Subject override (if still exists as legacy)
         if (academicSubjects) {
             const ds = academicSubjects.find(s => s.id === subject || s.name === subject);
-            if (ds?.weeklyHours) {
+            if (ds?.weeklyHours && gradeLevel) {
                 const k = Object.keys(ds.weeklyHours).find(key => gradeLevel.includes(key));
                 if (k) weeklyClasses = ds.weeklyHours[k];
             }
         }
 
         // 2. Matrix lookup (Dynamic Collection) - PRIMARY
-        if (weeklyClasses === 0 && matrices) {
+        if (weeklyClasses === 0 && matrices && gradeLevel) {
             const matchingMatrix = matrices.find(m =>
                 m.unit === unit &&
                 m.shift === shift &&

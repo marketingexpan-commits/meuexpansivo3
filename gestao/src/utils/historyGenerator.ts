@@ -420,7 +420,7 @@ export const generateSchoolHistory = (
             <div class="section-title">Dados de Identificação do Aluno</div>
             <div class="info-grid">
                 <div class="info-item"><span class="label">Nome Completo:</span> ${student.name}</div>
-                <div class="info-item"><span class="label">Matrícula:</span> ${student.code}</div>
+                <div class="info-item"><span class="label">Código:</span> ${student.code}</div>
                 <div class="info-item"><span class="label">Data de Nascimento:</span> ${student.data_nascimento ? new Date(student.data_nascimento).toLocaleDateString('pt-BR') : '-'}</div>
                 <div class="info-item"><span class="label">Naturalidade:</span> ${student.naturalidade || '-'}</div>
                 <div class="info-item"><span class="label">RG:</span> ${student.identidade_rg || '-'}</div>

@@ -48,6 +48,7 @@ export function useAcademicData() {
                 } else {
                     gradesData = gradeSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AcademicGrade));
                 }
+                gradesData.sort((a, b) => (a.order || 0) - (b.order || 0));
                 setGrades(gradesData);
 
                 // Fetch Subjects

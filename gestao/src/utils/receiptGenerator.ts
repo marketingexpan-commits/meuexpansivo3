@@ -62,7 +62,7 @@ export function generateReceipt(m: any, unitDetail: SchoolUnitDetail) {
                     <div class="value">${m.studentName.toUpperCase()}</div>
                 </div>
                 <div class="info-item">
-                    <div class="label">Matrícula</div>
+                    <div class="label">Código do Aluno</div>
                     <div class="value">${m.studentCode}</div>
                 </div>
                 <div class="info-item">

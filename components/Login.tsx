@@ -467,7 +467,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">
-                    {activeTab === 'student' ? 'Código de Matrícula' :
+                    {activeTab === 'student' ? 'Código do Aluno' :
                       activeTab === 'teacher' ? 'CPF do Professor' :
                         activeTab === 'coordinator' ? 'Nome do Coordenador' : 'Usuário'}
                   </label>
@@ -478,7 +478,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                     value={identifier}
                     onChange={handleIdentifierChange}
                     placeholder={
-                      activeTab === 'student' ? 'Ex.: 12345 (Consulte a Secretaria)' :
+                      activeTab === 'student' ? 'Ex.: 12345 (Consulte o Código)' :
                         activeTab === 'teacher' ? '000.000.000-00' :
                           activeTab === 'coordinator' ? 'Ex: Maria Silva' :
                             'Usuário'
@@ -513,7 +513,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                   </div>
                 </div>
 
-                {/* Checkbox "Lembrar meu código" (Exclusivo Aluno) */}
+                {/* Checkbox "Lembrar meu código/acesso" (Exclusivo Aluno) */}
                 {activeTab === 'student' && (
                   <div className="flex items-center">
                     <input

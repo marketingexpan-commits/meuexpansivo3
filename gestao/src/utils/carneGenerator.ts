@@ -139,7 +139,7 @@ export const generateCarne = (student: Student, installments: Installment[], uni
                                 <div class="field" style="margin-top: 5px;"><span class="label">Vencimento</span><span class="value">${formatDate(inst.dueDate)}</span></div>
                                 <div class="field"><span class="label">Valor</span><span class="value">R$ ${inst.value.toFixed(2)}</span></div>
                                 <div class="field"><span class="label">Mês Ref.</span><span class="value">${inst.month}</span></div>
-                                <div class="field"><span class="label">Código/Matrícula</span><span class="value">${student.code}</span></div>
+                                <div class="field"><span class="label">Código</span><span class="value">${student.code}</span></div>
                                 <div class="field"><span class="label">Cód. Baixa</span><span class="value">${inst.documentNumber || '---'}</span></div>
                                 <div style="margin-top:auto; border-top:1px solid #000; font-size:7px; text-align:center;"><br>Visto Escola</div>
                             </div>
@@ -165,7 +165,7 @@ export const generateCarne = (student: Student, installments: Installment[], uni
 
                                 <div class="row">
                                     <div class="field" style="flex:2.5"><span class="label">Aluno (a)</span><span class="value">${student.name}</span></div>
-                                    <div class="field"><span class="label">Código/Matrícula</span><span class="value">${student.code}</span></div>
+                                    <div class="field"><span class="label">Código</span><span class="value">${student.code}</span></div>
                                 </div>
 
                                 <div class="row" style="margin-top: 2px;">

@@ -514,6 +514,8 @@ export interface Student {
   status?: 'CURSANDO' | 'TRANSFERIDO' | 'EVADIDO' | 'TRANCADO' | 'RESERVADO' | 'REPROVADO' | 'APROVADO' | 'ATIVO' | 'INATIVO' | 'CONCLUÍDO';
   nis?: string; // NIS for Bolsa Família
   segment?: string; // NOVO: Segmento acadêmico (Infantil, Fundamental I, etc)
+  academicHistory?: AcademicHistoryRecord[];
+  enrolledYears?: string[]; // Para filtragem por ano letivo
 }
 
 
@@ -620,10 +622,7 @@ export interface AcademicHistoryRecord {
   }[];
 }
 
-export interface Student {
-  // ... (existing fields)
-  academicHistory?: AcademicHistoryRecord[];
-}
+
 
 // --- SISTEMA DE OCORRÊNCIAS ---
 

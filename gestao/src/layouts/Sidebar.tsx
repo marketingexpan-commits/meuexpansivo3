@@ -192,13 +192,13 @@ export function Sidebar() {
                         <div className="ml-4 pl-4 border-l border-slate-100 space-y-0.5 animate-in slide-in-from-top-2 duration-200">
                             <SidebarItem
                                 icon={FileText}
-                                label="Alunos Matriculados"
+                                label="Alunos Cadastrados"
                                 path="/matriculas"
                                 collapsed={collapsed}
                             />
                             <SidebarItem
                                 icon={Users}
-                                label="Nova Matrícula"
+                                label="Cadastro de Aluno"
                                 path="/matriculas?action=new"
                                 collapsed={collapsed}
                             />
@@ -233,6 +233,7 @@ export function Sidebar() {
                                         onChange={(e) => handleYearChange(e.target.value)}
                                         className="w-full bg-transparent text-sm font-bold text-blue-950 focus:outline-none cursor-pointer"
                                     >
+                                        <option value="2024">Ano Letivo 2024</option>
                                         <option value="2025">Ano Letivo 2025</option>
                                         <option value="2026">Ano Letivo 2026</option>
                                         <option value="2027">Ano Letivo 2027</option>

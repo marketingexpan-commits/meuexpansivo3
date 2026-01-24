@@ -24,7 +24,7 @@ export const studentService = {
     },
 
     // Listar todos os alunos (com filtro opcional de unidade)
-    async getStudents(unitFilter?: string | null) {
+    async getStudents(unitFilter?: string | null, ignoreYearFilter: boolean = false) {
         try {
             const currentYear = getCurrentSchoolYear().toString();
             let q;
@@ -42,17 +42,35 @@ export const studentService = {
                 ...doc.data()
             })) as Student[];
 
-            // Client-side filtering for year to avoid complex indexes for now
-            // Students are shown if they don't have enrolledYears yet (legacy) 
-            // or if the current year is in their enrolledYears.
+            // Bypass filtering if requested (e.g. for History Search)
+            if (ignoreYearFilter) return allStudents;
+
+            // Client-side filtering for year 
             return allStudents.filter(s => {
-                if (!s.createdAt) return true; // Legacy
-                const createdYear = new Date(s.createdAt).getFullYear().toString();
+                const selectedYear = currentYear;
 
-                // If the student's creation year is greater than the filtered year, they shouldn't appear
-                if (parseInt(createdYear) > parseInt(currentYear)) return false;
+                // Priority 1: Check enrolledYears (if exists)
+                // If this property exists, we trust it as the source of truth for all years.
+                if (s.enrolledYears && Array.isArray(s.enrolledYears)) {
+                    return s.enrolledYears.includes(selectedYear);
+                }
 
-                // Future: add 'enrolledYears' array to student to handle re-enrollments
+                // Priority 2: Creation year logic (fallback for legacy/manually created)
+                if (!s.createdAt) return true; // Legacy fallback
+
+                const createdDate = new Date(s.createdAt);
+                const createdYear = createdDate.getFullYear().toString();
+
+                // If student was created after the selected year, don't show them
+                if (parseInt(createdYear) > parseInt(selectedYear)) return false;
+
+                // Safety: Don't show students in future years (e.g. 2027 if it's 2026) 
+                // unless they have explicit enrolledYears (handled above).
+                const realCurrentYear = new Date().getFullYear();
+                if (parseInt(selectedYear) > realCurrentYear) {
+                    return false;
+                }
+
                 return true;
             });
         } catch (error) {

@@ -40,8 +40,8 @@ export function DeclarationSearchModal({ onClose }: DeclarationSearchModalProps)
             setIsLoading(true);
             setError(null);
 
-            // 1. Search students
-            const allStudents = await studentService.getStudents();
+            // 1. Search students (Ignoring current year filter to find alumni)
+            const allStudents = await studentService.getStudents(null, true);
             const student = allStudents.find(s => s.code?.trim() === code.trim());
 
             if (!student) {
@@ -176,7 +176,7 @@ export function DeclarationSearchModal({ onClose }: DeclarationSearchModalProps)
                     <div className="p-8 space-y-6">
                         <div className="space-y-4">
                             <Input
-                                label="Código de Matrícula"
+                                label="Código do Aluno"
                                 placeholder="Digite o código (ex: 12345)"
                                 value={code}
                                 onChange={(e) => {

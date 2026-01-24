@@ -380,7 +380,7 @@ const generateBulletinHtml = (
                 <div class="section-title">Dados de Identificação</div>
                 <div class="info-grid">
                     <div class="info-item"><span class="label">Aluno:</span> ${student.name}</div>
-                    <div class="info-item"><span class="label">Matrícula:</span> ${student.code}</div>
+                    <div class="info-item"><span class="label">Código:</span> ${student.code}</div>
                     <div class="info-item"><span class="label">Série / Turma:</span> ${student.gradeLevel} - ${student.schoolClass}</div>
                     <div class="info-item"><span class="label">Turno:</span> ${student.shift}</div>
                     <div class="info-item"><span class="label">Data de Nascimento:</span> ${student.data_nascimento ? new Date(student.data_nascimento).toLocaleDateString('pt-BR') : '-'}</div>

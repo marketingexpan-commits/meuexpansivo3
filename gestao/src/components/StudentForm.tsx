@@ -469,7 +469,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
 
     const handleGenerateBoletos = async () => {
         if (!student?.id) {
-            alert("A matrícula precisa estar salva antes de gerar boletos.");
+            alert("O cadastro precisa estar salvo antes de gerar boletos.");
             return;
         }
 
@@ -564,7 +564,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
 
     const handleGenerateCarne = async () => {
         if (!student?.id) {
-            alert("A matrícula precisa estar salva antes de gerar o carnê.");
+            alert("O cadastro precisa estar salvo antes de gerar o carnê.");
             return;
         }
         setIsCarneConfigOpen(true);
@@ -656,7 +656,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                 { key: 'gradeLevel', label: 'Série / Ano' },
                 { key: 'shift', label: 'Turno' },
                 { key: 'schoolClass', label: 'Turma' },
-                { key: 'code', label: 'Código de Matrícula' },
+                { key: 'code', label: 'Código do Aluno' },
                 { key: 'nome_responsavel', label: 'Nome do Responsável' }
             ];
 
@@ -780,7 +780,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                 alert("Matrícula atualizada com sucesso!");
             } else {
                 await studentService.createStudent(finalData);
-                alert("Nova matrícula realizada com sucesso!");
+                alert("Novo aluno cadastrado com sucesso!");
             }
 
             // CRITICAL: Update formData with the complete ficha_saude structure
@@ -856,7 +856,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                 {/* Header */}
                 <div className="flex items-center justify-between p-4 border-b border-gray-100">
                     <div>
-                        <h2 className="text-xl font-bold text-gray-900">{student ? 'Editar Matrícula' : 'Nova Matrícula'}</h2>
+                        <h2 className="text-xl font-bold text-gray-900">{student ? 'Editar Cadastro' : 'Novo Aluno'}</h2>
                         <p className="text-sm text-gray-500">{student ? 'Edite os dados do aluno.' : 'Preencha os dados do aluno para realizar a matrícula.'}</p>
                     </div>
                     <button onClick={() => onClose()} className="p-2 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer">
@@ -1004,7 +1004,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                     {activeTab === 'academic' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Select
-                                label="Situação da Matrícula"
+                                label="Situação do Aluno"
                                 value={formData.status || 'CURSANDO'}
                                 onChange={(e) => handleSelectChange('status', e.target.value)}
                                 options={STUDENT_STATUS_OPTIONS}
@@ -1083,7 +1083,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
 
                             <Input
                                 name="code"
-                                label="Número de Matrícula (Global)"
+                                label="Código do Aluno (Global)"
                                 value={formData.code || ''}
                                 onChange={handleChange}
                                 placeholder={student ? "Matrícula do aluno" : "Gerando sugestão..."}
@@ -1601,7 +1601,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                             className="cursor-pointer flex items-center gap-2"
                         >
                             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                            {student ? 'Salvar Matrícula' : 'Confirmar Matrícula'}
+                            {student ? 'Salvar Alterações' : 'Confirmar Cadastro'}
                         </Button>
                     </div>
                 </div>

@@ -101,7 +101,7 @@ export function StudentEnrollmentPrint({ student, unitDetail, isBlank = false }:
                                 <div className="uppercase flex items-baseline">{val(student.name, 'full')}</div>
                             </div>
                             <div className="col-span-2 flex flex-col">
-                                <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">Código SGA / Matrícula</span>
+                                <span className="text-gray-500 uppercase font-black text-[7px] block leading-none mb-1">Código do Aluno (ID)</span>
                                 <div className="flex items-baseline">{val(student.code, 'full')}</div>
                             </div>
 

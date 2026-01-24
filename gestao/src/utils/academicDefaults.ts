@@ -115,35 +115,35 @@ export const UNIT_DETAILS: Record<string, {
 };
 
 export const ACADEMIC_SEGMENTS = {
-    INFANTIL: { id: 'seg_infantil', label: 'Educação Infantil' },
-    FUND_1: { id: 'seg_fund_1', label: 'Fundamental I' },
-    FUND_2: { id: 'seg_fund_2', label: 'Fundamental II' },
-    MEDIO: { id: 'seg_medio', label: 'Ensino Médio' }
+    INFANTIL: { id: 'seg_infantil', label: 'Educação Infantil', order: 10 },
+    FUND_1: { id: 'seg_fund_1', label: 'Fundamental I', order: 20 },
+    FUND_2: { id: 'seg_fund_2', label: 'Fundamental II', order: 30 },
+    MEDIO: { id: 'seg_medio', label: 'Ensino Médio', order: 40 }
 };
 
 export const ACADEMIC_GRADES = {
     // Infantil
-    BERCARIO: { id: 'grade_bercario', segmentId: ACADEMIC_SEGMENTS.INFANTIL.id, label: 'Berçário' },
-    NIVEL_1: { id: 'grade_nivel_1', segmentId: ACADEMIC_SEGMENTS.INFANTIL.id, label: 'Nível I' },
-    NIVEL_2: { id: 'grade_nivel_2', segmentId: ACADEMIC_SEGMENTS.INFANTIL.id, label: 'Nível II' },
-    NIVEL_3: { id: 'grade_nivel_3', segmentId: ACADEMIC_SEGMENTS.INFANTIL.id, label: 'Nível III' },
-    NIVEL_4: { id: 'grade_nivel_4', segmentId: ACADEMIC_SEGMENTS.INFANTIL.id, label: 'Nível IV' },
-    NIVEL_5: { id: 'grade_nivel_5', segmentId: ACADEMIC_SEGMENTS.INFANTIL.id, label: 'Nível V' },
+    BERCARIO: { id: 'grade_bercario', segmentId: ACADEMIC_SEGMENTS.INFANTIL.id, label: 'Berçário', order: 1 },
+    NIVEL_1: { id: 'grade_nivel_1', segmentId: ACADEMIC_SEGMENTS.INFANTIL.id, label: 'Nível I', order: 2 },
+    NIVEL_2: { id: 'grade_nivel_2', segmentId: ACADEMIC_SEGMENTS.INFANTIL.id, label: 'Nível II', order: 3 },
+    NIVEL_3: { id: 'grade_nivel_3', segmentId: ACADEMIC_SEGMENTS.INFANTIL.id, label: 'Nível III', order: 4 },
+    NIVEL_4: { id: 'grade_nivel_4', segmentId: ACADEMIC_SEGMENTS.INFANTIL.id, label: 'Nível IV', order: 5 },
+    NIVEL_5: { id: 'grade_nivel_5', segmentId: ACADEMIC_SEGMENTS.INFANTIL.id, label: 'Nível V', order: 6 },
     // Fund 1
-    ANO_1: { id: 'grade_1_ano', segmentId: ACADEMIC_SEGMENTS.FUND_1.id, label: '1º Ano' },
-    ANO_2: { id: 'grade_2_ano', segmentId: ACADEMIC_SEGMENTS.FUND_1.id, label: '2º Ano' },
-    ANO_3: { id: 'grade_3_ano', segmentId: ACADEMIC_SEGMENTS.FUND_1.id, label: '3º Ano' },
-    ANO_4: { id: 'grade_4_ano', segmentId: ACADEMIC_SEGMENTS.FUND_1.id, label: '4º Ano' },
-    ANO_5: { id: 'grade_5_ano', segmentId: ACADEMIC_SEGMENTS.FUND_1.id, label: '5º Ano' },
+    ANO_1: { id: 'grade_1_ano', segmentId: ACADEMIC_SEGMENTS.FUND_1.id, label: '1º Ano', order: 11 },
+    ANO_2: { id: 'grade_2_ano', segmentId: ACADEMIC_SEGMENTS.FUND_1.id, label: '2º Ano', order: 12 },
+    ANO_3: { id: 'grade_3_ano', segmentId: ACADEMIC_SEGMENTS.FUND_1.id, label: '3º Ano', order: 13 },
+    ANO_4: { id: 'grade_4_ano', segmentId: ACADEMIC_SEGMENTS.FUND_1.id, label: '4º Ano', order: 14 },
+    ANO_5: { id: 'grade_5_ano', segmentId: ACADEMIC_SEGMENTS.FUND_1.id, label: '5º Ano', order: 15 },
     // Fund 2
-    ANO_6: { id: 'grade_6_ano', segmentId: ACADEMIC_SEGMENTS.FUND_2.id, label: '6º Ano' },
-    ANO_7: { id: 'grade_7_ano', segmentId: ACADEMIC_SEGMENTS.FUND_2.id, label: '7º Ano' },
-    ANO_8: { id: 'grade_8_ano', segmentId: ACADEMIC_SEGMENTS.FUND_2.id, label: '8º Ano' },
-    ANO_9: { id: 'grade_9_ano', segmentId: ACADEMIC_SEGMENTS.FUND_2.id, label: '9º Ano' },
+    ANO_6: { id: 'grade_6_ano', segmentId: ACADEMIC_SEGMENTS.FUND_2.id, label: '6º Ano', order: 21 },
+    ANO_7: { id: 'grade_7_ano', segmentId: ACADEMIC_SEGMENTS.FUND_2.id, label: '7º Ano', order: 22 },
+    ANO_8: { id: 'grade_8_ano', segmentId: ACADEMIC_SEGMENTS.FUND_2.id, label: '8º Ano', order: 23 },
+    ANO_9: { id: 'grade_9_ano', segmentId: ACADEMIC_SEGMENTS.FUND_2.id, label: '9º Ano', order: 24 },
     // Médio
-    SERIE_1: { id: 'grade_1_ser', segmentId: ACADEMIC_SEGMENTS.MEDIO.id, label: '1ª Série' },
-    SERIE_2: { id: 'grade_2_ser', segmentId: ACADEMIC_SEGMENTS.MEDIO.id, label: '2ª Série' },
-    SERIE_3: { id: 'grade_3_ser', segmentId: ACADEMIC_SEGMENTS.MEDIO.id, label: '3ª Série' }
+    SERIE_1: { id: 'grade_1_ser', segmentId: ACADEMIC_SEGMENTS.MEDIO.id, label: '1ª Série', order: 31 },
+    SERIE_2: { id: 'grade_2_ser', segmentId: ACADEMIC_SEGMENTS.MEDIO.id, label: '2ª Série', order: 32 },
+    SERIE_3: { id: 'grade_3_ser', segmentId: ACADEMIC_SEGMENTS.MEDIO.id, label: '3ª Série', order: 33 }
 };
 
 export const EDUCATION_LEVELS = Object.values(ACADEMIC_SEGMENTS).map(s => s.label);

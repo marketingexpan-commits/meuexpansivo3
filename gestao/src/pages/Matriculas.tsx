@@ -436,7 +436,7 @@ export function Matriculas() {
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                             <Input
                                 className="pl-9 bg-slate-50 border-slate-200"
-                                placeholder="Buscar por nome do aluno, matrícula ou CPF..."
+                                placeholder="Buscar por nome do aluno, código ou CPF..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -475,15 +475,16 @@ export function Matriculas() {
                                 value={filterStatus}
                                 onChange={(e) => setFilterStatus(e.target.value)}
                                 options={[
-                                    { label: 'Ativo (Cursando)', value: 'active' }, // Meta-filter
-                                    { label: 'Arquivado (Ex-Alunos)', value: 'archived' }, // Meta-filter
-                                    { label: 'Bloqueado', value: 'blocked' },
-                                    { label: '--- Status Específico ---', value: '' },
-                                    { label: 'Cursando', value: 'CURSANDO' },
-                                    { label: 'Concluído', value: 'CONCLUÍDO' },
-                                    { label: 'Transferido', value: 'TRANSFERIDO' },
-                                    { label: 'Evadido', value: 'EVADIDO' },
-                                    { label: 'Reprovado', value: 'REPROVADO' },
+                                    { label: 'CURSANDO', value: 'CURSANDO' },
+                                    { label: 'TRANSFERIDO', value: 'TRANSFERIDO' },
+                                    { label: 'EVADIDO', value: 'EVADIDO' },
+                                    { label: 'TRANCADO', value: 'TRANCADO' },
+                                    { label: 'RESERVADO', value: 'RESERVADO' },
+                                    { label: 'REPROVADO', value: 'REPROVADO' },
+                                    { label: 'APROVADO', value: 'APROVADO' },
+                                    { label: 'ATIVO', value: 'ATIVO' },
+                                    { label: 'INATIVO', value: 'INATIVO' },
+                                    { label: 'CONCLUÍDO', value: 'CONCLUÍDO' }
                                 ]}
                             />
                             <Button variant="ghost" onClick={clearFilters} className="w-full text-slate-500 hover:text-red-500 hover:bg-red-50">
@@ -651,7 +652,7 @@ export function Matriculas() {
                                                 <thead className="text-xs text-slate-700 uppercase bg-white border-b border-slate-100">
                                                     <tr>
                                                         <th scope="col" className="px-6 py-3 w-[40%]">Aluno</th>
-                                                        <th scope="col" className="px-6 py-3">Matrícula</th>
+                                                        <th scope="col" className="px-6 py-3">Código</th>
                                                         <th scope="col" className="px-6 py-3 text-center">Situação</th>
                                                         <th scope="col" className="px-6 py-3 text-right">Ações</th>
                                                     </tr>

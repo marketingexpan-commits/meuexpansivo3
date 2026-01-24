@@ -33,7 +33,7 @@ export function generateSchoolDeclaration(type: DeclarationType, data: Declarati
             title = 'DECLARAÇÃO DE MATRÍCULA E FREQUÊNCIA';
             content = `
                 Declaramos, para os devidos fins, que o(a) aluno(a) <strong>${student.name.toUpperCase()}</strong>, 
-                inscrito(a) sob a matrícula nº <strong>${student.code || 'N/A'}</strong> e portador(a) do 
+                inscrito(a) sob o código nº <strong>${student.code || 'N/A'}</strong> e portador(a) do 
                 CPF <strong>${student.cpf_aluno || 'Não informado'}</strong>, encontra-se devidamente matriculado(a) 
                 e frequentando regularmente as aulas nesta instituição de ensino, no ano letivo de <strong>${currentYear}</strong>, 
                 cursando o(a) <strong>${student.gradeLevel || 'Não informado'}</strong>, na Turma <strong>${student.schoolClass || '-'}</strong>, 
@@ -45,7 +45,7 @@ export function generateSchoolDeclaration(type: DeclarationType, data: Declarati
             const freqValue = frequency !== undefined ? frequency.toFixed(1) : '---';
             content = `
                 Declaramos, para fins de comprovação junto ao Programa Bolsa Família, que o(a) aluno(a) 
-                <strong>${student.name.toUpperCase()}</strong>, matrícula nº <strong>${student.code || 'N/A'}</strong>, 
+                <strong>${student.name.toUpperCase()}</strong>, código nº <strong>${student.code || 'N/A'}</strong>, 
                 NIS <strong>${student.nis || '---'}</strong>, está matriculado(a) no 
                 <strong>${student.gradeLevel}</strong> desta instituição.
                 <br><br>
@@ -58,7 +58,7 @@ export function generateSchoolDeclaration(type: DeclarationType, data: Declarati
             title = 'DECLARAÇÃO PROVISÓRIA DE TRANSFERÊNCIA';
             content = `
                 Declaramos que o(a) aluno(a) <strong>${student.name.toUpperCase()}</strong>, 
-                matrícula nº <strong>${student.code || 'N/A'}</strong>, cursou nesta instituição o 
+                código nº <strong>${student.code || 'N/A'}</strong>, cursou nesta instituição o 
                 <strong>${student.gradeLevel}</strong> no ano letivo de <strong>${currentYear}</strong>.
                 <br><br>
                 Atestamos que o referido aluno encontra-se apto para prosseguimento de seus estudos em outra 

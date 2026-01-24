@@ -215,7 +215,7 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
                         <div className="space-y-4">
                             {searchType === 'INDIVIDUAL' ? (
                                 <Input
-                                    label="Código de Matrícula"
+                                    label="Código do Aluno"
                                     placeholder="Digite o código (ex: 12345)"
                                     value={code}
                                     onChange={(e) => {
