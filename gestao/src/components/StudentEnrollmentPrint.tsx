@@ -2,7 +2,7 @@ import type { Student, SchoolUnitDetail } from '../types';
 
 interface StudentEnrollmentPrintProps {
     student: Partial<Student>;
-    unitDetail?: SchoolUnitDetail; // Optional because it might not be loaded yet
+    unitDetail?: SchoolUnitDetail;
     isBlank?: boolean;
 }
 
@@ -24,7 +24,6 @@ export function StudentEnrollmentPrint({ student, unitDetail, isBlank = false }:
     const logoUrl = unitDetail?.logoUrl || 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png';
     const watermarkUrl = 'https://i.postimg.cc/hjLxrMdc/brasao-da-republica-do-brasil-seeklogo.png';
 
-    // Helper to render value on a line, ensuring identical layout for blank and filled forms
     const val = (value: any, length: 'sm' | 'md' | 'lg' | 'full' | 'flex' = 'md', textColor: string = 'text-black') => {
         const widths = {
             'sm': '60px',
@@ -39,7 +38,6 @@ export function StudentEnrollmentPrint({ student, unitDetail, isBlank = false }:
                 className={`inline-block border-b-[0.5px] border-black pb-0.5 ${length === 'flex' ? 'flex-grow mx-1' : ''} ${textColor} font-bold`}
                 style={{ width: length === 'flex' ? 'auto' : widths[length], minHeight: '1em' }}
             >
-                {/* Only render value if not blank, otherwise keep the line empty */}
                 {!isBlank && value}
             </span>
         );
@@ -47,14 +45,11 @@ export function StudentEnrollmentPrint({ student, unitDetail, isBlank = false }:
 
     return (
         <div className="print-document bg-white p-6 text-black font-sans leading-relaxed relative flex flex-col justify-between" style={{ width: '100%', maxWidth: '210mm', minHeight: '297mm', margin: '0 auto', fontFamily: "'Inter', sans-serif", boxSizing: 'border-box' }}>
-
-            {/* Watermark */}
             <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none z-0">
                 <img src={watermarkUrl} alt="Brasão" className="w-[450px] grayscale" />
             </div>
 
             <div className="relative z-10 flex-grow basis-0">
-                {/* Header Standardized */}
                 <div className="flex justify-between items-center border-b-[0.5px] border-black pb-2 mb-3">
                     <div className="flex items-center gap-4">
                         <div className="w-14 h-14 flex items-center justify-center">
@@ -82,11 +77,9 @@ export function StudentEnrollmentPrint({ student, unitDetail, isBlank = false }:
                     </div>
                 </div>
 
-                {/* I. Identificação do Aluno */}
                 <section className="mb-3">
                     <h3 className="text-[9px] font-black uppercase text-black border-l-[3px] border-black pl-2 mb-1 tracking-widest bg-gray-50 py-1">I. Identificação do Aluno</h3>
                     <div className="flex gap-3 p-3 border-[0.5px] border-black rounded-lg">
-                        {/* Foto 3x4 */}
                         <div className="w-[2.6cm] h-[3.4cm] border-[0.5px] border-dashed border-gray-300 rounded flex items-center justify-center bg-gray-50 flex-shrink-0 overflow-hidden relative">
                             {!isBlank && student.photoUrl ? (
                                 <img src={student.photoUrl} alt="Foto" className="w-full h-full object-cover" />
@@ -151,7 +144,6 @@ export function StudentEnrollmentPrint({ student, unitDetail, isBlank = false }:
                     </div>
                 </section>
 
-                {/* II. Filiação e Resp. Financeiro */}
                 <section className="mb-3">
                     <h3 className="text-[9px] font-black uppercase text-black border-l-[3px] border-black pl-2 mb-1 tracking-widest bg-gray-50 py-1">II. Filiação e Resp. Financeiro</h3>
                     <div className="grid grid-cols-2 gap-3 text-[9px]">
@@ -201,7 +193,6 @@ export function StudentEnrollmentPrint({ student, unitDetail, isBlank = false }:
                     </div>
                 </section>
 
-                {/* III. Endereço e Localização */}
                 <section className="mb-4">
                     <h3 className="text-[9px] font-black uppercase text-black border-l-[3px] border-black pl-2 mb-1 tracking-widest bg-gray-50 py-1">III. Endereço e Localização</h3>
                     <div className="text-[9px] space-y-3 p-3 border-[0.5px] border-black rounded-lg">
@@ -221,42 +212,39 @@ export function StudentEnrollmentPrint({ student, unitDetail, isBlank = false }:
                     </div>
                 </section>
 
-                {/* IV. Saúde e Emergência - SIMPLIFIED */}
                 <section className="mb-4">
                     <h3 className="text-[8px] font-black uppercase text-black border-l-[3px] border-black pl-2 mb-0.5 tracking-widest bg-gray-50 py-0.5">IV. Informações de Saúde Importantes</h3>
                     <div className="text-[9px] p-3 border-[0.5px] border-black rounded-lg space-y-3">
-                        {/* Compact Grid Layout */}
                         <div className="grid grid-cols-2 gap-x-4 gap-y-4">
                             <div className="flex items-baseline gap-1">
                                 <strong className="text-[9px] whitespace-nowrap">Alergias:</strong>
                                 <div className="flex-grow flex items-baseline">
-                                    {val(student.ficha_saude?.alergias, 'flex')}
+                                    {val([student.ficha_saude?.alergias_medicamentosas, student.ficha_saude?.restricoes_alimentares].filter(Boolean).join(' | '), 'flex')}
                                 </div>
                             </div>
 
                             <div className="flex items-baseline gap-1">
-                                <strong className="text-[9px] whitespace-nowrap">Doenças Crônicas:</strong>
+                                <strong className="text-[9px] whitespace-nowrap">Condições / Neurodiversidade:</strong>
                                 <div className="flex-grow flex items-baseline">
-                                    {val([...(student.ficha_saude?.doencas_cronicas || []), student.ficha_saude?.doencas_cronicas_outra].filter(Boolean).join(', '), 'flex')}
+                                    {val([...(student.ficha_saude?.doencas_cronicas || []), ...(student.ficha_saude?.neurodiversidade || []), student.ficha_saude?.neurodiversidade_outra].filter(Boolean).join(', '), 'flex')}
                                 </div>
                             </div>
 
                             <div className="flex items-baseline gap-1">
-                                <strong className="text-[9px] whitespace-nowrap">Deficiências:</strong>
+                                <strong className="text-[9px] whitespace-nowrap">Vacinação em Dia?</strong>
                                 <div className="flex-grow flex items-baseline">
-                                    {val([...(student.ficha_saude?.deficiencias || []), student.ficha_saude?.deficiencias_outra].filter(Boolean).join(', '), 'flex')}
+                                    {val(student.ficha_saude?.carteira_vacinacao_em_dia ? 'SIM' : 'PENDENTE', 'sm')}
                                 </div>
                             </div>
 
                             <div className="flex items-baseline gap-1">
-                                <strong className="text-[9px] whitespace-nowrap">Medicamentos:</strong>
+                                <strong className="text-[9px] whitespace-nowrap">Medicamentos Contínuos:</strong>
                                 <div className="flex-grow flex items-baseline">
                                     {val(student.ficha_saude?.medicamentos_continuos, 'flex')}
                                 </div>
                             </div>
                         </div>
 
-                        {/* Emergency Contact - Inline */}
                         <div className="border-t-[0.5px] border-black/10 pt-2 bg-red-50 px-3 py-2 rounded flex items-baseline gap-4 text-[9px]">
                             <strong className="text-red-900 whitespace-nowrap">🚨 EMERGÊNCIA:</strong>
                             <div className="flex items-baseline gap-1">
@@ -273,7 +261,6 @@ export function StudentEnrollmentPrint({ student, unitDetail, isBlank = false }:
                             </div>
                         </div>
 
-                        {/* Observations */}
                         <div className="border-t-[0.5px] border-black/10 pt-2">
                             <div className="flex items-baseline gap-1">
                                 <strong className="text-[9px] whitespace-nowrap">Observações:</strong>
@@ -285,7 +272,6 @@ export function StudentEnrollmentPrint({ student, unitDetail, isBlank = false }:
                     </div>
                 </section>
 
-                {/* V. Checklist de Documentos */}
                 <section className="mb-2">
                     <h3 className="text-[8px] font-black uppercase text-black border-l-[3px] border-black pl-2 mb-0.5 tracking-widest bg-gray-50 py-0.5">V. Documentação (Controle Secretaria)</h3>
                     <div className="grid grid-cols-4 gap-1.5 text-[6.5px] border-[0.5px] border-black p-2 rounded-lg italic text-gray-500">
@@ -305,9 +291,7 @@ export function StudentEnrollmentPrint({ student, unitDetail, isBlank = false }:
                 </section>
             </div>
 
-            {/* Bottom Content (Signatures and Footer) */}
             <div className="relative z-10 pt-4">
-                {/* Signatures */}
                 <div className="grid grid-cols-2 gap-16 mb-8">
                     <div className="text-center">
                         <div className="border-t-[0.5px] border-black pt-1 text-[9px] font-black uppercase">Responsável Legal</div>
@@ -319,7 +303,6 @@ export function StudentEnrollmentPrint({ student, unitDetail, isBlank = false }:
                     </div>
                 </div>
 
-                {/* Footer Disclaimer */}
                 <div className="text-center border-t-[0.5px] border-gray-200 pt-2 pb-2">
                     <p className="text-[6px] text-gray-500 leading-tight uppercase font-bold tracking-tighter">
                         O Colégio Expansivo declara que as informações acima são de caráter confidencial.
@@ -329,7 +312,6 @@ export function StudentEnrollmentPrint({ student, unitDetail, isBlank = false }:
                 </div>
             </div>
 
-            {/* Global Print Styles */}
             <style dangerouslySetInnerHTML={{
                 __html: `
                 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');

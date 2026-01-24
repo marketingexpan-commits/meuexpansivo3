@@ -375,21 +375,33 @@ export interface AppNotification {
 // --- FIM ---
 
 export interface HealthInfo {
-  // Condições Médicas (Arrays para Checkboxes)
-  doencas_cronicas?: string[]; // Ex: Asma, Diabetes
+  // 🧠 Neurodiversidade & Inclusão
+  neurodiversidade?: string[]; // TEA, TDAH, Dislexia, etc.
+  neurodiversidade_outra?: string;
+  laudo_url?: string; // URL do Laudo Médico
+  pei_url?: string; // URL do PEI
+
+  // 💉 Vacinação
+  carteira_vacinacao_em_dia?: boolean;
+  carteira_vacinacao_url?: string; // Foto da Carteira
+  vacinas_pendentes?: string;
+
+  // 💊 Segurança & Medicamentos
+  autorizacao_medicacao?: boolean; // "Autorizo medicar em caso de febre?"
+  medicamentos_continuos?: string;
+  alergias_medicamentosas?: string; // Dipirona, etc.
+
+  // 🍎 Nutrição (Cantina)
+  restricoes_alimentares?: string; // Glúten, Lactose, etc.
+  intolerancias?: string[];
+
+  // Condições Médicas Gerais (Legado/Manter)
+  doencas_cronicas?: string[];
   doencas_cronicas_outra?: string;
-
-  deficiencias?: string[];
+  deficiencias?: string[]; // Pode ser migrado para neurodiversidade visualmente, mas manter dado
   deficiencias_outra?: string;
-
-  doencas_contraidas?: string[]; // Catapora, etc.
+  doencas_contraidas?: string[];
   doencas_contraidas_outra?: string;
-
-  vacinas?: string[];
-  vacinas_outra?: string;
-
-  alergias?: string;
-  medicamentos_continuos?: string; // Tratamento atual
 
   // Emergência
   contato_emergencia_nome?: string;
@@ -399,7 +411,7 @@ export interface HealthInfo {
   medico_telefone?: string;
 
   // Orientações
-  instrucoes_febre?: string;
+  instrucoes_febre?: string; // Manter como detalhe textual
   plano_saude_nome?: string;
   plano_saude_numero?: string;
   observacoes_adicionais?: string;

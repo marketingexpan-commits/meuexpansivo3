@@ -51,11 +51,6 @@ const PAYMENT_METHOD_OPTIONS = [
     { label: 'Parceiro Isaac', value: 'Isaac' }
 ];
 
-const HEALTH_CHRONIC_OPTIONS = ['Asma', 'Bronquite', 'Diabetes', 'Epilepsia', 'Hipertensão', 'Reumatismo'];
-const HEALTH_DEFICIENCY_OPTIONS = ['Física', 'Fala', 'Visual', 'Auditiva'];
-const HEALTH_PAST_ILLNESS_OPTIONS = ['Catapora', 'Caxumba', 'Coqueluche', 'Escarlatina', 'Rubeola', 'Sarampo'];
-const HEALTH_VACCINE_OPTIONS = ['BCG-Oral', 'Anti-Tifoide', 'Sabim', 'Anti-Sarampo', 'BCG-Intra', 'Tríplice', 'Anti-Variolicas'];
-
 const STUDENT_DOCUMENTS_CHECKLIST = [
     'Certidão de Nascimento',
     'RG do Aluno',
@@ -211,15 +206,12 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
 
         // Initialize health fields if student has ficha_saude
         if (student && student.ficha_saude) {
-            initialData.health_alergias = student.ficha_saude.alergias || '';
             initialData.health_doencas_cronicas = student.ficha_saude.doencas_cronicas || [];
             initialData.health_doencas_cronicas_outra = student.ficha_saude.doencas_cronicas_outra || '';
             initialData.health_deficiencias = student.ficha_saude.deficiencias || [];
             initialData.health_deficiencias_outra = student.ficha_saude.deficiencias_outra || '';
             initialData.health_doencas_contraidas = student.ficha_saude.doencas_contraidas || [];
             initialData.health_doencas_contraidas_outra = student.ficha_saude.doencas_contraidas_outra || '';
-            initialData.health_vacinas = student.ficha_saude.vacinas || [];
-            initialData.health_vacinas_outra = student.ficha_saude.vacinas_outra || '';
             initialData.health_medicamentos = student.ficha_saude.medicamentos_continuos || '';
             initialData.health_emergencia_nome = student.ficha_saude.contato_emergencia_nome || '';
             initialData.health_emergencia_fone = student.ficha_saude.contato_emergencia_fone || '';
@@ -395,15 +387,6 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
         setFormData((prev: any) => ({ ...prev, [name]: finalValue }));
     };
 
-    const handleToggleHealthItem = (fieldName: string, item: string) => {
-        setFormData((prev: any) => {
-            const currentItems = prev[fieldName] || [];
-            const newItems = currentItems.includes(item)
-                ? currentItems.filter((i: string) => i !== item)
-                : [...currentItems, item];
-            return { ...prev, [fieldName]: newItems };
-        });
-    };
 
     const handleSelectChange = (name: string, value: string) => {
         setFormData((prev: any) => {
@@ -1332,147 +1315,230 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                     )}
 
                     {activeTab === 'health' && (
-                        <div className="space-y-6">
-                            {/* Linha 1: Doenças Crônicas e Deficiências */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
-                                    <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                        🩺 Doenças Crônicas
-                                    </h3>
-                                    <div className="grid grid-cols-2 gap-3 mb-4">
-                                        {HEALTH_CHRONIC_OPTIONS.map(option => (
-                                            <Checkbox
-                                                key={option}
-                                                label={option}
-                                                checked={formData.health_doencas_cronicas?.includes(option)}
-                                                onChange={() => handleToggleHealthItem('health_doencas_cronicas', option)}
-                                            />
-                                        ))}
-                                    </div>
-                                    <Input
-                                        name="health_doencas_cronicas_outra"
-                                        value={formData.health_doencas_cronicas_outra}
-                                        onChange={handleChange}
-                                        label="Outra"
-                                        placeholder="Especifique se houver"
-                                    />
-                                </div>
+                        <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
 
-                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
-                                    <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                        ♿ Deficiências
-                                    </h3>
-                                    <div className="grid grid-cols-2 gap-3 mb-4">
-                                        {HEALTH_DEFICIENCY_OPTIONS.map(option => (
-                                            <Checkbox
-                                                key={option}
-                                                label={option}
-                                                checked={formData.health_deficiencias?.includes(option)}
-                                                onChange={() => handleToggleHealthItem('health_deficiencias', option)}
-                                            />
-                                        ))}
-                                    </div>
-                                    <Input
-                                        name="health_deficiencias_outra"
-                                        value={formData.health_deficiencias_outra}
-                                        onChange={handleChange}
-                                        label="Outra"
-                                        placeholder="Especifique se houver"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Linha 2: Doenças Contraídas e Vacinas */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
-                                    <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                        🦠 Doenças já Contraídas
-                                    </h3>
-                                    <div className="grid grid-cols-2 gap-3 mb-4">
-                                        {HEALTH_PAST_ILLNESS_OPTIONS.map(option => (
-                                            <Checkbox
-                                                key={option}
-                                                label={option}
-                                                checked={formData.health_doencas_contraidas?.includes(option)}
-                                                onChange={() => handleToggleHealthItem('health_doencas_contraidas', option)}
-                                            />
-                                        ))}
-                                    </div>
-                                    <Input
-                                        name="health_doencas_contraidas_outra"
-                                        value={formData.health_doencas_contraidas_outra}
-                                        onChange={handleChange}
-                                        label="Outra"
-                                        placeholder="Especifique se houver"
-                                    />
-                                </div>
-
-                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
-                                    <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                        💉 Vacinas já Tomadas
-                                    </h3>
-                                    <div className="grid grid-cols-2 gap-3 mb-4">
-                                        {HEALTH_VACCINE_OPTIONS.map(option => (
-                                            <Checkbox
-                                                key={option}
-                                                label={option}
-                                                checked={formData.health_vacinas?.includes(option)}
-                                                onChange={() => handleToggleHealthItem('health_vacinas', option)}
-                                            />
-                                        ))}
-                                    </div>
-                                    <Input
-                                        name="health_vacinas_outra"
-                                        value={formData.health_vacinas_outra}
-                                        onChange={handleChange}
-                                        label="Outra"
-                                        placeholder="Especifique se houver"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Alergias e Tratamento */}
+                            {/* 1. 🧠 Inclusão & Neurodiversidade */}
                             <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
-                                <h3 className="text-sm font-bold text-slate-800 mb-4">⚕️ Alergias e Tratamentos</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <Input name="health_alergias" value={formData.health_alergias} onChange={handleChange} label="Alergias (Alimentares/Medicamentos)" placeholder="Ex: Amendoim, Dipirona..." />
-                                    <Input name="health_medicamentos" value={formData.health_medicamentos} onChange={handleChange} label="Medicamentos de Uso Contínuo" placeholder="Nome do remédio e horários" />
-                                </div>
-                            </div>
-
-                            {/* Emergência e Plano */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
-                                    <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                        🚨 Em Caso de Emergência
-                                    </h3>
-                                    <div className="space-y-4">
-                                        <Input name="health_emergencia_nome" value={formData.health_emergencia_nome} onChange={handleChange} label="Contato de Emergência" placeholder="Nome do contato" />
-                                        <Input name="health_emergencia_fone" value={formData.health_emergencia_fone} onChange={handleChange} label="Telefone Emergência" placeholder="5584..." />
-                                        <Input name="health_hospital" value={formData.health_hospital} onChange={handleChange} label="Hospital de Preferência" placeholder="Nome do Hospital" />
-                                    </div>
-                                </div>
-
-                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
-                                    <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                        💳 Plano de Saúde
-                                    </h3>
-                                    <div className="space-y-4">
-                                        <Input name="health_plano_nome" value={formData.health_plano_nome} onChange={handleChange} label="Nome do Plano" placeholder="Ex: Unimed, Hapvida" />
-                                        <Input name="health_plano_numero" value={formData.health_plano_numero} onChange={handleChange} label="Número da Carteirinha" placeholder="000.000..." />
-                                        <Input name="health_medico_nome" value={formData.health_medico_nome} onChange={handleChange} label="Médico Particular" placeholder="Nome do médico" />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Instruções */}
-                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
-                                <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                    💡 Orientações Importantes
+                                <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    <Heart className="w-5 h-5 text-slate-600" />
+                                    Inclusão & Neurodiversidade
                                 </h3>
                                 <div className="space-y-4">
-                                    <Input name="health_febre" value={formData.health_febre} onChange={handleChange} label="O que fazer em caso de febre?" placeholder="Ex: Dar tal medicamento ou apenas avisar." />
-                                    <Input name="health_obs" value={formData.health_obs} onChange={handleChange} label="Observações Adicionais de Saúde" placeholder="Outras informações relevantes" />
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        {['TEA (Autismo)', 'TDAH', 'Dislexia', 'Discalculia', 'TOD', 'Altas Habilidades', 'Síndrome de Down'].map(cond => (
+                                            <Checkbox
+                                                key={cond}
+                                                label={cond}
+                                                checked={formData.ficha_saude?.neurodiversidade?.includes(cond)}
+                                                onChange={() => {
+                                                    const current = formData.ficha_saude?.neurodiversidade || [];
+                                                    const next = current.includes(cond)
+                                                        ? current.filter((i: string) => i !== cond)
+                                                        : [...current, cond];
+                                                    setFormData((prev: any) => ({ ...prev, ficha_saude: { ...prev.ficha_saude, neurodiversidade: next } }));
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                    <Input
+                                        label="Outras Condições / Detalhes"
+                                        placeholder="Ex: Acompanhamento terapêutico..."
+                                        value={formData.ficha_saude?.neurodiversidade_outra || ''}
+                                        onChange={(e) => setFormData((prev: any) => ({ ...prev, ficha_saude: { ...prev.ficha_saude, neurodiversidade_outra: e.target.value } }))}
+                                    />
+
+                                    <div className="flex gap-4 pt-2">
+                                        {/* Upload do Laudo Médico */}
+                                        <label className="flex-1 p-4 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center bg-white hover:bg-slate-50 transition-colors cursor-pointer group">
+                                            <Upload className="w-6 h-6 text-slate-400 group-hover:text-slate-600 mb-2" />
+                                            <span className="text-sm font-semibold text-slate-800">Upload do Laudo Médico</span>
+                                            <span className="text-xs text-slate-500">PDF ou Imagem (Máx 5MB)</span>
+                                            <input
+                                                type="file"
+                                                accept=".pdf,image/*"
+                                                className="hidden"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        if (file.size > 5 * 1024 * 1024) {
+                                                            alert('Arquivo muito grande! Máximo 5MB.');
+                                                            return;
+                                                        }
+                                                        // TODO: Implementar upload real para storage
+                                                        alert(`Arquivo selecionado: ${file.name}\n\nFuncionalidade de upload será implementada em breve!`);
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+
+                                        {/* Upload do PEI */}
+                                        <label className="flex-1 p-4 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center bg-white hover:bg-slate-50 transition-colors cursor-pointer group">
+                                            <FileText className="w-6 h-6 text-slate-400 group-hover:text-slate-600 mb-2" />
+                                            <span className="text-sm font-semibold text-slate-800">Anexar PEI (Plano Indiv.)</span>
+                                            <span className="text-xs text-slate-500">Documento Pedagógico</span>
+                                            <input
+                                                type="file"
+                                                accept=".pdf,.doc,.docx"
+                                                className="hidden"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        if (file.size > 5 * 1024 * 1024) {
+                                                            alert('Arquivo muito grande! Máximo 5MB.');
+                                                            return;
+                                                        }
+                                                        // TODO: Implementar upload real para storage
+                                                        alert(`Arquivo selecionado: ${file.name}\n\nFuncionalidade de upload será implementada em breve!`);
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 2. 💉 Vacinação & Imunização */}
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                                <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    <ShieldCheck className="w-5 h-5 text-slate-600" />
+                                    Vacinação & Imunização
+                                </h3>
+                                <div className="flex flex-col md:flex-row gap-6">
+                                    <div className="flex-1 space-y-4">
+                                        <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200">
+                                            <Checkbox
+                                                label="Carteira de Vacinação em Dia"
+                                                checked={formData.ficha_saude?.carteira_vacinacao_em_dia || false}
+                                                onChange={() => setFormData((prev: any) => ({ ...prev, ficha_saude: { ...prev.ficha_saude, carteira_vacinacao_em_dia: !prev.ficha_saude?.carteira_vacinacao_em_dia } }))}
+                                            />
+                                        </div>
+                                        <Input
+                                            label="Vacinas Pendentes (Se houver)"
+                                            placeholder="Ex: Falta a dose de reforço da..."
+                                            value={formData.ficha_saude?.vacinas_pendentes || ''}
+                                            onChange={(e) => setFormData((prev: any) => ({ ...prev, ficha_saude: { ...prev.ficha_saude, vacinas_pendentes: e.target.value } }))}
+                                        />
+                                    </div>
+                                    <label className="w-full md:w-1/3 p-4 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center bg-white hover:bg-slate-50 transition-colors cursor-pointer text-center">
+                                        <Camera className="w-8 h-8 text-slate-400 mb-2" />
+                                        <span className="text-sm font-bold text-slate-800">Foto da Carteira</span>
+                                        <span className="text-xs text-slate-500">Clique para enviar comprovante</span>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    if (file.size > 5 * 1024 * 1024) {
+                                                        alert('Arquivo muito grande! Máximo 5MB.');
+                                                        return;
+                                                    }
+                                                    // TODO: Implementar upload real para storage
+                                                    alert(`Foto selecionada: ${file.name}\n\nFuncionalidade de upload será implementada em breve!`);
+                                                }
+                                            }}
+                                        />
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* 3. 💊 Medicamentos & Segurança */}
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                                <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    <ShieldAlert className="w-5 h-5 text-slate-600" />
+                                    Segurança & Medicamentos
+                                </h3>
+                                <div className="space-y-5">
+                                    <div className="p-4 bg-white border border-slate-200 rounded-xl flex items-start gap-3">
+                                        <Checkbox
+                                            label=""
+                                            checked={formData.ficha_saude?.autorizacao_medicacao || false}
+                                            onChange={() => setFormData((prev: any) => ({ ...prev, ficha_saude: { ...prev.ficha_saude, autorizacao_medicacao: !prev.ficha_saude?.autorizacao_medicacao } }))}
+                                        />
+                                        <div>
+                                            <p className="font-bold text-slate-800 text-sm">Autorização para Termorregulação</p>
+                                            <p className="text-xs text-slate-600 mt-1">
+                                                Autorizo a escola a ministrar antitérmico simples (Dipirona/Paracetamol) exclusivamente em caso de
+                                                <strong> febre comprovada acima de 38ºC</strong>, enquanto aguardo a chegada dos responsáveis.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <Input
+                                            label="Alergias Medicamentosas (CRÍTICO ⚠️)"
+                                            placeholder="Ex: ALERGIA A DIPIRONA / PENICILINA"
+                                            value={formData.ficha_saude?.alergias_medicamentosas || ''}
+                                            onChange={(e) => setFormData((prev: any) => ({ ...prev, ficha_saude: { ...prev.ficha_saude, alergias_medicamentosas: e.target.value } }))}
+                                        />
+                                        <Input
+                                            label="Uso Contínuo (Horário escolar)"
+                                            placeholder="Ex: Ritalina 10mg às 14h"
+                                            value={formData.ficha_saude?.medicamentos_continuos || ''}
+                                            onChange={(e) => setFormData((prev: any) => ({ ...prev, ficha_saude: { ...prev.ficha_saude, medicamentos_continuos: e.target.value } }))}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 4. 🍎 Nutrição */}
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                                <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    🍎 Restrições Alimentares (Cantina)
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <Input
+                                        label="Alergias Alimentares"
+                                        placeholder="Ex: Amendoim, Camarão, Corante vermelho"
+                                        value={formData.ficha_saude?.restricoes_alimentares || ''}
+                                        onChange={(e) => setFormData((prev: any) => ({ ...prev, ficha_saude: { ...prev.ficha_saude, restricoes_alimentares: e.target.value } }))}
+                                    />
+                                    <div className="flex flex-wrap gap-2 pt-6">
+                                        {['Intolerância a Lactose', 'Doença Celíaca (Glúten)', 'Diabético', 'Vegetariano'].map(item => (
+                                            <div key={item}
+                                                onClick={() => {
+                                                    const current = formData.ficha_saude?.intolerancias || [];
+                                                    const next = current.includes(item) ? current.filter((i: string) => i !== item) : [...current, item];
+                                                    setFormData((prev: any) => ({ ...prev, ficha_saude: { ...prev.ficha_saude, intolerancias: next } }));
+                                                }}
+                                                className={`px-3 py-2 rounded-lg text-xs font-bold cursor-pointer transition-colors border ${formData.ficha_saude?.intolerancias?.includes(item) ? 'bg-slate-700 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
+                                            >
+                                                {item}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 5. 🚑 Emergência & Contatos */}
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                                <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    🚑 Plano de Emergência
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <Input
+                                        label="Hospital de Preferência"
+                                        placeholder="Ex: Hospital Infantil Varela Santiago"
+                                        value={formData.ficha_saude?.hospital_preferencia || ''}
+                                        onChange={(e) => setFormData((prev: any) => ({ ...prev, ficha_saude: { ...prev.ficha_saude, hospital_preferencia: e.target.value } }))}
+                                    />
+                                    <Input
+                                        label="Médico(a) Particular"
+                                        placeholder="Nome do Pediatra"
+                                        value={formData.ficha_saude?.medico_particular || ''}
+                                        onChange={(e) => setFormData((prev: any) => ({ ...prev, ficha_saude: { ...prev.ficha_saude, medico_particular: e.target.value } }))}
+                                    />
+                                    <Input
+                                        label="Telefone do Médico"
+                                        value={formData.ficha_saude?.medico_telefone || ''}
+                                        onChange={(e) => setFormData((prev: any) => ({ ...prev, ficha_saude: { ...prev.ficha_saude, medico_telefone: e.target.value } }))}
+                                    />
+                                    <Input
+                                        label="Contato Emergência (Além dos pais)"
+                                        value={formData.ficha_saude?.contato_emergencia_nome || ''}
+                                        onChange={(e) => setFormData((prev: any) => ({ ...prev, ficha_saude: { ...prev.ficha_saude, contato_emergencia_nome: e.target.value } }))}
+                                    />
                                 </div>
                             </div>
                         </div>
