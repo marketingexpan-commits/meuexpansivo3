@@ -3,7 +3,7 @@ import { Input } from './Input';
 import { Select } from './Select';
 import { Checkbox } from './Checkbox';
 import { Button } from './Button';
-import { User, MapPin, Users, GraduationCap, X, Loader2, Camera, Upload, MessagesSquare, Heart, FileText, Printer, Barcode, Trash2, Eye, EyeOff, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { User, MapPin, Users, GraduationCap, X, Loader2, Camera, Upload, MessagesSquare, Heart, FileText, Printer, Barcode, Trash2, Eye, EyeOff, ShieldAlert, ShieldCheck, Plus } from 'lucide-react';
 import { StudentEnrollmentPrint } from './StudentEnrollmentPrint';
 import { PhotoCaptureModal } from './PhotoCaptureModal';
 import { clsx } from 'clsx';
@@ -201,7 +201,8 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
 
             documentos_entregues: [] as string[],
             nacionalidade: '',
-            uf_naturalidade: ''
+            uf_naturalidade: '',
+            enrollmentHistory: [] as any[]
         };
 
         // Initialize health fields if student has ficha_saude
@@ -435,6 +436,36 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
             gradeLevel: '',
             segmentId: segment?.id || ''
         }));
+    };
+
+    const handleAddHistoryRow = () => {
+        const newRecord = {
+            year: new Date().getFullYear().toString(),
+            unit: formData.unit || '',
+            gradeLevel: formData.gradeLevel ? `${formData.gradeLevel} - ${selectedLevel}` : '',
+            schoolClass: formData.schoolClass || 'A',
+            shift: formData.shift ? SHIFT_LABELS[formData.shift as SchoolShift] || formData.shift : 'Matutino',
+            status: 'CURSANDO'
+        };
+        setFormData((prev: any) => ({
+            ...prev,
+            enrollmentHistory: [...(prev.enrollmentHistory || []), newRecord]
+        }));
+    };
+
+    const handleRemoveHistoryRow = (index: number) => {
+        setFormData((prev: any) => ({
+            ...prev,
+            enrollmentHistory: (prev.enrollmentHistory || []).filter((_: any, i: number) => i !== index)
+        }));
+    };
+
+    const handleUpdateHistoryRow = (index: number, field: string, value: string) => {
+        setFormData((prev: any) => {
+            const history = [...(prev.enrollmentHistory || [])];
+            history[index] = { ...history[index], [field]: value };
+            return { ...prev, enrollmentHistory: history };
+        });
     };
 
     // Helper to remove undefined/null from object before saving to Firestore
@@ -1056,13 +1087,22 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                 className="col-span-2"
                             />
 
-                            <Input
-                                name="data_inicio"
-                                type="date"
-                                value={formData.data_inicio || ''}
-                                onChange={handleChange}
-                                label="Data de Início/Admissão"
-                            />
+                            <div className="grid grid-cols-2 gap-4">
+                                <Input
+                                    name="data_inicio"
+                                    type="date"
+                                    value={formData.data_inicio || ''}
+                                    onChange={handleChange}
+                                    label="Data de Início/Admissão"
+                                />
+                                <Input
+                                    name="data_desligamento"
+                                    type="date"
+                                    value={formData.data_desligamento || ''}
+                                    onChange={handleChange}
+                                    label="Data de Desligamento"
+                                />
+                            </div>
 
                             <Input
                                 name="code"
@@ -1207,6 +1247,124 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                 />
                             </div>
 
+
+                            {/* --- TABELA DE ENTURMAÇÕES (HISTÓRICO) --- */}
+                            <div className="col-span-2 mt-8 border-t border-gray-100 pt-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div>
+                                        <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                                            📅 Enturmações por Ano Letivo
+                                        </h3>
+                                        <p className="text-xs text-gray-500">Histórico de passagens do aluno pela escola (Matrículas).</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleAddHistoryRow}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors border border-blue-100"
+                                    >
+                                        <Plus className="w-3.5 h-3.5" /> Adicionar Ano
+                                    </button>
+                                </div>
+
+                                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                                    <table className="w-full text-left text-sm border-collapse">
+                                        <thead>
+                                            <tr className="bg-gray-50 border-b border-gray-200">
+                                                <th className="px-3 py-2 font-bold text-gray-600 text-[11px] uppercase w-20">Ano</th>
+                                                <th className="px-3 py-2 font-bold text-gray-600 text-[11px] uppercase">Unidade</th>
+                                                <th className="px-3 py-2 font-bold text-gray-600 text-[11px] uppercase">Série</th>
+                                                <th className="px-3 py-2 font-bold text-gray-600 text-[11px] uppercase w-16">Turma</th>
+                                                <th className="px-3 py-2 font-bold text-gray-600 text-[11px] uppercase">Turno</th>
+                                                <th className="px-3 py-2 font-bold text-gray-600 text-[11px] uppercase">Status</th>
+                                                <th className="px-3 py-2 font-bold text-gray-600 text-[11px] uppercase w-12 text-center">Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {(!formData.enrollmentHistory || formData.enrollmentHistory.length === 0) ? (
+                                                <tr>
+                                                    <td colSpan={7} className="px-3 py-8 text-center text-gray-400 italic bg-gray-50/30">
+                                                        Nenhum histórico de matrícula encontrado. <br />
+                                                        <span className="text-[10px]">As matrículas são geradas automaticamente na rematrícula ou adicione acima.</span>
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                formData.enrollmentHistory.map((row: any, idx: number) => (
+                                                    <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                                        <td className="px-2 py-1.5">
+                                                            <input
+                                                                type="text"
+                                                                value={row.year}
+                                                                onChange={(e) => handleUpdateHistoryRow(idx, 'year', e.target.value)}
+                                                                className="w-full bg-transparent border-b border-transparent focus:border-blue-300 focus:outline-none px-1 text-xs"
+                                                            />
+                                                        </td>
+                                                        <td className="px-2 py-1.5">
+                                                            <select
+                                                                value={row.unit}
+                                                                onChange={(e) => handleUpdateHistoryRow(idx, 'unit', e.target.value)}
+                                                                className="w-full bg-transparent border-b border-transparent focus:border-blue-300 focus:outline-none px-1 text-xs appearance-none"
+                                                            >
+                                                                {Object.values(SchoolUnit).map(u => (
+                                                                    <option key={u} value={u}>{UNIT_LABELS[u]}</option>
+                                                                ))}
+                                                            </select>
+                                                        </td>
+                                                        <td className="px-2 py-1.5">
+                                                            <input
+                                                                type="text"
+                                                                value={row.gradeLevel}
+                                                                onChange={(e) => handleUpdateHistoryRow(idx, 'gradeLevel', e.target.value)}
+                                                                className="w-full bg-transparent border-b border-transparent focus:border-blue-300 focus:outline-none px-1 text-xs"
+                                                            />
+                                                        </td>
+                                                        <td className="px-2 py-1.5">
+                                                            <input
+                                                                type="text"
+                                                                value={row.schoolClass}
+                                                                onChange={(e) => handleUpdateHistoryRow(idx, 'schoolClass', e.target.value)}
+                                                                className="w-full bg-transparent border-b border-transparent focus:border-blue-300 focus:outline-none px-1 text-xs text-center"
+                                                            />
+                                                        </td>
+                                                        <td className="px-2 py-1.5">
+                                                            <select
+                                                                value={row.shift}
+                                                                onChange={(e) => handleUpdateHistoryRow(idx, 'shift', e.target.value)}
+                                                                className="w-full bg-transparent border-b border-transparent focus:border-blue-300 focus:outline-none px-1 text-xs appearance-none"
+                                                            >
+                                                                <option value="Matutino">Matutino</option>
+                                                                <option value="Vespertino">Vespertino</option>
+                                                            </select>
+                                                        </td>
+                                                        <td className="px-2 py-1.5">
+                                                            <select
+                                                                value={row.status}
+                                                                onChange={(e) => handleUpdateHistoryRow(idx, 'status', e.target.value)}
+                                                                className={clsx(
+                                                                    "w-full bg-transparent border-b border-transparent focus:border-blue-300 focus:outline-none px-1 text-[10px] font-bold appearance-none",
+                                                                    row.status === 'APROVADO' ? 'text-blue-600' : row.status === 'REPROVADO' ? 'text-red-600' : 'text-slate-500'
+                                                                )}
+                                                            >
+                                                                {STUDENT_STATUS_OPTIONS.map(opt => (
+                                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                                ))}
+                                                            </select>
+                                                        </td>
+                                                        <td className="px-2 py-1.5 text-center">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleRemoveHistoryRow(idx)}
+                                                                className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
 
                         </div>
                     )}
