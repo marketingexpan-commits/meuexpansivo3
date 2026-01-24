@@ -5,7 +5,7 @@ import { Button } from './Button';
 import { pedagogicalService } from '../services/pedagogicalService';
 import { studentService } from '../services/studentService';
 import { Loader2, ShieldCheck, Search, X, Trash2, AlertTriangle, Database, Zap, Calendar, Bug, Layers } from 'lucide-react';
-import { getCurrentSchoolYear, isClassScheduled } from '../utils/academicUtils';
+import { getCurrentSchoolYear, isClassScheduled, isYearMatch, isHistoricalYear } from '../utils/academicUtils';
 import { getAcademicSettings } from '../services/academicSettings';
 import type { GradeEntry, ClassSchedule, AcademicSubject } from '../types';
 import { SchoolUnit, UNIT_LABELS, Subject, SUBJECT_LABELS } from '../types';
@@ -221,12 +221,15 @@ export const DatabaseCleanupTool = () => {
             const foundDiscrepancies: Discrepancy[] = [];
 
             allStudents.forEach(student => {
-                const studentGrades = allGrades.filter(g => g.studentId === student.id && g.year === getCurrentSchoolYear());
+                const curYear = getCurrentSchoolYear();
+                const studentGrades = allGrades.filter(g => g.studentId === student.id && g.year && isYearMatch(g.year, curYear));
                 studentGrades.forEach(grade => {
                     for (let b = 1; b <= 4; b++) {
                         // 1. Determine Date Range for Bimester
-                        let startDate = `${getCurrentSchoolYear()}-01-01`;
-                        let endDate = `${getCurrentSchoolYear()}-12-31`;
+                        // Fallback to current real year if 'HISTORICAL' is selected for date templates
+                        const dateYear = isHistoricalYear(curYear) ? new Date().getFullYear().toString() : curYear;
+                        let startDate = `${dateYear}-01-01`;
+                        let endDate = `${dateYear}-12-31`;
 
                         // @ts-ignore
                         const bimConfig = settings?.bimesters?.find((bm: any) => bm.number === b);
@@ -311,7 +314,7 @@ export const DatabaseCleanupTool = () => {
                     collection(db, 'grades'),
                     where('studentId', '==', d.studentId),
                     where('subject', '==', d.subject),
-                    where('year', '==', getCurrentSchoolYear())
+                    where('year', '==', isHistoricalYear(getCurrentSchoolYear()) ? d.gradeValue : getCurrentSchoolYear()) // Approximate year if historical
                 );
                 const snap = await getDocs(q);
                 if (!snap.empty) {
