@@ -187,11 +187,12 @@ async function deepSync() {
             }
             // For '00' (Cursando) or others, check the YEAR to be sure.
             else {
-                // He is only TRULY 'CURSANDO' if he enrolled in 2025 or 2026.
-                if (lastYear >= 2025) {
+                // He is only TRULY 'CURSANDO' if he enrolled in 2024, 2025 or 2026.
+                // Or if DB explicitly says '00'.
+                if (sql.CODSIT === '00' || lastYear >= 2024) {
                     if (data.status !== 'CURSANDO') updates.status = 'CURSANDO';
                 } else {
-                    // Even if DB says '00', if last enrolled in 2022, he is effectively CONCLUÍDO (or inactive)
+                    // Even if DB says '00' but last enrollment was e.g. 2018, he is CONCLUÍDO
                     if (data.status !== 'CONCLUÍDO') updates.status = 'CONCLUÍDO';
                 }
             }
