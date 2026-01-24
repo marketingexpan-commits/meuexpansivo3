@@ -176,25 +176,36 @@ async function deepSync() {
             }
             if (sql.AUTORIZA && data.autorizacao_bolsa !== sql.AUTORIZA) updates.autorizacao_bolsa = sql.AUTORIZA;
 
-            // --- SMART STATUS LOGIC ---
-            // '01' is explicitly 'TRANSFERIDO'
-            if (sql.CODSIT === '01') {
-                if (data.status !== 'TRANSFERIDO') updates.status = 'TRANSFERIDO';
-            }
-            // '99' is explicitly 'DESISTENTE'
-            else if (sql.CODSIT === '99') {
-                if (data.status !== 'DESISTENTE') updates.status = 'DESISTENTE';
-            }
-            // For '00' (Cursando) or others, check the YEAR to be sure.
-            else {
-                // He is only TRULY 'CURSANDO' if he enrolled in 2024, 2025 or 2026.
-                // Or if DB explicitly says '00'.
-                if (sql.CODSIT === '00' || lastYear >= 2024) {
-                    if (data.status !== 'CURSANDO') updates.status = 'CURSANDO';
+            // --- SMART STATUS LOGIC (Official Legend) ---
+            const statusMap = {
+                '00': 'CURSANDO',
+                '01': 'TRANSFERIDO',
+                '03': 'EVADIDO',
+                '09': 'TRANCADO',
+                '05': 'RESERVADO',
+                '10': 'ATIVO',
+                '88': 'REPROVADO',
+                '99': 'APROVADO'
+            };
+
+            const legacyStatus = statusMap[sql.CODSIT];
+
+            if (legacyStatus) {
+                // Special check: Only mark as CURSANDO/ATIVO if it's recent (>= 2024)
+                // To avoid marking students from 2015 as "CURSANDO" just because codsit is 00
+                const isRecent = lastYear >= 2024;
+                const isActiveStatus = ['CURSANDO', 'ATIVO', 'RESERVADO'].includes(legacyStatus);
+
+                if (isActiveStatus) {
+                    const finalStatus = isRecent ? legacyStatus : 'CONCLUÍDO';
+                    if (data.status !== finalStatus) updates.status = finalStatus;
                 } else {
-                    // Even if DB says '00' but last enrollment was e.g. 2018, he is CONCLUÍDO
-                    if (data.status !== 'CONCLUÍDO') updates.status = 'CONCLUÍDO';
+                    // Constant statuses like TRANSFERIDO, EVADIDO, etc.
+                    if (data.status !== legacyStatus) updates.status = legacyStatus;
                 }
+            } else if (lastYear > 0 && lastYear < 2024) {
+                // No specific code, but it's an old record
+                if (data.status !== 'CONCLUÍDO') updates.status = 'CONCLUÍDO';
             }
 
             if (Object.keys(updates).length > 0) {
