@@ -197,9 +197,15 @@ export function Sidebar() {
                                 collapsed={collapsed}
                             />
                             <SidebarItem
-                                icon={Users}
+                                icon={UserCheck}
                                 label="Cadastro de Aluno"
                                 path="/matriculas?action=new"
+                                collapsed={collapsed}
+                            />
+                            <SidebarItem
+                                icon={Users}
+                                label="Rematrícula & Promoção"
+                                path="/rematricula"
                                 collapsed={collapsed}
                             />
                         </div>
@@ -382,35 +388,43 @@ export function Sidebar() {
                 </div>
             </div>
 
-            {showDeclarationModal && (
-                <DeclarationSearchModal onClose={() => setShowDeclarationModal(false)} />
-            )}
+            {
+                showDeclarationModal && (
+                    <DeclarationSearchModal onClose={() => setShowDeclarationModal(false)} />
+                )
+            }
 
-            {showHistoryModal && (
-                <HistorySearchModal onClose={() => setShowHistoryModal(false)} />
-            )}
+            {
+                showHistoryModal && (
+                    <HistorySearchModal onClose={() => setShowHistoryModal(false)} />
+                )
+            }
 
-            {showBulletinModal && (
-                <BulletinSearchModal onClose={() => setShowBulletinModal(false)} />
-            )}
+            {
+                showBulletinModal && (
+                    <BulletinSearchModal onClose={() => setShowBulletinModal(false)} />
+                )
+            }
 
-            {showCalendarModal && (() => {
-                const userUnit = localStorage.getItem('userUnit') as SchoolUnit | 'admin_geral' | null;
-                const isAdmin = userUnit === 'admin_geral';
+            {
+                showCalendarModal && (() => {
+                    const userUnit = localStorage.getItem('userUnit') as SchoolUnit | 'admin_geral' | null;
+                    const isAdmin = userUnit === 'admin_geral';
 
-                // If user is admin_geral, we pass 'admin_geral' to CalendarManagement
-                // If user is a unit coordinator, we pass their SchoolUnit
-                const mappedUnit = userUnit || 'admin_geral';
+                    // If user is admin_geral, we pass 'admin_geral' to CalendarManagement
+                    // If user is a unit coordinator, we pass their SchoolUnit
+                    const mappedUnit = userUnit || 'admin_geral';
 
-                return (
-                    <CalendarManagement
-                        isOpen={showCalendarModal}
-                        onClose={() => setShowCalendarModal(false)}
-                        unit={mappedUnit as SchoolUnit | 'admin_geral'}
-                        isAdmin={isAdmin}
-                    />
-                );
-            })()}
-        </aside>
+                    return (
+                        <CalendarManagement
+                            isOpen={showCalendarModal}
+                            onClose={() => setShowCalendarModal(false)}
+                            unit={mappedUnit as SchoolUnit | 'admin_geral'}
+                            isAdmin={isAdmin}
+                        />
+                    );
+                })()
+            }
+        </aside >
     );
 }

@@ -32,7 +32,9 @@ export function useAcademicData() {
                 } else {
                     segmentsData = segSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AcademicSegment));
                 }
+                // Sort Segments first to use their order in Grade sorting
                 segmentsData.sort((a, b) => (a.order || 0) - (b.order || 0));
+                const segmentOrderMap = segmentsData.reduce((acc, s) => ({ ...acc, [s.id]: s.order || 0 }), {} as Record<string, number>);
                 setSegments(segmentsData);
 
                 // Fetch Grades
@@ -41,14 +43,22 @@ export function useAcademicData() {
                     gradesData = Object.values(ACADEMIC_GRADES).map((grade, index) => ({
                         id: grade.id,
                         segmentId: grade.segmentId,
-                        name: grade.label, // In TeacherForm/StudentForm we might need "Grade - Segment", but the Hook should provide the raw label
+                        name: grade.label,
                         isActive: true,
-                        order: (index + 1) * 10
+                        order: grade.order || (index + 1) * 10
                     }));
                 } else {
                     gradesData = gradeSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AcademicGrade));
                 }
-                gradesData.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+                // Robust Global Sort: Segment Order -> Grade Order -> Name
+                gradesData.sort((a, b) => {
+                    const segA = segmentOrderMap[a.segmentId] || 0;
+                    const segB = segmentOrderMap[b.segmentId] || 0;
+                    if (segA !== segB) return segA - segB;
+                    if ((a.order || 0) !== (b.order || 0)) return (a.order || 0) - (b.order || 0);
+                    return a.name.localeCompare(b.name);
+                });
                 setGrades(gradesData);
 
                 // Fetch Subjects

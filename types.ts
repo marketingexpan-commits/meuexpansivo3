@@ -412,6 +412,17 @@ export interface Student {
   isScholarship?: boolean; // Indicates if the student is exempt from monthly fees
   phoneNumber?: string;
   photoUrl?: string; // Base64 or URL for 3x4 student photo
+  enrolledYears?: string[]; // NOVO: Anos de matrícula
+  enrollmentHistory?: EnrollmentRecord[]; // NOVO: Histórico de enturmação
+}
+
+export interface EnrollmentRecord {
+  year: string;
+  gradeLevel: string;
+  schoolClass: string;
+  shift: string;
+  unit: string;
+  status: string;
 }
 
 export interface TeacherAssignment {

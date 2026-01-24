@@ -76,7 +76,17 @@ export function Matriculas() {
 
     // Filter students based on search term AND advanced filters
     const filteredStudents = students.filter(student => {
+        const currentYear = getCurrentSchoolYear();
         const searchLower = searchTerm.toLowerCase();
+
+        // 1. Get Enrollment for selected Year
+        const enrollment = student.enrollmentHistory?.find(h => h.year === currentYear);
+
+        // Dynamic fields for display/filter
+        const displayGrade = enrollment?.gradeLevel || student.gradeLevel;
+        const displayClass = enrollment?.schoolClass || student.schoolClass;
+        const displayShift = enrollment?.shift || student.shift;
+        const displayStatus = enrollment?.status || student.status || 'CURSANDO';
 
         const matchesSearch = (
             student.name.toLowerCase().includes(searchLower) ||
@@ -85,34 +95,26 @@ export function Matriculas() {
         );
 
         const matchesGrade = !filterGrade || (() => {
-            // Check if filterGrade is a Segment Name
             const segment = segments.find(s => s.name === filterGrade);
             if (segment) {
                 const segmentGrades = grades.filter(g => g.segmentId === segment.id).map(g => g.name);
-                return segmentGrades.some(g => student.gradeLevel && student.gradeLevel.includes(g));
+                return segmentGrades.some(g => displayGrade && typeof displayGrade === 'string' && displayGrade.includes(g));
             }
-            // Otherwise it's a specific Grade Name
-            return student.gradeLevel && student.gradeLevel.includes(filterGrade);
+            return displayGrade && typeof displayGrade === 'string' && displayGrade.includes(filterGrade);
         })();
-        const matchesClass = !filterClass || student.schoolClass === filterClass;
-        const matchesShift = !filterShift || student.shift === filterShift;
+        const matchesClass = !filterClass || displayClass === filterClass;
+        const matchesShift = !filterShift || displayShift === filterShift;
         const matchesStatus = !filterStatus || (() => {
             if (filterStatus === 'active') {
-                // Active means NOT Blocked AND NOT (Graduated/Transferred/Evaded)
-                // Or explicitly: Cursando, Ativo, Aprovado
-                // For now, let's keep it simple: Active = !isBlocked and !Concluido/Evadido/Transferido
-                // Actually, user wants to HIDE Graduated/Evaded from Default view.
-                // If filterStatus is 'active', we want to show 'current' students.
-                return !student.isBlocked && student.status !== 'CONCLUÍDO' && student.status !== 'EVADIDO' && student.status !== 'TRANSFERIDO';
+                return !student.isBlocked && displayStatus !== 'CONCLUÍDO' && displayStatus !== 'EVADIDO' && displayStatus !== 'TRANSFERIDO';
             }
             if (filterStatus === 'archived') {
-                return student.status === 'CONCLUÍDO' || student.status === 'EVADIDO' || student.status === 'TRANSFERIDO';
+                return displayStatus === 'CONCLUÍDO' || displayStatus === 'EVADIDO' || displayStatus === 'TRANSFERIDO';
             }
             if (filterStatus === 'blocked') {
                 return student.isBlocked;
             }
-            // Specific status match
-            return student.status === filterStatus;
+            return displayStatus === filterStatus;
         })();
 
         return matchesSearch && matchesGrade && matchesClass && matchesShift && matchesStatus;
@@ -545,18 +547,26 @@ export function Matriculas() {
                     <div className="space-y-6">
                         {Object.entries(
                             filteredStudents.reduce((acc, student) => {
+                                // Obter dados do ano selecionado para agrupamento
+                                const currentYear = getCurrentSchoolYear();
+                                const enrollment = student.enrollmentHistory?.find(h => h.year === currentYear);
+
+                                const studentGrade = enrollment?.gradeLevel || student.gradeLevel || '';
+                                const studentClass = enrollment?.schoolClass || student.schoolClass || '';
+                                const studentShift = enrollment?.shift || student.shift || '';
+
                                 // Normalizar String da Série
-                                const normalizedGrade = student.gradeLevel
-                                    ? student.gradeLevel.trim().toUpperCase()
+                                const normalizedGrade = studentGrade
+                                    ? studentGrade.trim().toUpperCase()
                                         .replace(/\s+/g, ' ')
                                         .replace('NÍVEL 5', 'NÍVEL V')
                                         .replace('NIVEL 5', 'NÍVEL V')
                                         .replace('NIVEL V', 'NÍVEL V')
                                     : 'Série não informada';
 
-                                const shiftLabel = SHIFT_LABELS[student.shift as SchoolShift] || student.shift;
-                                const key = (student.schoolClass && student.shift)
-                                    ? `${normalizedGrade} - Turma ${student.schoolClass} / ${shiftLabel}`
+                                const shiftLabel = SHIFT_LABELS[studentShift as SchoolShift] || studentShift;
+                                const key = (studentClass && studentShift)
+                                    ? `${normalizedGrade} - Turma ${studentClass} / ${shiftLabel}`
                                     : `${normalizedGrade} - Pendente de Enturmação`;
 
                                 if (!acc[key]) acc[key] = [];
@@ -676,7 +686,12 @@ export function Matriculas() {
                                                                             ? "bg-orange-100/50 text-orange-600 border-orange-200"
                                                                             : "bg-slate-100 text-slate-600 border-slate-200"
                                                                         }`}>
-                                                                        {student.status || 'CURSANDO'}
+                                                                        {(() => {
+                                                                            const currentYear = getCurrentSchoolYear();
+                                                                            const enrollment = student.enrollmentHistory?.find(h => h.year === currentYear);
+                                                                            const displayStatus = enrollment?.status || student.status || 'CURSANDO';
+                                                                            return displayStatus;
+                                                                        })()}
                                                                     </span>
                                                                     <span className={`text-[9px] font-medium ${student.isBlocked ? 'text-orange-600' : 'text-slate-400'}`}>
                                                                         {student.isBlocked ? 'Acesso Bloqueado' : 'Acesso Ativo'}

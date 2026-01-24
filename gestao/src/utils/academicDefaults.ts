@@ -1,4 +1,6 @@
-import { Subject } from "../types";
+import { SchoolUnit, Subject } from "../types";
+
+export const SCHOOL_UNITS_LIST = Object.values(SchoolUnit);
 
 export const CURRICULUM_MATRIX: Record<string, Record<string, number>> = {
     'Fundamental I': {

@@ -14,6 +14,7 @@ import { Coordenadores } from './pages/Coordenadores';
 import { MuralDigital } from './pages/MuralDigital';
 import { SchoolConfig } from './pages/SchoolConfig';
 import AdminUnidades from './pages/AdminUnidades';
+import { RematriculaPage } from './pages/RematriculaPage.tsx';
 
 
 
@@ -26,6 +27,7 @@ function App() {
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/matriculas" element={<Matriculas />} />
+          <Route path="/rematricula" element={<RematriculaPage />} />
           <Route path="/financeiro" element={<Navigate to="/financeiro/receitas" replace />} />
           <Route path="/financeiro/receitas" element={<Financeiro />} />
           <Route path="/financeiro/pagamentos" element={<Financeiro />} />

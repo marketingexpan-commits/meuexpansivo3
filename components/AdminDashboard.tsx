@@ -9,7 +9,6 @@ import { ReceiptModal } from './ReceiptModal';
 import { db } from '../firebaseConfig';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Rematricula } from './Rematricula';
 import { TableSkeleton } from './Skeleton';
 import { CoordinationTab } from './Admin/CoordinationTab';
 import { FinancialTab } from './Admin/FinancialTab';
@@ -122,7 +121,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     academicSettings
 }) => {
     const { grades: academicGrades, subjects: academicSubjects, loading: loadingAcademic } = useAcademicData();
-    const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'admins' | 'messages' | 'attendance' | 'contacts' | 'rematricula' | 'financial' | 'tickets' | 'coordination' | 'schedule' | 'mural'>('students');
+    const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'admins' | 'messages' | 'attendance' | 'contacts' | 'financial' | 'tickets' | 'coordination' | 'schedule' | 'mural'>('students');
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -1914,19 +1913,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         )}
 
                         {activeTab === 'admins' && isGeneralAdmin && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-8"><div className="lg:col-span-1"><div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"><h2 className="text-lg font-bold text-gray-900 mb-4">{editingAdminId ? 'Editar Admin' : 'Novo Admin de Unidade'}</h2><form onSubmit={handleAdminSubmit} className="space-y-4"><div><label className="text-sm font-medium">Nome (Descrição)</label><input type="text" value={aName} onChange={e => setAName(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Usuário de Login</label><input type="text" value={aUser} onChange={e => setAUser(e.target.value)} required className="w-full p-2 border rounded" /></div><div><label className="text-sm font-medium">Unidade Responsável</label><select value={aUnit} onChange={e => setAUnit(e.target.value as SchoolUnit)} className="w-full p-2 border rounded">{SCHOOL_UNITS_LIST.map(u => <option key={u} value={u}>{UNIT_LABELS[u as SchoolUnit] || u}</option>)}</select></div><div><label className="text-sm font-medium">Senha</label><div className="flex gap-2 relative"><input type={showAdminPassword ? "text" : "password"} value={aPass} onChange={e => setAPass(e.target.value)} required={!editingAdminId} className="w-full p-2 border rounded" /><button type="button" onClick={() => setShowAdminPassword(!showAdminPassword)} className="absolute right-16 top-2 text-gray-500">{showAdminPassword ? <EyeOffIcon /> : <EyeIcon />}</button><button type="button" onClick={handleGenerateAdminPass} className="px-3 py-2 bg-gray-200 rounded text-sm">Gerar</button></div></div><Button type="submit" className="w-full bg-gray-900 hover:bg-black">Salvar Admin</Button></form></div></div><div className="lg:col-span-2"><div className="bg-white rounded-xl shadow-sm border border-gray-200"><div className="p-4 bg-gray-50 border-b border-gray-100"><h3 className="font-bold text-gray-900">Administradores Cadastrados</h3></div><div className="overflow-x-auto"><table className="w-full min-w-[600px] text-sm text-left"><thead className="bg-gray-50"><tr><th className="p-3">Nome</th><th className="p-3">Usuário</th><th className="p-3">Unidade</th><th className="p-3">Ações</th></tr></thead><tbody>{filteredAdmins.map(a => (<tr key={a.id} className="border-b"><td className="p-3 font-medium">{a.name}</td><td className="p-3 font-mono text-gray-600">{a.username}</td><td className="p-3"><span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded border border-gray-200">{UNIT_LABELS[a.unit as SchoolUnit] || a.unit}</span></td><td className="p-3 flex gap-2"><button onClick={() => startEditingAdmin(a)} className="text-slate-800 hover:text-black hover:underline">Editar</button><button onClick={() => initiateDeleteAdmin(a.id)} className="text-red-600 hover:underline">Excluir</button></td></tr>))}</tbody></table></div></div></div></div>)}
-                        {
-                            activeTab === 'rematricula' && (
-                                <Rematricula
-                                    students={students}
-                                    grades={grades}
-                                    currentAdminUnit={isGeneralAdmin ? undefined : adminUnit}
-                                    onRefresh={async () => {
-                                        // Re-triggering parent data via mock add if needed,
-                                        // but Firestore is real-time.
-                                    }}
-                                />
-                            )
-                        }
 
                         {
                             activeTab === 'financial' && (

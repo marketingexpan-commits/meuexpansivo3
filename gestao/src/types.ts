@@ -527,6 +527,7 @@ export interface Student {
   nis?: string; // NIS for Bolsa Família
   segment?: string; // NOVO: Segmento acadêmico (Infantil, Fundamental I, etc)
   academicHistory?: AcademicHistoryRecord[];
+  enrollmentHistory?: EnrollmentRecord[]; // NOVO: Histórico de enturmação por ano
   enrolledYears?: string[]; // Para filtragem por ano letivo
 }
 
@@ -610,6 +611,15 @@ export interface Ticket {
 }
 
 
+
+export interface EnrollmentRecord {
+  year: string;
+  gradeLevel: string;
+  schoolClass: string;
+  shift: string;
+  unit: string;
+  status: string;
+}
 
 export interface AcademicHistoryRecord {
   id: string;
