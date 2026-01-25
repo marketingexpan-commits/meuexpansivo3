@@ -3,7 +3,8 @@ import { useAcademicData } from '../hooks/useAcademicData';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
 import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial, Occurrence, DailyAgenda, ExamGuide, CalendarEvent, AcademicSubject, SUBJECT_LABELS, SUBJECT_SHORT_LABELS, SHIFT_LABELS, UNIT_LABELS } from '../types';
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
-import { getBimesterFromDate, getDynamicBimester, normalizeClass, normalizeShift, normalizeUnit, parseGradeLevel, calculateSchoolDays, isClassScheduled, calculateEffectiveTaughtClasses, getSubjectDurationForDay, doesEventApplyToStudent, formatDateWithTimeBr } from '../src/utils/academicUtils';
+import { getDynamicBimester, normalizeClass, normalizeShift, normalizeUnit, parseGradeLevel, calculateSchoolDays, isClassScheduled, calculateEffectiveTaughtClasses, getSubjectDurationForDay, doesEventApplyToStudent, formatDateWithTimeBr } from '../src/utils/academicUtils';
+import { ACADEMIC_GRADES } from '../src/utils/academicDefaults';
 import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects, MOCK_CALENDAR_EVENTS } from '../constants'; // Import Sync Fix
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency, calculateBimesterGeneralFrequency, calculateTaughtClasses } from '../utils/frequency';
 import { getSubjectLabel, getSubjectShortLabel } from '../utils/subjectUtils';
@@ -169,18 +170,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         const rounded = Math.round(hours * 10) / 10;
         return `${rounded.toString().replace('.', ',')} h`;
     };
-
-    // New helper to find academic subject by ID or Name using normalization
-    const findAcademicSubject = (idOrName: string) => {
-        if (!idOrName) return null;
-        const normalized = idOrName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').trim();
-        return academicSubjects?.find(s =>
-            s.id === idOrName ||
-            s.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').trim() === normalized ||
-            (s.shortName && s.shortName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').trim() === normalized)
-        );
-    };
-
 
     const { subjects: academicSubjects, matrices, grades: allGrades } = useAcademicData();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -488,23 +477,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     }, [isEarlyChildhood, earlyChildhoodReports, student.id, currentYear, selectedReportSemester]);
 
     const studentAttendance = useMemo(() => {
-        let records = (attendanceRecords || [])
+        const records = (attendanceRecords || [])
             .filter(record => record?.studentStatus && record.studentStatus[student.id]);
-
-        // FIX: Remove phantom absence for Thiago Quintiliano (11111) in 4th Bimester for Biologia
-        if (student.code === '11111' || (student.name && student.name.toLowerCase().includes('thiago quintiliano'))) {
-            records = records.filter(r => {
-                if (r.discipline === 'Biologia') { // Using string literal as Subject.BIOLOGY typically maps to 'Biologia'
-                    const parts = r.date.split('-');
-                    const month = parseInt(parts[1], 10);
-                    // 4th Bimester: Oct(10), Nov(11), Dec(12)
-                    if (month >= 10 && r.studentStatus[student.id] === AttendanceStatus.ABSENT) {
-                        return false;
-                    }
-                }
-                return true;
-            });
-        }
 
         return records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [attendanceRecords, student.id, student.code, student.name]);
@@ -534,39 +508,25 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
     const formatGrade = (grade: number | null | undefined) => (grade !== null && grade !== undefined && grade !== -1) ? grade.toFixed(1) : '-';
 
-    const getTeacherPhone = (subjectName: string) => {
-        const academicSubject = findAcademicSubject(subjectName);
-        if (!academicSubject) return undefined;
-
+    const getTeacherPhone = (subjectId: string) => {
         const teacher = (teachers as Teacher[]).find(t =>
-            (t.subjects?.includes(academicSubject.id as Subject) || t.subjects?.some(s => s === academicSubject.name)) &&
-            t.unit === student.unit
+            t.subjects?.includes(subjectId as Subject) && t.unit === student.unit
         );
-
         const fallbackTeacher = (teachers as Teacher[]).find(t =>
-            t.subjects?.includes(academicSubject.id as Subject) || t.subjects?.some(s => s === academicSubject.name)
+            t.subjects?.includes(subjectId as Subject)
         );
-
-
         return teacher ? teacher.phoneNumber : fallbackTeacher?.phoneNumber;
     };
 
-    const getTeacherName = (subjectName: string) => {
-        const academicSubject = findAcademicSubject(subjectName);
-        if (!academicSubject) return "PROF. NÃO ATRIBUÍDO";
-
+    const getTeacherName = (subjectId: string) => {
         const teacher = (teachers as Teacher[]).find(t =>
-            (t.subjects?.includes(academicSubject.id as Subject) || t.subjects?.some(s => s === academicSubject.name)) &&
-            t.unit === student.unit
+            t.subjects?.includes(subjectId as Subject) && t.unit === student.unit
         );
-
         const fallbackTeacher = (teachers as Teacher[]).find(t =>
-            t.subjects?.includes(academicSubject.id as Subject) || t.subjects?.some(s => s === academicSubject.name)
+            t.subjects?.includes(subjectId as Subject)
         );
-
-
         const foundTeacher = teacher || fallbackTeacher;
-        return foundTeacher ? foundTeacher.name.split(' ')[0] : '';
+        return foundTeacher ? foundTeacher.name.split(' ')[0] : 'PROF.';
     };
 
 
@@ -1015,7 +975,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 {evt.targetSubjectIds && evt.targetSubjectIds.length > 0 && academicSubjects && (
                                                                     <div className="flex flex-wrap gap-1 mt-1">
                                                                         {evt.targetSubjectIds.map(sid => {
-                                                                            const subName = academicSubjects.find(s => s.id === sid)?.name || 'Desconhecida';
+                                                                            const subName = getSubjectLabel(sid, academicSubjects);
                                                                             return (
                                                                                 <span key={sid} className="text-[10px] bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded border border-orange-200 font-bold uppercase tracking-wider">
                                                                                     {subName}
@@ -1805,23 +1765,47 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 let weeklyClasses = 0;
                                                                 let foundDynamic = false;
 
-                                                                const dynamicSubject = findAcademicSubject(grade.subject);
-                                                                if (dynamicSubject && dynamicSubject.weeklyHours) {
-                                                                    const gradeKey = Object.keys(dynamicSubject.weeklyHours).find(key => student.gradeLevel.includes(key));
-                                                                    if (gradeKey) {
-                                                                        weeklyClasses = dynamicSubject.weeklyHours[gradeKey];
-                                                                        foundDynamic = true;
+                                                                // 1. Matrix lookup (Primary for 2026)
+                                                                if (matrices) {
+                                                                    // Resolve Grade ID from Label (Robust Match)
+                                                                    const gradeEntry = Object.values(ACADEMIC_GRADES).find(g =>
+                                                                        student.gradeLevel === g.label ||
+                                                                        student.gradeLevel.includes(g.label) ||
+                                                                        (g.label.includes('Ano') && student.gradeLevel.includes(g.label))
+                                                                    );
+                                                                    const targetGradeId = gradeEntry ? gradeEntry.id : '';
+
+                                                                    const matchingMatrix = matrices.find(m =>
+                                                                        m.unit === student.unit &&
+                                                                        m.shift === student.shift &&
+                                                                        (m.gradeId === targetGradeId || m.gradeId === student.gradeLevel)
+                                                                    );
+                                                                    if (matchingMatrix) {
+                                                                        const ms = matchingMatrix.subjects.find(s => s.id === grade.subject);
+                                                                        if (ms) {
+                                                                            weeklyClasses = ms.weeklyHours;
+                                                                            foundDynamic = true;
+                                                                        }
                                                                     }
                                                                 }
 
+                                                                // 2. Fallback to academicSubjects (weeklyHours map)
+                                                                if (!foundDynamic) {
+                                                                    const dynamicSubject = academicSubjects?.find(s => s.id === grade.subject);
+                                                                    if (dynamicSubject && dynamicSubject.weeklyHours) {
+                                                                        const gradeKey = Object.keys(dynamicSubject.weeklyHours).find(key => student.gradeLevel.includes(key));
+                                                                        if (gradeKey) {
+                                                                            weeklyClasses = dynamicSubject.weeklyHours[gradeKey];
+                                                                            foundDynamic = true;
+                                                                        }
+                                                                    }
+                                                                }
 
                                                                 if (!foundDynamic) {
                                                                     let levelKey = '';
                                                                     if (student.gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
                                                                     else if (student.gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
                                                                     else if (student.gradeLevel.includes('Ensino Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
-
-
 
                                                                     weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[grade.subject] || 0;
                                                                 }
@@ -1831,7 +1815,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 const startOfYear = `${academicSettings?.bimesters?.[0]?.startDate || `${currentYear}-01-01`}`;
                                                                 const todayStr = new Date().toLocaleDateString('en-CA');
 
-                                                                const academicSubject = findAcademicSubject(grade.subject);
+                                                                const academicSubject = academicSubjects?.find(s => s.id === grade.subject);
                                                                 const workloadSubjectId = academicSubject?.id || grade.subject;
 
                                                                 const { taught: ministradaWorkload } = calculateTaughtClasses(
@@ -1866,12 +1850,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                                                 // RULE: Count absences strictly from logs
                                                                 const currentAbsences = studentAttendance.reduce((acc, att) => {
-                                                                    const attDiscipline = att.discipline;
-                                                                    if (attDiscipline !== grade.subject) return acc;
+                                                                    if (att.discipline !== grade.subject) return acc;
 
                                                                     if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
                                                                         if (getDynamicBimester(att.date, academicSettings) === bimesterNum) {
-                                                                            const academicSubject = findAcademicSubject(grade.subject);
+                                                                            const academicSubject = academicSubjects?.find(s => s.id === grade.subject);
                                                                             const subjectId = academicSubject?.id;
 
                                                                             if (classSchedules && classSchedules.length > 0) {
@@ -1914,7 +1897,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                         {(() => {
                                                                             // Calculate F(h) per bimester
                                                                             let weeklyClasses = 0;
-                                                                            const ds = findAcademicSubject(grade.subject);
+                                                                            const ds = academicSubjects?.find(s => s.id === grade.subject);
                                                                             if (ds?.weeklyHours) {
                                                                                 const k = Object.keys(ds.weeklyHours).find(key => student.gradeLevel.includes(key));
                                                                                 if (k) weeklyClasses = ds.weeklyHours[k];
@@ -1999,20 +1982,24 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 const totalAbsences = [1, 2, 3, 4].reduce((sum, bNum) => {
                                                                     if (bNum > elapsedBimesters) return sum;
                                                                     return sum + studentAttendance.reduce((acc, att) => {
-                                                                        const attDiscipline = att.discipline;
-                                                                        if (attDiscipline !== grade.subject) return acc;
+                                                                        if (att.discipline !== grade.subject) {
+                                                                            // Explicit trace for non-canonical IDs
+                                                                            if (att.discipline && !att.discipline.startsWith('disc_') && process.env.NODE_ENV === 'development') {
+                                                                                console.warn(`[ARCH-LOCK] Non-canonical subject in attendance: "${att.discipline}"`);
+                                                                            }
+                                                                            return acc;
+                                                                        }
 
                                                                         if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
                                                                             if (getDynamicBimester(att.date, academicSettings) === bNum) {
+                                                                                const subjectId = grade.subject;
                                                                                 if (classSchedules && classSchedules.length > 0) {
-                                                                                    const subjectId = academicSubjects?.find(s => s.name === grade.subject)?.id;
                                                                                     if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass, student.shift, subjectId)) return acc;
                                                                                 }
                                                                                 const individualCount = att.studentAbsenceCount?.[student.id];
                                                                                 const lessonCount = individualCount !== undefined ? individualCount : (att.lessonCount || 1);
 
                                                                                 if (classSchedules && classSchedules.length > 0) {
-                                                                                    const subjectId = academicSubjects?.find(s => s.name === grade.subject)?.id;
                                                                                     return acc + getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass, calendarEvents, student.unit, student.shift, subjectId);
                                                                                 }
                                                                                 return acc + lessonCount;
@@ -2025,7 +2012,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 // Get weeklyClasses again
                                                                 let weeklyClasses = 0;
                                                                 if (academicSubjects) {
-                                                                    const ds = academicSubjects.find(s => s.name === grade.subject);
+                                                                    const ds = academicSubjects.find(s => s.id === grade.subject);
                                                                     if (ds?.weeklyHours) {
                                                                         const k = Object.keys(ds.weeklyHours).find(key => student.gradeLevel.includes(key));
                                                                         if (k) weeklyClasses = ds.weeklyHours[k];
@@ -2033,8 +2020,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 }
                                                                 if (weeklyClasses === 0) {
                                                                     let lk = student.gradeLevel.includes('Fundamental II') ? 'Fundamental II' : (student.gradeLevel.includes('Ensino Médio') || student.gradeLevel.includes('Série')) ? 'Ensino Médio' : 'Fundamental I';
-
-
                                                                     weeklyClasses = (CURRICULUM_MATRIX[lk] || {})[grade.subject] || 0;
                                                                 }
 

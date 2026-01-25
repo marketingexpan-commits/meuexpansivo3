@@ -1,8 +1,8 @@
 // src/constants.ts
 
 import { Student, Teacher, GradeEntry, BimesterData, Admin, SchoolUnit, SchoolShift, SchoolClass, Subject, ExperienceField, AcademicSubject, CurriculumMatrix } from './types';
-import { CURRICULUM_MATRIX } from './src/utils/academicDefaults';
-export { CURRICULUM_MATRIX };
+import { CURRICULUM_MATRIX, ACADEMIC_GRADES } from './src/utils/academicDefaults';
+export { CURRICULUM_MATRIX, ACADEMIC_GRADES };
 
 export const SCHOOL_LOGO_URL = 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png';
 export const SCHOOL_LOGO_WHITE_URL = 'https://i.postimg.cc/GtV2FsBC/expan-logo-branca-04.png';
@@ -324,10 +324,21 @@ export const getCurriculumSubjects = (
   // 1. Strict Matrix Lookup (Priority)
   // Tries to match by ID or Name (fuzzy) to ensure robustness
   if (matrices && unit && shift) {
+    // 1a. Identify the canonical Grade ID for the student's grade level string
+    const gradeEntry = Object.values(ACADEMIC_GRADES).find(g =>
+      gradeLevel === g.label ||
+      gradeLevel.includes(g.label) ||
+      (g.label.includes('Ano') && gradeLevel.includes(g.label))
+    );
+    const targetGradeId = gradeEntry ? gradeEntry.id : '';
+
     const matchingMatrix = matrices.find(m => {
       const unitMatch = m.unit === unit || m.unit === 'all';
       const shiftMatch = m.shift === shift || m.shift === 'all';
-      const gradeMatch = (gradeLevel && m.gradeId) ? (gradeLevel.includes(m.gradeId) || m.gradeId.includes(gradeLevel)) : false;
+      // Robust grade match: Match by ID or Label
+      const gradeMatch = (gradeLevel && m.gradeId) ?
+        (m.gradeId === targetGradeId || m.gradeId === gradeLevel || gradeLevel.includes(m.gradeId) || m.gradeId.includes(gradeLevel)) :
+        false;
       return unitMatch && shiftMatch && gradeMatch;
     });
 

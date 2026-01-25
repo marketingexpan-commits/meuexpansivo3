@@ -1,4 +1,9 @@
-import { CURRICULUM_MATRIX } from './academicDefaults';
+import { CURRICULUM_MATRIX, ACADEMIC_GRADES } from './academicDefaults';
+// ... (imports remain same)
+
+// ... (code until line 249)
+
+
 import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, getSubjectDurationForDay, doesEventApplyToStudent, isYearMatch } from './academicUtils';
 import type { Student, GradeEntry, AttendanceRecord, AcademicSubject, SchoolUnitDetail, AcademicSettings, CalendarEvent, CurriculumMatrix } from '../types';
 import { AttendanceStatus } from '../types';
@@ -97,6 +102,15 @@ const generateBulletinHtml = (
     const currentDate = new Date().toLocaleDateString('pt-BR');
     const currentYear = getCurrentSchoolYear();
     const today = new Date().toLocaleDateString('en-CA');
+
+    // DEBUG: Verificar se matrizes estão chegando
+    alert('🔍 DEBUG: Matrices = ' + (matrices ? matrices.length : 'UNDEFINED'));
+    console.log('🔍 DEBUG BULLETIN GENERATOR:');
+    console.log('- Student:', student.name, student.gradeLevel);
+    console.log('- Matrices received:', matrices ? matrices.length : 'UNDEFINED');
+    if (matrices && matrices.length > 0) {
+        console.log('- First matrix:', matrices[0].id);
+    }
 
 
     // Helper to format grade
@@ -248,10 +262,18 @@ const generateBulletinHtml = (
 
             // 1. Matrix lookup (Primary)
             if (matrices) {
+                // Resolve Grade ID from Label (Robust Match)
+                const gradeEntry = Object.values(ACADEMIC_GRADES).find(g =>
+                    student.gradeLevel === g.label ||
+                    student.gradeLevel.includes(g.label) ||
+                    (g.label.includes('Ano') && student.gradeLevel.includes(g.label))
+                );
+                const targetGradeId = gradeEntry ? gradeEntry.id : '';
+
                 const matchingMatrix = matrices.find(m =>
                     m.unit === student.unit &&
                     m.shift === student.shift &&
-                    (student.gradeLevel.includes(m.gradeId) || m.gradeId.includes(student.gradeLevel))
+                    (m.gradeId === targetGradeId || m.gradeId === student.gradeLevel)
                 );
                 if (matchingMatrix) {
                     const ms = matchingMatrix.subjects.find(s => s.id === g.subject);

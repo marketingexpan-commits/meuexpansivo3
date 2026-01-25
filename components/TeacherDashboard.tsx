@@ -24,7 +24,7 @@ import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/
 
 import { getAttendanceBreakdown, AttendanceBreakdown } from '../src/utils/attendanceUtils';
 import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, parseGradeLevel, normalizeClass, normalizeShift, normalizeUnit, calculateSchoolDays, isClassScheduled, getSubjectDurationForDay, formatDateWithTimeBr } from '../src/utils/academicUtils';
-import { calculateBimesterMedia, calculateFinalData, getCurriculumSubjects, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST, EARLY_CHILDHOOD_REPORT_TEMPLATE, CURRICULUM_MATRIX } from '../constants';
+import { calculateBimesterMedia, calculateFinalData, getCurriculumSubjects, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST, EARLY_CHILDHOOD_REPORT_TEMPLATE, CURRICULUM_MATRIX, ACADEMIC_GRADES } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateTaughtClasses } from '../utils/frequency';
 import { getSubjectLabel } from '../utils/subjectUtils';
 import { Button } from './Button';
@@ -2292,8 +2292,32 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                                         let weeklyClasses = 0;
                                                                                         let foundDynamic = false;
 
-                                                                                        if (academicSubjects && academicSubjects.length > 0) {
-                                                                                            const dynamicSubject = academicSubjects.find(s => s.name === grade.subject);
+                                                                                        // 1. Matrix lookup (Primary for 2026)
+                                                                                        if (matrices) {
+                                                                                            const gradeEntry = Object.values(ACADEMIC_GRADES).find(g =>
+                                                                                                selectedStudent.gradeLevel === g.label ||
+                                                                                                selectedStudent.gradeLevel.includes(g.label) ||
+                                                                                                (g.label.includes('Ano') && selectedStudent.gradeLevel.includes(g.label))
+                                                                                            );
+                                                                                            const targetGradeId = gradeEntry ? gradeEntry.id : '';
+
+                                                                                            const matchingMatrix = matrices.find(m =>
+                                                                                                m.unit === selectedStudent.unit &&
+                                                                                                m.shift === selectedStudent.shift &&
+                                                                                                (m.gradeId === targetGradeId || m.gradeId === selectedStudent.gradeLevel)
+                                                                                            );
+                                                                                            if (matchingMatrix) {
+                                                                                                const ms = matchingMatrix.subjects.find(s => s.id === grade.subject || s.name === grade.subject);
+                                                                                                if (ms) {
+                                                                                                    weeklyClasses = ms.weeklyHours;
+                                                                                                    foundDynamic = true;
+                                                                                                }
+                                                                                            }
+                                                                                        }
+
+                                                                                        // 2. Fallback to academicSubjects (weeklyHours map)
+                                                                                        if (!foundDynamic && academicSubjects && academicSubjects.length > 0) {
+                                                                                            const dynamicSubject = academicSubjects.find(s => s.id === grade.subject || s.name === grade.subject);
                                                                                             if (dynamicSubject && dynamicSubject.weeklyHours) {
                                                                                                 const gradeKey = Object.keys(dynamicSubject.weeklyHours).find(key => selectedStudent.gradeLevel.includes(key));
                                                                                                 if (gradeKey) {
@@ -2390,14 +2414,41 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                                                 </td>
                                                                                                 {(() => {
                                                                                                     let weeklyClasses = 0;
-                                                                                                    if (academicSubjects) {
-                                                                                                        const ds = academicSubjects.find(s => s.name === grade.subject);
-                                                                                                        if (ds?.weeklyHours) {
-                                                                                                            const k = Object.keys(ds.weeklyHours).find(key => selectedStudent.gradeLevel.includes(key));
-                                                                                                            if (k) weeklyClasses = ds.weeklyHours[k];
+                                                                                                    let foundDynamic = false;
+
+                                                                                                    // Matrix support in freq calculation
+                                                                                                    if (matrices) {
+                                                                                                        const gradeEntry = Object.values(ACADEMIC_GRADES).find(g =>
+                                                                                                            selectedStudent.gradeLevel === g.label ||
+                                                                                                            selectedStudent.gradeLevel.includes(g.label) ||
+                                                                                                            (g.label.includes('Ano') && selectedStudent.gradeLevel.includes(g.label))
+                                                                                                        );
+                                                                                                        const targetGradeId = gradeEntry ? gradeEntry.id : '';
+                                                                                                        const matchingMatrix = matrices.find(m =>
+                                                                                                            m.unit === selectedStudent.unit &&
+                                                                                                            m.shift === selectedStudent.shift &&
+                                                                                                            (m.gradeId === targetGradeId || m.gradeId === selectedStudent.gradeLevel)
+                                                                                                        );
+                                                                                                        if (matchingMatrix) {
+                                                                                                            const ms = matchingMatrix.subjects.find(s => s.id === grade.subject || s.name === grade.subject);
+                                                                                                            if (ms) {
+                                                                                                                weeklyClasses = ms.weeklyHours;
+                                                                                                                foundDynamic = true;
+                                                                                                            }
                                                                                                         }
                                                                                                     }
-                                                                                                    if (weeklyClasses === 0) {
+
+                                                                                                    if (!foundDynamic && academicSubjects) {
+                                                                                                        const ds = academicSubjects.find(s => s.id === grade.subject || s.name === grade.subject);
+                                                                                                        if (ds?.weeklyHours) {
+                                                                                                            const k = Object.keys(ds.weeklyHours).find(key => selectedStudent.gradeLevel.includes(key));
+                                                                                                            if (k) {
+                                                                                                                weeklyClasses = ds.weeklyHours[k];
+                                                                                                                foundDynamic = true;
+                                                                                                            }
+                                                                                                        }
+                                                                                                    }
+                                                                                                    if (!foundDynamic) {
                                                                                                         let lk = selectedStudent.gradeLevel.includes('Fundamental II') ? 'Fundamental II' : selectedStudent.gradeLevel.includes('Ensino Médio') ? 'Ensino Médio' : 'Fundamental I';
                                                                                                         weeklyClasses = (CURRICULUM_MATRIX[lk] || {})[grade.subject] || 0;
                                                                                                     }
@@ -2512,7 +2563,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
                                                                                         let weeklyClasses = 0;
                                                                                         if (academicSubjects) {
-                                                                                            const ds = academicSubjects.find(s => s.name === grade.subject);
+                                                                                            const ds = academicSubjects.find(s => s.id === grade.subject || s.name === grade.subject);
                                                                                             if (ds?.weeklyHours) {
                                                                                                 const k = Object.keys(ds.weeklyHours).find(key => selectedStudent.gradeLevel.includes(key));
                                                                                                 if (k) weeklyClasses = ds.weeklyHours[k];

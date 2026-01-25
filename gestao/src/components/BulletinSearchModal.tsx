@@ -22,8 +22,10 @@ type ModalStep = 'SEARCH' | 'CONFIRM';
 type SearchType = 'INDIVIDUAL' | 'CLASS';
 
 export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
-    const { grades: academicGrades, subjects: academicSubjects, loading: loadingAcademic } = useAcademicData();
+    const { grades: academicGrades, subjects: academicSubjects, matrices, loading: loadingAcademic } = useAcademicData();
     const { getUnitById } = useSchoolUnits();
+    // ... (lines 27-152)
+
     const [step, setStep] = useState<ModalStep>('SEARCH');
     const [searchType, setSearchType] = useState<SearchType>('INDIVIDUAL');
 
@@ -152,9 +154,9 @@ export function BulletinSearchModal({ onClose }: BulletinSearchModalProps) {
 
         try {
             if (preparedData.length === 1) {
-                generateSchoolBulletin(preparedData[0].student, preparedData[0].grades, preparedData[0].attendance, unitDetail, academicSubjects, academicSettings, calendarEvents, classSchedules);
+                generateSchoolBulletin(preparedData[0].student, preparedData[0].grades, preparedData[0].attendance, unitDetail, academicSubjects, academicSettings, calendarEvents, classSchedules, matrices);
             } else {
-                generateBatchSchoolBulletin(preparedData, unitDetail, academicSubjects, academicSettings, calendarEvents, classSchedules);
+                generateBatchSchoolBulletin(preparedData, unitDetail, academicSubjects, academicSettings, calendarEvents, classSchedules, matrices);
             }
         }
         catch (e) {
