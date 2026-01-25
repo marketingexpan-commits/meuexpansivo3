@@ -1755,7 +1755,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                         <>
                                                                             <span className="uppercase block leading-tight mb-1" title={subjectName}>{getSubjectLabel(subjectName, academicSubjects)}</span>
                                                                             <span className="text-[9px] text-gray-500 font-normal block italic whitespace-normal leading-tight break-words">
-                                                                                {getTeacherName(subjectName)}
+                                                                                {getTeacherName(grade.subject)}
                                                                             </span>
                                                                         </>
                                                                     );
