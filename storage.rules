@@ -1,0 +1,46 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules
+// IMPORTANT: This app does NOT use Firebase Authentication (uses direct Firestore login)
+// Therefore, request.auth will always be null
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to validate file size (max 50MB)
+    function isValidSize() {
+      return request.resource.size < 50 * 1024 * 1024;
+    }
+    
+    // Helper function to validate file types
+    function isValidFileType() {
+      return request.resource.contentType.matches('application/pdf')
+          || request.resource.contentType.matches('image/.*')
+          || request.resource.contentType.matches('application/vnd.openxmlformats-officedocument.*')
+          || request.resource.contentType.matches('application/msword')
+          || request.resource.contentType.matches('text/plain');
+    }
+    
+    // Materials folder - Allow read/write with size and type validation
+    match /materials/{allPaths=**} {
+      allow read: if true;
+      allow write: if isValidSize() && isValidFileType();
+    }
+    
+    // Exam guides folder - Allow read/write with size and type validation
+    match /exam_guides/{allPaths=**} {
+      allow read: if true;
+      allow write: if isValidSize() && isValidFileType();
+    }
+    
+    // Profile images folder - Allow read/write with size validation
+    match /profile_images/{allPaths=**} {
+      allow read: if true;
+      allow write: if isValidSize();
+    }
+    
+    // Default rule - deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
