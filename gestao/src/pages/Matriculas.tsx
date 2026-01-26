@@ -57,7 +57,9 @@ export function Matriculas() {
             const userUnit = localStorage.getItem('userUnit');
             let unitFilter: string | null = null;
 
-            if (userUnit && userUnit !== 'admin_geral') {
+            if (userUnit && userUnit === 'admin_geral' && localStorage.getItem('emulatedUnit')) {
+                unitFilter = localStorage.getItem('emulatedUnit');
+            } else if (userUnit && userUnit !== 'admin_geral') {
                 unitFilter = userUnit;
             }
 
@@ -88,11 +90,18 @@ export function Matriculas() {
         const displayShift = enrollment?.shift || student.shift;
         const displayStatus = enrollment?.status || student.status || 'CURSANDO';
 
-        const matchesSearch = (
-            student.name.toLowerCase().includes(searchLower) ||
-            (student.code && student.code.toLowerCase().includes(searchLower)) ||
-            (student.cpf_aluno && student.cpf_aluno.includes(searchLower))
-        );
+        // SMART SEARCH LOGIC:
+        // If the search term is a number AND matches a student code exactly,
+        // we show ONLY that student (ignoring CPFs that happen to contain those digits).
+        const isExactCodeMatch = /^\d+$/.test(searchTerm) && students.some(s => s.code === searchTerm);
+
+        const matchesSearch = isExactCodeMatch
+            ? student.code === searchTerm
+            : (
+                student.name.toLowerCase().includes(searchLower) ||
+                (student.code && student.code.toLowerCase().includes(searchLower)) ||
+                (student.cpf_aluno && student.cpf_aluno.includes(searchLower))
+            );
 
         const matchesGrade = !filterGrade || (() => {
             const segment = segments.find(s => s.name === filterGrade);

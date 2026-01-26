@@ -23,4 +23,23 @@ dist-ssr
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
+# Migration and Temp Data
+migration_data/
+*.txt
+reconcile_*.cjs
+audit_*.cjs
+debug_*.cjs
+emergency_cleanup.cjs
+check_*.js
+check_*.cjs
+fix_*.cjs
+inspect_*.js
+inspect_*.cjs
+sync_*.cjs
+trace_*.js
+verify_*.cjs
+verify_*.js
+*.sql
+*.doc
+*.docx
+

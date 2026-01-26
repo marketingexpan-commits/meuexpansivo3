@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/Card';
-import { Users, AlertCircle, TrendingUp, Loader2 } from 'lucide-react';
+import { Users, AlertCircle, TrendingUp, Loader2, Building2 } from 'lucide-react';
 import { statsService } from '../services/statsService';
+import { useSchoolUnits } from '../hooks/useSchoolUnits';
+import { Select } from '../components/Select';
 
 export function Dashboard() {
     const [stats, setStats] = useState({
@@ -10,14 +12,25 @@ export function Dashboard() {
         delinquencyRate: 0
     });
     const [isLoading, setIsLoading] = useState(true);
+    const { units } = useSchoolUnits();
+    const [userUnitType, setUserUnitType] = useState<string | null>(null);
+    const [emulatedUnit, setEmulatedUnit] = useState(localStorage.getItem('emulatedUnit') || '');
 
     const loadStats = async () => {
         try {
             setIsLoading(true);
             const userUnit = localStorage.getItem('userUnit');
+            setUserUnitType(userUnit); // Save for UI check
+
+            // Determine effective unit filter
             let unitFilter: string | null = null;
 
-            if (userUnit && userUnit !== 'admin_geral') {
+            // If Admin Geral AND has an emulated unit selected, use that
+            if (userUnit === 'admin_geral' && localStorage.getItem('emulatedUnit')) {
+                unitFilter = localStorage.getItem('emulatedUnit');
+            }
+            // If NOT Admin Geral, force their specific unit
+            else if (userUnit && userUnit !== 'admin_geral') {
                 unitFilter = userUnit;
             }
 
@@ -28,6 +41,17 @@ export function Dashboard() {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    // Reload stats when emulated unit changes (triggered by UI)
+    const handleEmulationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newVal = e.target.value;
+        setEmulatedUnit(newVal);
+        if (newVal) localStorage.setItem('emulatedUnit', newVal);
+        else localStorage.removeItem('emulatedUnit');
+
+        // Timeout to allow localStorage to settle/propagate if needed (though sync here)
+        setTimeout(loadStats, 50);
     };
 
     useEffect(() => {
@@ -47,6 +71,25 @@ export function Dashboard() {
 
     return (
         <>
+            {/* Unit Selector for Admin Geral */}
+            {userUnitType === 'admin_geral' && (
+                <div className="mb-6 flex items-center justify-end">
+                    <div className="w-full md:w-64">
+                        <Select
+                            label=""
+                            name="unit"
+                            value={emulatedUnit}
+                            onChange={handleEmulationChange}
+                            options={[
+                                { value: '', label: 'Visão Geral (Todas as Unidades)' },
+                                ...units.map(u => ({ value: u.id, label: u.fullName }))
+                            ]}
+                            startIcon={<Building2 className="w-4 h-4 text-blue-950" />}
+                        />
+                    </div>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <Card>
                     <CardContent className="p-6 flex items-center justify-between">
