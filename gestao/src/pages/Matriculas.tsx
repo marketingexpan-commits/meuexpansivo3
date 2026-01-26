@@ -11,7 +11,7 @@ import type { Student } from '../types';
 import { SCHOOL_SHIFTS, SCHOOL_CLASSES_OPTIONS } from '../utils/academicDefaults';
 import { SHIFT_LABELS, SchoolShift } from '../types';
 import { useAcademicData } from '../hooks/useAcademicData';
-import { getCurrentSchoolYear, isHistoricalYear } from '../utils/academicUtils';
+import { getCurrentSchoolYear } from '../utils/academicUtils';
 
 import { financialService } from '../services/financialService';
 import { generateCarne } from '../utils/carneGenerator';
@@ -32,7 +32,7 @@ export function Matriculas() {
     const [filterGrade, setFilterGrade] = useState('');
     const [filterClass, setFilterClass] = useState('');
     const [filterShift, setFilterShift] = useState('');
-    const [filterStatus, setFilterStatus] = useState(isHistoricalYear(getCurrentSchoolYear()) ? '' : 'active');
+    const [filterStatus, setFilterStatus] = useState('');
 
     const hasActiveFilters = filterGrade || filterClass || filterShift || (filterStatus && filterStatus !== 'active') || searchTerm;
 
