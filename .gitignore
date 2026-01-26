@@ -41,5 +41,13 @@ verify_*.cjs
 verify_*.js
 *.sql
 *.doc
-*.docx
+analyze_*.cjs
+cleanup_*.cjs
+find_*.cjs
+import_*.cjs
+inspect_*.js
+quintas_*.json
+zn_*.json
+audit_*.json
+
 

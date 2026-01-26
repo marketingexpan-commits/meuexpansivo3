@@ -185,6 +185,7 @@ export function Login() {
                 localStorage.setItem('adminName', adminData.name);
                 localStorage.setItem('adminId', adminFound.id);
                 localStorage.setItem('isAdminGeral', isGeneral ? 'true' : 'false');
+                localStorage.setItem('academicYear', '2026'); // Force 2026 on login
 
                 window.location.href = '/dashboard';
             } else {
