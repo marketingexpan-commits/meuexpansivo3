@@ -43,6 +43,7 @@ verify_*.js
 *.doc
 analyze_*.cjs
 cleanup_*.cjs
+emergency_cleanup_*.cjs
 find_*.cjs
 import_*.cjs
 inspect_*.js
