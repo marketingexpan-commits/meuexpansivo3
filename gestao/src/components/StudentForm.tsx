@@ -1333,8 +1333,9 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                                                 onChange={(e) => handleUpdateHistoryRow(idx, 'shift', e.target.value)}
                                                                 className="w-full bg-transparent border-b border-transparent focus:border-blue-300 focus:outline-none px-1 text-xs appearance-none"
                                                             >
-                                                                <option value="Matutino">Matutino</option>
-                                                                <option value="Vespertino">Vespertino</option>
+                                                                {Object.values(SchoolShift).map(shift => (
+                                                                    <option key={shift} value={shift}>{SHIFT_LABELS[shift]}</option>
+                                                                ))}
                                                             </select>
                                                         </td>
                                                         <td className="px-2 py-1.5">

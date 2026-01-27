@@ -473,6 +473,37 @@ const AppContent: React.FC = () => {
 
     } else if (session.role === UserRole.COORDINATOR) {
       // Coordinator manages their own data fetch in the dashboard or doesn't need global data pre-loaded
+      // FIX: CoordinatorDashboard EXPECTS these to be passed as props!
+
+      // Real-time Support Tickets (Unit Scoped)
+      unsubs.push(db.collection('tickets_pedagogicos').where('unit', '==', userUnit).onSnapshot(snap => {
+        setTickets(snap.docs.map(doc => ({ ...doc.data() as Ticket, id: doc.id })));
+        setInitialLoad(prev => ({ ...prev, tickets: true }));
+      }, (err) => {
+        console.error("Coordinator Tickets listen error:", err);
+        setInitialLoad(prev => ({ ...prev, tickets: true }));
+      }));
+
+      // Calendar Events (Unit + All)
+      unsubs.push(db.collection('calendar_events')
+        .where('units', 'array-contains-any', [userUnit, 'all'])
+        .onSnapshot(snap => {
+          setCalendarEvents(snap.docs.map(doc => ({ ...doc.data() as CalendarEvent, id: doc.id })));
+          setInitialLoad(prev => ({ ...prev, calendarEvents: true }));
+        }, (err) => {
+          console.error("Coordinator Calendar Events listen error:", err);
+          setInitialLoad(prev => ({ ...prev, calendarEvents: true }));
+        }));
+
+      // Class Schedules (Unit)
+      unsubs.push(db.collection('class_schedules').where('schoolId', '==', userUnit).onSnapshot(snap => {
+        setClassSchedules(snap.docs.map(doc => ({ ...doc.data() as ClassSchedule, id: doc.id })));
+        setInitialLoad(prev => ({ ...prev, classSchedules: true }));
+      }, (err) => {
+        console.error("Coordinator Class Schedules listen error:", err);
+        setInitialLoad(prev => ({ ...prev, classSchedules: true }));
+      }));
+
       // We just need to signal that the "initial load" is complete so the router can proceed.
       setInitialLoad(prev => ({
         ...prev,

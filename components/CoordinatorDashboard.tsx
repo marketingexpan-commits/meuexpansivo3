@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { db } from '../firebaseConfig';
-import { UnitContact, SchoolUnit, UNIT_LABELS, SHIFT_LABELS, CoordinationSegment, Subject, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket, SchoolMessage, MessageRecipient, CalendarEvent, ClassSchedule } from '../types';
+import { UnitContact, SchoolUnit, UNIT_LABELS, SHIFT_LABELS, CoordinationSegment, Subject, SUBJECT_LABELS, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket, SchoolMessage, MessageRecipient, CalendarEvent, ClassSchedule } from '../types';
 import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, CURRICULUM_MATRIX, getCurriculumSubjects, calculateBimesterMedia, calculateFinalData, SCHOOL_CLASSES_OPTIONS } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency } from '../utils/frequency';
-import { getDynamicBimester, isClassScheduled, normalizeClass } from '../src/utils/academicUtils';
+import { getDynamicBimester, isClassScheduled, normalizeClass, parseGradeLevel } from '../src/utils/academicUtils';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 import { SchoolCalendar } from './SchoolCalendar';
@@ -79,6 +79,14 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     const [quickGradeFilter, setQuickGradeFilter] = useState<string>('all');
     const [quickShiftFilter, setQuickShiftFilter] = useState<string>('all');
     const [quickSubjectFilter, setQuickSubjectFilter] = useState<string>('all');
+    const [quickBimesterFilter, setQuickBimesterFilter] = useState<string | number>('all');
+
+    // NEW: Sync Bimester Filter with current bimester
+    useEffect(() => {
+        if (academicSettings?.currentBimester) {
+            setQuickBimesterFilter(academicSettings.currentBimester);
+        }
+    }, [academicSettings]);
 
     // NEW: Navigation State
     const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages'>('menu');
@@ -194,11 +202,23 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             const matchesShift = quickShiftFilter === 'all' || s.shift === quickShiftFilter;
 
             const studentGrades = pendingGradesMap[s.id] || [];
+
+            // Bimester Filter Logic: Is there a pendency in the SELECTED bimester for this student?
+            const matchesBimester = quickBimesterFilter === 'all' || studentGrades.some(g => {
+                const bKey = `bimester${quickBimesterFilter}` as keyof typeof g.bimesters;
+                const b = g.bimesters[bKey];
+                return b && (
+                    (b.isApproved !== true) ||
+                    (b.isNotaApproved !== true) ||
+                    (b.isRecuperacaoApproved !== true)
+                );
+            });
+
             const matchesSubject = quickSubjectFilter === 'all' || studentGrades.some(g => g.subject === quickSubjectFilter);
 
-            return matchesClass && matchesGrade && matchesShift && matchesSubject;
+            return matchesClass && matchesGrade && matchesShift && matchesSubject && matchesBimester;
         });
-    }, [pendingGradesStudents, quickClassFilter, quickGradeFilter, quickShiftFilter, quickSubjectFilter, pendingGradesMap]);
+    }, [pendingGradesStudents, quickClassFilter, quickGradeFilter, quickShiftFilter, quickSubjectFilter, quickBimesterFilter, pendingGradesMap]);
 
     const [teachersMap, setTeachersMap] = useState<Record<string, string>>({}); // ID -> Name
     const [loading, setLoading] = useState(false);
@@ -243,11 +263,11 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             });
             setTeachersMap(tMap);
 
-            // 1. Fetch Students for Unit + Shift (conditional) + Class (conditional)
+            // 1. Fetch Students for Unit
             let studentsQuery = db.collection('students')
                 .where('unit', '==', coordinator.unit);
 
-            const studentsSnap = await studentsQuery.limit(200).get();
+            const studentsSnap = await studentsQuery.limit(1000).get();
             const studentsData = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
             if (studentsData.length === 0) {
@@ -257,23 +277,53 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 return;
             }
 
-            // 2. Fetch Grades for these students
+            // 1.5 Filter Students by Segment (Performance Optimization)
+            const filteredStudents = studentsData.filter((student: any) => {
+                if (!coordinator.segment || coordinator.segment === 'geral') return true; // View all
+
+                const { segmentId } = parseGradeLevel(student.gradeLevel);
+
+                // CoordinationSegment IDs from types.ts
+                // infantil_fund1: seg_infantil, seg_fund_1
+                // fund2_medio: seg_fund_2, seg_medio
+
+                if (coordinator.segment === 'infantil_fund1') {
+                    return segmentId === 'seg_infantil' || segmentId === 'seg_fund_1';
+                }
+
+                if (coordinator.segment === 'fund2_medio') {
+                    return segmentId === 'seg_fund_2' || segmentId === 'seg_medio';
+                }
+
+                // Default match
+                return segmentId === coordinator.segment;
+            });
+
+            // 2. Fetch Grades for RELEVANT students only
             // Process in chunks of 10 for 'in' query.
-            const studentIds = studentsData.map((s: any) => s.id);
+            const studentIds = filteredStudents.map((s: any) => s.id);
             const chunks = [];
             for (let i = 0; i < studentIds.length; i += 10) {
                 chunks.push(studentIds.slice(i, i + 10));
             }
 
             const allGrades: GradeEntry[] = [];
-            for (const chunk of chunks) {
-                const q = db.collection('grades').where('studentId', 'in', chunk);
-                const snap = await q.get();
-                snap.docs.forEach(d => allGrades.push({ id: d.id, ...d.data() } as GradeEntry));
-            }
+            // Use academicSettings.year or fallback to current system year
+            const searchYear = academicSettings?.year || new Date().getFullYear();
+
+            // Optimized: Parallel Fetching
+            await Promise.all(chunks.map(async (chunk) => {
+                try {
+                    const q = db.collection('grades').where('studentId', 'in', chunk);
+                    const snap = await q.get();
+                    snap.docs.forEach(d => allGrades.push({ id: d.id, ...d.data() } as GradeEntry));
+                } catch (err) {
+                    console.error("Error fetching chunk", err);
+                }
+            }));
 
             // 3. Filter for PENDING items
-            // Pending means: Any bimester isApproved === false, OR final recovery approved === false
+            // Pending means: Any bimester isApproved !== true (catch undefined/null as pending)
             const pendingMap: Record<string, GradeEntry[]> = {};
             const fullMap: Record<string, GradeEntry[]> = {}; // Store ALL grades per student
             const studentsWithPending: Set<string> = new Set();
@@ -283,9 +333,21 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 if (!fullMap[grade.studentId]) fullMap[grade.studentId] = [];
                 fullMap[grade.studentId].push(grade);
 
+                // Defensive check for bimesters
+                if (!grade.bimesters) return;
+
+                // YEAR FILTER (Client-side)
+                // Use type assertion to avoid TS error if interface is outdated, but rely on lastUpdated
+                const gradeYear = (grade as any).year || (grade.lastUpdated ? new Date(grade.lastUpdated).getFullYear() : null);
+                // If we have a year and it doesn't match, skip. (If unknown, we might include or exclude. Excluding to be safe for "current year" req)
+                if (gradeYear && gradeYear !== searchYear) return;
+
                 const hasPending = Object.values(grade.bimesters).some((b: any) =>
-                    b.isApproved === false || b.isNotaApproved === false || b.isRecuperacaoApproved === false
-                ) || grade.recuperacaoFinalApproved === false;
+                    // Check if explicitely NOT true (covers false, undefined, null)
+                    (b.isApproved !== true) ||
+                    (b.isNotaApproved !== true) ||
+                    (b.isRecuperacaoApproved !== true)
+                ) || (grade.recuperacaoFinalApproved !== true);
 
                 if (hasPending) {
                     if (!pendingMap[grade.studentId]) pendingMap[grade.studentId] = [];
@@ -868,6 +930,22 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                         <div className="mb-6 bg-gray-50/50 p-4 rounded-xl border border-gray-100 animate-fade-in-up">
                             <div className="flex flex-wrap gap-4 items-end">
 
+                                {/* BIMESTER FILTER */}
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Filtrar por Bimestre</label>
+                                    <select
+                                        value={quickBimesterFilter}
+                                        onChange={(e) => setQuickBimesterFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                                        className="p-2.5 bg-white border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none shadow-sm min-w-[140px]"
+                                    >
+                                        <option value="all">Todos os Bimestres</option>
+                                        <option value={1}>1º Bimestre</option>
+                                        <option value={2}>2º Bimestre</option>
+                                        <option value={3}>3º Bimestre</option>
+                                        <option value={4}>4º Bimestre</option>
+                                    </select>
+                                </div>
+
                                 {/* CLASS FILTER (Turma) */}
                                 {uniqueClasses.length > 0 && (
                                     <div>
@@ -930,15 +1008,21 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                         >
                                             <option value="all">Todas as Disciplinas</option>
                                             {uniqueSubjects.map(sub => (
-                                                <option key={sub} value={sub}>{sub}</option>
+                                                <option key={sub} value={sub}>{SUBJECT_LABELS[sub] || sub}</option>
                                             ))}
                                         </select>
                                     </div>
                                 )}
 
-                                {(quickClassFilter !== 'all' || quickGradeFilter !== 'all' || quickShiftFilter !== 'all' || quickSubjectFilter !== 'all') && (
+                                {(quickClassFilter !== 'all' || quickGradeFilter !== 'all' || quickShiftFilter !== 'all' || quickSubjectFilter !== 'all' || quickBimesterFilter !== 'all') && (
                                     <button
-                                        onClick={() => { setQuickClassFilter('all'); setQuickGradeFilter('all'); setQuickShiftFilter('all'); setQuickSubjectFilter('all'); }}
+                                        onClick={() => {
+                                            setQuickClassFilter('all');
+                                            setQuickGradeFilter('all');
+                                            setQuickShiftFilter('all');
+                                            setQuickSubjectFilter('all');
+                                            setQuickBimesterFilter(academicSettings?.currentBimester || 'all');
+                                        }}
                                         className="mb-1 text-blue-950 text-xs font-bold hover:text-blue-900 underline px-2 transition-colors"
                                     >
                                         Limpar Filtros
@@ -1050,7 +1134,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                                         return (
                                                                             <tr key={grade.id} className="hover:bg-blue-50 transition-colors border-b last:border-0 border-gray-200">
                                                                                 <td className="px-2 py-2 border-r border-gray-300 sticky left-0 bg-white z-10 shadow-sm">
-                                                                                    <div className="font-bold text-gray-700">{grade.subject}</div>
+                                                                                    <div className="font-bold text-gray-700">{SUBJECT_LABELS[grade.subject as keyof typeof SUBJECT_LABELS] || grade.subject}</div>
                                                                                     <div className="text-[9px] text-gray-400 mt-0.5">{tName}</div>
                                                                                 </td>
 
