@@ -14,7 +14,7 @@ export function Dashboard() {
     const [isLoading, setIsLoading] = useState(true);
     const { units } = useSchoolUnits();
     const [userUnitType, setUserUnitType] = useState<string | null>(null);
-    const [emulatedUnit, setEmulatedUnit] = useState(localStorage.getItem('emulatedUnit') || '');
+    const [adminSelectedUnitCode, setAdminSelectedUnitCode] = useState(localStorage.getItem('adminSelectedUnitCode') || '');
 
     const loadStats = async () => {
         try {
@@ -26,8 +26,8 @@ export function Dashboard() {
             let unitFilter: string | null = null;
 
             // If Admin Geral AND has an emulated unit selected, use that
-            if (userUnit === 'admin_geral' && localStorage.getItem('emulatedUnit')) {
-                unitFilter = localStorage.getItem('emulatedUnit');
+            if (userUnit === 'admin_geral' && localStorage.getItem('adminSelectedUnitCode')) {
+                unitFilter = localStorage.getItem('adminSelectedUnitCode');
             }
             // If NOT Admin Geral, force their specific unit
             else if (userUnit && userUnit !== 'admin_geral') {
@@ -44,11 +44,23 @@ export function Dashboard() {
     };
 
     // Reload stats when emulated unit changes (triggered by UI)
-    const handleEmulationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const handleUnitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const newVal = e.target.value;
-        setEmulatedUnit(newVal);
-        if (newVal) localStorage.setItem('emulatedUnit', newVal);
-        else localStorage.removeItem('emulatedUnit');
+        const label = e.target.selectedOptions[0].text;
+
+        setAdminSelectedUnitCode(newVal);
+
+        if (newVal) {
+            localStorage.setItem('adminSelectedUnitCode', newVal);
+            // If selecting "Visão Geral", value is empty, so we don't set Name
+            if (newVal) localStorage.setItem('adminSelectedUnitName', label);
+        } else {
+            localStorage.removeItem('adminSelectedUnitCode');
+            localStorage.removeItem('adminSelectedUnitName');
+        }
+
+        // Notify Layout
+        window.dispatchEvent(new Event('adminUnitChange'));
 
         // Timeout to allow localStorage to settle/propagate if needed (though sync here)
         setTimeout(loadStats, 50);
@@ -78,8 +90,8 @@ export function Dashboard() {
                         <Select
                             label=""
                             name="unit"
-                            value={emulatedUnit}
-                            onChange={handleEmulationChange}
+                            value={adminSelectedUnitCode}
+                            onChange={handleUnitChange}
                             options={[
                                 { value: '', label: 'Visão Geral (Todas as Unidades)' },
                                 ...units.map(u => ({ value: u.id, label: u.fullName }))

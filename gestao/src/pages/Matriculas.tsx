@@ -49,7 +49,22 @@ export function Matriculas() {
         }
     }, [searchParams]);
 
-    const loadStudents = async () => {
+    // State for Admin Unit Selection - Read Only from Global Context
+    const [adminUnit, setAdminUnit] = useState<string | null>(localStorage.getItem('adminSelectedUnitCode'));
+
+    useEffect(() => {
+        const handleUnitChange = () => {
+            // Upstream changed (Dashboard), so we update local state to trigger reload
+            const newUnit = localStorage.getItem('adminSelectedUnitCode');
+            setAdminUnit(newUnit);
+            loadStudents(newUnit);
+        };
+
+        window.addEventListener('adminUnitChange', handleUnitChange);
+        return () => window.removeEventListener('adminUnitChange', handleUnitChange);
+    }, []);
+
+    const loadStudents = async (overrideUnit?: string | null) => {
         try {
             setIsLoading(true);
 
@@ -57,8 +72,9 @@ export function Matriculas() {
             const userUnit = localStorage.getItem('userUnit');
             let unitFilter: string | null = null;
 
-            if (userUnit && userUnit === 'admin_geral' && localStorage.getItem('emulatedUnit')) {
-                unitFilter = localStorage.getItem('emulatedUnit');
+            if (userUnit && userUnit === 'admin_geral') {
+                // Use the passed override or current state or localStorage
+                unitFilter = overrideUnit !== undefined ? overrideUnit : (adminUnit || localStorage.getItem('adminSelectedUnitCode'));
             } else if (userUnit && userUnit !== 'admin_geral') {
                 unitFilter = userUnit;
             }
@@ -429,6 +445,7 @@ export function Matriculas() {
                     </div>
                     <p className="text-slate-500 text-sm">Gerencie alunos, enturmações e vagas escolares.</p>
                 </div>
+
             </div>
 
 

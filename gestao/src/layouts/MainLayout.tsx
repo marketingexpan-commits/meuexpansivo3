@@ -1,8 +1,19 @@
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
+import { useState, useEffect } from 'react';
 
 export function MainLayout() {
     const unitLabel = localStorage.getItem('userUnitLabel') || 'Administração Geral';
+    const [adminSelectedUnit, setAdminSelectedUnit] = useState<string | null>(localStorage.getItem('adminSelectedUnitName'));
+
+    useEffect(() => {
+        const handleUnitChange = () => {
+            setAdminSelectedUnit(localStorage.getItem('adminSelectedUnitName'));
+        };
+
+        window.addEventListener('adminUnitChange', handleUnitChange);
+        return () => window.removeEventListener('adminUnitChange', handleUnitChange);
+    }, []);
 
     return (
         <div className="flex h-screen bg-slate-50 overflow-hidden">
@@ -13,6 +24,15 @@ export function MainLayout() {
                         <div className="bg-blue-950/10 text-blue-950 px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider border border-blue-950/20">
                             {unitLabel}
                         </div>
+                        {adminSelectedUnit && (
+                            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
+                                <span className="text-slate-300">|</span>
+                                <div className="bg-orange-100 text-orange-600 px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider border border-orange-200 flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
+                                    {adminSelectedUnit}
+                                </div>
+                            </div>
+                        )}
                     </div>
                     <div className="text-sm text-slate-500 font-medium">
                         {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}

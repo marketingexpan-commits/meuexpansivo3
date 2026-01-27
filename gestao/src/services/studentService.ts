@@ -202,9 +202,20 @@ export const studentService = {
     },
 
     // Valida se um código já existe no banco
-    async isCodeUnique(code: string, excludeStudentId?: string) {
+    // Valida se um código já existe no banco
+    // ATUALIZAÇÃO 2024: Se vier 'unit', valida Apenas naquela unidade.
+    // Se não vier 'unit', manter validação global (segurança).
+    async isCodeUnique(code: string, excludeStudentId?: string, unit?: string) {
         try {
-            const q = query(collection(db, STUDENTS_COLLECTION), where('code', '==', code));
+            const studentsRef = collection(db, STUDENTS_COLLECTION);
+            let q;
+
+            if (unit && unit !== 'admin_geral') {
+                q = query(studentsRef, where('code', '==', code), where('unit', '==', unit));
+            } else {
+                q = query(studentsRef, where('code', '==', code));
+            }
+
             const querySnapshot = await getDocs(q);
 
             if (querySnapshot.empty) return true;

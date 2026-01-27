@@ -9,16 +9,34 @@ export default function GradeHoraria() {
     const [isAdminGeral, setIsAdminGeral] = useState(false);
 
     useEffect(() => {
-        // Read unit from localStorage as set by Sidebar/Auth in Gestão
+        const handleUnitChange = () => {
+            const adminSelected = localStorage.getItem('adminSelectedUnitCode');
+            if (adminSelected && Object.values(SchoolUnit).includes(adminSelected as SchoolUnit)) {
+                setUnit(adminSelected as SchoolUnit);
+            } else if (localStorage.getItem('userUnit') === 'admin_geral') {
+                // If admin selects "Todas" or nothing, default to Boa Sorte or keep current
+                // For now, let's reset to Boa Sorte to ensure a valid view
+                setUnit(SchoolUnit.UNIT_BS);
+            }
+        };
+
+        // Initial check
         const userUnit = localStorage.getItem('userUnit');
         setIsAdminGeral(userUnit === 'admin_geral');
 
         if (userUnit && Object.values(SchoolUnit).includes(userUnit as SchoolUnit)) {
             setUnit(userUnit as SchoolUnit);
         } else if (userUnit === 'admin_geral') {
-            // If admin_geral, we can default to Boa Sorte and allow selection
-            setUnit(SchoolUnit.UNIT_BS);
+            const adminSelected = localStorage.getItem('adminSelectedUnitCode');
+            if (adminSelected && Object.values(SchoolUnit).includes(adminSelected as SchoolUnit)) {
+                setUnit(adminSelected as SchoolUnit);
+            } else {
+                setUnit(SchoolUnit.UNIT_BS);
+            }
         }
+
+        window.addEventListener('adminUnitChange', handleUnitChange);
+        return () => window.removeEventListener('adminUnitChange', handleUnitChange);
     }, []);
 
     if (!unit) {
@@ -41,25 +59,9 @@ export default function GradeHoraria() {
                         Grade Horária
                     </h1>
                     <p className="text-slate-500 mt-2 font-medium">
-                        Gerenciamento de horários e disciplinas para {isAdminGeral ? 'Administração Geral' : (UNIT_LABELS[unit as SchoolUnit] || 'Unidade')}.
+                        Gerenciamento de horários e disciplinas para {isAdminGeral ? (UNIT_LABELS[unit as SchoolUnit] || 'Administração Geral') : (UNIT_LABELS[unit as SchoolUnit] || 'Unidade')}.
                     </p>
                 </div>
-
-
-                {isAdminGeral && (
-                    <div className="flex flex-col min-w-[200px] animate-in slide-in-from-right-4 duration-500">
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Selecione a Unidade</label>
-                        <select
-                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950/20 outline-none"
-                            value={unit || ''}
-                            onChange={(e) => setUnit(e.target.value as SchoolUnit)}
-                        >
-                            {Object.values(SchoolUnit).map((u) => (
-                                <option key={u} value={u}>{UNIT_LABELS[u] || u}</option>
-                            ))}
-                        </select>
-                    </div>
-                )}
             </div>
 
             <Card className="border-slate-200 shadow-xl shadow-slate-200/50 rounded-xl overflow-hidden">

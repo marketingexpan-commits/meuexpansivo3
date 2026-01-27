@@ -687,11 +687,13 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                 return alert("O Nível de Ensino (Segmento) é obrigatório.");
             }
 
-            // Validação de Unicidade Global
-            const isUnique = await studentService.isCodeUnique(formData.code, student?.id);
+            // Validação de Unicidade Global (Agora Escopada por Unidade)
+            // Se já tem cadastro em outra unidade com mesmo código, tudo bem.
+            // Mas na MESMA unidade, não pode repetir.
+            const isUnique = await studentService.isCodeUnique(formData.code, student?.id, formData.unit);
             if (!isUnique) {
                 setIsLoading(false);
-                return alert(`O código ${formData.code} já está em uso por outro aluno na rede. Por favor, utilize um código diferente.`);
+                return alert(`O código ${formData.code} já está em uso por outro aluno nesta unidade. Por favor, utilize um código diferente.`);
             }
 
             // Robust Currency Parser
