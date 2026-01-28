@@ -51,4 +51,5 @@ quintas_*.json
 zn_*.json
 audit_*.json
 
-
+# Build artifacts
+*.tsbuildinfo
