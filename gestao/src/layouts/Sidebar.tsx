@@ -22,6 +22,7 @@ import {
     UserCheck,
     Smartphone,
     Globe, // Import Globe for year selector
+    MessageSquareReply
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -194,6 +195,12 @@ export function Sidebar() {
                                 icon={FileText}
                                 label="Alunos Cadastrados"
                                 path="/matriculas"
+                                collapsed={collapsed}
+                            />
+                            <SidebarItem
+                                icon={MessageSquareReply}
+                                label="Msg. Alunos"
+                                path="/diretoria/mensagens"
                                 collapsed={collapsed}
                             />
                             <SidebarItem

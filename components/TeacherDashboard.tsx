@@ -1,7 +1,7 @@
 // src/components/TeacherDashboard.tsx
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, HelpCircle } from 'lucide-react';
 import {
     Teacher, Student, GradeEntry, BimesterData, SchoolUnit, Subject, SchoolClass, AttendanceRecord, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, Ticket,
     TicketStatus,
@@ -1375,7 +1375,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                     >
                                         {/* Global Style for File Inputs removed - using Tailwind file: modifier instead */}
                                         <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                                            <MessageCircle className="w-7 h-7 text-blue-950" />
+                                            <HelpCircle className="w-7 h-7 text-blue-950" />
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm text-center">{isEarlyChildhoodTeacher ? 'Mensagens dos Pais e Responsáveis' : 'Dúvidas dos Alunos'}</h3>
                                     </button>

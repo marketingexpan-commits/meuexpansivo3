@@ -2293,7 +2293,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 </p>
                                                             </div>
                                                             <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide ${msg.status === 'new' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500'}`}>
-                                                                {msg.status === 'new' ? 'Aguardando Leitura' : 'Lida pela Escola'}
+                                                                {msg.status === 'new' ? 'Aguardando Leitura' :
+                                                                    msg.recipient === 'Diretoria' ? 'Lida pela Diretoria' :
+                                                                        msg.recipient === 'Professores' ? 'Lida pelo Professor' :
+                                                                            'Lida pela Coordenação'}
                                                             </span>
                                                         </div>
 
@@ -2305,7 +2308,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             <div className="mt-4 bg-blue-50 border border-blue-100 p-4 rounded-lg relative">
                                                                 <div className="absolute -top-3 left-4 bg-white px-2 py-0.5 rounded text-[9px] font-black text-blue-500 border border-blue-100 shadow-sm flex items-center gap-1">
                                                                     <Mail className="w-3 h-3" />
-                                                                    RESPOSTA DA COORDENAÇÃO
+                                                                    {msg.recipient === 'Diretoria' ? 'RESPOSTA DA DIRETORIA' :
+                                                                        msg.recipient === 'Professores' ? `RESPOSTA DO PROFESSOR` :
+                                                                            'RESPOSTA DA COORDENAÇÃO'}
+                                                                    {msg.responseAuthor && <span className="font-normal normal-case ml-1 opacity-80">- {msg.responseAuthor}</span>}
                                                                 </div>
                                                                 <div className="bg-white/40 p-4 rounded-xl border border-blue-200/50 mt-2 shadow-sm">
                                                                     <p className="text-gray-900 text-sm font-semibold leading-relaxed">
@@ -2319,7 +2325,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                         ) : (
                                                             <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50/50 p-2 rounded-lg border border-dashed border-gray-200 justify-center">
                                                                 <Clock className="w-3 h-3" />
-                                                                Aguardando resposta da equipe pedagógica
+                                                                {msg.recipient === 'Diretoria' ? 'Aguardando resposta da Diretoria' :
+                                                                    msg.recipient === 'Professores' ? 'Aguardando resposta do Professor' :
+                                                                        'Aguardando resposta da Coordenação'}
                                                             </div>
                                                         )}
                                                     </div>
@@ -2366,7 +2374,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         <div key={ticket.id} className="bg-white border rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
                                             <div className="flex justify-between items-start mb-3">
                                                 <div>
-                                                    <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">{ticket.subject}</span>
+                                                    <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+                                                        {academicSubjects.find(s => s.id === ticket.subject)?.label || SUBJECT_LABELS[ticket.subject] || ticket.subject}
+                                                    </span>
                                                     <p className="text-xs text-gray-400 mt-0.5">{new Date(ticket.timestamp).toLocaleDateString()} às {new Date(ticket.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                                                 </div>
                                                 <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide ${ticket.status === TicketStatus.PENDING ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>

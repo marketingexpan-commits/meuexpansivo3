@@ -189,8 +189,9 @@ export interface SchoolMessage {
   messageType: MessageType;
   content: string;
   timestamp: string; // ISO String for Firebase compatibility
-  status: 'new' | 'read';
+  status: 'new' | 'read' | 'replied';
   response?: string;
+  responseAuthor?: string;
   responseTimestamp?: string;
 }
 
