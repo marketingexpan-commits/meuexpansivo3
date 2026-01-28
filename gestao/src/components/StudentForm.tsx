@@ -980,7 +980,15 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                         { label: 'Feminino', value: 'F' }
                                     ]}
                                 />
-                                <Input name="nacionalidade" value={formData.nacionalidade} onChange={handleChange} label="Nacionalidade" placeholder="Ex: Brasileira" />
+                                <Select
+                                    label="Nacionalidade"
+                                    value={formData.nacionalidade}
+                                    onChange={(e) => handleSelectChange('nacionalidade', e.target.value)}
+                                    options={[
+                                        { label: 'Brasileira', value: 'Brasileira' },
+                                        { label: 'Estrangeira', value: 'Estrangeira' }
+                                    ]}
+                                />
                                 <div className="grid grid-cols-3 gap-2 col-span-2 md:col-span-1">
                                     <div className="col-span-2">
                                         <Input name="naturalidade" value={formData.naturalidade} onChange={handleChange} label="Naturalidade (Cidade)" placeholder="Cidade de nascimento" />
@@ -1417,7 +1425,15 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                     <Input name="nome_pai" value={formData.nome_pai} onChange={handleChange} label="Nome do Pai" className="col-span-full" />
 
                                     <Input name="pai_profissao" value={formData.pai_profissao} onChange={handleChange} label="Profissão" className="col-span-full md:col-span-2" />
-                                    <Input name="pai_nacionalidade" value={formData.pai_nacionalidade} onChange={handleChange} label="Nacionalidade" placeholder="Ex: Brasileira" />
+                                    <Select
+                                        label="Nacionalidade"
+                                        value={formData.pai_nacionalidade}
+                                        onChange={(e) => handleSelectChange('pai_nacionalidade', e.target.value)}
+                                        options={[
+                                            { label: 'Brasileira', value: 'Brasileira' },
+                                            { label: 'Estrangeira', value: 'Estrangeira' }
+                                        ]}
+                                    />
                                     <Input name="pai_naturalidade" value={formData.pai_naturalidade} onChange={handleChange} label="Naturalidade" placeholder="Ex: Natal/RN" />
 
                                     <Input name="pai_telefone" value={formData.pai_telefone} onChange={handleChange} label="Telefone (Formato: 5584...)" placeholder="5584999999999" helperText="Máx 13 dígitos" className="col-span-full md:col-span-2" />
@@ -1436,7 +1452,15 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                     <Input name="nome_mae" value={formData.nome_mae} onChange={handleChange} label="Nome da Mãe" className="col-span-full" />
 
                                     <Input name="mae_profissao" value={formData.mae_profissao} onChange={handleChange} label="Profissão" className="col-span-full md:col-span-2" />
-                                    <Input name="mae_nacionalidade" value={formData.mae_nacionalidade} onChange={handleChange} label="Nacionalidade" placeholder="Ex: Brasileira" />
+                                    <Select
+                                        label="Nacionalidade"
+                                        value={formData.mae_nacionalidade}
+                                        onChange={(e) => handleSelectChange('mae_nacionalidade', e.target.value)}
+                                        options={[
+                                            { label: 'Brasileira', value: 'Brasileira' },
+                                            { label: 'Estrangeira', value: 'Estrangeira' }
+                                        ]}
+                                    />
                                     <Input name="mae_naturalidade" value={formData.mae_naturalidade} onChange={handleChange} label="Naturalidade" placeholder="Ex: Natal/RN" />
 
                                     <Input name="mae_telefone" value={formData.mae_telefone} onChange={handleChange} label="Telefone (Formato: 5584...)" placeholder="5584999999999" helperText="Máx 13 dígitos" className="col-span-full md:col-span-2" />

@@ -24,7 +24,7 @@ export function MainLayout() {
                         <div className="bg-blue-950/10 text-blue-950 px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider border border-blue-950/20">
                             {unitLabel}
                         </div>
-                        {adminSelectedUnit && (
+                        {adminSelectedUnit && localStorage.getItem('userUnit') === 'admin_geral' && (
                             <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
                                 <span className="text-slate-300">|</span>
                                 <div className="bg-orange-100 text-orange-600 px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider border border-orange-200 flex items-center gap-2">
