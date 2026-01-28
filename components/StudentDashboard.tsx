@@ -617,7 +617,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 subject: selectedTicketSubject,
                 message: ticketMessage,
                 timestamp: new Date().toISOString(),
-                status: TicketStatus.PENDING
+                status: TicketStatus.PENDING,
+                isSupport: true // Mark as coming from the Support Center
             };
 
             await db.collection('tickets_pedagogicos').doc(ticket.id).set(ticket);
@@ -2220,42 +2221,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                     {currentView === 'messages' && (
                         <div className="animate-fade-in-up space-y-8">
-                            <MessageBox student={student} onSendMessage={onSendMessage} unitContacts={unitContacts || []} teachers={teachers} onSubmitTicket={async (subject, message) => {
-                                // Reusing the ticket creation logic for MessageBox
-                                try {
-                                    const ticket: Ticket = {
-                                        id: `ticket-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-                                        studentId: student.id,
-                                        studentName: student.name,
-                                        gradeLevel: student.gradeLevel,
-                                        schoolClass: student.schoolClass,
-                                        unit: student.unit,
-                                        subject: subject,
-                                        message: message,
-                                        timestamp: new Date().toISOString(),
-                                        status: TicketStatus.PENDING
-                                    };
-
-                                    await db.collection('tickets_pedagogicos').doc(ticket.id).set(ticket);
-
-                                    // Notify Teachers
-                                    if (onCreateNotification && (teachers || []).length > 0) {
-                                        const teachersToNotify = (teachers || []).filter(t => t.subjects.includes(subject as any) && t.unit === student.unit);
-                                        for (const t of teachersToNotify) {
-                                            await onCreateNotification(
-                                                `Nova Dúvida: ${student.name}`,
-                                                `Assunto: ${subject}`,
-                                                undefined,
-                                                t.id
-                                            );
-                                        }
-                                    }
-                                    return true;
-                                } catch (error) {
-                                    console.error("Error creating ticket via MessageBox:", error);
-                                    throw error;
-                                }
-                            }} />
+                            <MessageBox student={student} onSendMessage={onSendMessage} unitContacts={unitContacts || []} teachers={teachers} />
 
                             <div>
                                 <h3 className="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2 border-b border-gray-100 pb-2">
@@ -2264,28 +2230,34 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 </h3>
 
                                 {(() => {
-                                    // MERGE: Combine authentic SchoolMessages with "General Early Childhood" Tickets
-                                    // This ensures Early Childhood students see their "Tickets" as "Messages" in this view.
+                                    // MERGE: Combine authentic SchoolMessages with "Legacy Tickets" (sent via Fale com a Escola)
+                                    // This ensures old "Fale com a Escola" messages still appear in the history.
                                     const mergedMessages: any[] = [...schoolMessages];
 
-                                    if (isEarlyChildhood) {
-                                        const childhoodTickets = studentTickets.filter(t => t.subject === 'general_early_childhood');
-                                        const mappedTickets = childhoodTickets.map(t => ({
-                                            id: t.id,
-                                            studentId: t.studentId,
-                                            studentName: t.studentName,
-                                            unit: t.unit,
-                                            recipient: MessageRecipient.TEACHERS, // As it was sent to teachers
-                                            messageType: MessageType.SUGGESTION, // Generic fallback
-                                            content: `[DÚVIDA] ${t.message}`, // Distinguish
-                                            timestamp: t.timestamp,
-                                            read: true, // Tickets don't have read status for students usually
-                                            status: t.status === TicketStatus.PENDING ? 'new' : 'read',
-                                            response: t.response,
-                                            responseTimestamp: t.responseTimestamp
-                                        }));
-                                        mergedMessages.push(...mappedTickets);
-                                    }
+                                    const legacyTickets = studentTickets.filter(t =>
+                                        t.message.startsWith('[Elogio]') ||
+                                        t.message.startsWith('[Sugestão]') ||
+                                        t.message.startsWith('[Reclamação]') ||
+                                        t.subject === 'general_early_childhood'
+                                    );
+
+                                    const mappedTickets = legacyTickets.map(t => ({
+                                        id: t.id,
+                                        studentId: t.studentId,
+                                        studentName: t.studentName,
+                                        unit: t.unit,
+                                        recipient: MessageRecipient.TEACHERS,
+                                        messageType: t.message.includes('[Elogio]') ? 'Elogio' :
+                                            t.message.includes('[Sugestão]') ? 'Sugestão' :
+                                                t.message.includes('[Reclamação]') ? 'Reclamação' : 'Sugestão',
+                                        content: t.message,
+                                        timestamp: t.timestamp,
+                                        read: true,
+                                        status: t.status === TicketStatus.PENDING ? 'new' : 'read',
+                                        response: t.response,
+                                        responseTimestamp: t.responseTimestamp
+                                    }));
+                                    mergedMessages.push(...mappedTickets);
 
                                     // Sort by timestamp desc
                                     mergedMessages.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -2371,7 +2343,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 Minhas Dúvidas
                             </h3>
 
-                            {studentTickets.filter(t => t.subject !== 'general_early_childhood').length === 0 ? (
+                            {studentTickets.filter(t =>
+                                t.subject !== 'general_early_childhood' &&
+                                !t.message.startsWith('[Elogio]') &&
+                                !t.message.startsWith('[Sugestão]') &&
+                                !t.message.startsWith('[Reclamação]')
+                            ).length === 0 ? (
                                 <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-100">
                                     <p className="text-gray-500">Você ainda não enviou dúvidas.</p>
                                     <Button onClick={() => setCurrentView('grades')} className="mt-4">
@@ -2380,7 +2357,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    {studentTickets.filter(t => t.subject !== 'general_early_childhood').map(ticket => (
+                                    {studentTickets.filter(t =>
+                                        t.subject !== 'general_early_childhood' &&
+                                        !t.message.startsWith('[Elogio]') &&
+                                        !t.message.startsWith('[Sugestão]') &&
+                                        !t.message.startsWith('[Reclamação]')
+                                    ).map(ticket => (
                                         <div key={ticket.id} className="bg-white border rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
                                             <div className="flex justify-between items-start mb-3">
                                                 <div>

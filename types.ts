@@ -495,6 +495,7 @@ export interface Ticket {
   responseTimestamp?: string; // ISO
   status: TicketStatus;
   responderName?: string; // Nome do professor que respondeu
+  isSupport?: boolean; // Indica se é uma dúvida pedagógica do Centro de Suporte
 }
 
 // --- SISTEMA DE OCORRÊNCIAS ---

@@ -608,6 +608,7 @@ export interface Ticket {
   responseTimestamp?: string; // ISO
   status: TicketStatus;
   responderName?: string; // Nome do professor que respondeu
+  isSupport?: boolean;
 }
 
 

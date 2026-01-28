@@ -305,6 +305,7 @@ export interface Ticket {
   timestamp: string; // ISO
   responseTimestamp?: string; // ISO
   status: TicketStatus;
+  isSupport?: boolean;
 }
 
 export interface BimesterConfig {
