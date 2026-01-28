@@ -1,6 +1,6 @@
 
 import { db } from '../firebaseConfig';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, getDoc, orderBy, limit } from 'firebase/firestore';
 import { studentService } from './studentService';
 import { getCurrentSchoolYear, isHistoricalYear } from '../utils/academicUtils';
 
@@ -77,6 +77,86 @@ export const statsService = {
         } catch (error) {
             console.error("Erro ao buscar estatísticas:", error);
             throw error;
+        }
+    },
+
+    async getLoginStats() {
+        const today = new Date().toISOString().split('T')[0];
+        try {
+            // Acessos Hoje
+            const dailyStatsRef = doc(db, 'daily_stats', today);
+            const dailyStatsSnap = await getDoc(dailyStatsRef);
+            const totalLogins = dailyStatsSnap.exists() ? dailyStatsSnap.data()?.total_logins || 0 : 0;
+
+            // Total Visitas (Global)
+            const siteStatsRef = doc(db, 'site_stats', 'general');
+            const siteStatsSnap = await getDoc(siteStatsRef);
+            const loginPageViews = siteStatsSnap.exists() ? siteStatsSnap.data()?.login_page_views || 0 : 0;
+
+            // Visitas Hoje
+            const dailyViewsRef = doc(db, 'daily_login_page_views', today);
+            const dailyViewsSnap = await getDoc(dailyViewsRef);
+            const loginPageViewsToday = dailyViewsSnap.exists() ? dailyViewsSnap.data()?.count || 0 : 0;
+
+            return {
+                totalLogins,
+                loginPageViews,
+                loginPageViewsToday
+            };
+        } catch (error) {
+            console.error("Erro ao buscar estatísticas de login:", error);
+            return {
+                totalLogins: 0,
+                loginPageViews: 0,
+                loginPageViewsToday: 0
+            };
+        }
+    },
+
+    async getAccessLogs(filter: 'today' | 'week' | 'month') {
+        let startDate = new Date();
+        if (filter === 'today') {
+            startDate.setHours(0, 0, 0, 0);
+        } else if (filter === 'week') {
+            startDate.setDate(startDate.getDate() - 7);
+        } else if (filter === 'month') {
+            startDate.setMonth(startDate.getMonth() - 1);
+        }
+
+        try {
+            const isoCheck = startDate.toISOString();
+            const logsRef = collection(db, 'access_logs');
+            const q = query(
+                logsRef,
+                where('date', '>=', isoCheck),
+                orderBy('date', 'desc'),
+                limit(200)
+            );
+
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+        } catch (error) {
+            console.error("Erro ao buscar logs de acesso:", error);
+            // Fallback: buscar últimos 50 sem filtro de data complexo para evitar erro de index se não houver
+            try {
+                const logsRef = collection(db, 'access_logs');
+                const qFallback = query(
+                    logsRef,
+                    orderBy('date', 'desc'),
+                    limit(50)
+                );
+                const snapshot = await getDocs(qFallback);
+                return snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+            } catch (e) {
+                console.error("Erro fatal ao buscar logs:", e);
+                return [];
+            }
         }
     }
 };
