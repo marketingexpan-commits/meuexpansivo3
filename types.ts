@@ -193,6 +193,7 @@ export interface SchoolMessage {
   response?: string;
   responseAuthor?: string;
   responseTimestamp?: string;
+  teacherId?: string; // Optional: for messages directed to specific teachers
 }
 
 

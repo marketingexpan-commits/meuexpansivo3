@@ -30,6 +30,7 @@ import { getSubjectLabel } from '../utils/subjectUtils';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 import { TableSkeleton } from './Skeleton';
+import { SchoolCalendar } from './SchoolCalendar';
 
 interface TeacherDashboardProps {
     teacher: Teacher;
@@ -51,6 +52,7 @@ interface TeacherDashboardProps {
     tickets?: Ticket[];
     calendarEvents?: CalendarEvent[];
     classSchedules?: ClassSchedule[];
+    schoolMessages?: SchoolMessage[];
 }
 
 const formatGrade = (value: number | undefined | null) => {
@@ -84,11 +86,12 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     examGuides: propsExamGuides = [],
     tickets: propsTickets = [],
     calendarEvents = [],
-    classSchedules = []
+    classSchedules = [],
+    schoolMessages = []
 }) => {
     const { grades: academicGrades, subjects: academicSubjects, matrices, loading: loadingAcademic } = useAcademicData();
 
-    const [activeTab, setActiveTab] = useState<'menu' | 'grades' | 'attendance' | 'tickets' | 'materials'>('menu');
+    const [activeTab, setActiveTab] = useState<'menu' | 'grades' | 'attendance' | 'tickets' | 'materials' | 'messages' | 'calendar'>('menu');
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const activeUnit = normalizeUnit(teacher.unit) as SchoolUnit;
@@ -198,6 +201,113 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     const [replyingTicketId, setReplyingTicketId] = useState<string | null>(null);
     const [replyText, setReplyText] = useState('');
     const [isSendingReply, setIsSendingReply] = useState(false);
+
+    // States for 'Mensagens dos Alunos' (NEW)
+    const [replyingMessageId, setReplyingMessageId] = useState<string | null>(null);
+    const [messageReplyText, setMessageReplyText] = useState('');
+    const [isSendingMessageReply, setIsSendingMessageReply] = useState(false);
+
+    // MERGE LOGIC: Combine SchoolMessages and Legacy Tickets
+    const studentMessagesList = useMemo(() => {
+        // 1. Direct School Messages for this teacher
+        const directMessages = schoolMessages.filter(m =>
+            m.teacherId === teacher.id ||
+            (!m.teacherId && m.recipient === MessageRecipient.TEACHERS && m.content.includes(teacher.name.split(' ')[0]))
+        ).map(m => ({ ...m, isLegacyTicket: false }));
+
+        // 2. Legacy Tickets (that acted as messages)
+        // Tickets matching specific criteria: directed to this teacher (already filtered in props.tickets usually, but let's be safe)
+        // and having the message format
+        const legacyTickets = tickets.filter(t =>
+            // Logic to identify if this ticket is actually a "message"
+            // StudentDashboard uses: startsWith [Elogio], [Sugestão], [Reclamação] OR subject === 'general_early_childhood'
+            (t.message.startsWith('[') && t.message.includes(']')) ||
+            t.subject === 'general_early_childhood'
+        ).map(t => {
+            // Extract type from message content [Type] Content
+            const match = t.message.match(/^\[(.*?)\]/);
+            const type = match ? match[1] : 'Sugestão'; // Fallback
+
+            return {
+                id: t.id,
+                studentId: t.studentId,
+                studentName: t.studentName,
+                unit: t.unit,
+                recipient: MessageRecipient.TEACHERS,
+                messageType: type as MessageType,
+                content: t.message,
+                timestamp: t.timestamp,
+                status: t.status === TicketStatus.PENDING ? 'new' : 'replied',
+                response: t.response,
+                responseTimestamp: t.responseTimestamp,
+                isLegacyTicket: true // marker
+            } as (SchoolMessage & { isLegacyTicket: boolean });
+        });
+
+        const combined = [...directMessages, ...legacyTickets];
+        // Remove duplicates if any ID collision (unlikely)
+        const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
+
+        return unique.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    }, [schoolMessages, tickets, teacher.id, teacher.name]);
+
+    const handleMessageReplySubmit = async (messageId: string) => {
+        if (!messageReplyText.trim()) return;
+        setIsSendingMessageReply(true);
+
+        // Find message to check if it is legacy
+        const targetMsg = studentMessagesList.find(m => m.id === messageId);
+        if (!targetMsg) {
+            setIsSendingMessageReply(false);
+            return;
+        }
+
+        const isLegacy = targetMsg.isLegacyTicket;
+
+        try {
+            if (isLegacy) {
+                // MIGRATION: Convert Ticket to SchoolMessage Logic
+                // 1. Create new SchoolMessage
+                const newMessagePayload = {
+                    studentId: targetMsg.studentId,
+                    studentName: targetMsg.studentName,
+                    unit: targetMsg.unit,
+                    recipient: MessageRecipient.TEACHERS,
+                    messageType: targetMsg.messageType || 'Sugestão',
+                    content: targetMsg.content, // Keep original content
+                    timestamp: targetMsg.timestamp, // Keep original timestamp
+                    teacherId: teacher.id, // Assign to current teacher
+                    response: messageReplyText,
+                    responseAuthor: teacher.name,
+                    responseTimestamp: new Date().toISOString(),
+                    status: 'replied'
+                };
+
+                await db.collection('schoolMessages').add(newMessagePayload);
+
+                // 2. Delete the old Ticket (to prevent duplicates and finalize migration)
+                await db.collection('tickets_pedagogicos').doc(messageId).delete();
+
+            } else {
+                // Reply to SchoolMessage (Standard)
+                await db.collection('schoolMessages').doc(messageId).update({
+                    response: messageReplyText,
+                    responseAuthor: teacher.name,
+                    responseTimestamp: new Date().toISOString(),
+                    status: 'replied'
+                });
+            }
+
+            setReplyingMessageId(null);
+            setMessageReplyText('');
+            alert("Resposta enviada com sucesso!");
+        } catch (error) {
+            console.error("Erro ao responder mensagem:", error);
+            alert("Erro ao enviar resposta.");
+        } finally {
+            setIsSendingMessageReply(false);
+        }
+    };
 
     // Estados para Materiais de Aula
     const [materialTitle, setMaterialTitle] = useState('');
@@ -1380,6 +1490,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                         <h3 className="font-bold text-gray-800 text-sm text-center">{isEarlyChildhoodTeacher ? 'Mensagens dos Pais e Responsáveis' : 'Dúvidas dos Alunos'}</h3>
                                     </button>
 
+                                    {/* MENU: MENSAGENS DOS ALUNOS (NEW) */}
+                                    <button
+                                        onClick={() => setActiveTab('messages')}
+                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square relative"
+                                    >
+                                        <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                            <MessageCircle className="w-7 h-7 text-blue-950" />
+                                        </div>
+                                        <h3 className="font-bold text-gray-800 text-sm text-center">Mensagens dos Alunos</h3>
+                                    </button>
+
                                     <button
                                         onClick={() => setActiveTab('materials')}
                                         className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
@@ -1398,6 +1519,16 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                             <svg className="w-7 h-7 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm text-center">Agenda Diária</h3>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setActiveTab('calendar')}
+                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                                    >
+                                        <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                            <svg className="w-7 h-7 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                        </div>
+                                        <h3 className="font-bold text-gray-800 text-sm text-center">Calendário Escolar</h3>
                                     </button>
 
                                     {!isEarlyChildhoodTeacher && (
@@ -2892,6 +3023,105 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                             </div>
                         </div>
                     )}
+                    {/* CONTEÚDO TAB: MENSAGENS DOS ALUNOS (NEW) */}
+                    {activeTab === 'messages' && (
+                        <div className="animate-fade-in-up">
+                            <div className="p-6 border rounded-lg shadow-md bg-white">
+                                <h2 className="text-xl font-bold mb-6 text-blue-950 flex items-center gap-2">
+                                    <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
+                                        <MessageCircle className="w-5 h-5 text-teal-700" />
+                                    </div>
+                                    Mensagens dos Alunos
+                                </h2>
+                            </div>
+
+                            <div className="mt-8">
+                                {studentMessagesList.length === 0 ? (
+                                    <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                                        <span className="text-4xl block mb-2">📬</span>
+                                        <p className="text-gray-500 text-lg">Nenhuma mensagem recebida.</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 gap-6">
+                                        {studentMessagesList.map(msg => (
+                                            <div key={msg.id} className={`border rounded-lg p-5 transition-shadow hover:shadow-md ${msg.status === 'new' ? 'bg-white border-l-4 border-l-teal-500 border-gray-200' : 'bg-gray-50 border-gray-200 opacity-80'}`}>
+                                                <div className="mb-2 md:mb-0">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide ${msg.status === 'new' ? 'bg-teal-600 text-white' : 'bg-blue-950 text-white'}`}>
+                                                            {msg.status === 'new' ? 'Nova' : (msg.status === 'replied' ? 'Respondida' : 'Lida')}
+                                                        </span>
+                                                        <span className="text-xs text-gray-400">
+                                                            {new Date(msg.timestamp).toLocaleDateString()} às {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                    </div>
+                                                    <h4 className="font-bold text-lg text-gray-900">{msg.studentName}</h4>
+                                                    <p className="text-xs text-blue-950 font-medium bg-blue-50 px-2 py-1 rounded inline-block mt-1">
+                                                        Tipo: {msg.messageType}
+                                                    </p>
+                                                </div>
+
+                                                <div className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm mb-4">
+                                                    <p className="text-gray-800 whitespace-pre-wrap">{msg.content}</p>
+                                                </div>
+
+                                                {
+                                                    msg.response && (
+                                                        <div className="bg-orange-100 p-4 rounded-lg border border-orange-200 mb-4 ml-4 shadow-sm">
+                                                            <p className="text-xs font-bold text-orange-800 mb-1 uppercase tracking-wide">Sua Resposta</p>
+                                                            <p className="text-blue-950 whitespace-pre-wrap">{msg.response}</p>
+                                                            <p className="text-[10px] text-orange-800/60 mt-2 text-right">Enviada em {msg.responseTimestamp ? new Date(msg.responseTimestamp).toLocaleDateString() : '-'}</p>
+                                                        </div>
+                                                    )
+                                                }
+
+                                                {
+                                                    msg.status !== 'replied' && (
+                                                        <div className="mt-4 border-t border-gray-100 pt-4">
+                                                            {replyingMessageId === msg.id ? (
+                                                                <div className="animate-fade-in">
+                                                                    <label className="block text-sm font-bold text-gray-700 mb-2">Sua Resposta:</label>
+                                                                    <textarea
+                                                                        value={messageReplyText}
+                                                                        onChange={(e) => setMessageReplyText(e.target.value)}
+                                                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[100px] text-sm mb-3"
+                                                                        placeholder="Escreva sua resposta para o aluno..."
+                                                                        autoFocus
+                                                                    />
+                                                                    <div className="flex justify-end gap-3">
+                                                                        <button
+                                                                            onClick={() => { setReplyingMessageId(null); setMessageReplyText(''); }}
+                                                                            className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md text-sm font-bold transition-colors"
+                                                                        >
+                                                                            Cancelar
+                                                                        </button>
+                                                                        <Button
+                                                                            onClick={() => handleMessageReplySubmit(msg.id)}
+                                                                            disabled={!messageReplyText.trim() || isSendingMessageReply}
+                                                                            className="px-6 py-2"
+                                                                        >
+                                                                            {isSendingMessageReply ? 'Enviando...' : 'Enviar Resposta'}
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={() => setReplyingMessageId(msg.id)}
+                                                                    className="text-blue-600 hover:text-blue-800 font-bold text-sm flex items-center gap-1 transition-colors"
+                                                                >
+                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
+                                                                    Responder
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    )
+                                                }
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                     {activeTab === 'tickets' && (
                         <div className="animate-fade-in-up">
                             <div className="p-6 border rounded-lg shadow-md bg-white">
@@ -2985,6 +3215,25 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                         ))}
                                     </div>
                                 )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* CALENDAR VIEW */}
+                    {activeTab === 'calendar' && (
+                        <div className="animate-fade-in-up h-full flex flex-col">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-2xl font-bold text-blue-950 flex items-center gap-2">
+                                    <svg className="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                    Calendário Escolar
+                                </h2>
+                                <button onClick={() => setActiveTab('menu')} className="text-gray-500 hover:text-gray-700 font-medium text-sm flex items-center gap-1">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                                    Voltar
+                                </button>
+                            </div>
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex-1 overflow-y-auto">
+                                <SchoolCalendar events={calendarEvents} />
                             </div>
                         </div>
                     )}

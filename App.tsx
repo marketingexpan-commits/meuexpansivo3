@@ -384,6 +384,23 @@ const AppContent: React.FC = () => {
         setInitialLoad(prev => ({ ...prev, classSchedules: true }));
       }));
 
+      // Real-time School Messages for Teacher (New Feature)
+      unsubs.push(db.collection('schoolMessages').where('unit', '==', userUnit).onSnapshot(snap => {
+        // Fetch ALL unit messages, then filter by recipient "Professores" (and optionally teacherId)
+        // Note: Firestore query limitations might require client-side filtering if we want OR logic or complex checks.
+        // Simple approach: Get all for unit, filter in memory is safe enough for this scale.
+        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as SchoolMessage));
+        // Client-side filter: Only "Professores" messages
+        const teacherMessages = data.filter(msg => msg.recipient === 'Professores');
+        teacherMessages.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+        setSchoolMessages(teacherMessages);
+        setInitialLoad(prev => ({ ...prev, messages: true }));
+      }, (err) => {
+        console.error("Teacher Messages listen error:", err);
+        setInitialLoad(prev => ({ ...prev, messages: true }));
+      }));
+
       setInitialLoad(prev => ({ ...prev, teachers: true, admins: true, messages: true, mensalidades: true, academicSettings: true }));
 
     } else if (session.role === UserRole.ADMIN) {
@@ -1443,6 +1460,7 @@ const AppContent: React.FC = () => {
           examGuides={examGuides}
           tickets={tickets}
           classSchedules={classSchedules}
+          schoolMessages={schoolMessages}
         />
         <BackToTopButton />
       </>

@@ -107,28 +107,38 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
         }
       }
 
-      // 2. Envio de Ticket (Mensagem para Professor)
-      // Se o destinatário for um professor e tivermos a função de criar ticket
-      if (recipient === MessageRecipient.TEACHERS && selectedTeacherId && onSubmitTicket) {
-        const teacher = unitTeachers.find(t => t.id === selectedTeacherId);
-        if (teacher) {
-          // Se o professor tiver disciplinas (Fund/Médio), usa a primeira; senão usa fallback
-          const targetSubject = teacher.subjects.length > 0 ? teacher.subjects[0] : 'general_early_childhood';
+      // 2. Envio de Mensagem para Professor (Nova Lógica)
+      // Agora salvamos como SchoolMessage com teacherId, em vez de Ticket
+      if (recipient === MessageRecipient.TEACHERS && selectedTeacherId) {
+        // A mensagem já foi prefixada com o nome do professor em finalContent (linhas 100-102)
+        // Isso é redundante se tivermos teacherId, mas bom para fallbacks.
+        // Vamos manter o fluxo normal de onSendMessage abaixo, APENAS garantindo que passamos o teacherId.
 
-          // Prefixamos o tipo de mensagem para contexto
-          const ticketMessage = `[${messageType}] ${content}`;
-          await onSubmitTicket(targetSubject, ticketMessage);
+        // Se quisermos manter compatibilidade com Tickets (para Dúvidas), poderíamos fazer AMBOS?
+        // O usuário pediu um NOVO menu. Se fizermos ambos, duplicamos.
+        // Vamos mudar para Mensagem Direta (SchoolMessage) pois é o pedido explícito.
 
-          setIsSent(true);
-          setContent('');
-          setMessageType(MessageType.SUGGESTION);
+        await onSendMessage({
+          studentId: student.id,
+          studentName: student.name,
+          unit: student.unit,
+          recipient,
+          messageType,
+          content: finalContent, // Já contém "Para o Professor X"
+          timestamp: new Date().toISOString(),
+          status: 'new',
+          teacherId: selectedTeacherId
+        });
 
-          setRecipient(MessageRecipient.COORDINATION);
-          setSelectedTeacherId('');
-          setTimeout(() => setIsSent(false), 5000);
-          setIsSending(false);
-          return;
-        }
+        setIsSent(true);
+        setContent('');
+        setMessageType(MessageType.SUGGESTION);
+
+        setRecipient(MessageRecipient.COORDINATION);
+        setSelectedTeacherId('');
+        setTimeout(() => setIsSent(false), 5000);
+        setIsSending(false);
+        return;
       }
 
       // 3. Envio Normal (Mensagem para Escola/Coordenação)
