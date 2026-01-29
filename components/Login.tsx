@@ -9,16 +9,14 @@ import { Admin, SchoolUnit, MuralItem, UNIT_LABELS } from '../types';
 interface LoginProps {
   onLoginStudent: (code: string, pass: string) => void;
   onLoginTeacher: (cpf: string, pass: string, unit?: string) => void;
-  onLoginAdmin: (user: string, pass: string) => void;
   onLoginCoordinator: (name: string, pass: string, unit: string) => void;
   onResetSystem: () => void;
   error?: string;
-  adminsList?: Admin[];
 }
 
 import { useSchoolConfig } from '../src/hooks/useSchoolConfig';
 
-export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, onLoginAdmin, onLoginCoordinator, onResetSystem, error, adminsList }) => {
+export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, onLoginCoordinator, onResetSystem, error }) => {
   const { config } = useSchoolConfig();
   // --- SPLASH SCREEN STATE ---
   // --- SPLASH SCREEN STATE ---
@@ -82,11 +80,11 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
     };
   }, []);
 
-  const [activeTab, setActiveTab] = useState<'student' | 'teacher' | 'admin' | 'coordinator'>('student');
+  const [activeTab, setActiveTab] = useState<'student' | 'teacher' | 'coordinator'>('student');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
 
-  const [selectedAdminUnit, setSelectedAdminUnit] = useState('');
+
   const [selectedTeacherUnit, setSelectedTeacherUnit] = useState(SCHOOL_UNITS_LIST[0]);
   const [selectedCoordinatorUnit, setSelectedCoordinatorUnit] = useState(SCHOOL_UNITS_LIST[0]);
 
@@ -204,8 +202,6 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
         return;
       }
       onLoginTeacher(identifier, password, selectedTeacherUnit);
-    } else if (activeTab === 'admin') {
-      onLoginAdmin(identifier, password);
     } else if (activeTab === 'coordinator') {
       if (!selectedCoordinatorUnit) {
         alert("Por favor, selecione a unidade escolar.");
@@ -215,11 +211,10 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
     }
   };
 
-  const switchTab = (tab: 'student' | 'teacher' | 'admin' | 'coordinator') => {
+  const switchTab = (tab: 'student' | 'teacher' | 'coordinator') => {
     setActiveTab(tab);
     setIdentifier('');
     setPassword('');
-    setSelectedAdminUnit('');
     if (tab === 'teacher') setSelectedTeacherUnit(SCHOOL_UNITS_LIST[0]);
     if (tab === 'coordinator') setSelectedCoordinatorUnit(SCHOOL_UNITS_LIST[0]);
   };
@@ -239,22 +234,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
     }
   };
 
-  const handleAdminUnitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const unit = e.target.value;
-    setSelectedAdminUnit(unit);
-    if (unit === 'GERAL') {
-      const generalAdmin = adminsList?.find(a => !a.unit);
-      if (generalAdmin) setIdentifier(generalAdmin.username);
-      else setIdentifier('');
-      return;
-    }
-    const adminForUnit = adminsList?.find(a => a.unit === unit);
-    if (adminForUnit) {
-      setIdentifier(adminForUnit.username);
-    } else {
-      setIdentifier('');
-    }
-  };
+
 
   return (
     <>
@@ -348,8 +328,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
               background: `linear-gradient(90deg, 
                 ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 0%, 
                 ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} ${showHiddenTabs ? '25%' : '50%'}, 
-                ${(activeTab === 'teacher' && !showHiddenTabs) || (activeTab === 'admin' && showHiddenTabs) || hoveredTab === (showHiddenTabs ? 'admin' : 'teacher') ? '#D1D5DB' : '#E5E7EB'} ${showHiddenTabs ? '75%' : '50%'},
-                ${(activeTab === 'teacher' && !showHiddenTabs) || (activeTab === 'admin' && showHiddenTabs) || hoveredTab === (showHiddenTabs ? 'admin' : 'teacher') ? '#D1D5DB' : '#E5E7EB'} 100%)`
+                ${(activeTab === 'teacher' && !showHiddenTabs) || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} ${showHiddenTabs ? '75%' : '50%'},
+                ${(activeTab === 'teacher' && !showHiddenTabs) || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} 100%)`
             }}
           >
 
@@ -380,7 +360,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                 Professor
               </button>
 
-              {/* ABAS OCULTAS (ADMIN / COORDENADOR) */}
+              {/* ABAS OCULTAS (COORDENADOR) */}
               {showHiddenTabs && (
                 <>
                   <button
@@ -395,18 +375,6 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                   >
                     Coord.
                   </button>
-                  <button
-                    className={`flex-1 py-4 text-sm font-semibold text-center transition-all ${activeTab === 'admin'
-                      ? 'bg-gray-300 text-blue-950 hover:bg-gray-400'
-                      : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
-                      }`}
-                    style={{ WebkitTapHighlightColor: 'transparent' }}
-                    onClick={() => switchTab('admin')}
-                    onMouseEnter={() => setHoveredTab('admin')}
-                    onMouseLeave={() => setHoveredTab(null)}
-                  >
-                    Admin
-                  </button>
                 </>
               )}
             </div>
@@ -416,23 +384,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
               <form onSubmit={handleSubmit} className="space-y-5 animate-fade-in-up">
 
-                {activeTab === 'admin' && (
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Selecione a Unidade</label>
-                    <select
-                      value={selectedAdminUnit}
-                      onChange={handleAdminUnitChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-700 focus:outline-none focus:border-blue-950 bg-white transition-colors"
-                      required
-                    >
-                      <option value="">Selecione...</option>
-                      <option value="GERAL" className="font-bold">⭐ GERENCIADOR ADM</option>
-                      {SCHOOL_UNITS_LIST.map(unit => (
-                        <option key={unit} value={unit}>{UNIT_LABELS[unit as SchoolUnit] || unit}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+
 
                 {activeTab === 'teacher' && (
                   <div>

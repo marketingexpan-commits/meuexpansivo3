@@ -3,12 +3,12 @@
 
 import React, { useState, useEffect } from 'react';
 import firebase from 'firebase/compat/app';
-import { UserRole, UserSession, Student, Teacher, GradeEntry, Admin, SchoolMessage, AttendanceRecord, EarlyChildhoodReport, UnitContact, AppNotification, Mensalidade, EventoFinanceiro, AcademicSettings, Ticket, ClassMaterial, DailyAgenda, ExamGuide, CalendarEvent, ClassSchedule, SchoolUnit, UNIT_LABELS } from './types';
-import { MOCK_STUDENTS, MOCK_TEACHERS, MOCK_ADMINS, FINAL_GRADES_CALCULATED, ALLOW_MOCK_LOGIN } from './constants';
+import { UserRole, UserSession, Student, Teacher, GradeEntry, SchoolMessage, AttendanceRecord, EarlyChildhoodReport, UnitContact, AppNotification, Mensalidade, EventoFinanceiro, AcademicSettings, Ticket, ClassMaterial, DailyAgenda, ExamGuide, CalendarEvent, ClassSchedule, SchoolUnit, UNIT_LABELS } from './types';
+import { MOCK_STUDENTS, MOCK_TEACHERS, FINAL_GRADES_CALCULATED, ALLOW_MOCK_LOGIN } from './constants';
 import { Login } from './components/Login';
 import { StudentDashboard } from './components/StudentDashboard';
 import { TeacherDashboard } from './components/TeacherDashboard';
-import { AdminDashboard } from './components/AdminDashboard';
+
 import { CoordinatorDashboard } from './components/CoordinatorDashboard';
 import { db } from './firebaseConfig';
 import { BackToTopButton } from './components/BackToTopButton';
@@ -18,7 +18,7 @@ import { subscribeToAcademicSettings } from './src/services/academicSettings';
 import { normalizeUnit } from './src/utils/academicUtils';
 
 import { ValidateReceipt } from './components/ValidateReceipt';
-import { StudentDashboardSkeleton, TeacherDashboardSkeleton, AdminDashboardSkeleton, CoordinatorDashboardSkeleton } from './components/Skeleton';
+import { StudentDashboardSkeleton, TeacherDashboardSkeleton, CoordinatorDashboardSkeleton } from './components/Skeleton';
 
 // Extracted Main Application Logic (formerly App)
 // Extracted Main Application Logic (formerly App)
@@ -26,7 +26,14 @@ const AppContent: React.FC = () => {
   const [session, setSession] = useState<UserSession>(() => {
     try {
       const saved = localStorage.getItem('app_session');
-      return saved ? JSON.parse(saved) : { role: UserRole.NONE, user: null };
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.role === UserRole.ADMIN) {
+          return { role: UserRole.NONE, user: null };
+        }
+        return parsed;
+      }
+      return { role: UserRole.NONE, user: null };
     } catch (e) {
       console.error("Failed to load session from storage:", e);
       return { role: UserRole.NONE, user: null };
@@ -36,7 +43,7 @@ const AppContent: React.FC = () => {
   const [grades, setGrades] = useState<GradeEntry[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [admins, setAdmins] = useState<Admin[]>([]);
+
   const [schoolMessages, setSchoolMessages] = useState<SchoolMessage[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [earlyChildhoodReports, setEarlyChildhoodReports] = useState<EarlyChildhoodReport[]>([]);
@@ -101,19 +108,9 @@ const AppContent: React.FC = () => {
       setInitialLoad(prev => ({ ...prev, eventosFinanceiros: true }));
     });
 
-    const unsubAdmins = db.collection('admins').onSnapshot((snapshot) => {
-      const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Admin));
-      setAdmins(data);
-      setInitialLoad(prev => ({ ...prev, admins: true }));
-    }, (error) => {
-      if (ALLOW_MOCK_LOGIN) { setAdmins(MOCK_ADMINS); }
-      setInitialLoad(prev => ({ ...prev, admins: true }));
-    });
-
     return () => {
       unsubContacts();
       unsubEventos();
-      unsubAdmins();
     };
   }, []);
 
@@ -123,7 +120,7 @@ const AppContent: React.FC = () => {
       // Clear data on logout
       setStudents([]);
       setTeachers([]);
-      setAdmins([]);
+
       setGrades([]);
       setMensalidades([]);
       setNotifications([]);
@@ -403,91 +400,6 @@ const AppContent: React.FC = () => {
 
       setInitialLoad(prev => ({ ...prev, teachers: true, admins: true, messages: true, mensalidades: true, academicSettings: true }));
 
-    } else if (session.role === UserRole.ADMIN) {
-      const isGeneral = !userUnit || userUnit === 'admin_geral';
-
-      const studentsQuery = isGeneral ? db.collection('students') : db.collection('students').where('unit', '==', userUnit);
-      unsubs.push(studentsQuery.onSnapshot(snap => {
-        setStudents(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Student)));
-        setInitialLoad(prev => ({ ...prev, students: true }));
-      }, (err) => {
-        console.error("Students listen error:", err);
-        setInitialLoad(prev => ({ ...prev, students: true }));
-      }));
-
-      const teachersQuery = isGeneral ? db.collection('teachers') : db.collection('teachers').where('unit', '==', userUnit);
-      unsubs.push(teachersQuery.onSnapshot(snap => {
-        setTeachers(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Teacher)));
-        setInitialLoad(prev => ({ ...prev, teachers: true }));
-      }, (err) => {
-        console.error("Teachers listen error:", err);
-        setInitialLoad(prev => ({ ...prev, teachers: true }));
-      }));
-
-      // Admins already fetched globally for Login
-      setInitialLoad(prev => ({ ...prev, admins: true }));
-
-      unsubs.push(db.collection('grades').onSnapshot(snap => {
-        setGrades(snap.docs.map(doc => doc.data() as GradeEntry));
-        setInitialLoad(prev => ({ ...prev, grades: true }));
-      }, (err) => {
-        console.error("Grades listen error:", err);
-        setInitialLoad(prev => ({ ...prev, grades: true }));
-      }));
-
-      const messagesQuery = isGeneral ? db.collection('schoolMessages') : db.collection('schoolMessages').where('unit', '==', userUnit);
-      unsubs.push(messagesQuery.onSnapshot(snap => {
-        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as SchoolMessage));
-        data.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        setSchoolMessages(data);
-        setInitialLoad(prev => ({ ...prev, messages: true }));
-      }, (err) => {
-        console.error("Messages listen error:", err);
-        setInitialLoad(prev => ({ ...prev, messages: true }));
-      }));
-
-      const attendanceQuery = isGeneral ? db.collection('attendance') : db.collection('attendance').where('unit', '==', userUnit);
-      unsubs.push(attendanceQuery.onSnapshot(snap => {
-        setAttendanceRecords(snap.docs.map(doc => doc.data() as AttendanceRecord));
-        setInitialLoad(prev => ({ ...prev, attendance: true }));
-      }, (err) => {
-        console.error("Attendance listen error:", err);
-        setInitialLoad(prev => ({ ...prev, attendance: true }));
-      }));
-
-      unsubs.push(db.collection('mensalidades').onSnapshot(snap => {
-        setMensalidades(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Mensalidade)));
-        setInitialLoad(prev => ({ ...prev, mensalidades: true }));
-      }, (err) => {
-        console.error("Mensalidades listen error:", err);
-        setInitialLoad(prev => ({ ...prev, mensalidades: true }));
-      }));
-
-      const calendarQuery = isGeneral
-        ? db.collection('calendar_events')
-        : db.collection('calendar_events').where('units', 'array-contains-any', [userUnit, 'all']);
-
-      unsubs.push(calendarQuery.onSnapshot(snap => {
-        setCalendarEvents(snap.docs.map(doc => ({ ...doc.data() as CalendarEvent, id: doc.id })));
-        setInitialLoad(prev => ({ ...prev, calendarEvents: true }));
-      }, (err) => {
-        console.error("Calendar Events (Admin) listen error:", err);
-        setInitialLoad(prev => ({ ...prev, calendarEvents: true }));
-      }));
-
-      setInitialLoad(prev => ({
-        ...prev,
-        notifications: true,
-        earlyChildhoodReports: true,
-        academicSettings: true,
-        materials: true,
-        agenda: true,
-        examGuides: true,
-        tickets: true,
-        calendarEvents: true,
-        classSchedules: true
-      }));
-
     } else if (session.role === UserRole.COORDINATOR) {
       // Coordinator manages their own data fetch in the dashboard or doesn't need global data pre-loaded
       // FIX: CoordinatorDashboard EXPECTS these to be passed as props!
@@ -551,7 +463,7 @@ const AppContent: React.FC = () => {
   const seedDatabase = async () => {
     if (!ALLOW_MOCK_LOGIN) return;
     const batch = db.batch();
-    MOCK_ADMINS.forEach(admin => batch.set(db.collection('admins').doc(admin.id), admin));
+
     MOCK_STUDENTS.forEach(student => batch.set(db.collection('students').doc(student.id), student));
     MOCK_TEACHERS.forEach(teacher => batch.set(db.collection('teachers').doc(teacher.id), teacher));
     FINAL_GRADES_CALCULATED.forEach(grade => batch.set(db.collection('grades').doc(grade.id), grade));
@@ -574,14 +486,14 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     const checkAndSeedDatabase = async () => {
       if (isSeeding || !isDataReady) return;
-      if (admins.length === 0 && ALLOW_MOCK_LOGIN) {
+      if (students.length === 0 && ALLOW_MOCK_LOGIN) { // Check students instead of admins
         setIsSeeding(true);
         try { await seedDatabase(); } catch (error) { console.warn("Seed ignorado (Permissões insuficientes ou Backend Offline)."); }
         finally { setIsSeeding(false); }
       }
     };
     checkAndSeedDatabase();
-  }, [isDataReady, admins.length, isSeeding]);
+  }, [isDataReady, students.length, isSeeding]);
 
   const handleResetSystem = async () => {
     if (!ALLOW_MOCK_LOGIN || !window.confirm("Isso apagará TODOS os dados atuais e restaurará os dados de teste. Deseja continuar?")) return;
@@ -599,7 +511,7 @@ const AppContent: React.FC = () => {
       await seedDatabase();
       alert("Sistema restaurado com sucesso!");
     } catch (e) {
-      setStudents(MOCK_STUDENTS); setTeachers(MOCK_TEACHERS); setAdmins(MOCK_ADMINS); setGrades(FINAL_GRADES_CALCULATED); setSchoolMessages([]);
+      setStudents(MOCK_STUDENTS); setTeachers(MOCK_TEACHERS); setGrades(FINAL_GRADES_CALCULATED); setSchoolMessages([]);
       alert("Sistema restaurado em Modo Offline (Backend inacessível).");
     } finally { setIsSeeding(false); }
   };
@@ -725,36 +637,6 @@ const AppContent: React.FC = () => {
   };
 
 
-  const handleAdminLogin = async (user: string, pass: string) => {
-    try {
-      const snapshot = await db.collection('admins')
-        .where('username', '==', user)
-        .where('password', '==', pass)
-        .get();
-
-      if (!snapshot.empty) {
-        const admin = { ...snapshot.docs[0].data(), id: snapshot.docs[0].id } as Admin;
-        setSession({ role: UserRole.ADMIN, user: admin });
-        setLoginError('');
-        logAccess(admin.id);
-      } else {
-        if (ALLOW_MOCK_LOGIN) {
-          const admin = MOCK_ADMINS.find(a => a.username === user && a.password === pass);
-          if (admin) {
-            setSession({ role: UserRole.ADMIN, user: admin });
-            setLoginError('');
-            logAccess(admin.id);
-            return;
-          }
-        }
-        setLoginError('Credenciais inválidas.');
-      }
-    } catch (error) {
-      console.error("Admin Login error:", error);
-      setLoginError('Erro ao conectar ao servidor.');
-    }
-  };
-
   const handleCoordinatorLogin = async (name: string, pass: string, unit: string) => {
     try {
       const snapshot = await db.collection('unitContacts')
@@ -793,7 +675,6 @@ const AppContent: React.FC = () => {
       switch (session.role) {
         case UserRole.STUDENT: collectionName = 'students'; break;
         case UserRole.TEACHER: collectionName = 'teachers'; break;
-        case UserRole.ADMIN: collectionName = 'admins'; break;
         case UserRole.COORDINATOR: collectionName = 'unitContacts'; break;
         default: return;
       }
@@ -1035,12 +916,8 @@ const AppContent: React.FC = () => {
       // So we proceed.
     }
 
-    if (existingFees2026.length > 0 || !window.confirm(`Confirma a geração do carnê de 2026 para ${student.name}?\nValor: R$ ${student.valor_mensalidade.toFixed(2)}`)) {
-      // If we are in the "Update/Cleanup" path, we skip the basic generation confirm or reuse it?
-      // Simplification: If updating existing, we already confirmed (if paid) or we just do it (if pending). 
-      // Let's rely on the button click + Paid confirm.
-      // For fresh generation, keep the confirm.
-      if (existingFees2026.length === 0 && !window.confirm(`Confirma a geração do carnê de 2026 para ${student.name}?\nValor: R$ ${student.valor_mensalidade.toFixed(2)}`)) return;
+    if (existingFees2026.length === 0 && !window.confirm(`Confirma a geração do carnê de 2026 para ${student.name}?\nValor: R$ ${student.valor_mensalidade.toFixed(2)}`)) {
+      return;
     }
 
     try {
@@ -1349,15 +1226,11 @@ const AppContent: React.FC = () => {
   const handleEditTeacher = async (updatedTeacher: Teacher) => { try { await db.collection('teachers').doc(updatedTeacher.id).set(updatedTeacher); } catch (e) { if (ALLOW_MOCK_LOGIN) setTeachers(prev => prev.map(t => t.id === updatedTeacher.id ? updatedTeacher : t)); } };
   const handleDeleteTeacher = async (teacherId: string) => { try { await db.collection('teachers').doc(teacherId).delete(); } catch (e) { if (ALLOW_MOCK_LOGIN) setTeachers(prev => prev.filter(t => t.id !== teacherId)); } };
 
-  const handleAddAdmin = async (newAdmin: Admin) => { try { await db.collection('admins').doc(newAdmin.id).set(newAdmin); } catch (e) { if (ALLOW_MOCK_LOGIN) setAdmins(prev => [...prev, newAdmin]); } };
-  const handleEditAdmin = async (updatedAdmin: Admin) => { try { await db.collection('admins').doc(updatedAdmin.id).set(updatedAdmin); } catch (e) { if (ALLOW_MOCK_LOGIN) setAdmins(prev => prev.map(a => a.id === updatedAdmin.id ? updatedAdmin : a)); } };
-  const handleDeleteAdmin = async (adminId: string) => { try { await db.collection('admins').doc(adminId).delete(); } catch (e) { if (ALLOW_MOCK_LOGIN) setAdmins(prev => prev.filter(a => a.id !== adminId)); } };
-
 
   if (!isDataReady) {
     if (session.role === UserRole.STUDENT) return <StudentDashboardSkeleton />;
     if (session.role === UserRole.TEACHER) return <TeacherDashboardSkeleton />;
-    if (session.role === UserRole.ADMIN) return <AdminDashboardSkeleton />;
+
     if (session.role === UserRole.COORDINATOR) return <CoordinatorDashboardSkeleton />;
 
     // Fallback for unexpected states while loading
@@ -1383,7 +1256,7 @@ const AppContent: React.FC = () => {
   if (session.role === UserRole.NONE) {
     return (
       <>
-        <Login onLoginStudent={handleStudentLogin} onLoginTeacher={handleTeacherLogin} onLoginAdmin={handleAdminLogin} onLoginCoordinator={handleCoordinatorLogin} onResetSystem={handleResetSystem} error={loginError} adminsList={admins} />
+        <Login onLoginStudent={handleStudentLogin} onLoginTeacher={handleTeacherLogin} onLoginCoordinator={handleCoordinatorLogin} onResetSystem={handleResetSystem} error={loginError} />
         <BackToTopButton />
       </>
     );
@@ -1461,46 +1334,6 @@ const AppContent: React.FC = () => {
           tickets={tickets}
           classSchedules={classSchedules}
           schoolMessages={schoolMessages}
-        />
-        <BackToTopButton />
-      </>
-    );
-  }
-
-  if (session.role === UserRole.ADMIN && session.user) {
-    return (
-      <>
-        <AdminDashboard
-          admin={session.user as Admin}
-          students={students}
-          teachers={teachers}
-          admins={admins}
-          schoolMessages={schoolMessages}
-          attendanceRecords={attendanceRecords}
-          initialLoad={initialLoad}
-          academicSettings={academicSettings}
-          grades={grades}
-          unitContacts={unitContacts}
-          onAddStudent={handleAddStudent}
-          onEditStudent={handleEditStudent}
-          onDeleteStudent={handleDeleteStudent}
-          onToggleBlockStudent={handleToggleBlockStudent}
-          onAddTeacher={handleAddTeacher}
-          onEditTeacher={handleEditTeacher}
-          onDeleteTeacher={handleDeleteTeacher}
-          onAddAdmin={handleAddAdmin}
-          onEditAdmin={handleEditAdmin}
-          onDeleteAdmin={handleDeleteAdmin}
-          onUpdateMessageStatus={handleUpdateMessageStatus}
-          onAddUnitContact={handleAddUnitContact}
-          onEditUnitContact={handleEditUnitContact}
-          onDeleteUnitContact={handleDeleteUnitContact}
-          onGenerateFees={handleGenerate2026FeesForAll}
-          onGenerateIndividualFees={handleGenerateIndividualFees}
-          onFixDuplicates={handleFixDuplicateFees}
-          onResetFees={handleResetStudentFees}
-          mensalidades={mensalidades} // Passando mensalidades para admin geral calcular totais
-          onLogout={handleLogout}
         />
         <BackToTopButton />
       </>
