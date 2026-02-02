@@ -178,6 +178,9 @@ export interface Student {
   schoolClass: SchoolClass;
   valor_mensalidade?: number;
   isScholarship?: boolean;
+  shift?: SchoolShift;
+  unit?: SchoolUnit;
+  isBlocked?: boolean;
   status?: StudentStatus;
 }
 
