@@ -62,28 +62,24 @@ export const studentService = {
                 }
 
                 // Priority 1: Check enrolledYears (if exists)
-                // If this property exists, we trust it as the source of truth for all years.
                 if (s.enrolledYears && Array.isArray(s.enrolledYears)) {
-                    return s.enrolledYears.includes(selectedYear);
+                    if (s.enrolledYears.includes(selectedYear)) return true;
                 }
 
-                // Priority 2: Creation year logic (fallback for legacy/manually created)
-                if (!s.createdAt) return true; // Legacy fallback
-
-                const createdDate = new Date(s.createdAt);
-                const createdYear = createdDate.getFullYear().toString();
-
-                // If student was created after the selected year, don't show them
-                if (parseInt(createdYear) > parseInt(selectedYear)) return false;
-
-                // Safety: Don't show students in future years (e.g. 2027 if it's 2026) 
-                // unless they have explicit enrolledYears (handled above).
-                const realCurrentYear = new Date().getFullYear();
-                if (parseInt(selectedYear) > realCurrentYear) {
-                    return false;
+                // Fallback Priority 1.5: Check enrollmentHistory
+                if (s.enrollmentHistory && Array.isArray(s.enrollmentHistory)) {
+                    if (s.enrollmentHistory.some(h => h.year === selectedYear)) return true;
                 }
 
-                return true;
+                // Priority 2: Historical logic (strictly for years before 2024)
+                if (parseInt(selectedYear) < 2024) {
+                    if (!s.createdAt) return true; // Legacy fallback
+                    const createdDate = new Date(s.createdAt);
+                    const createdYear = createdDate.getFullYear().toString();
+                    if (parseInt(createdYear) <= parseInt(selectedYear)) return true;
+                }
+
+                return false;
             });
         } catch (error) {
             console.error("Erro ao buscar alunos:", error);

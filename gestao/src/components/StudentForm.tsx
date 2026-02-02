@@ -17,6 +17,7 @@ import { useSchoolUnits } from '../hooks/useSchoolUnits';
 import { financialService } from '../services/financialService';
 import { generateCarne } from '../utils/carneGenerator';
 import { Modal } from './Modal';
+import { getCurrentSchoolYear, parseGradeLevel, normalizeClass } from '../utils/academicUtils';
 
 const MONTHS = [
     { label: 'Janeiro', value: '1' },
@@ -71,8 +72,7 @@ interface StudentFormProps {
     onSaveSuccess?: () => void;
     student?: Student | null;
 }
-// Helper to find level from grade
-import { parseGradeLevel, normalizeClass } from '../utils/academicUtils';
+
 
 export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProps) {
     const [activeTab, setActiveTab] = useState<'personal' | 'academic' | 'family' | 'filiation' | 'address' | 'health' | 'documents' | 'observations'>('personal');
@@ -92,6 +92,8 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
         endMonth: '12',
         withBoletos: false
     });
+
+    const [selectedYear, setSelectedYear] = useState(getCurrentSchoolYear());
 
     // Helper state for Level dropdown - MUST BE INITIALIZED BEFORE formData TO SYNC
     const [selectedLevel, setSelectedLevel] = useState<string>(() => {
@@ -115,6 +117,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
         const initialData = student ? { ...student } : {
             name: '',
             code: '', // Initialize code
+            matricula: '', // NOVO
             cpf_aluno: '',
             data_nascimento: '',
             identidade_rg: '',
@@ -380,23 +383,32 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
             return;
         }
 
-        // Phone validation (Max 13 digits, numbers only)
-        if (name.toLowerCase().includes('telefone')) {
-            finalValue = value.replace(/\D/g, '').slice(0, 13);
-        }
+        setFormData((prev: any) => {
+            const newData = { ...prev, [name]: finalValue };
 
-        setFormData((prev: any) => ({ ...prev, [name]: finalValue }));
+            // Sync with history if academic field
+            if (['gradeLevel', 'schoolClass', 'shift'].includes(name)) {
+                return syncHistoryRow(newData, selectedYear, {});
+            }
+
+            return newData;
+        });
     };
 
 
     const handleSelectChange = (name: string, value: string) => {
         setFormData((prev: any) => {
-            const newData = { ...prev, [name]: value };
+            let newData = { ...prev, [name]: value };
 
             // Lógica de Automação: Bloquear acesso se não estiver ATIVO ou CURSANDO
             if (name === 'status') {
                 const isActive = value === 'CURSANDO' || value === 'ATIVO' || value === 'APROVADO';
                 newData.isBlocked = !isActive;
+            }
+
+            // Sync with history if academic field
+            if (['shift', 'status', 'gradeLevel', 'schoolClass'].includes(name)) {
+                newData = syncHistoryRow(newData, selectedYear, {});
             }
 
             return newData;
@@ -431,11 +443,74 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
     const handleLevelChange = (newLevel: string) => {
         const segment = Object.values(ACADEMIC_SEGMENTS).find(s => s.label === newLevel);
         setSelectedLevel(newLevel);
-        setFormData((prev: any) => ({
-            ...prev,
-            gradeLevel: '',
-            segmentId: segment?.id || ''
-        }));
+
+        const newSegmentId = segment?.id || '';
+        setFormData((prev: any) => {
+            const newData = {
+                ...prev,
+                gradeLevel: '',
+                segmentId: newSegmentId
+            };
+
+            // Sync with history
+            return syncHistoryRow(newData, selectedYear, { segmentId: newSegmentId, gradeLevel: '' });
+        });
+    };
+
+    const handleYearChange = (year: string) => {
+        setSelectedYear(year);
+
+        // Find existing enrollment for this year
+        const enrollment = formData.enrollmentHistory?.find((h: any) => h.year === year);
+
+        if (enrollment) {
+            // Load enrollment into form
+            const { grade, level } = parseGradeLevel(enrollment.gradeLevel);
+            setSelectedLevel(level);
+
+            setFormData((prev: any) => ({
+                ...prev,
+                gradeLevel: grade,
+                schoolClass: normalizeClass(enrollment.schoolClass),
+                shift: enrollment.shift,
+                status: enrollment.status || prev.status
+            }));
+        } else {
+            // Clear current fields for new year
+            setFormData((prev: any) => ({
+                ...prev,
+                gradeLevel: '',
+                schoolClass: '',
+                shift: '',
+                // Keep status as it is (global student status)
+            }));
+            setSelectedLevel('');
+        }
+    };
+
+    // Helper to sync main fields with history
+    const syncHistoryRow = (currentData: any, year: string, updates: any) => {
+        const history = [...(currentData.enrollmentHistory || [])];
+        let index = history.findIndex((h: any) => h.year === year);
+
+        const enrollmentUpdate = {
+            year,
+            unit: currentData.unit || '',
+            gradeLevel: currentData.gradeLevel ? `${currentData.gradeLevel} - ${selectedLevel}` : '',
+            schoolClass: currentData.schoolClass || '',
+            shift: currentData.shift || '',
+            status: currentData.status || 'CURSANDO',
+            ...updates
+        };
+
+        if (index >= 0) {
+            history[index] = { ...history[index], ...enrollmentUpdate };
+        } else {
+            history.push(enrollmentUpdate);
+            history.sort((a, b) => b.year.localeCompare(a.year));
+        }
+
+        return { ...currentData, enrollmentHistory: history };
     };
 
     const handleAddHistoryRow = () => {
@@ -447,10 +522,14 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
             shift: formData.shift ? SHIFT_LABELS[formData.shift as SchoolShift] || formData.shift : 'Matutino',
             status: 'CURSANDO'
         };
-        setFormData((prev: any) => ({
-            ...prev,
-            enrollmentHistory: [...(prev.enrollmentHistory || []), newRecord]
-        }));
+        setFormData((prev: any) => {
+            const history = [...(prev.enrollmentHistory || []), newRecord];
+            history.sort((a, b) => b.year.localeCompare(a.year));
+            return {
+                ...prev,
+                enrollmentHistory: history
+            };
+        });
     };
 
     const handleRemoveHistoryRow = (index: number) => {
@@ -464,6 +543,12 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
         setFormData((prev: any) => {
             const history = [...(prev.enrollmentHistory || [])];
             history[index] = { ...history[index], [field]: value };
+
+            // If we updated the YEAR, we should re-sort
+            if (field === 'year') {
+                history.sort((a, b) => b.year.localeCompare(a.year));
+            }
+
             return { ...prev, enrollmentHistory: history };
         });
     };
@@ -755,10 +840,19 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                 observacoes_adicionais: formData.health_obs
             };
 
-            // Final sanitization to remove undefined values and construct the final data object
+            // Final sanitization: ROOT fields should always reflect the LATEST enrollment year
+            const latestEnrollment = [...(formData.enrollmentHistory || [])].sort((a, b) => b.year.localeCompare(a.year))[0];
+
+            // Sync enrolledYears array for efficient filtering in studentService
+            const enrolledYears = Array.from(new Set((formData.enrollmentHistory || []).map((h: any) => h.year.toString()))).sort();
+
             const finalData = cleanObject({
                 ...formData,
-                gradeLevel: finalGradeLevel, // Use standardized grade
+                gradeLevel: latestEnrollment ? latestEnrollment.gradeLevel : finalGradeLevel,
+                schoolClass: latestEnrollment ? latestEnrollment.schoolClass : formData.schoolClass,
+                shift: latestEnrollment ? latestEnrollment.shift : formData.shift,
+                status: latestEnrollment ? latestEnrollment.status : formData.status,
+                enrolledYears: enrolledYears, // Sync for filtering
                 segment: selectedLevel, // Explicit segment storage
                 segmentId: Object.values(ACADEMIC_SEGMENTS).find(s => s.label === selectedLevel)?.id || '',
                 valor_mensalidade: cleanTuition, // Save as dot-decimal string or number
@@ -1028,6 +1122,20 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                     {activeTab === 'academic' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Select
+                                label="Ano Letivo"
+                                value={selectedYear}
+                                onChange={(e) => handleYearChange(e.target.value)}
+                                options={[
+                                    { label: '2022', value: '2022' },
+                                    { label: '2023', value: '2023' },
+                                    { label: '2024', value: '2024' },
+                                    { label: '2025', value: '2025' },
+                                    { label: '2026', value: '2026' }
+                                ]}
+                                className="bg-blue-50 border-blue-200 font-bold"
+                            />
+
+                            <Select
                                 label="Situação do Aluno"
                                 value={formData.status || 'CURSANDO'}
                                 onChange={(e) => handleSelectChange('status', e.target.value)}
@@ -1114,14 +1222,24 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                 />
                             </div>
 
-                            <Input
-                                name="code"
-                                label="Código do Aluno (Global)"
-                                value={formData.code || ''}
-                                onChange={handleChange}
-                                placeholder={student ? "Matrícula do aluno" : "Gerando sugestão..."}
-                                className="bg-blue-50/30 border-blue-900/10 font-bold"
-                            />
+                            <div className="flex gap-4">
+                                <Input
+                                    name="code"
+                                    label="Código do Aluno (Global)"
+                                    value={formData.code || ''}
+                                    onChange={handleChange}
+                                    placeholder={student ? "Matrícula do aluno" : "Gerando sugestão..."}
+                                    className="w-48 bg-blue-50/30 border-blue-900/10 font-bold"
+                                />
+                                <Input
+                                    name="matricula"
+                                    label="Matrícula"
+                                    value={formData.matricula || ''}
+                                    onChange={handleChange}
+                                    placeholder="000000"
+                                    className="flex-1"
+                                />
+                            </div>
 
                             <div className="relative">
                                 <label className="text-sm font-medium text-gray-700 mb-1 block">Senha de Acesso (App)</label>

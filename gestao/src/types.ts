@@ -423,6 +423,7 @@ export interface HealthInfo {
 export interface Student {
   id: string;
   code: string;
+  matricula?: string; // NOVO: Matrícula oficial
   password: string;
   name: string;
   gradeLevel: string;

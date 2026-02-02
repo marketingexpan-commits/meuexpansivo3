@@ -111,6 +111,19 @@ export function Matriculas() {
         // we show ONLY that student (ignoring CPFs that happen to contain those digits).
         const isExactCodeMatch = /^\d+$/.test(searchTerm) && students.some(s => s.code === searchTerm);
 
+        // 2. Strict Year Filtering Logic
+        // If the student has ANY enrollment history, they MUST have an entry for the current year to be shown.
+        // Exception: Unless we are in "Historical" mode (handled by different component usually, but here we expect strictly current year context).
+        // Exception 2: If the student has NO history (freshly created), we show them as "Pending".
+        if (currentYear !== 'HISTORICAL') {
+            const hasAnyHistory = student.enrollmentHistory && student.enrollmentHistory.length > 0;
+            const isStudentActive = student.status === 'CURSANDO' || student.status === 'ATIVO';
+
+            if (hasAnyHistory && !enrollment && !isStudentActive) {
+                return false; // Student belongs to past years only and is not active anymore
+            }
+        }
+
         const matchesSearch = isExactCodeMatch
             ? student.code === searchTerm
             : (
@@ -527,7 +540,14 @@ export function Matriculas() {
             {/* Results Summary */}
             {
                 hasActiveFilters && filteredStudents.length > 0 && (() => {
-                    const missingEnturmacao = filteredStudents.filter(s => !s.schoolClass || !s.shift).length;
+                    const currentYear = getCurrentSchoolYear();
+                    const missingEnturmacao = filteredStudents.filter(s => {
+                        const enrollment = s.enrollmentHistory?.find(h => h.year === currentYear);
+                        const displayClass = enrollment?.schoolClass || s.schoolClass;
+                        const displayShift = enrollment?.shift || s.shift;
+                        return !displayClass || !displayShift;
+                    }).length;
+
                     return (
                         <div className="flex flex-col sm:flex-row items-center gap-3 justify-center bg-white border border-slate-200 py-3 px-6 rounded-xl shadow-sm animate-in fade-in slide-in-from-top-2">
                             <div className="flex items-center gap-2 text-slate-700 font-semibold whitespace-nowrap">
@@ -715,7 +735,9 @@ export function Matriculas() {
                                                                         {(() => {
                                                                             const currentYear = getCurrentSchoolYear();
                                                                             const enrollment = student.enrollmentHistory?.find(h => h.year === currentYear);
-                                                                            const displayStatus = enrollment?.status || student.status || 'CURSANDO';
+                                                                            const displayStatus = enrollment?.status || (student.status === 'CURSANDO' || student.status === 'ATIVO' ? 'PENDENTE' : student.status) || 'CURSANDO';
+
+                                                                            if (displayStatus === 'PENDENTE') return 'Pendente de Rematrícula';
                                                                             return displayStatus;
                                                                         })()}
                                                                     </span>
