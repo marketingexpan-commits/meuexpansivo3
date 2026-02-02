@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
+import { parseGradeLevel } from '../src/utils/academicUtils'; // Added for robust matching
 import { Student, SchoolMessage, MessageRecipient, MessageType, UnitContact, ContactRole, Teacher, TicketStatus } from '../types';
 import { Button } from './Button';
 
@@ -46,10 +47,15 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
     (!c.segment || c.segment === 'geral' || c.segment === 'all' || c.segment === studentSegment)
   );
 
-  const unitTeachers = teachers.filter(t =>
-    t.unit === student.unit &&
-    t.gradeLevels?.includes(student.gradeLevel)
-  );
+  const unitTeachers = teachers.filter(t => {
+    if (t.unit !== student.unit) return false;
+
+    // Strict ID Matching Only
+    if (student.gradeId && t.gradeIds?.length) {
+      return t.gradeIds.includes(student.gradeId);
+    }
+    return false;
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

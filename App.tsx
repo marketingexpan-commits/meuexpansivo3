@@ -684,6 +684,15 @@ const AppContent: React.FC = () => {
         if (!doc.exists) {
           console.warn("Session user not found in database. Logging out.");
           handleLogout();
+        } else {
+          // REFRESH SESSION DATA (Critical for migration updates like gradeId)
+          const freshUser = { ...doc.data(), id: doc.id } as Student | Teacher | UnitContact;
+          // Only update if data actually changed to avoid loop? 
+          // JSON stringify comparison is cheap for this size.
+          if (JSON.stringify(freshUser) !== JSON.stringify(session.user)) {
+            console.log("Refreshing session user data from DB...");
+            setSession(prev => ({ ...prev, user: freshUser }));
+          }
         }
       } catch (error) {
         console.error("Session validation error:", error);

@@ -509,20 +509,28 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const formatGrade = (grade: number | null | undefined) => (grade !== null && grade !== undefined && grade !== -1) ? grade.toFixed(1) : '-';
 
     const getTeacherPhone = (subjectId: string) => {
-        const teacher = (teachers as Teacher[]).find(t =>
-            t.subjects?.includes(subjectId as Subject) &&
-            t.unit === student.unit &&
-            t.gradeLevels?.includes(student.gradeLevel)
-        );
+        const teacher = (teachers as Teacher[]).find(t => {
+            if (!t.subjects?.includes(subjectId as Subject) || t.unit !== student.unit) return false;
+
+            // Strict ID Matching Only
+            if (student.gradeId && t.gradeIds?.length) {
+                return t.gradeIds.includes(student.gradeId);
+            }
+            return false;
+        });
         return teacher?.phoneNumber;
     };
 
     const getTeacherName = (subjectId: string) => {
-        const teacher = (teachers as Teacher[]).find(t =>
-            t.subjects?.includes(subjectId as Subject) &&
-            t.unit === student.unit &&
-            t.gradeLevels?.includes(student.gradeLevel)
-        );
+        const teacher = (teachers as Teacher[]).find(t => {
+            if (!t.subjects?.includes(subjectId as Subject) || t.unit !== student.unit) return false;
+
+            // Strict ID Matching Only
+            if (student.gradeId && t.gradeIds?.length) {
+                return t.gradeIds.includes(student.gradeId);
+            }
+            return false;
+        });
         return teacher ? teacher.name.split(' ')[0] : 'PROF.';
     };
 

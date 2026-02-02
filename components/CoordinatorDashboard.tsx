@@ -281,22 +281,22 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             const filteredStudents = studentsData.filter((student: any) => {
                 if (!coordinator.segment || coordinator.segment === 'geral') return true; // View all
 
-                const { segmentId } = parseGradeLevel(student.gradeLevel);
-
-                // CoordinationSegment IDs from types.ts
-                // infantil_fund1: seg_infantil, seg_fund_1
-                // fund2_medio: seg_fund_2, seg_medio
-
-                if (coordinator.segment === 'infantil_fund1') {
-                    return segmentId === 'seg_infantil' || segmentId === 'seg_fund_1';
+                // Strict ID Resolution
+                if (student.gradeId) {
+                    const gradeDef = academicGrades.find(g => g.id === student.gradeId);
+                    if (gradeDef) {
+                        const { segmentId } = gradeDef;
+                        if (coordinator.segment === 'infantil_fund1') {
+                            return segmentId === 'seg_infantil' || segmentId === 'seg_fund_1';
+                        }
+                        if (coordinator.segment === 'fund2_medio') {
+                            return segmentId === 'seg_fund_2' || segmentId === 'seg_medio';
+                        }
+                        return segmentId === coordinator.segment;
+                    }
                 }
 
-                if (coordinator.segment === 'fund2_medio') {
-                    return segmentId === 'seg_fund_2' || segmentId === 'seg_medio';
-                }
-
-                // Default match
-                return segmentId === coordinator.segment;
+                return false;
             });
 
             // 2. Fetch Grades for RELEVANT students only
@@ -504,11 +504,14 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 // Verificar Turma (Normalized) - Resolve problema de "A" vs "01"
                 if (normalizeClass(s.schoolClass) !== normalizeClass(occFilters.class)) return false;
 
-                // Verificar Série (Grade) - Tenta correspondência exata ou parcial para ser robusto
-                const dbGrade = (s.gradeLevel || '').trim();
-                const filterGrade = occFilters.grade.trim();
+                // Verificar Série (Grade) - Strict ID Match
+                const filterGradeId = occFilters.grade; // This is now an ID
 
-                return dbGrade === filterGrade || dbGrade.startsWith(filterGrade);
+                if (s.gradeId && filterGradeId) {
+                    return s.gradeId === filterGradeId;
+                }
+
+                return false;
             });
 
             setOccStudents(students);
@@ -1348,7 +1351,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                                 const segment = academicSegments.find(s => s.name === occFilters.level);
                                                                 return segment && g.segmentId === segment.id;
                                                             }).map(grade => (
-                                                                <option key={grade.id} value={grade.name}>{grade.name}</option>
+                                                                <option key={grade.id} value={grade.id}>{grade.name}</option>
                                                             ))}
                                                         </select>
                                                     </div>

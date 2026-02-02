@@ -849,6 +849,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
             const finalData = cleanObject({
                 ...formData,
                 gradeLevel: latestEnrollment ? latestEnrollment.gradeLevel : finalGradeLevel,
+                gradeId: officialGrade ? officialGrade.id : null, // NEW: Save ID for robust matching
                 schoolClass: latestEnrollment ? latestEnrollment.schoolClass : formData.schoolClass,
                 shift: latestEnrollment ? latestEnrollment.shift : formData.shift,
                 status: latestEnrollment ? latestEnrollment.status : formData.status,

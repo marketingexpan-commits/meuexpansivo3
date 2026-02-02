@@ -352,6 +352,7 @@ export interface Student {
   password: string;
   name: string;
   gradeLevel: string;
+  gradeId?: string; // NEW: ID of the grade (e.g., 'grade_4_ano') for robust matching
   schoolClass: SchoolClass;
   shift: SchoolShift;
   unit: SchoolUnit;
@@ -441,6 +442,7 @@ export interface Teacher {
   phoneNumber?: string;
   unit: SchoolUnit; // Singular: define a unidade deste registro específico
   gradeLevels?: string[]; // NEW: List of grades/series the teacher is responsible for
+  gradeIds?: string[]; // NEW: List of grade IDs for robust matching
   assignments?: TeacherAssignment[]; // NEW: Linked grade levels and subjects
 }
 

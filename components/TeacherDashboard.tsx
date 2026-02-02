@@ -358,17 +358,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     const filteredGrades = useMemo(() => {
         if (!teacher.gradeLevels || teacher.gradeLevels.length === 0) return [];
         return academicGrades.filter(g => {
-            // Try exact match first
-            if (teacher.gradeLevels.includes(g.name)) return true;
-
-            // Try normalized match (comparing only the grade part)
-            const gShort = parseGradeLevel(g.name).grade.trim();
-            return teacher.gradeLevels.some(tGrade => {
-                const tShort = parseGradeLevel(tGrade).grade.trim();
-                return gShort === tShort;
-            });
+            // Strict ID Matching Only
+            if (teacher.gradeIds?.length && g.id) {
+                return teacher.gradeIds.includes(g.id);
+            }
+            return false;
         });
-    }, [academicGrades, teacher.gradeLevels]);
+    }, [academicGrades, teacher.gradeIds]);
 
 
     // Auto-select subject and grade if teacher has only one
@@ -473,9 +469,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         const { grade: studentGrade } = parseGradeLevel(student.gradeLevel);
 
         // Always restrict to teacher's assigned grades
-        const isAssignedGrade = teacher.gradeLevels && teacher.gradeLevels.length > 0
-            ? teacher.gradeLevels.includes(studentGrade)
-            : false;
+        const isAssignedGrade = (() => {
+            // Strict ID Match
+            if (student.gradeId && teacher.gradeIds?.length) {
+                return teacher.gradeIds.includes(student.gradeId);
+            }
+            return false;
+        })();
 
         const matchesGrade = filterGrade ? studentGrade === filterGrade : true;
 
@@ -686,9 +686,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             const sClass = normalizeClass(s.schoolClass);
 
             // Security check: restrict to teacher's assigned grades
-            const isAssignedGrade = teacher.gradeLevels && teacher.gradeLevels.length > 0
-                ? teacher.gradeLevels.includes(sGrade)
-                : false;
+            const isAssignedGrade = (() => {
+                // Strict ID Match
+                if (s.gradeId && teacher.gradeIds?.length) {
+                    return teacher.gradeIds.includes(s.gradeId);
+                }
+                return false;
+            })();
 
             if (!isAssignedGrade) return false;
 

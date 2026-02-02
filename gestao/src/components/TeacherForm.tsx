@@ -36,6 +36,7 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
         unit: (isAdminGeral ? '' : mappedUnit) as any,
         subjects: [],
         gradeLevels: [],
+        gradeIds: [], // NEW: Initialize gradeIds
         assignments: [],
         isBlocked: false
     });
@@ -67,6 +68,7 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                 cpf: teacher.cpf ? maskCPF(teacher.cpf) : '',
                 subjects: teacher.subjects || [],
                 gradeLevels: normalizedGradeLevels,
+                gradeIds: teacher.gradeIds || [], // Load existing IDs
                 assignments: normalizedAssignments
             });
         }
@@ -183,6 +185,12 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
         try {
             const dataToSave = {
                 ...formData,
+                // CRITICAL: Map selected grade names (Strings) to their IDs (grade_X)
+                // This ensures "Dual Support" - saving both for compatibility
+                gradeIds: formData.gradeLevels?.map(gName => {
+                    const match = grades.find(g => g.name === gName);
+                    return match ? match.id : null;
+                }).filter(id => id !== null) as string[],
                 phoneNumber: sanitizePhone(formData.phoneNumber || '')
             };
 

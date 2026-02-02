@@ -172,12 +172,10 @@ export interface Student {
   code: string;
   password: string;
   name: string;
-  gradeLevel: string;
-  schoolClass: SchoolClass;
-  shift: SchoolShift;
-  unit: SchoolUnit;
-  isBlocked: boolean;
   phoneNumber?: string;
+  gradeLevel: string;
+  gradeId?: string; // NEW: ID of the grade (e.g., 'grade_4_ano') for robust matching
+  schoolClass: SchoolClass;
   valor_mensalidade?: number;
   isScholarship?: boolean;
   status?: StudentStatus;
@@ -191,7 +189,8 @@ export interface Teacher {
   subjects: Subject[];
   phoneNumber?: string;
   unit: SchoolUnit; // Singular: define a unidade deste registro específico
-  gradeLevels?: string[]; // NEW: List of grades/series the teacher is responsible for
+  gradeLevels?: string[]; // Legacy: List of grade strings
+  gradeIds?: string[]; // NEW: List of grade IDs for robust matching
 }
 
 export interface Admin {
