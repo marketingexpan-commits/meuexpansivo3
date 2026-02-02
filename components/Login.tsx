@@ -325,11 +325,19 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
           <div
             className="rounded-2xl overflow-hidden relative shadow-lg"
             style={{
-              background: `linear-gradient(90deg, 
-                ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 0%, 
-                ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} ${showHiddenTabs ? '25%' : '50%'}, 
-                ${(activeTab === 'teacher' && !showHiddenTabs) || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} ${showHiddenTabs ? '75%' : '50%'},
-                ${(activeTab === 'teacher' && !showHiddenTabs) || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} 100%)`
+              background: showHiddenTabs
+                ? `linear-gradient(90deg, 
+                    ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 0%, 
+                    ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 33.33%, 
+                    ${activeTab === 'teacher' || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} 33.33%, 
+                    ${activeTab === 'teacher' || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} 66.66%, 
+                    ${activeTab === 'coordinator' || hoveredTab === 'coordinator' ? '#D1D5DB' : '#E5E7EB'} 66.66%, 
+                    ${activeTab === 'coordinator' || hoveredTab === 'coordinator' ? '#D1D5DB' : '#E5E7EB'} 100%)`
+                : `linear-gradient(90deg, 
+                    ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 0%, 
+                    ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 50%, 
+                    ${activeTab === 'teacher' || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} 50%, 
+                    ${activeTab === 'teacher' || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} 100%)`
             }}
           >
 

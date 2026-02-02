@@ -1615,7 +1615,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             <span className="font-bold text-gray-900 text-lg">{student.name}</span>
                                         </div>
                                         <div>
-                                            <span className="font-bold text-gray-600 uppercase text-xs block">Matrícula</span>
+                                            <span className="font-bold text-gray-600 uppercase text-xs block">Código</span>
                                             <span className="font-mono text-gray-900">{student.code}</span>
                                         </div>
                                         <div>

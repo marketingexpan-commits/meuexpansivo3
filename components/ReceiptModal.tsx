@@ -309,7 +309,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
             };
 
             let currentGridY = y;
-            currentGridY = renderGridRow("ALUNO(A)", student.name, "MATRÍCULA", student.code, currentGridY, false);
+            currentGridY = renderGridRow("ALUNO(A)", student.name, "CÓDIGO", student.code, currentGridY, false);
             currentGridY = renderGridRow("SÉRIE/ANO", student.gradeLevel, "TURMA/TURNO", `${student.schoolClass} - ${student.shift}`, currentGridY, false);
             currentGridY = renderGridRow("RESPONSÁVEL FINANCEIRO", (student.nome_responsavel || student.name), "CPF DO RESPONSÁVEL", maskCpfDisplay(student.cpf_responsavel), currentGridY, true);
 
@@ -468,7 +468,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
             `*Beneficiário:* Expansivo - Rede de Ensino (Uni. ${unitName})\n` +
             `*Pagador:* ${student.nome_responsavel || student.name}\n\n` +
             `*Aluno(a):* ${student.name}\n` +
-            `*Matrícula:* ${student.code}\n` +
+            `*Código:* ${student.code}\n` +
             `*Turma:* ${student.gradeLevel}\n\n` +
             `*Referência:* ${receiptData?.month}\n` +
             `*Valor:* R$ ${receiptData?.value.toFixed(2).replace('.', ',')}\n` +
@@ -515,7 +515,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, student, rec
                                 <p className="font-bold text-gray-950 uppercase truncate text-sm">{student.name}</p>
                             </div>
                             <div>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase mb-0.5">Matrícula</p>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase mb-0.5">Código</p>
                                 <p className="font-bold text-gray-950 text-sm">{student.code}</p>
                             </div>
                         </div>
