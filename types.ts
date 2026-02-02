@@ -440,6 +440,7 @@ export interface Teacher {
   subjects: Subject[];
   phoneNumber?: string;
   unit: SchoolUnit; // Singular: define a unidade deste registro específico
+  gradeLevels?: string[]; // NEW: List of grades/series the teacher is responsible for
   assignments?: TeacherAssignment[]; // NEW: Linked grade levels and subjects
 }
 

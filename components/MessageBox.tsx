@@ -46,7 +46,10 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
     (!c.segment || c.segment === 'geral' || c.segment === 'all' || c.segment === studentSegment)
   );
 
-  const unitTeachers = teachers.filter(t => t.unit === student.unit);
+  const unitTeachers = teachers.filter(t =>
+    t.unit === student.unit &&
+    t.gradeLevels?.includes(student.gradeLevel)
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -510,23 +510,20 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
     const getTeacherPhone = (subjectId: string) => {
         const teacher = (teachers as Teacher[]).find(t =>
-            t.subjects?.includes(subjectId as Subject) && t.unit === student.unit
+            t.subjects?.includes(subjectId as Subject) &&
+            t.unit === student.unit &&
+            t.gradeLevels?.includes(student.gradeLevel)
         );
-        const fallbackTeacher = (teachers as Teacher[]).find(t =>
-            t.subjects?.includes(subjectId as Subject)
-        );
-        return teacher ? teacher.phoneNumber : fallbackTeacher?.phoneNumber;
+        return teacher?.phoneNumber;
     };
 
     const getTeacherName = (subjectId: string) => {
         const teacher = (teachers as Teacher[]).find(t =>
-            t.subjects?.includes(subjectId as Subject) && t.unit === student.unit
+            t.subjects?.includes(subjectId as Subject) &&
+            t.unit === student.unit &&
+            t.gradeLevels?.includes(student.gradeLevel)
         );
-        const fallbackTeacher = (teachers as Teacher[]).find(t =>
-            t.subjects?.includes(subjectId as Subject)
-        );
-        const foundTeacher = teacher || fallbackTeacher;
-        return foundTeacher ? foundTeacher.name.split(' ')[0] : 'PROF.';
+        return teacher ? teacher.name.split(' ')[0] : 'PROF.';
     };
 
 
