@@ -104,7 +104,7 @@ const generateBulletinHtml = (
     const today = new Date().toLocaleDateString('en-CA');
 
     // DEBUG: Verificar se matrizes estão chegando
-    alert('🔍 DEBUG: Matrices = ' + (matrices ? matrices.length : 'UNDEFINED'));
+
     console.log('🔍 DEBUG BULLETIN GENERATOR:');
     console.log('- Student:', student.name, student.gradeLevel);
     console.log('- Matrices received:', matrices ? matrices.length : 'UNDEFINED');
