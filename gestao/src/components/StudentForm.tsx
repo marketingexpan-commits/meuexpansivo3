@@ -9,6 +9,7 @@ import { PhotoCaptureModal } from './PhotoCaptureModal';
 import { clsx } from 'clsx';
 import { ImageCropperModal } from './ImageCropperModal';
 import { studentService } from '../services/studentService';
+import { storageService } from '../services/storageService';
 import type { Student } from '../types';
 import { UNIT_LABELS, SchoolUnit, SHIFT_LABELS, SchoolShift } from '../types';
 import { SCHOOL_CLASSES_OPTIONS, ACADEMIC_SEGMENTS, ACADEMIC_GRADES } from '../utils/academicDefaults';
@@ -181,52 +182,37 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
             certidao_cartorio: '',
             certidao_data_emissao: '',
 
-            // Health Fields (Mapped to ficha_saude on save)
-            health_alergias: '',
-            health_doencas_cronicas: [] as string[],
-            health_doencas_cronicas_outra: '',
-            health_deficiencias: [] as string[],
-            health_deficiencias_outra: '',
-            health_doencas_contraidas: [] as string[],
-            health_doencas_contraidas_outra: '',
-            health_vacinas: [] as string[],
-            health_vacinas_outra: '',
-            health_medicamentos: '',
-            health_emergencia_nome: '',
-            health_emergencia_fone: '',
-            health_hospital: '',
-            health_medico_nome: '',
-            health_medico_fone: '',
-            health_febre: '',
-            health_plano_nome: '',
-            health_plano_numero: '',
-            health_obs: '',
+            // Initialize ficha_saude properly
+            ficha_saude: {
+                neurodiversidade: [],
+                neurodiversidade_outra: '',
+                doencas_cronicas: [],
+                doencas_cronicas_outra: '',
+                deficiencias: [],
+                deficiencias_outra: '',
+                doencas_contraidas: [],
+                doencas_contraidas_outra: '',
+                vacinas: [],
+                vacinas_outra: '',
+                medicamentos_continuos: '',
+                contato_emergencia_nome: '',
+                contato_emergencia_fone: '',
+                hospital_preferencia: '',
+                medico_particular: '',
+                medico_telefone: '',
+                instrucoes_febre: '',
+                plano_saude_nome: '',
+                plano_saude_numero: '',
+                observacoes_adicionais: '',
+                restricoes_alimentares: '',
+                intolerancias: []
+            },
 
             documentos_entregues: [] as string[],
             nacionalidade: '',
             uf_naturalidade: '',
             enrollmentHistory: [] as any[]
         };
-
-        // Initialize health fields if student has ficha_saude
-        if (student && student.ficha_saude) {
-            initialData.health_doencas_cronicas = student.ficha_saude.doencas_cronicas || [];
-            initialData.health_doencas_cronicas_outra = student.ficha_saude.doencas_cronicas_outra || '';
-            initialData.health_deficiencias = student.ficha_saude.deficiencias || [];
-            initialData.health_deficiencias_outra = student.ficha_saude.deficiencias_outra || '';
-            initialData.health_doencas_contraidas = student.ficha_saude.doencas_contraidas || [];
-            initialData.health_doencas_contraidas_outra = student.ficha_saude.doencas_contraidas_outra || '';
-            initialData.health_medicamentos = student.ficha_saude.medicamentos_continuos || '';
-            initialData.health_emergencia_nome = student.ficha_saude.contato_emergencia_nome || '';
-            initialData.health_emergencia_fone = student.ficha_saude.contato_emergencia_fone || '';
-            initialData.health_hospital = student.ficha_saude.hospital_preferencia || '';
-            initialData.health_medico_nome = student.ficha_saude.medico_particular || '';
-            initialData.health_medico_fone = student.ficha_saude.medico_telefone || '';
-            initialData.health_febre = student.ficha_saude.instrucoes_febre || '';
-            initialData.health_plano_nome = student.ficha_saude.plano_saude_nome || '';
-            initialData.health_plano_numero = student.ficha_saude.plano_saude_numero || '';
-            initialData.health_obs = student.ficha_saude.observacoes_adicionais || '';
-        }
 
         // Sync phone fields if editing existing student
         if (student) {
@@ -817,27 +803,10 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                 .replace('Fund. II', 'Fundamental II')
                 .replace('Edu. Infantil', 'Educação Infantil');
 
-            // Build the complete ficha_saude object
+            // Build the complete ficha_saude object - USE FORM DATA DIRECTLY
             const fichaSaude = {
-                alergias: formData.health_alergias,
-                doencas_cronicas: formData.health_doencas_cronicas,
-                doencas_cronicas_outra: formData.health_doencas_cronicas_outra,
-                deficiencias: formData.health_deficiencias,
-                deficiencias_outra: formData.health_deficiencias_outra,
-                doencas_contraidas: formData.health_doencas_contraidas,
-                doencas_contraidas_outra: formData.health_doencas_contraidas_outra,
-                vacinas: formData.health_vacinas,
-                vacinas_outra: formData.health_vacinas_outra,
-                medicamentos_continuos: formData.health_medicamentos,
-                contato_emergencia_nome: formData.health_emergencia_nome,
-                contato_emergencia_fone: formData.health_emergencia_fone,
-                hospital_preferencia: formData.health_hospital,
-                medico_particular: formData.health_medico_nome,
-                medico_telefone: formData.health_medico_fone,
-                instrucoes_febre: formData.health_febre,
-                plano_saude_nome: formData.health_plano_nome,
-                plano_saude_numero: formData.health_plano_numero,
-                observacoes_adicionais: formData.health_obs
+                ...student?.ficha_saude, // Preserve existing data
+                ...formData.ficha_saude   // Overwrite with form data
             };
 
             // Final sanitization: ROOT fields should always reflect the LATEST enrollment year
@@ -861,8 +830,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                 ficha_saude: fichaSaude
             });
 
-            // Remove flat health fields from finalData to keep DB clean
-            // This needs to be done AFTER spreading formData, but BEFORE sending to service
+            // Clean up legacy flat fields just in case
             Object.keys(finalData).forEach(key => {
                 if (key.startsWith('health_')) {
                     delete (finalData as any)[key];
@@ -1653,50 +1621,133 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
 
                                     <div className="flex gap-4 pt-2">
                                         {/* Upload do Laudo Médico */}
-                                        <label className="flex-1 p-4 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center bg-white hover:bg-slate-50 transition-colors cursor-pointer group">
-                                            <Upload className="w-6 h-6 text-slate-400 group-hover:text-slate-600 mb-2" />
-                                            <span className="text-sm font-semibold text-slate-800">Upload do Laudo Médico</span>
-                                            <span className="text-xs text-slate-500">PDF ou Imagem (Máx 5MB)</span>
-                                            <input
-                                                type="file"
-                                                accept=".pdf,image/*"
-                                                className="hidden"
-                                                onChange={(e) => {
-                                                    const file = e.target.files?.[0];
-                                                    if (file) {
-                                                        if (file.size > 5 * 1024 * 1024) {
-                                                            alert('Arquivo muito grande! Máximo 5MB.');
-                                                            return;
+                                        <div className="flex-1 flex flex-col gap-2">
+                                            <label className={`p-4 border-2 border-dashed ${formData.ficha_saude?.laudo_url ? 'border-green-300 bg-green-50' : 'border-slate-300 bg-white'} rounded-xl flex flex-col items-center justify-center hover:bg-slate-50 transition-colors cursor-pointer group`}>
+                                                <Upload className={`w-6 h-6 ${formData.ficha_saude?.laudo_url ? 'text-green-600' : 'text-slate-400'} group-hover:text-slate-600 mb-2`} />
+                                                <span className="text-sm font-semibold text-slate-800">{formData.ficha_saude?.laudo_url ? 'Laudo Anexado ✅' : 'Upload do Laudo Médico'}</span>
+                                                <span className="text-xs text-slate-500">PDF ou Imagem (Máx 5MB)</span>
+                                                <input
+                                                    type="file"
+                                                    accept=".pdf,image/*"
+                                                    className="hidden"
+                                                    onChange={async (e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            if (file.size > 5 * 1024 * 1024) {
+                                                                alert('Arquivo muito grande! Máximo 5MB.');
+                                                                return;
+                                                            }
+                                                            try {
+                                                                setIsLoading(true);
+                                                                const url = await storageService.uploadFile(file, `students/docs/${formData.code || 'temp'}/${file.name}`);
+                                                                setFormData((prev: any) => ({
+                                                                    ...prev,
+                                                                    ficha_saude: { ...prev.ficha_saude, laudo_url: url }
+                                                                }));
+                                                                alert('Laudo anexado com sucesso!');
+                                                            } catch (error) {
+                                                                console.error(error);
+                                                                alert('Erro ao fazer upload do arquivo.');
+                                                            } finally {
+                                                                setIsLoading(false);
+                                                            }
                                                         }
-                                                        // TODO: Implementar upload real para storage
-                                                        alert(`Arquivo selecionado: ${file.name}\n\nFuncionalidade de upload será implementada em breve!`);
-                                                    }
-                                                }}
-                                            />
-                                        </label>
+                                                    }}
+
+                                                />
+                                            </label>
+                                            {formData.ficha_saude?.laudo_url && (
+                                                <div className="flex items-center justify-center gap-3 mt-1">
+                                                    <a
+                                                        href={formData.ficha_saude.laudo_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-xs text-center text-blue-600 hover:underline flex items-center gap-1"
+                                                    >
+                                                        <FileText className="w-3 h-3" /> Visualizar
+                                                    </a>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (confirm('Deseja remover este anexo?')) {
+                                                                setFormData((prev: any) => ({
+                                                                    ...prev,
+                                                                    ficha_saude: { ...prev.ficha_saude, laudo_url: '' }
+                                                                }));
+                                                            }
+                                                        }}
+                                                        className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 hover:underline bg-transparent border-none p-0 cursor-pointer"
+                                                        title="Remover anexo"
+                                                    >
+                                                        <Trash2 className="w-3 h-3" /> Remover
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
 
                                         {/* Upload do PEI */}
-                                        <label className="flex-1 p-4 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center bg-white hover:bg-slate-50 transition-colors cursor-pointer group">
-                                            <FileText className="w-6 h-6 text-slate-400 group-hover:text-slate-600 mb-2" />
-                                            <span className="text-sm font-semibold text-slate-800">Anexar PEI (Plano Indiv.)</span>
-                                            <span className="text-xs text-slate-500">Documento Pedagógico</span>
-                                            <input
-                                                type="file"
-                                                accept=".pdf,.doc,.docx"
-                                                className="hidden"
-                                                onChange={(e) => {
-                                                    const file = e.target.files?.[0];
-                                                    if (file) {
-                                                        if (file.size > 5 * 1024 * 1024) {
-                                                            alert('Arquivo muito grande! Máximo 5MB.');
-                                                            return;
+                                        <div className="flex-1 flex flex-col gap-2">
+                                            <label className={`p-4 border-2 border-dashed ${formData.ficha_saude?.pei_url ? 'border-green-300 bg-green-50' : 'border-slate-300 bg-white'} rounded-xl flex flex-col items-center justify-center hover:bg-slate-50 transition-colors cursor-pointer group`}>
+                                                <FileText className={`w-6 h-6 ${formData.ficha_saude?.pei_url ? 'text-green-600' : 'text-slate-400'} group-hover:text-slate-600 mb-2`} />
+                                                <span className="text-sm font-semibold text-slate-800">{formData.ficha_saude?.pei_url ? 'PEI Anexado ✅' : 'Anexar PEI (Plano Indiv.)'}</span>
+                                                <span className="text-xs text-slate-500">Documento Pedagógico</span>
+                                                <input
+                                                    type="file"
+                                                    accept=".pdf,.doc,.docx"
+                                                    className="hidden"
+                                                    onChange={async (e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            if (file.size > 5 * 1024 * 1024) {
+                                                                alert('Arquivo muito grande! Máximo 5MB.');
+                                                                return;
+                                                            }
+                                                            try {
+                                                                setIsLoading(true);
+                                                                const url = await storageService.uploadFile(file, `students/docs/${formData.code || 'temp'}/${file.name}`);
+                                                                setFormData((prev: any) => ({
+                                                                    ...prev,
+                                                                    ficha_saude: { ...prev.ficha_saude, pei_url: url }
+                                                                }));
+                                                                alert('PEI anexado com sucesso!');
+                                                            } catch (error) {
+                                                                console.error(error);
+                                                                alert('Erro ao fazer upload do arquivo.');
+                                                            } finally {
+                                                                setIsLoading(false);
+                                                            }
                                                         }
-                                                        // TODO: Implementar upload real para storage
-                                                        alert(`Arquivo selecionado: ${file.name}\n\nFuncionalidade de upload será implementada em breve!`);
-                                                    }
-                                                }}
-                                            />
-                                        </label>
+                                                    }}
+                                                />
+                                            </label>
+                                            {formData.ficha_saude?.pei_url && (
+                                                <div className="flex items-center justify-center gap-3 mt-1">
+                                                    <a
+                                                        href={formData.ficha_saude.pei_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-xs text-center text-blue-600 hover:underline flex items-center gap-1"
+                                                    >
+                                                        <FileText className="w-3 h-3" /> Visualizar
+                                                    </a>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (confirm('Deseja remover este anexo?')) {
+                                                                setFormData((prev: any) => ({
+                                                                    ...prev,
+                                                                    ficha_saude: { ...prev.ficha_saude, pei_url: '' }
+                                                                }));
+                                                            }
+                                                        }}
+                                                        className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 hover:underline bg-transparent border-none p-0 cursor-pointer"
+                                                        title="Remover anexo"
+                                                    >
+                                                        <Trash2 className="w-3 h-3" /> Remover
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1723,27 +1774,68 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                             onChange={(e) => setFormData((prev: any) => ({ ...prev, ficha_saude: { ...prev.ficha_saude, vacinas_pendentes: e.target.value } }))}
                                         />
                                     </div>
-                                    <label className="w-full md:w-1/3 p-4 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center bg-white hover:bg-slate-50 transition-colors cursor-pointer text-center">
-                                        <Camera className="w-8 h-8 text-slate-400 mb-2" />
-                                        <span className="text-sm font-bold text-slate-800">Foto da Carteira</span>
-                                        <span className="text-xs text-slate-500">Clique para enviar comprovante</span>
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            className="hidden"
-                                            onChange={(e) => {
-                                                const file = e.target.files?.[0];
-                                                if (file) {
-                                                    if (file.size > 5 * 1024 * 1024) {
-                                                        alert('Arquivo muito grande! Máximo 5MB.');
-                                                        return;
+                                    <div className="w-full md:w-1/3 flex flex-col gap-2">
+                                        <label className={`p-4 border-2 border-dashed ${formData.ficha_saude?.carteira_vacinacao_url ? 'border-green-300 bg-green-50' : 'border-slate-300 bg-white'} rounded-xl flex flex-col items-center justify-center hover:bg-slate-50 transition-colors cursor-pointer text-center`}>
+                                            <Camera className={`w-8 h-8 ${formData.ficha_saude?.carteira_vacinacao_url ? 'text-green-600' : 'text-slate-400'} mb-2`} />
+                                            <span className="text-sm font-bold text-slate-800">{formData.ficha_saude?.carteira_vacinacao_url ? 'Carteira Anexada ✅' : 'Foto da Carteira'}</span>
+                                            <span className="text-xs text-slate-500">Clique para enviar comprovante</span>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={async (e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        if (file.size > 5 * 1024 * 1024) {
+                                                            alert('Arquivo muito grande! Máximo 5MB.');
+                                                            return;
+                                                        }
+                                                        try {
+                                                            setIsLoading(true);
+                                                            const url = await storageService.uploadFile(file, `students/docs/${formData.code || 'temp'}/${file.name}`);
+                                                            setFormData((prev: any) => ({
+                                                                ...prev,
+                                                                ficha_saude: { ...prev.ficha_saude, carteira_vacinacao_url: url }
+                                                            }));
+                                                            alert('Carteira de Vacinação anexada com sucesso!');
+                                                        } catch (error) {
+                                                            console.error(error);
+                                                            alert('Erro ao fazer upload da imagem.');
+                                                        } finally {
+                                                            setIsLoading(false);
+                                                        }
                                                     }
-                                                    // TODO: Implementar upload real para storage
-                                                    alert(`Foto selecionada: ${file.name}\n\nFuncionalidade de upload será implementada em breve!`);
-                                                }
-                                            }}
-                                        />
-                                    </label>
+                                                }}
+                                            />
+                                        </label>
+                                        {formData.ficha_saude?.carteira_vacinacao_url && (
+                                            <div className="flex items-center justify-center gap-3 mt-1">
+                                                <a
+                                                    href={formData.ficha_saude.carteira_vacinacao_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-xs text-center text-blue-600 hover:underline flex items-center gap-1"
+                                                >
+                                                    <Camera className="w-3 h-3" /> Visualizar
+                                                </a>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        if (confirm('Deseja remover este anexo?')) {
+                                                            setFormData((prev: any) => ({
+                                                                ...prev,
+                                                                ficha_saude: { ...prev.ficha_saude, carteira_vacinacao_url: '' }
+                                                            }));
+                                                        }
+                                                    }}
+                                                    className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 hover:underline bg-transparent border-none p-0 cursor-pointer"
+                                                    title="Remover anexo"
+                                                >
+                                                    <Trash2 className="w-3 h-3" /> Remover
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
@@ -1839,9 +1931,14 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                         onChange={(e) => setFormData((prev: any) => ({ ...prev, ficha_saude: { ...prev.ficha_saude, medico_telefone: e.target.value } }))}
                                     />
                                     <Input
-                                        label="Contato Emergência (Além dos pais)"
+                                        label="Nome Contato Emergência (Além dos pais)"
                                         value={formData.ficha_saude?.contato_emergencia_nome || ''}
                                         onChange={(e) => setFormData((prev: any) => ({ ...prev, ficha_saude: { ...prev.ficha_saude, contato_emergencia_nome: e.target.value } }))}
+                                    />
+                                    <Input
+                                        label="Telefone/WhatsApp Emergência"
+                                        value={formData.ficha_saude?.contato_emergencia_fone || ''}
+                                        onChange={(e) => setFormData((prev: any) => ({ ...prev, ficha_saude: { ...prev.ficha_saude, contato_emergencia_fone: e.target.value } }))}
                                     />
                                 </div>
                             </div>
@@ -1982,7 +2079,11 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                         student={{
                             ...formData,
                             // Ensure we use the saved ficha_saude if it exists in the original student object
-                            ficha_saude: student?.ficha_saude || formData.ficha_saude
+                            // Ensure we use the latest ficha_saude from form state for WYSIWYG printing
+                            ficha_saude: {
+                                ...student?.ficha_saude,
+                                ...formData.ficha_saude
+                            }
                         }}
                         unitDetail={getUnitById(formData.unit || '')}
                         isBlank={printBlank}

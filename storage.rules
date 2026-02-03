@@ -37,6 +37,12 @@ service firebase.storage {
       allow read: if true;
       allow write: if isValidSize();
     }
+
+    // Student Documents (Health, Legal, etc) - Allow read/write
+    match /students/docs/{allPaths=**} {
+      allow read: if true;
+      allow write: if isValidSize();
+    }
     
     // Default rule - deny all other access
     match /{allPaths=**} {

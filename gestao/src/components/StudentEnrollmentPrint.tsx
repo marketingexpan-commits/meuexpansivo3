@@ -255,7 +255,7 @@ export function StudentEnrollmentPrint({ student, unitDetail, isBlank = false }:
                                 </div>
                             </div>
                             <div className="flex items-baseline gap-1">
-                                <span className="font-bold">Tel:</span>
+                                <span className="font-bold">Tel./WhatsApp:</span>
                                 <div className="flex items-baseline min-w-[120px]">
                                     {val(student.ficha_saude?.contato_emergencia_fone, 'full')}
                                 </div>
@@ -277,15 +277,24 @@ export function StudentEnrollmentPrint({ student, unitDetail, isBlank = false }:
                     <h3 className="text-[8px] font-black uppercase text-black border-l-[3px] border-black pl-2 mb-0.5 tracking-widest bg-gray-50 py-0.5">V. Documentação (Controle Secretaria)</h3>
                     <div className="grid grid-cols-4 gap-1.5 text-[6.5px] border-[0.5px] border-black p-2 rounded-lg italic text-gray-500">
                         {[
-                            'Certidão Nasc.', 'RG do Aluno', 'CPF do Aluno', 'RG Responsável',
-                            'CPF Responsável', 'Residência', 'Foto 3x4', 'Histórico Esc.',
-                            'Declaração Transf.', 'Cartão Vacina', 'Plano Saúde', 'Contrato Serviço'
-                        ].map(doc => (
-                            <div key={doc} className="flex items-center gap-2">
+                            { label: 'Certidão Nasc.', key: 'Certidão de Nascimento' },
+                            { label: 'RG do Aluno', key: 'RG do Aluno' },
+                            { label: 'CPF do Aluno', key: 'CPF do Aluno' },
+                            { label: 'RG Responsável', key: 'RG do Responsável' },
+                            { label: 'CPF Responsável', key: 'CPF do Responsável' },
+                            { label: 'Residência', key: 'Comprovante de Residência' },
+                            { label: 'Foto 3x4', key: 'Foto 3x4' },
+                            { label: 'Histórico Esc.', key: 'Histórico Escolar' },
+                            { label: 'Declaração Transf.', key: 'Declaração de Transferência' },
+                            { label: 'Cartão Vacina', key: 'Cartão de Vacinas' },
+                            { label: 'Plano Saúde', key: 'Carteira do Plano de Saúde' },
+                            { label: 'Contrato Serviço', key: 'Contrato de Prestação de Serviços' }
+                        ].map((doc) => (
+                            <div key={doc.key} className="flex items-center gap-2">
                                 <div className="w-4 h-4 border-[0.5px] border-black rounded-sm flex items-center justify-center font-bold text-black text-[10px] bg-white">
-                                    {!isBlank && (student.documentos_entregues?.includes(doc) || student.documentos_entregues?.some((d: string) => d.startsWith(doc))) ? '✓' : ''}
+                                    {!isBlank && (student.documentos_entregues?.includes(doc.key)) ? '✓' : ''}
                                 </div>
-                                <span className="truncate">{doc}</span>
+                                <span className="truncate">{doc.label}</span>
                             </div>
                         ))}
                     </div>
