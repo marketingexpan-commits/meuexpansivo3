@@ -33,7 +33,8 @@ import {
     Save,
     Edit,
     Users,
-    HeartHandshake
+    HeartHandshake,
+    LogOut
 } from 'lucide-react';
 
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
@@ -79,7 +80,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     classSchedules = []
 }) => {
     // --- ACADEMIC DATA ---
-    const { segments: academicSegments, grades: academicGrades, subjects: academicSubjects, loading: loadingAcademic } = useAcademicData();
+    const { segments: academicSegments, grades: academicGrades, subjects: academicSubjects, matrices, loading: loadingAcademic } = useAcademicData();
 
     // NEW: Filtered segments based on coordinator competence
     const filteredSegments = useMemo(() => {
@@ -111,7 +112,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     }, [academicSettings]);
 
     // NEW: Navigation State
-    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages' | 'attendance' | 'crm' | 'schedule'>('menu');
+    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages' | 'attendance' | 'crm' | 'schedule' | 'access_control'>('menu');
     // --- SCHEDULE STATE ---
     const [scheduleGrade, setScheduleGrade] = useState('');
     const [scheduleClass, setScheduleClass] = useState('');
@@ -137,6 +138,21 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     const [crmSelectedStudent, setCrmSelectedStudent] = useState<Student | null>(null);
     const [crmStudentSearch, setCrmStudentSearch] = useState('');
     const [crmMatchingStudents, setCrmMatchingStudents] = useState<Student[]>([]);
+
+    // --- ACCESS CONTROL STATE ---
+    const [accessRecords, setAccessRecords] = useState<any[]>([]);
+    const [accessLoading, setAccessLoading] = useState(false);
+    const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
+    const [accessForm, setAccessForm] = useState({
+        type: 'Saída Antecipada' as 'Entrada Tardia' | 'Saída Antecipada',
+        reason: '',
+        authorizer: '',
+        authorizerRelation: 'Pai'
+    });
+    const [accessSelectedStudent, setAccessSelectedStudent] = useState<Student | null>(null);
+    const [accessStudentSearch, setAccessStudentSearch] = useState('');
+    const [accessListSearch, setAccessListSearch] = useState('');
+    const [accessFilteredStudents, setAccessFilteredStudents] = useState<Student[]>([]);
 
     // Calendar logic is now handled via props
 
@@ -718,19 +734,34 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
     // 2. Helper to filter Subjects based on Grade Level
     const availableSubjectsForAttendance = useMemo(() => {
-        if (!attGrade || !academicSubjects) return [];
+        if (!attGrade || !attShift || !attDate || !classSchedules.length) return [];
 
-        // Find the selected grade ID for robust filtering
-        const selectedGrade = academicGrades.find(g => g.name === attGrade);
-        const selectedGradeId = selectedGrade?.id;
+        // 1. Determine Day of Week (1-6 for Mon-Sat)
+        const dateObj = safeParseDate(attDate);
+        const dayOfWeek = dateObj.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
 
-        return academicSubjects.filter(s => {
-            if (!s.weeklyHours) return true; // Legacy fallback
+        if (dayOfWeek === 0) return []; // No classes on Sunday
 
-            // Check if subject has hours for this specific grade NAME or ID
-            return (attGrade in s.weeklyHours) || (selectedGradeId && selectedGradeId in s.weeklyHours);
+        // 2. Filter schedules strictly by IDs
+        // class_schedules uses dayOfWeek: 1-6 (Segunda a Sábado) which match dateObj.getDay()
+        const relevantSchedules = classSchedules.filter(sch =>
+            sch.schoolId === coordinator.unit &&
+            sch.grade === attGrade && // attGrade is ID (e.g. grade_1_ser)
+            sch.class === attClass && // attClass is ID (e.g. A)
+            sch.shift === attShift && // attShift is ID (e.g. shift_morning)
+            sch.dayOfWeek === dayOfWeek
+        );
+
+        // 3. Extract unique Subject IDs (disc_...)
+        const subjectIds = new Set<string>();
+        relevantSchedules.forEach(sch => {
+            sch.items.forEach(item => {
+                if (item.subject) subjectIds.add(item.subject);
+            });
         });
-    }, [academicSubjects, academicGrades, attGrade]);
+
+        return academicSubjects.filter(s => subjectIds.has(s.id));
+    }, [academicSubjects, classSchedules, attGrade, attClass, attShift, attDate, coordinator.unit]);
 
     // 3. Reset subject when grade changes
     useEffect(() => {
@@ -750,31 +781,25 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
         try {
             // A. Fetch Record for this Specific Date/Class/Subject
-            // ID Format: YYYY-MM-DD_UNIT_GRADE_CLASS_SUBJECT
-            const recordId = `${attDate}_${coordinator.unit}_${attGrade}_${attClass}_${attSubject}`;
+            // recordId pattern: YYYY-MM-DD_UNIT_GRADENAME_CLASS_SUBJECTID
+            const gradeObj = academicGrades.find(g => g.id === attGrade);
+            const gradeName = gradeObj?.name || '';
+            const recordId = `${attDate}_${coordinator.unit}_${gradeName}_${attClass}_${attSubject}`;
             const recordSnap = await db.collection('attendance').doc(recordId).get();
 
             // B. Fetch Students for this Class
             const studentsSnap = await db.collection('students')
                 .where('unit', '==', coordinator.unit)
-                .where('shift', '==', attShift) // Filter by Shift too
+                .where('shift', '==', attShift)
                 .get();
 
             let studentsInClass = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Student[];
 
             // Refine Filtering (Normalize Class & Strict Grade ID)
             studentsInClass = studentsInClass.filter(s => {
-                const sGradeId = s.gradeId; // Should match attGrade (which is an ID now?) -> Wait, attGrade from select is Name or ID? 
-                // In generic selects usually Name. But let's check Grade Select implementation. 
-                // Checking academicGrades map: usually filtering by 'gradeLevel' string.
-                // Let's assume attGrade is the string Name from options.
-                // But robust filter uses ID if possible. 
-
-                // Let's standardise: attGrade is the Grade Name (string). 
-                const { grade: sGradeName } = parseGradeLevel(s.gradeLevel);
-
+                const matchesGrade = s.gradeId ? s.gradeId === attGrade : parseGradeLevel(s.gradeLevel).grade === gradeName;
                 return normalizeClass(s.schoolClass) === normalizeClass(attClass) &&
-                    sGradeName === attGrade &&
+                    matchesGrade &&
                     s.shift === attShift;
             });
 
@@ -810,14 +835,17 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         if (attStudents.length === 0) return;
         setAttSaving(true);
 
-        const recordId = `${attDate}_${coordinator.unit}_${attGrade}_${attClass}_${attSubject}`;
+        const gradeObj = academicGrades.find(g => g.id === attGrade);
+        const gradeName = gradeObj?.name || '';
+
+        const recordId = `${attDate}_${coordinator.unit}_${gradeName}_${attClass}_${attSubject}`;
         const record: AttendanceRecord = {
             id: recordId,
             date: attDate,
             unit: coordinator.unit as SchoolUnit,
-            gradeLevel: attGrade,
+            gradeLevel: gradeName,
             schoolClass: attClass,
-            teacherId: coordinator.id, // Coordinator ID as author
+            teacherId: coordinator.id,
             teacherName: `${coordinator.name} (Coordenação)`,
             discipline: attSubject,
             studentStatus: attStatuses,
@@ -988,6 +1016,129 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             alert("Erro ao salvar atendimento.");
         } finally {
             setCrmLoading(false);
+        }
+    };
+
+    // --- ACCESS CONTROL LOGIC ---
+    useEffect(() => {
+        if (activeTab === 'access_control' && coordinator.unit) {
+            loadAccessRecords();
+        }
+    }, [activeTab, coordinator.unit]);
+
+    const loadAccessRecords = async () => {
+        setAccessLoading(true);
+        try {
+            // Optimized Query: Uses Index for native sorting and limiting.
+            // Requires Index: Collection 'accessRecords' -> Fields: 'unit' Ascending, 'timestamp' Descending
+            const snap = await db.collection('accessRecords')
+                .where('unit', '==', coordinator.unit)
+                .orderBy('timestamp', 'desc')
+                .limit(50)
+                .get();
+
+            let data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+            setAccessRecords(data);
+        } catch (error) {
+            console.error("Error loading access records:", error);
+            // Alert user to check console for Index creation link if it fails
+            if ((error as any)?.code === 'failed-precondition') {
+                alert("Falta criar o índice no Firebase! Abra o console (F12) e clique no link do erro.");
+            }
+        } finally {
+            setAccessLoading(false);
+        }
+    };
+
+    const handleSearchStudentsForAccess = async (searchTerm: string) => {
+        setAccessStudentSearch(searchTerm);
+        if (searchTerm.length < 3) {
+            setAccessFilteredStudents([]);
+            return;
+        }
+
+        try {
+            const snap = await db.collection('students')
+                .where('unit', '==', coordinator.unit)
+                .get();
+
+            const allStudents = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
+            const allowedGradeIds = new Set(availableGradesForAttendance.map(g => g.id));
+            const allowedGradeNames = new Set(availableGradesForAttendance.map(g => g.name));
+
+            const filtered = allStudents.filter(s => {
+                const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.code.includes(searchTerm);
+                if (!matchesSearch) return false;
+
+                if (!coordinator.segment || coordinator.segment === 'geral') return true;
+                if (s.gradeId) return allowedGradeIds.has(s.gradeId);
+                const { grade: sGradeName } = parseGradeLevel(s.gradeLevel);
+                return allowedGradeNames.has(sGradeName) || allowedGradeNames.has(s.gradeLevel);
+            });
+
+            setAccessFilteredStudents(filtered.slice(0, 5));
+        } catch (error) {
+            console.error("Error searching students for access:", error);
+        }
+    };
+
+    const handleSaveAccessRecord = async () => {
+        if (!accessSelectedStudent || !accessForm.reason || !accessForm.authorizer) {
+            alert("Por favor, preencha todos os campos e selecione um aluno.");
+            return;
+        }
+
+        setAccessLoading(true);
+        try {
+            const record = {
+                ...accessForm,
+                studentId: accessSelectedStudent.id,
+                studentCode: accessSelectedStudent.code, // Save the correct access code
+                studentName: accessSelectedStudent.name,
+                studentGrade: accessSelectedStudent.gradeLevel,
+                studentClass: accessSelectedStudent.schoolClass,
+                studentShift: accessSelectedStudent.shift,
+                unit: coordinator.unit,
+                coordinatorId: coordinator.id,
+                coordinatorName: coordinator.name,
+                timestamp: new Date().toISOString()
+            };
+
+            await db.collection('accessRecords').add(record);
+
+            // Notify Student/Parents
+            if (onCreateNotification) {
+                const title = accessForm.type === 'Saída Antecipada' ? 'Saída Antecipada Registrada' : 'Entrada Tardia Registrada';
+                const message = `O aluno(a) ${accessSelectedStudent.name} teve uma ${accessForm.type.toLowerCase()} registrada.\nMotivo: ${accessForm.reason}\nAutorizado por: ${accessForm.authorizer} (${accessForm.authorizerRelation})`;
+
+                await onCreateNotification(title, message, accessSelectedStudent.id, undefined);
+            }
+
+            setIsAccessModalOpen(false);
+            setAccessSelectedStudent(null);
+            setAccessStudentSearch('');
+            setAccessForm({
+                type: 'Saída Antecipada',
+                reason: '',
+                authorizer: '',
+                authorizerRelation: 'Pai'
+            });
+            loadAccessRecords();
+        } catch (error) {
+            console.error("Error saving access record:", error);
+            alert("Erro ao salvar registro.");
+        } finally {
+            setAccessLoading(false);
+        }
+    };
+
+    const handleDeleteAccessRecord = async (id: string) => {
+        if (!window.confirm("Deseja excluir este registro?")) return;
+        try {
+            await db.collection('accessRecords').doc(id).delete();
+            loadAccessRecords();
+        } catch (error) {
+            console.error("Error deleting record:", error);
         }
     };
 
@@ -1227,16 +1378,6 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
 
 
-                            <button
-                                onClick={() => setActiveTab('calendar')}
-                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
-                            >
-                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                                    <CalendarIcon className="w-6 h-6 text-blue-950" />
-                                </div>
-                                <h3 className="font-bold text-gray-800 text-sm text-center">Calendário Escolar</h3>
-                            </button>
-
                             {/* STUDENT MESSAGES CARD */}
                             <button
                                 onClick={() => setActiveTab('messages')}
@@ -1253,15 +1394,14 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                 )}
                             </button>
 
-                            {/* CRM / ATENDIMENTOS CARD */}
                             <button
-                                onClick={() => setActiveTab('crm')}
+                                onClick={() => setActiveTab('calendar')}
                                 className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
                             >
                                 <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                                    <HeartHandshake className="w-6 h-6 text-blue-950" />
+                                    <CalendarIcon className="w-6 h-6 text-blue-950" />
                                 </div>
-                                <h3 className="font-bold text-gray-800 text-sm text-center">Atendimentos (CRM)</h3>
+                                <h3 className="font-bold text-gray-800 text-sm text-center">Calendário Escolar</h3>
                             </button>
 
                             {/* GRADE HORÁRIA CARD */}
@@ -1273,6 +1413,28 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                     <Clock className="w-6 h-6 text-blue-950" />
                                 </div>
                                 <h3 className="font-bold text-gray-800 text-sm text-center">Grade Horária</h3>
+                            </button>
+
+                            {/* CRM / ATENDIMENTOS CARD */}
+                            <button
+                                onClick={() => setActiveTab('crm')}
+                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                            >
+                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                    <HeartHandshake className="w-6 h-6 text-blue-950" />
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-sm text-center">Atendimentos (CRM)</h3>
+                            </button>
+
+                            {/* ACCESS CONTROL CARD */}
+                            <button
+                                onClick={() => setActiveTab('access_control')}
+                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                            >
+                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                    <LogOut className="w-6 h-6 text-blue-950" />
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-sm text-center">Controle de Acessos</h3>
                             </button>
                         </div>
                     )}
@@ -2034,7 +2196,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                         >
                                             <option value="">Selecione...</option>
                                             {availableGradesForAttendance.map(g => (
-                                                <option key={g.id} value={g.name}>{g.name}</option>
+                                                <option key={g.id} value={g.id}>{g.name}</option>
                                             ))}
                                         </select>
                                     </div>
@@ -2067,7 +2229,13 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                             className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-950 transition-all hover:bg-white focus:bg-white"
                                         >
                                             <option value="">Selecione...</option>
-                                            {availableSubjectsForAttendance.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                                            {loadingAcademic ? (
+                                                <option>Carregando...</option>
+                                            ) : (
+                                                availableSubjectsForAttendance.map(s => (
+                                                    <option key={s.id} value={s.id}>{SUBJECT_LABELS[s.id] || s.name}</option>
+                                                ))
+                                            )}
                                         </select>
                                     </div>
                                 </div>
@@ -2077,7 +2245,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                         disabled={attLoading}
                                         className="!bg-blue-950 hover:!bg-black text-white font-bold px-8 py-2.5 shadow-lg shadow-blue-100 rounded-xl transition-all active:scale-95"
                                     >
-                                        {attLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Buscar Pauta'}
+                                        {attLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Buscar Chamada'}
                                     </Button>
                                 </div>
                             </div>
@@ -2637,6 +2805,259 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                         </div>
                     )}
 
+                    {/* ACCESS CONTROL VIEW */}
+                    {activeTab === 'access_control' && (
+                        <div className="animate-fade-in-up">
+                            <div className="flex justify-between items-center mb-6 border-b border-gray-200 pb-4">
+                                <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                    <LogOut className="w-6 h-6 text-blue-950 rotate-90" />
+                                    Controle de Acessos (Entradas/Saídas)
+                                </h3>
+                                <Button
+                                    onClick={() => setIsAccessModalOpen(true)}
+                                    className="!bg-blue-950 hover:!bg-black text-white font-bold px-6 py-2 rounded-xl shadow-lg flex items-center gap-2 transition-all"
+                                >
+                                    <Plus className="w-5 h-5" /> Novo Registro
+                                </Button>
+                            </div>
+
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+                                <div className="p-4 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
+                                    <AlertCircle className="w-5 h-5 text-blue-600" />
+                                    <span className="text-sm font-bold text-gray-600 uppercase tracking-widest">Histórico de Acessos (Últimos 50)</span>
+                                    <div className="ml-auto relative">
+                                        <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                        <input
+                                            type="text"
+                                            placeholder="Buscar por nome ou código..."
+                                            value={accessListSearch}
+                                            onChange={(e) => setAccessListSearch(e.target.value)}
+                                            className="pl-9 pr-4 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-300 w-64 transition-all"
+                                        />
+                                    </div>
+                                </div>
+
+                                {accessLoading ? (
+                                    <div className="p-12 text-center text-gray-400">
+                                        <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
+                                        <p className="text-sm font-medium">Carregando registros...</p>
+                                    </div>
+                                ) : accessRecords.length === 0 ? (
+                                    <div className="p-12 text-center text-gray-400 italic">
+                                        Nenhum registro de acesso encontrado.
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="bg-gray-50/50 text-[10px] uppercase tracking-wider text-gray-500 font-bold border-b border-gray-100">
+                                                    <th className="px-6 py-4">Data</th>
+                                                    <th className="px-6 py-4">Horário</th>
+                                                    <th className="px-6 py-4">Aluno</th>
+                                                    <th className="px-6 py-4">Tipo</th>
+                                                    <th className="px-6 py-4">Motivo / Autorizador</th>
+                                                    <th className="px-6 py-4 text-right">Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                                {accessRecords
+                                                    .filter(record => {
+                                                        const searchLower = accessListSearch.toLowerCase();
+                                                        return (
+                                                            record.studentName?.toLowerCase().includes(searchLower) ||
+                                                            record.studentId?.toLowerCase().includes(searchLower) ||
+                                                            record.studentCode?.toLowerCase().includes(searchLower)
+                                                        );
+                                                    })
+                                                    .map(record => (
+                                                        <tr key={record.id} className="hover:bg-gray-50/50 transition-colors group">
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                <div className="text-xs font-bold text-gray-600">
+                                                                    {new Date(record.timestamp).toLocaleDateString()}
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                <div className="text-xs font-bold text-blue-950 bg-blue-50 px-2 py-1 rounded-lg inline-block">
+                                                                    {new Date(record.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <div className="text-sm font-bold text-gray-800">{record.studentName}</div>
+                                                                <div className="text-[10px] text-gray-500 uppercase font-bold tracking-tight">
+                                                                    <span className="text-blue-600">COD: {record.studentCode || '---'}</span> • {record.studentGrade} • Turma {record.studentClass} • {SHIFT_LABELS[record.studentShift as SchoolShift] || record.studentShift}
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border-2 ${record.type === 'Entrada Tardia'
+                                                                    ? 'bg-blue-50 text-blue-900 border-blue-100'
+                                                                    : 'bg-orange-100 text-orange-900 border-orange-200'
+                                                                    }`}>
+                                                                    {record.type}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <div className="text-sm text-gray-700 font-bold mb-0.5">{record.reason}</div>
+                                                                <div className="text-[10px] text-gray-500 font-medium italic">
+                                                                    Autorizado por: <span className="text-gray-700 not-italic font-bold">{record.authorizer}</span> ({record.authorizerRelation})
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-right whitespace-nowrap">
+                                                                <button
+                                                                    onClick={() => handleDeleteAccessRecord(record.id)}
+                                                                    className="p-2 text-gray-300 hover:text-red-600 transition-all hover:bg-red-50 rounded-full group-hover:opacity-100"
+                                                                    title="Excluir Registro"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ACCESS CONTROL MODAL */}
+                    {isAccessModalOpen && (
+                        <div className="fixed inset-0 bg-blue-950/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in-up">
+                            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
+                                {/* Header - Simplified as per user request */}
+                                <div className="p-6 pb-0 flex justify-between items-start">
+                                    <div className="flex flex-col">
+                                        <h2 className="text-xl font-bold text-gray-800 leading-tight">Registrar Acesso</h2>
+                                        <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mt-0.5">Exceção de horário para aluno(a)</p>
+                                    </div>
+                                    <button onClick={() => setIsAccessModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-all text-gray-400 hover:text-red-500">
+                                        <X className="w-6 h-6" />
+                                    </button>
+                                </div>
+
+                                <div className="p-6 overflow-y-auto space-y-6">
+                                    {/* Type Selection */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <button
+                                            onClick={() => setAccessForm({ ...accessForm, type: 'Saída Antecipada' })}
+                                            className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 group ${accessForm.type === 'Saída Antecipada'
+                                                ? 'border-orange-200 bg-orange-100 shadow-sm'
+                                                : 'border-gray-100 hover:border-gray-200 bg-gray-50/50'
+                                                }`}
+                                        >
+                                            <div className={`p-3 rounded-full transition-colors ${accessForm.type === 'Saída Antecipada' ? 'bg-orange-200' : 'bg-gray-100'}`}>
+                                                <LogOut className={`w-6 h-6 ${accessForm.type === 'Saída Antecipada' ? 'text-orange-900' : 'text-gray-400'}`} />
+                                            </div>
+                                            <span className={`text-[10px] uppercase tracking-widest font-bold ${accessForm.type === 'Saída Antecipada' ? 'text-orange-900' : 'text-gray-500'}`}>Saída Antecipada</span>
+                                        </button>
+                                        <button
+                                            onClick={() => setAccessForm({ ...accessForm, type: 'Entrada Tardia' })}
+                                            className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 group ${accessForm.type === 'Entrada Tardia'
+                                                ? 'border-blue-100 bg-blue-50 shadow-sm'
+                                                : 'border-gray-100 hover:border-gray-200 bg-gray-50/50'
+                                                }`}
+                                        >
+                                            <div className={`p-3 rounded-full transition-colors ${accessForm.type === 'Entrada Tardia' ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                                                <Clock className={`w-6 h-6 ${accessForm.type === 'Entrada Tardia' ? 'text-blue-900' : 'text-gray-400'}`} />
+                                            </div>
+                                            <span className={`text-[10px] uppercase tracking-widest font-bold ${accessForm.type === 'Entrada Tardia' ? 'text-blue-900' : 'text-gray-500'}`}>Entrada Tardia</span>
+                                        </button>
+                                    </div>
+
+                                    {/* Student Search */}
+                                    <div className="space-y-2 relative">
+                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Localizar Aluno</label>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                placeholder="Nome ou Código do aluno..."
+                                                value={accessStudentSearch}
+                                                onChange={(e) => handleSearchStudentsForAccess(e.target.value)}
+                                                className="w-full pl-4 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-950 outline-none transition-all font-bold text-gray-800 placeholder:text-gray-400"
+                                            />
+                                            <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                        </div>
+
+                                        {accessFilteredStudents.length > 0 && (
+                                            <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-2xl shadow-2xl z-50 overflow-hidden ring-1 ring-black/5 animate-fade-in-up">
+                                                {accessFilteredStudents.map(s => (
+                                                    <button
+                                                        key={s.id}
+                                                        onClick={() => {
+                                                            setAccessSelectedStudent(s);
+                                                            setAccessFilteredStudents([]);
+                                                            setAccessStudentSearch(s.name);
+                                                        }}
+                                                        className="w-full p-4 text-left hover:bg-blue-50 transition-colors border-b border-gray-50 last:border-0 flex items-center justify-between"
+                                                    >
+                                                        <div>
+                                                            <div className="text-sm font-bold text-gray-800">{s.name}</div>
+                                                            <div className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">
+                                                                <span className="text-blue-600 font-black">COD: {s.code || '---'}</span> • {s.gradeLevel} • Turma {s.schoolClass}
+                                                            </div>
+                                                        </div>
+                                                        <ChevronRight className="w-5 h-5 text-blue-200" />
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Reason and Authorizer */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Motivo</label>
+                                            <input
+                                                type="text"
+                                                placeholder="Consulta médica, viagem..."
+                                                value={accessForm.reason}
+                                                onChange={(e) => setAccessForm({ ...accessForm, reason: e.target.value })}
+                                                className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-950 outline-none border-dashed transition-all font-medium"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Nome do Autorizador</label>
+                                            <input
+                                                type="text"
+                                                placeholder="Quem autorizou?"
+                                                value={accessForm.authorizer}
+                                                onChange={(e) => setAccessForm({ ...accessForm, authorizer: e.target.value })}
+                                                className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-950 outline-none border-dashed transition-all font-medium"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Parentesco / Vínculo</label>
+                                        <select
+                                            value={accessForm.authorizerRelation}
+                                            onChange={(e) => setAccessForm({ ...accessForm, authorizerRelation: e.target.value })}
+                                            className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-950 outline-none transition-all font-bold text-blue-950"
+                                        >
+                                            <option value="Pai">Pai</option>
+                                            <option value="Mãe">Mãe</option>
+                                            <option value="Responsável Legal">Responsável Legal</option>
+                                            <option value="Próprio Aluno">Próprio Aluno (Maior de idade)</option>
+                                            <option value="Outro">Outro</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Footer */}
+                                <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                                    <Button variant="secondary" onClick={() => setIsAccessModalOpen(false)}>Cancelar</Button>
+                                    <Button
+                                        onClick={handleSaveAccessRecord}
+                                        disabled={accessLoading || !accessSelectedStudent}
+                                        className="!bg-blue-950 hover:!bg-black text-white font-bold px-8 py-3 rounded-2xl shadow-xl flex items-center gap-2 transform active:scale-95 transition-all"
+                                    >
+                                        {accessLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5" /> Confirmar Registro</>}
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* SCHEDULE VIEW */}
                     {activeTab === 'schedule' && (
                         <div className="animate-fade-in-up">
@@ -2723,7 +3144,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                         </div>
                     )}
                 </main>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };

@@ -679,3 +679,19 @@ export interface AcademicSettings {
   currentBimester: number;
   updatedAt: string;
 }
+
+export interface AccessRecord {
+  id: string;
+  studentId: string;
+  studentCode?: string; // NOVO: Código de acesso (5 dígitos)
+  studentName: string;
+  studentGrade: string;
+  studentClass: string;
+  studentShift: string;
+  unit: SchoolUnit;
+  type: 'Entrada Tardia' | 'Saída Antecipada';
+  reason: string;
+  authorizer: string;
+  timestamp: string;
+  authorizerRelation?: string; // e.g., 'Pai', 'Mãe', 'Próprio'
+}

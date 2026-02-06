@@ -186,6 +186,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const [isTicketSending, setIsTicketSending] = useState(false);
     const [ticketSuccess, setTicketSuccess] = useState(false);
 
+    // Occurrences Filter
+    const [selectedOccurrenceFilter, setSelectedOccurrenceFilter] = useState<'all' | 'occurrence' | 'access'>('all');
+
     // Memoized data from props
     const studentTickets = useMemo(() => {
         if (!propsTickets) return [];
@@ -663,7 +666,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
     // --- OCCURRENCES LOADING LOGIC ---
     useEffect(() => {
+        console.log('[StudentDashboard] Effect triggered. currentView:', currentView);
         if (currentView === 'occurrences') {
+            console.log('[StudentDashboard] Calling loadOccurrences...');
             loadOccurrences();
         }
     }, [currentView]);
@@ -671,13 +676,36 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const loadOccurrences = async () => {
         setIsLoadingOccurrences(true);
         try {
-            const snap = await db.collection('occurrences')
+            // 1. Fetch Pedagogical Occurrences
+            const occSnap = await db.collection('occurrences')
                 .where('studentId', '==', student.id)
                 .get();
-            const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Occurrence));
-            // Sort in memory to avoid need for composite index
-            data.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-            setOccurrences(data);
+            const occData = occSnap.docs.map(d => ({
+                id: d.id,
+                ...d.data(),
+                recordType: 'occurrence'
+            }));
+
+            // 2. Fetch Access Records
+            const accessSnap = await db.collection('accessRecords')
+                .where('studentId', '==', student.id)
+                .get();
+            const accessData = accessSnap.docs.map(d => ({
+                id: d.id,
+                ...d.data(),
+                recordType: 'access',
+                date: d.data().timestamp, // Map timestamp to date for sorting/display
+                title: d.data().type,
+                description: `Motivo: ${d.data().reason}\nAutorizado por: ${d.data().authorizer} (${d.data().authorizerRelation})`,
+                authorName: d.data().coordinatorName || 'Coordenação',
+                category: 'Acesso'
+            }));
+
+            // 3. Merge & Sort
+            const allRecords = [...occData, ...accessData];
+            allRecords.sort((a: any, b: any) => new Date(b.date || b.timestamp).getTime() - new Date(a.date || a.timestamp).getTime());
+
+            setOccurrences(allRecords as any[]);
         } catch (error) {
             console.error("Erro ao carregar ocorrências:", error);
         } finally {
@@ -772,7 +800,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             const messageNorm = normalize(n.message);
 
                                                             // Check for occurrence keywords (accent-insensitive)
-                                                            if (titleNorm.includes('ocorrencia') || titleNorm.includes('advertencia') || messageNorm.includes('ocorrencia')) {
+                                                            if (titleNorm.includes('ocorrencia') || titleNorm.includes('advertencia') || titleNorm.includes('saida') || titleNorm.includes('entrada') || titleNorm.includes('acesso') || messageNorm.includes('ocorrencia')) {
                                                                 console.log("Navigating to occurrences", n); // Debug
                                                                 setCurrentView('occurrences');
                                                             } else if (titleNorm.includes('boletim') || titleNorm.includes('nota')) {
@@ -913,7 +941,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                         const titleNorm = normalize(n.title);
                                                                         const messageNorm = normalize(n.message);
 
-                                                                        if (titleNorm.includes('ocorrencia') || titleNorm.includes('advertencia') || messageNorm.includes('ocorrencia')) {
+                                                                        if (titleNorm.includes('ocorrencia') || titleNorm.includes('advertencia') || titleNorm.includes('saida') || titleNorm.includes('entrada') || titleNorm.includes('acesso') || messageNorm.includes('ocorrencia')) {
                                                                             setCurrentView('occurrences');
                                                                         } else if (titleNorm.includes('boletim') || titleNorm.includes('nota') || messageNorm.includes('boletim')) {
                                                                             setCurrentView(isEarlyChildhood ? 'early_childhood' : 'grades');
@@ -1140,7 +1168,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
                                                 <ClipboardList className="w-6 h-6 text-blue-950" />
                                             </div>
-                                            <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Ocorrências</h3>
+                                            <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Ocorrências e Acessos</h3>
                                         </button>
                                     )}
 
@@ -2541,8 +2569,39 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         <div className="animate-fade-in-up">
                             <h3 className="text-xl font-bold mb-4 text-gray-800 border-b border-gray-200 pb-2 flex items-center gap-2">
                                 <ClipboardList className="w-6 h-6 text-blue-950" />
-                                Livro de Ocorrências
+                                Livro de Ocorrências e Acessos
                             </h3>
+
+                            {/* Tabs for filtering */}
+                            <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-lg">
+                                <button
+                                    onClick={() => setSelectedOccurrenceFilter('all')}
+                                    className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${selectedOccurrenceFilter === 'all'
+                                        ? 'bg-white text-blue-900 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-700'
+                                        }`}
+                                >
+                                    Todos
+                                </button>
+                                <button
+                                    onClick={() => setSelectedOccurrenceFilter('occurrence')}
+                                    className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${selectedOccurrenceFilter === 'occurrence'
+                                        ? 'bg-white text-blue-900 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-700'
+                                        }`}
+                                >
+                                    Pedagógico
+                                </button>
+                                <button
+                                    onClick={() => setSelectedOccurrenceFilter('access')}
+                                    className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${selectedOccurrenceFilter === 'access'
+                                        ? 'bg-white text-blue-900 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-700'
+                                        }`}
+                                >
+                                    Acessos
+                                </button>
+                            </div>
 
                             {isLoadingOccurrences ? (
                                 <TableSkeleton rows={3} />
@@ -2559,24 +2618,63 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    {occurrences.map(occ => (
-                                        <div key={occ.id} className="bg-white border-l-4 border-red-500 rounded-r-lg shadow-sm p-4 hover:shadow-md transition-shadow">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <div>
-                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 bg-gray-100 px-2 py-0.5 rounded mr-2">{occ.category}</span>
-                                                    <span className="text-xs text-gray-400">{safeParseDate(occ.date).toLocaleDateString()}</span>
+                                    {occurrences
+                                        .filter(occ => {
+                                            if (selectedOccurrenceFilter === 'all') return true;
+                                            return occ.recordType === selectedOccurrenceFilter;
+                                        })
+                                        .map((occ: any) => {
+                                            const isAccess = occ.recordType === 'access';
+                                            const isLateEntry = isAccess && occ.type === 'Entrada Tardia';
+
+                                            // Define styles based on type
+                                            let borderClass = 'border-red-500';
+                                            let iconColor = 'bg-gray-100 text-gray-500';
+                                            let bgClass = 'bg-white';
+                                            let descriptionClass = 'bg-red-50 border-red-100 text-gray-800';
+
+                                            if (isAccess) {
+                                                if (isLateEntry) {
+                                                    // Entrada Tardia (Blue - Matched with Coordinator/Attendance)
+                                                    borderClass = 'border-blue-900';
+                                                    iconColor = 'bg-blue-50 text-blue-900';
+                                                    descriptionClass = 'bg-blue-50 border-blue-100 text-blue-900';
+                                                } else {
+                                                    // Saída Antecipada (Orange - Matched with Coordinator/Attendance)
+                                                    borderClass = 'border-orange-600';
+                                                    iconColor = 'bg-orange-100 text-orange-800';
+                                                    descriptionClass = 'bg-orange-50 border-orange-100 text-orange-900';
+                                                }
+                                            }
+
+                                            return (
+                                                <div key={occ.id} className={`bg-white border-l-4 ${borderClass} rounded-r-lg shadow-sm p-4 hover:shadow-md transition-shadow`}>
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <div>
+                                                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded mr-2 ${isAccess ? iconColor : 'text-gray-500 bg-gray-100'}`}>
+                                                                {occ.category}
+                                                            </span>
+                                                            <span className="text-xs text-gray-400">
+                                                                {isAccess
+                                                                    ? `${new Date(occ.date || occ.timestamp).toLocaleDateString()} às ${new Date(occ.date || occ.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                                                                    : safeParseDate(occ.date || occ.timestamp).toLocaleDateString()
+                                                                }
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider block">
+                                                                {isAccess ? 'Registrado por' : 'Coordenador Pedagógico'}
+                                                            </span>
+                                                            <span className="text-xs font-bold text-gray-600 block">{occ.authorName}</span>
+                                                        </div>
+                                                    </div>
+                                                    <h4 className="text-lg font-bold text-gray-900 mb-2">{occ.title}</h4>
+                                                    <div className={`p-3 rounded-lg border text-sm leading-relaxed whitespace-pre-wrap ${descriptionClass}`}>
+                                                        {occ.description}
+                                                    </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider block">Coordenador Pedagógico</span>
-                                                    <span className="text-xs font-bold text-gray-600 block">{occ.authorName}</span>
-                                                </div>
-                                            </div>
-                                            <h4 className="text-lg font-bold text-gray-900 mb-2">{occ.title}</h4>
-                                            <div className="bg-red-50 p-3 rounded-lg border border-red-100 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
-                                                {occ.description}
-                                            </div>
-                                        </div>
-                                    ))}
+                                            );
+                                        })}
                                 </div>
                             )}
                         </div>

@@ -34,12 +34,13 @@ interface GhostGrade {
 
 interface IdDiscrepancy {
     id: string;
-    collection: string;
+    collection: 'grades' | 'attendance' | 'academic_subjects' | 'students' | 'teachers' | 'teachers_assignments' | 'class_schedules' | 'calendar_events' | 'students_history';
     studentName: string;
     studentUnit: string;
     currentSubject: string;
     suggestedSubject: string;
     date?: string;
+    field?: 'subject' | 'discipline' | 'grade' | 'shift';
 }
 
 interface DuplicateGrade {
@@ -132,20 +133,60 @@ export const DatabaseCleanupTool = () => {
         'Frances': 'disc_frances',
     };
 
+    const LEGACY_TO_GRADE_MAP: Record<string, string> = {
+        'Berçário': 'grade_bercario',
+        'Nível I': 'grade_nivel_1',
+        'Nível II': 'grade_nivel_2',
+        'Nível III': 'grade_nivel_3',
+        'Nível IV': 'grade_nivel_4',
+        'Nível V': 'grade_nivel_5',
+        '1º Ano': 'grade_1_ano',
+        '2º Ano': 'grade_2_ano',
+        '3º Ano': 'grade_3_ano',
+        '4º Ano': 'grade_4_ano',
+        '5º Ano': 'grade_5_ano',
+        '6º Ano': 'grade_6_ano',
+        '7º Ano': 'grade_7_ano',
+        '8º Ano': 'grade_8_ano',
+        '9º Ano': 'grade_9_ano',
+        '1ª Série': 'grade_1_ser',
+        '2ª Série': 'grade_2_ser',
+        '3ª Série': 'grade_3_ser',
+        // Common mistypings
+        '1a Serie': 'grade_1_ser',
+        '2a Serie': 'grade_2_ser',
+        '3a Serie': 'grade_3_ser',
+    };
+
+    const LEGACY_TO_SHIFT_MAP: Record<string, string> = {
+        'Matutino': 'shift_morning',
+        'Vespertino': 'shift_afternoon',
+        'Noturno': 'shift_night',
+        'Morning': 'shift_morning',
+        'Afternoon': 'shift_afternoon'
+    };
+
     const getSuggestedSubject = (subjectStr: string): string => {
         if (!subjectStr) return '';
-
-        // 1. Check direct map
         if (LEGACY_TO_DISC_MAP[subjectStr]) return LEGACY_TO_DISC_MAP[subjectStr];
-
-        // 2. Already canonical?
         if (subjectStr.startsWith('disc_')) return subjectStr;
-
-        // 3. Fallback to heuristic (ONLY for the migration tool)
         const sanitized = sanitizeSubjectId(subjectStr);
         if (sanitized && sanitized.startsWith('disc_')) return sanitized;
-
         return `ACIONE O SUPORTE (${subjectStr})`;
+    };
+
+    const getSuggestedGrade = (gradeStr: string): string => {
+        if (!gradeStr) return '';
+        if (LEGACY_TO_GRADE_MAP[gradeStr]) return LEGACY_TO_GRADE_MAP[gradeStr];
+        if (gradeStr.startsWith('grade_')) return gradeStr;
+        return `ACIONE O SUPORTE (${gradeStr})`;
+    };
+
+    const getSuggestedShift = (shiftStr: string): string => {
+        if (!shiftStr) return '';
+        if (LEGACY_TO_SHIFT_MAP[shiftStr]) return LEGACY_TO_SHIFT_MAP[shiftStr];
+        if (shiftStr.startsWith('shift_')) return shiftStr;
+        return `ACIONE O SUPORTE (${shiftStr})`;
     };
 
     if (!isAdminGeral) return null;
@@ -571,7 +612,7 @@ export const DatabaseCleanupTool = () => {
 
                         bad.push({
                             id: doc.id,
-                            collection: target.name,
+                            collection: target.name as any,
                             studentName: contextName,
                             studentUnit: data.unit || '?',
                             currentSubject: data[target.field],
@@ -594,6 +635,40 @@ export const DatabaseCleanupTool = () => {
 
             schedulesSnap.docs.forEach(doc => {
                 const data = doc.data();
+
+                // 1. Check Grade
+                if (data.grade) {
+                    const suggestedGrade = getSuggestedGrade(data.grade);
+                    if (data.grade !== suggestedGrade) {
+                        bad.push({
+                            id: `${doc.id}_grade`,
+                            collection: 'class_schedules',
+                            studentName: `Grade: ${data.grade} (${data.class})`,
+                            studentUnit: data.unit || data.schoolId || '?',
+                            currentSubject: data.grade,
+                            suggestedSubject: suggestedGrade,
+                            field: 'grade'
+                        });
+                    }
+                }
+
+                // 2. Check Shift
+                if (data.shift) {
+                    const suggestedShift = getSuggestedShift(data.shift);
+                    if (data.shift !== suggestedShift) {
+                        bad.push({
+                            id: `${doc.id}_shift`,
+                            collection: 'class_schedules',
+                            studentName: `Turno: ${data.shift} (${data.class})`,
+                            studentUnit: data.unit || data.schoolId || '?',
+                            currentSubject: data.shift,
+                            suggestedSubject: suggestedShift,
+                            field: 'shift'
+                        });
+                    }
+                }
+
+                // 3. Check Items (Subjects)
                 if (data.items && Array.isArray(data.items)) {
                     data.items.forEach((item: any, idx: number) => {
                         const val = item.subject;
@@ -602,11 +677,12 @@ export const DatabaseCleanupTool = () => {
                             if (val !== suggested) {
                                 bad.push({
                                     id: `${doc.id}_item_${idx}`,
-                                    collection: 'class_schedules' as any,
+                                    collection: 'class_schedules',
                                     studentName: `Grade: ${data.grade} (${data.class}) - Dia ${data.dayOfWeek}`,
                                     studentUnit: data.unit || data.schoolId || '?',
                                     currentSubject: val,
-                                    suggestedSubject: suggested
+                                    suggestedSubject: suggested,
+                                    field: 'subject'
                                 });
                             }
                         }
@@ -766,14 +842,24 @@ export const DatabaseCleanupTool = () => {
                     const snap = await getDoc(docRef);
                     if (snap.exists()) {
                         const data = snap.data();
-                        const items = [...(data.items || [])];
+                        let items = [...(data.items || [])];
+                        let grade = data.grade;
+                        let shift = data.shift;
+
                         discrepancies.forEach(d => {
-                            const itemIdx = parseInt(d.id.split('_item_')[1], 10);
-                            if (items[itemIdx]) {
-                                items[itemIdx].subject = d.suggestedSubject;
+                            if (d.field === 'grade') {
+                                grade = d.suggestedSubject;
+                            } else if (d.field === 'shift') {
+                                shift = d.suggestedSubject;
+                            } else if (d.field === 'subject' && d.id.includes('_item_')) {
+                                const itemIdx = parseInt(d.id.split('_item_')[1], 10);
+                                if (items[itemIdx]) {
+                                    items[itemIdx].subject = d.suggestedSubject;
+                                }
                             }
                         });
-                        await setDoc(docRef, { items }, { merge: true });
+
+                        await setDoc(docRef, { items, grade, shift }, { merge: true });
                     }
                 } else if (coll === 'calendar_events') {
                     const docRef = firebaseDoc(db, 'calendar_events', realId);
@@ -1398,19 +1484,203 @@ export const DatabaseCleanupTool = () => {
                                                                     {subjects.find((s: AcademicSubject) => s.id === d.suggestedSubject)?.name || SUBJECT_LABELS[d.suggestedSubject as Subject] || d.suggestedSubject}
                                                                 </span>
                                                             </td>
+                                                            ```
                                                         </tr>
                                                     ))}
                                                 </tbody>
                                             </table>
                                         </div>
-                                        <Button
-                                            onClick={normalizeIds}
-                                            disabled={loading || selectedIds.length === 0}
-                                            className={`w-full py-6 text-lg font-black ${selectedIds.length > 0 ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-300 cursor-not-allowed'}`}
-                                        >
-                                            {loading ? <Loader2 className="animate-spin mr-2" /> : <Zap className="mr-2" />}
-                                            Corrigir {selectedIds.length} Registros Selecionados
-                                        </Button>
+                                        <div className="flex gap-4">
+                                            <Button
+                                                onClick={normalizeIds}
+                                                disabled={loading || selectedIds.length === 0 || selectedIds.some(id => idDiscrepancies.find(d => d.id === id)?.suggestedSubject.startsWith('ACIONE O SUPORTE'))}
+                                                className={`grow py-6 text-lg font-black ${selectedIds.length > 0 && !selectedIds.some(id => idDiscrepancies.find(d => d.id === id)?.suggestedSubject.startsWith('ACIONE O SUPORTE')) ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-300 cursor-not-allowed'}`}
+                                            >
+                                                {loading ? <Loader2 className="animate-spin mr-2" /> : <Zap className="mr-2" />}
+                                                Corrigir {selectedIds.filter(id => !idDiscrepancies.find(d => d.id === id)?.suggestedSubject.startsWith('ACIONE O SUPORTE')).length} Registros
+                                            </Button>
+
+                                            <Button
+                                                onClick={async () => {
+                                                    const toPurge = selectedIds.filter(id => idDiscrepancies.find(d => d.id === id)?.suggestedSubject.startsWith('ACIONE O SUPORTE'));
+                                                    if (toPurge.length === 0) return;
+                                                    if (!confirm(`ATENÇÃO: Você está prestes a LIMPAR o campo de disciplina de ${toPurge.length} registros que o sistema não reconhece. Isso deixará esses campos vazios. Continuar?`)) return;
+
+                                                    setLoading(true);
+                                                    try {
+                                                        const grouped: Record<string, { coll: string, realId: string, discrepancies: IdDiscrepancy[] }> = {};
+                                                        toPurge.forEach(selectId => {
+                                                            const disc = idDiscrepancies.find(d => d.id === selectId);
+                                                            if (disc) {
+                                                                let realId = disc.id;
+                                                                if (disc.collection === 'teachers_assignments' || disc.collection === 'teachers') {
+                                                                    realId = disc.id.split('_sub_')[0].split('_assign_')[0];
+                                                                } else if (disc.collection === 'students_history') {
+                                                                    realId = disc.id.split('_hist_')[0];
+                                                                } else if (disc.collection === 'class_schedules') {
+                                                                    // Precise removal of sufixos
+                                                                    realId = disc.id
+                                                                        .replace(/_grade$/, '')
+                                                                        .replace(/_shift$/, '')
+                                                                        .replace(/_item_\d+$/, '');
+                                                                }
+                                                                const key = `${disc.collection}:${realId}`;
+                                                                console.log(`[CLEANUP] Preparing purge for ${key}`);
+                                                                if (!grouped[key]) grouped[key] = { coll: disc.collection, realId, discrepancies: [] };
+                                                                grouped[key].discrepancies.push(disc);
+                                                            }
+                                                        });
+
+                                                        for (const key of Object.keys(grouped)) {
+                                                            const { coll, realId, discrepancies } = grouped[key];
+                                                            if (coll === 'teachers' || coll === 'teachers_assignments') {
+                                                                const docRef = firebaseDoc(db, 'teachers', realId);
+                                                                const snap = await getDoc(docRef);
+                                                                if (snap.exists()) {
+                                                                    const data = snap.data();
+                                                                    let subjectsArr = [...(data.subjects || [])];
+                                                                    let assignments = [...(data.assignments || [])];
+                                                                    discrepancies.forEach(d => {
+                                                                        if (d.collection === 'teachers') {
+                                                                            subjectsArr = subjectsArr.map((s: string) => s === d.currentSubject ? '' : s);
+                                                                        } else if (d.collection === 'teachers_assignments') {
+                                                                            assignments = assignments.map((a: any) => ({
+                                                                                ...a,
+                                                                                subjects: (a.subjects || []).map((s: string) => s === d.currentSubject ? '' : s)
+                                                                            }));
+                                                                        }
+                                                                    });
+                                                                    await setDoc(docRef, { subjects: subjectsArr, assignments }, { merge: true });
+                                                                }
+                                                            } else if (coll === 'class_schedules') {
+                                                                const docRef = firebaseDoc(db, 'class_schedules', realId);
+                                                                const snap = await getDoc(docRef);
+                                                                if (snap.exists()) {
+                                                                    const data = snap.data();
+                                                                    let items = [...(data.items || [])];
+                                                                    let grade = data.grade;
+                                                                    let shift = data.shift;
+                                                                    discrepancies.forEach(d => {
+                                                                        if (d.field === 'grade') grade = '';
+                                                                        else if (d.field === 'shift') shift = '';
+                                                                        else if (d.field === 'subject' && d.id.includes('_item_')) {
+                                                                            const itemIdx = parseInt(d.id.split('_item_')[1], 10);
+                                                                            if (items[itemIdx]) items[itemIdx].subject = '';
+                                                                        }
+                                                                    });
+                                                                    await setDoc(docRef, { items, grade, shift }, { merge: true });
+                                                                }
+                                                            } else if (coll === 'calendar_events') {
+                                                                const docRef = firebaseDoc(db, 'calendar_events', realId);
+                                                                const snap = await getDoc(docRef);
+                                                                if (snap.exists()) {
+                                                                    const data = snap.data();
+                                                                    const targetSubjectIds = [...(data.targetSubjectIds || [])];
+                                                                    discrepancies.forEach(d => {
+                                                                        const targetIdx = parseInt(d.id.split('_target_')[1], 10);
+                                                                        if (targetSubjectIds[targetIdx] !== undefined) targetSubjectIds[targetIdx] = '';
+                                                                    });
+                                                                    await setDoc(docRef, { targetSubjectIds }, { merge: true });
+                                                                }
+                                                            } else if (coll === 'students_history') {
+                                                                const docRef = firebaseDoc(db, 'students', realId);
+                                                                const snap = await getDoc(docRef);
+                                                                if (snap.exists()) {
+                                                                    const data = snap.data();
+                                                                    const academicHistory = [...(data.academicHistory || [])];
+                                                                    discrepancies.forEach(d => {
+                                                                        const parts = d.id.split('_hist_')[1].split('_sub_');
+                                                                        const hIdx = parseInt(parts[0], 10);
+                                                                        const sIdx = parseInt(parts[1], 10);
+                                                                        if (academicHistory[hIdx] && academicHistory[hIdx].subjects[sIdx] !== undefined) {
+                                                                            academicHistory[hIdx].subjects[sIdx] = '';
+                                                                        }
+                                                                    });
+                                                                    await setDoc(docRef, { academicHistory }, { merge: true });
+                                                                }
+                                                            } else if (coll === 'academic_subjects') {
+                                                                // Special case: deleting invalid matrix doc might be risky, 
+                                                                // but usually these are the "random code" docs.
+                                                                if (confirm(`Excluir permanentemente o documento de matriz '${realId}'?`)) {
+                                                                    await deleteDoc(firebaseDoc(db, 'academic_subjects', realId));
+                                                                }
+                                                            } else {
+                                                                const d = discrepancies[0];
+                                                                const field = d.collection === 'attendance' ? 'discipline' : 'subject';
+                                                                await pedagogicalService.updateGeneric(d.collection, realId, { [field]: '' });
+                                                            }
+                                                        }
+                                                        alert("Registros inválidos limpos!");
+                                                        setIdDiscrepancies(prev => prev.filter(d => !toPurge.includes(d.id)));
+                                                        setSelectedIds(prev => prev.filter(id => !toPurge.includes(id)));
+                                                    } catch (e) {
+                                                        console.error(e);
+                                                        alert("Erro ao limpar registros.");
+                                                    } finally {
+                                                        setLoading(false);
+                                                    }
+                                                }}
+                                                disabled={loading || selectedIds.length === 0 || !selectedIds.some(id => idDiscrepancies.find(d => d.id === id)?.suggestedSubject.startsWith('ACIONE O SUPORTE'))}
+                                                className={`px-6 py-6 text-lg font-black ${selectedIds.some(id => idDiscrepancies.find(d => d.id === id)?.suggestedSubject.startsWith('ACIONE O SUPORTE')) ? 'bg-red-600 hover:bg-red-700 shadow-lg shadow-red-500/20' : 'bg-slate-300 cursor-not-allowed'}`}
+                                            >
+                                                {loading ? <Loader2 className="animate-spin" /> : <Trash2 />}
+                                                Limpar Inválidos
+                                            </Button>
+
+                                            <Button
+                                                onClick={async () => {
+                                                    const toDelete = selectedIds;
+                                                    if (toDelete.length === 0) return;
+                                                    if (!confirm(`CUIDADO: Você está prestes a EXCLUIR DEFINITIVAMENTE ${toDelete.length} documentos do banco de dados. Esta ação não pode ser desfeita. Continuar?`)) return;
+                                                    if (!confirm(`ÚLTIMO AVISO: Confirmar a exclusão de todos os registros selecionados?`)) return;
+
+                                                    setLoading(true);
+                                                    try {
+                                                        const grouped: Record<string, { coll: string, realId: string }> = {};
+                                                        toDelete.forEach(selectId => {
+                                                            const disc = idDiscrepancies.find(d => d.id === selectId);
+                                                            if (disc) {
+                                                                let realId = disc.id;
+                                                                if (disc.collection === 'teachers_assignments' || disc.collection === 'teachers') {
+                                                                    realId = disc.id.split('_sub_')[0].split('_assign_')[0];
+                                                                } else if (disc.collection === 'students_history') {
+                                                                    realId = disc.id.split('_hist_')[0];
+                                                                } else if (disc.collection === 'class_schedules') {
+                                                                    // Precise removal of sufixos
+                                                                    realId = disc.id
+                                                                        .replace(/_grade$/, '')
+                                                                        .replace(/_shift$/, '')
+                                                                        .replace(/_item_\d+$/, '');
+                                                                }
+                                                                const key = `${disc.collection}:${realId}`;
+                                                                console.log(`[CLEANUP] Preparing deletion for ${key}`);
+                                                                grouped[key] = { coll: disc.collection, realId };
+                                                            }
+                                                        });
+
+                                                        for (const key of Object.keys(grouped)) {
+                                                            const { coll, realId } = grouped[key];
+                                                            console.log(`[CLEANUP] Deleting ${coll}/${realId}`);
+                                                            await deleteDoc(firebaseDoc(db, coll as any, realId));
+                                                        }
+
+                                                        alert("Registros excluídos com sucesso!");
+                                                        setIdDiscrepancies(prev => prev.filter(d => !toDelete.includes(d.id)));
+                                                        setSelectedIds([]);
+                                                    } catch (e) {
+                                                        console.error(e);
+                                                        alert("Erro ao excluir registros.");
+                                                    } finally {
+                                                        setLoading(false);
+                                                    }
+                                                }}
+                                                disabled={loading || selectedIds.length === 0}
+                                                className={`px-6 py-6 text-lg font-black ${selectedIds.length > 0 ? 'bg-black text-white hover:bg-red-900 shadow-lg shadow-black/20' : 'bg-slate-300 cursor-not-allowed'}`}
+                                            >
+                                                {loading ? <Loader2 className="animate-spin" /> : <Trash2 />}
+                                                Excluir Selecionados
+                                            </Button>
+                                        </div>
                                     </>
                                 )}
                             </div>

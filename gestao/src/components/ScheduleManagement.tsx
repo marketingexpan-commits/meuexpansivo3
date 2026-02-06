@@ -96,8 +96,8 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
 
     useEffect(() => {
         if (!loadingAcademic && grades.length > 0 && !selectedGrade) {
-            setSelectedGrade(grades[0].name);
-            setCopySourceGrade(grades[0].name);
+            setSelectedGrade(grades[0].id);
+            setCopySourceGrade(grades[0].id);
         }
     }, [loadingAcademic, grades]);
 
@@ -401,7 +401,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                         onChange={(e) => setSelectedGrade(e.target.value)}
                         className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-blue-950/20 outline-none"
                     >
-                        {sortedGrades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
+                        {sortedGrades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                     </select>
                 </div>
                 <div>
@@ -608,7 +608,7 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                                     onChange={(e) => setCopySourceGrade(e.target.value)}
                                     className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700"
                                 >
-                                    {sortedGrades.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
+                                    {sortedGrades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                                 </select>
                             </div>
                             <div>
@@ -628,7 +628,9 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                                     onChange={(e) => setCopySourceShift(e.target.value)}
                                     className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700"
                                 >
-                                    {SCHOOL_SHIFTS_LIST.map((s: string) => <option key={s} value={s}>{s}</option>)}
+                                    {Object.entries(SHIFT_LABELS).map(([id, label]) => (
+                                        <option key={id} value={id}>{label}</option>
+                                    ))}
                                 </select>
                             </div>
 
@@ -650,9 +652,9 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                     <div className="mb-8 text-center border-b-2 border-blue-900 pb-4">
                         <h2 className="text-xl font-black text-blue-900 uppercase tracking-tighter">Horário Escolar - Grade Completa</h2>
                         <div className="flex justify-center gap-4 mt-2 text-[10px] font-bold text-gray-500 uppercase">
-                            <span>{selectedGrade}</span>
+                            <span>{grades.find(g => g.id === selectedGrade)?.name || selectedGrade}</span>
                             <span>Turma {selectedClass}</span>
-                            <span>Turno {selectedShift}</span>
+                            <span>{SHIFT_LABELS[selectedShift as keyof typeof SHIFT_LABELS] || selectedShift}</span>
                         </div>
                     </div>
 
@@ -669,7 +671,9 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                                             daySchedule.items.map((item, idx) => (
                                                 <div key={idx} className="bg-gray-50/50 border border-gray-100 p-1.5 rounded-xl">
                                                     <div className="font-black text-blue-900 text-[8px] mb-0.5">{item.startTime} - {item.endTime}</div>
-                                                    <div className="font-bold text-gray-800 leading-tight uppercase text-[9px] break-words">{item.subject}</div>
+                                                    <div className="font-bold text-gray-800 leading-tight uppercase text-[9px] break-words">
+                                                        {subjects.find(s => s.id === item.subject)?.name || SUBJECT_LABELS[item.subject as Subject] || item.subject}
+                                                    </div>
                                                 </div>
                                             ))
                                         ) : (
