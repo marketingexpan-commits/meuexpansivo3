@@ -543,8 +543,8 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                                                 disabled={isReadOnly}
                                             >
                                                 <option value="">Selecione...</option>
-                                                {subjects.map(s => (
-                                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                                {subjects.filter(s => s.isActive || s.id === item.subject).map(s => (
+                                                    <option key={s.id} value={s.id}>{s.name}{!s.isActive && ' (Inativa)'}</option>
                                                 ))}
                                                 {item.subject && !subjects.find(s => s.id === item.subject) && (
                                                     <option value={item.subject}>{subjects.find(s => s.name === item.subject)?.name || SUBJECT_LABELS[item.subject as Subject] || item.subject} (Antigo)</option>

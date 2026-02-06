@@ -356,10 +356,10 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                                 {loadingAcademic ? (
                                     <p className="text-xs text-slate-400 italic">Carregando disciplinas...</p>
                                 ) : (
-                                    subjects.map(sub => (
+                                    subjects.filter(sub => sub.isActive || formData.subjects?.includes(sub.id)).map(sub => (
                                         <Checkbox
                                             key={sub.id}
-                                            label={sub.name}
+                                            label={`${sub.name}${!sub.isActive ? ' (Inativa)' : ''}`}
                                             checked={formData.subjects?.includes(sub.id)}
                                             onChange={() => handleToggleCollection('subjects', sub.id)}
                                             className="bg-white p-2 rounded-xl border border-slate-200 hover:border-blue-950/30 transition-all shadow-sm"
