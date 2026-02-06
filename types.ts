@@ -143,7 +143,8 @@ export interface AcademicSubject {
   shortLabel?: string; // Novo: Sigla canônica de exibição
   isActive: boolean;
   order?: number;   // For sorting in reports/logs
-  weeklyHours: Record<string, number>; // Mapping: gradeName -> hoursPerWeek
+  weeklyHours?: Record<string, number>; // Mapping: segment/grade -> hoursPerWeek
+  classDuration?: number; // In minutes, default usually 60 or 50
 }
 
 export interface AcademicSegment {
@@ -595,6 +596,23 @@ export interface MuralItem {
   order: number;
   isActive: boolean;
   createdAt: string;
+}
+export interface PedagogicalAttendance {
+  id: string;
+  studentId: string;
+  studentName: string;
+  gradeLevel: string;
+  schoolClass: string;
+  shift: string;
+  unit: SchoolUnit;
+  date: string; // ISO or YYYY-MM-DD
+  topic: string; // Pauta do atendimento
+  agreements: string; // Combinados / Resoluções
+  followUpDate?: string; // Data de retorno
+  authorId: string;
+  authorName: string;
+  status: 'Pendente' | 'Concluído';
+  timestamp: any;
 }
 // End of types definitions
 

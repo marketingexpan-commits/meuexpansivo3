@@ -1816,12 +1816,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                     weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[grade.subject] || 0;
                                                                 }
 
-                                                                const annualWorkload = weeklyClasses * 40; // 40 weeks standard
+                                                                const academicSubject = academicSubjects?.find(s => s.id === grade.subject);
+                                                                const finalDuration = academicSubject?.classDuration || 60;
+                                                                const annualWorkload = Math.round((weeklyClasses * finalDuration / 60) * 40);
                                                                 const currentYear = new Date().getFullYear();
                                                                 const startOfYear = `${academicSettings?.bimesters?.[0]?.startDate || `${currentYear}-01-01`}`;
                                                                 const todayStr = new Date().toLocaleDateString('en-CA');
 
-                                                                const academicSubject = academicSubjects?.find(s => s.id === grade.subject);
                                                                 const workloadSubjectId = academicSubject?.id || grade.subject;
 
                                                                 const { taught: ministradaWorkload } = calculateTaughtClasses(

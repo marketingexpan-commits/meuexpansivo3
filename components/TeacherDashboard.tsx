@@ -2471,7 +2471,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                                             weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[grade.subject] || 0;
                                                                                         }
 
-                                                                                        const annualWorkload = weeklyClasses * 40;
+                                                                                        const ds = academicSubjects?.find(s => s.id === grade.subject || s.name === grade.subject);
+                                                                                        const finalDuration = ds?.classDuration || 60;
+                                                                                        const annualWorkload = Math.round((weeklyClasses * finalDuration / 60) * 40);
                                                                                         const currentYear = getCurrentSchoolYear();
                                                                                         const startOfYear = `${academicSettings?.bimesters?.[0]?.startDate || `${currentYear}-01-01`}`;
                                                                                         const todayStr = new Date().toLocaleDateString('en-CA');

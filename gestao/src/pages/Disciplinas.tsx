@@ -11,6 +11,7 @@ import { SchoolUnit, SchoolShift, UNIT_LABELS, SHIFT_LABELS } from '../types';
 import type { CurriculumMatrix } from '../types';
 import { getCurrentSchoolYear } from '../utils/academicUtils';
 import { setDoc } from 'firebase/firestore';
+import { CURRICULUM_MATRIX, ACADEMIC_SEGMENTS } from '../utils/academicDefaults';
 
 export default function Disciplinas() {
     const [subjects, setSubjects] = useState<AcademicSubject[]>([]);
@@ -26,7 +27,13 @@ export default function Disciplinas() {
         name: '',
         shortName: '',
         order: 0,
-        isActive: true
+        isActive: true,
+        classDuration: 60,
+        weeklyHours: {
+            'Fundamental I': 0,
+            'Fundamental II': 0,
+            'Ensino Médio': 0
+        } as Record<string, number>
     });
 
     // Matrix Context Filters
@@ -90,7 +97,18 @@ export default function Disciplinas() {
             }
             setIsModalOpen(false);
             setEditingSubject(null);
-            setFormData({ name: '', shortName: '', order: 0, isActive: true });
+            setFormData({
+                name: '',
+                shortName: '',
+                order: 0,
+                isActive: true,
+                classDuration: 60,
+                weeklyHours: {
+                    'Fundamental I': 0,
+                    'Fundamental II': 0,
+                    'Ensino Médio': 0
+                }
+            });
             loadData();
         } catch (error) {
             console.error("Error saving subject:", error);
@@ -231,17 +249,33 @@ export default function Disciplinas() {
                     const matrixId = `matrix_${selectedUnit}_${grade.id}_${selectedShift}_${selectedYear}`;
                     const matrix = matrices.find(m => m.id === matrixId);
                     const subjectInMatrix = matrix?.subjects.find(s => s.id === subject.id);
-                    const hours = subjectInMatrix?.weeklyHours || 0;
+
+                    // Logic: Matrix value first, then global subject default, then 0
+                    const segment = Object.values(ACADEMIC_SEGMENTS).find(s => s.id === grade.segmentId);
+                    const gradeKey = segment?.label || '';
+
+                    const codeDefault = CURRICULUM_MATRIX[gradeKey]?.[subject.id] || 0;
+                    const globalDefault = (subject.weeklyHours?.[gradeKey] !== undefined && subject.weeklyHours[gradeKey] > 0)
+                        ? subject.weeklyHours[gradeKey]
+                        : codeDefault;
+
+                    const hours = subjectInMatrix?.weeklyHours !== undefined ? subjectInMatrix.weeklyHours : globalDefault;
+                    const isDefault = subjectInMatrix?.weeklyHours === undefined && globalDefault > 0;
+                    const isCodeDefault = subjectInMatrix?.weeklyHours === undefined && (subject.weeklyHours?.[gradeKey] === undefined || subject.weeklyHours[gradeKey] === 0) && codeDefault > 0;
+
+                    // Calculation: (Hours * Duration / 60) * 40 weeks
+                    const duration = subject.classDuration || 60;
+                    const annualWorkload = Math.round((hours * duration / 60) * 40);
 
                     return (
-                        <td key={grade.id} className="p-2 border-r border-slate-50">
+                        <td key={grade.id} className={`p-2 border-r border-slate-50 ${isDefault ? 'bg-blue-50/20' : ''}`}>
                             <div className="relative flex items-center justify-center">
                                 <MatrixInput
                                     value={hours}
                                     onUpdate={(val) => onUpdate(subject.id, grade.id, val)}
                                 />
-                                <div className="absolute -bottom-1 text-[7px] font-bold text-slate-400 uppercase pointer-events-none tracking-tighter">
-                                    {hours * 40}h/ano
+                                <div className={`absolute -bottom-1 text-[7px] font-bold uppercase pointer-events-none tracking-tighter ${isDefault ? 'text-blue-400' : 'text-slate-400'}`}>
+                                    {annualWorkload}h/ano {isDefault && (isCodeDefault ? '• Código' : '• Padrão')}
                                 </div>
                             </div>
                         </td>
@@ -292,7 +326,18 @@ export default function Disciplinas() {
 
                             <Button onClick={() => {
                                 setEditingSubject(null);
-                                setFormData({ name: '', shortName: '', order: (subjects.length + 1) * 10, isActive: true });
+                                setFormData({
+                                    name: '',
+                                    shortName: '',
+                                    order: (subjects.length + 1) * 10,
+                                    isActive: true,
+                                    classDuration: 60,
+                                    weeklyHours: {
+                                        'Fundamental I': 0,
+                                        'Fundamental II': 0,
+                                        'Ensino Médio': 0
+                                    }
+                                });
                                 setIsModalOpen(true);
                             }} className="gap-2">
                                 <Plus className="w-4 h-4" />
@@ -374,6 +419,12 @@ export default function Disciplinas() {
                                                                         shortName: subject.shortName || '',
                                                                         order: subject.order || 0,
                                                                         isActive: subject.isActive,
+                                                                        classDuration: subject.classDuration || 60,
+                                                                        weeklyHours: {
+                                                                            'Fundamental I': subject.weeklyHours?.['Fundamental I'] || CURRICULUM_MATRIX['Fundamental I']?.[subject.id] || 0,
+                                                                            'Fundamental II': subject.weeklyHours?.['Fundamental II'] || CURRICULUM_MATRIX['Fundamental II']?.[subject.id] || 0,
+                                                                            'Ensino Médio': subject.weeklyHours?.['Ensino Médio'] || CURRICULUM_MATRIX['Ensino Médio']?.[subject.id] || 0
+                                                                        }
                                                                     });
                                                                     setIsModalOpen(true);
                                                                 }}
@@ -539,6 +590,54 @@ export default function Disciplinas() {
                                     className="w-4 h-4 rounded border-slate-300 text-blue-950 focus:ring-blue-950"
                                 />
                                 <label htmlFor="isActive" className="text-sm font-medium text-slate-700">Disciplina Ativa</label>
+                            </div>
+
+                            <div className="pt-2 border-t border-slate-100">
+                                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Carga Horária Padrão</h3>
+
+                                <div className="mb-4">
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Duração da Aula (minutos)</label>
+                                    <div className="flex items-center gap-3">
+                                        <Input
+                                            type="number"
+                                            value={formData.classDuration}
+                                            onChange={(e) => setFormData({ ...formData, classDuration: parseInt(e.target.value) || 0 })}
+                                            className="w-24 font-bold"
+                                        />
+                                        <span className="text-xs text-slate-500 font-medium italic">Geralmente 50 ou 60 min.</span>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                    {['Fundamental I', 'Fundamental II', 'Ensino Médio'].map(segment => (
+                                        <div key={segment} className="flex items-center justify-between gap-4">
+                                            <div>
+                                                <p className="text-sm font-bold text-blue-950">{segment}</p>
+                                                <p className="text-[10px] text-slate-500 font-medium">Aulas por semana</p>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <Input
+                                                    type="number"
+                                                    min="0"
+                                                    value={formData.weeklyHours[segment] || 0}
+                                                    onChange={(e) => setFormData({
+                                                        ...formData,
+                                                        weeklyHours: {
+                                                            ...formData.weeklyHours,
+                                                            [segment]: parseInt(e.target.value) || 0
+                                                        }
+                                                    })}
+                                                    className="w-16 text-center font-bold"
+                                                />
+                                                <div className="w-16 text-right">
+                                                    <span className="text-[10px] font-black text-blue-600">
+                                                        {Math.round(((formData.weeklyHours[segment] || 0) * (formData.classDuration || 60) / 60) * 40)}h/ano
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
 
                             <div className="flex gap-3 pt-4">

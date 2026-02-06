@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { db } from '../firebaseConfig';
-import { UnitContact, SchoolUnit, UNIT_LABELS, SHIFT_LABELS, CoordinationSegment, Subject, SUBJECT_LABELS, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket, SchoolMessage, MessageRecipient, CalendarEvent, ClassSchedule } from '../types';
+import { UnitContact, SchoolUnit, UNIT_LABELS, SHIFT_LABELS, CoordinationSegment, Subject, SUBJECT_LABELS, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket, SchoolMessage, MessageRecipient, CalendarEvent, ClassSchedule, PedagogicalAttendance } from '../types';
 import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, CURRICULUM_MATRIX, getCurriculumSubjects, calculateBimesterMedia, calculateFinalData, SCHOOL_CLASSES_OPTIONS } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency } from '../utils/frequency';
 import { getDynamicBimester, isClassScheduled, normalizeClass, parseGradeLevel } from '../src/utils/academicUtils';
@@ -32,7 +32,8 @@ import {
     Bell,
     Save,
     Edit,
-    Users
+    Users,
+    HeartHandshake
 } from 'lucide-react';
 
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
@@ -95,11 +96,28 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     }, [academicSettings]);
 
     // NEW: Navigation State
-    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages' | 'attendance'>('menu');
+    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages' | 'attendance' | 'crm'>('menu');
     // --- OCCURRENCE HISTORY STATE ---
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [historyOccurrences, setHistoryOccurrences] = useState<Occurrence[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
+
+    // --- CRM / ATENDIMENTOS STATE ---
+    const [crmAttendances, setCrmAttendances] = useState<PedagogicalAttendance[]>([]);
+    const [crmLoading, setCrmLoading] = useState(false);
+    const [crmSearch, setCrmSearch] = useState('');
+    const [crmStatusFilter, setCrmStatusFilter] = useState<'all' | 'Pendente' | 'Concluído'>('all');
+    const [isCrmModalOpen, setIsCrmModalOpen] = useState(false);
+    const [crmForm, setCrmForm] = useState<Partial<PedagogicalAttendance>>({
+        date: new Date().toISOString().split('T')[0],
+        status: 'Pendente',
+        topic: '',
+        agreements: '',
+        followUpDate: ''
+    });
+    const [crmSelectedStudent, setCrmSelectedStudent] = useState<Student | null>(null);
+    const [crmStudentSearch, setCrmStudentSearch] = useState('');
+    const [crmMatchingStudents, setCrmMatchingStudents] = useState<Student[]>([]);
 
     // Calendar logic is now handled via props
 
@@ -677,7 +695,28 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         });
     }, [academicGrades, coordinator.segment]);
 
-    // 2. Load Attendance Sheet
+    // 2. Helper to filter Subjects based on Grade Level
+    const availableSubjectsForAttendance = useMemo(() => {
+        if (!attGrade || !academicSubjects) return [];
+
+        // Find the selected grade ID for robust filtering
+        const selectedGrade = academicGrades.find(g => g.name === attGrade);
+        const selectedGradeId = selectedGrade?.id;
+
+        return academicSubjects.filter(s => {
+            if (!s.weeklyHours) return true; // Legacy fallback
+
+            // Check if subject has hours for this specific grade NAME or ID
+            return (attGrade in s.weeklyHours) || (selectedGradeId && selectedGradeId in s.weeklyHours);
+        });
+    }, [academicSubjects, academicGrades, attGrade]);
+
+    // 3. Reset subject when grade changes
+    useEffect(() => {
+        setAttSubject('');
+    }, [attGrade]);
+
+    // 4. Load Attendance Sheet
     const handleLoadCoordinatorAttendance = async () => {
         if (!attGrade || !attClass || !attSubject || !attShift) {
             alert("Preencha todos os campos obrigatórios (Série, Turno, Turma, Disciplina).");
@@ -829,13 +868,161 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         }
     };
 
-    const filteredMessages = messages.filter(m => {
-        if (messageFilter === 'new') return m.status === 'new';
-        if (messageFilter === 'read') return m.status === 'read';
-        return true;
-    });
+    // --- CRM LOGIC ---
+    useEffect(() => {
+        if (activeTab === 'crm') {
+            loadCrmAttendances();
+        }
+    }, [activeTab, coordinator.unit]);
 
+    const loadCrmAttendances = async () => {
+        setCrmLoading(true);
+        try {
+            const snap = await db.collection('pedagogical_attendances')
+                .where('unit', '==', coordinator.unit)
+                .orderBy('timestamp', 'desc')
+                .get();
 
+            const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as PedagogicalAttendance));
+            setCrmAttendances(docs);
+        } catch (error: any) {
+            console.error("Error loading CRM attendances:", error);
+            alert("Erro ao carregar atendimentos: " + error.message);
+        } finally {
+            setCrmLoading(false);
+        }
+    };
+
+    const handleSearchStudentsForCrm = async (searchTerm: string) => {
+        setCrmStudentSearch(searchTerm);
+        if (searchTerm.length < 3) {
+            setCrmMatchingStudents([]);
+            return;
+        }
+
+        try {
+            const snap = await db.collection('students')
+                .where('unit', '==', coordinator.unit)
+                .get();
+
+            const allStudents = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
+
+            // Filter by search term AND coordinator's segment
+            const allowedGradeIds = new Set(availableGradesForAttendance.map(g => g.id));
+            const allowedGradeNames = new Set(availableGradesForAttendance.map(g => g.name));
+
+            const filtered = allStudents.filter(s => {
+                const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.code.includes(searchTerm);
+                if (!matchesSearch) return false;
+
+                // Segment Restriction
+                if (!coordinator.segment || coordinator.segment === 'geral') return true;
+
+                if (s.gradeId) return allowedGradeIds.has(s.gradeId);
+
+                // Fallback to gradeLevel name if gradeId is missing
+                const { grade: sGradeName } = parseGradeLevel(s.gradeLevel);
+                return allowedGradeNames.has(sGradeName) || allowedGradeNames.has(s.gradeLevel);
+            });
+
+            setCrmMatchingStudents(filtered.slice(0, 5));
+        } catch (error) {
+            console.error("Error searching students:", error);
+        }
+    };
+
+    const handleSaveCrmAttendance = async () => {
+        if (!crmSelectedStudent || !crmForm.topic || !crmForm.date) {
+            alert("Por favor, selecione um aluno, informe a data e a pauta do atendimento.");
+            return;
+        }
+
+        setCrmLoading(true);
+        try {
+            const now = new Date().toISOString();
+            const recordData = {
+                ...crmForm,
+                studentId: crmSelectedStudent.id,
+                studentName: crmSelectedStudent.name,
+                gradeLevel: crmSelectedStudent.gradeLevel,
+                schoolClass: crmSelectedStudent.schoolClass,
+                shift: crmSelectedStudent.shift,
+                unit: coordinator.unit,
+                authorId: coordinator.id,
+                authorName: coordinator.name,
+                timestamp: now
+            };
+
+            if (crmForm.id) {
+                await db.collection('pedagogical_attendances').doc(crmForm.id).update(recordData);
+            } else {
+                await db.collection('pedagogical_attendances').add(recordData);
+            }
+
+            setIsCrmModalOpen(false);
+            resetCrmForm();
+            loadCrmAttendances();
+        } catch (error) {
+            console.error("Error saving CRM attendance:", error);
+            alert("Erro ao salvar atendimento.");
+        } finally {
+            setCrmLoading(false);
+        }
+    };
+
+    const resetCrmForm = () => {
+        setCrmForm({
+            date: new Date().toISOString().split('T')[0],
+            status: 'Pendente',
+            topic: '',
+            agreements: '',
+            followUpDate: ''
+        });
+        setCrmSelectedStudent(null);
+        setCrmStudentSearch('');
+        setCrmMatchingStudents([]);
+    };
+
+    const toggleCrmStatus = async (attendance: PedagogicalAttendance) => {
+        const newStatus = attendance.status === 'Pendente' ? 'Concluído' : 'Pendente';
+        try {
+            await db.collection('pedagogical_attendances').doc(attendance.id).update({
+                status: newStatus
+            });
+            setCrmAttendances(prev => prev.map(a => a.id === attendance.id ? { ...a, status: newStatus } : a));
+        } catch (error) {
+            console.error("Error toggling CRM status:", error);
+        }
+    };
+
+    const handleDeleteCrmAttendance = async (id: string) => {
+        if (!window.confirm("Tem certeza que deseja excluir este registro de atendimento?")) return;
+
+        try {
+            await db.collection('pedagogical_attendances').doc(id).delete();
+            setCrmAttendances(prev => prev.filter(a => a.id !== id));
+        } catch (error) {
+            console.error("Error deleting CRM attendance:", error);
+            alert("Erro ao excluir atendimento.");
+        }
+    };
+
+    const filteredCrmAttendances = useMemo(() => {
+        return crmAttendances.filter(a => {
+            const matchesSearch = a.studentName.toLowerCase().includes(crmSearch.toLowerCase()) ||
+                a.topic.toLowerCase().includes(crmSearch.toLowerCase());
+            const matchesStatus = crmStatusFilter === 'all' || a.status === crmStatusFilter;
+            return matchesSearch && matchesStatus;
+        });
+    }, [crmAttendances, crmSearch, crmStatusFilter]);
+
+    const filteredMessages = useMemo(() => {
+        return messages.filter(m => {
+            if (messageFilter === 'new') return m.status === 'new';
+            if (messageFilter === 'read') return m.status === 'read';
+            return true;
+        });
+    }, [messages, messageFilter]);
 
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans">
@@ -974,10 +1161,11 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                         ? "Utilize os filtros abaixo para localizar e aprovar notas pendentes."
                                         : activeTab === 'occurrences'
                                             ? "Gerencie o histórico e registre novas ocorrências disciplinares."
-
                                             : activeTab === 'messages'
                                                 ? "Gerencie as mensagens e feedbacks enviados pelos alunos."
-                                                : "Calendário letivo da unidade."
+                                                : activeTab === 'calendar'
+                                                    ? "Calendário letivo da unidade."
+                                                    : null
                                 }
                             </p>
                         </div>
@@ -1011,10 +1199,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                 className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
                             >
                                 <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                                    <div className="relative">
-                                        <Users className="w-6 h-6 text-blue-950" />
-                                        <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white"></div>
-                                    </div>
+                                    <Users className="w-6 h-6 text-blue-950" />
                                 </div>
                                 <h3 className="font-bold text-gray-800 text-sm text-center">Frequência</h3>
                             </button>
@@ -1045,6 +1230,17 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                         {messages.filter(m => m.status === 'new').length}
                                     </span>
                                 )}
+                            </button>
+
+                            {/* CRM / ATENDIMENTOS CARD */}
+                            <button
+                                onClick={() => setActiveTab('crm')}
+                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                            >
+                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                    <HeartHandshake className="w-6 h-6 text-blue-950" />
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-sm text-center">Atendimentos (CRM)</h3>
                             </button>
                         </div>
                     )}
@@ -1840,7 +2036,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                             className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-950 transition-all hover:bg-white focus:bg-white"
                                         >
                                             <option value="">Selecione...</option>
-                                            {academicSubjects?.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                                            {availableSubjectsForAttendance.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                                         </select>
                                     </div>
                                 </div>
@@ -1990,6 +2186,128 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                     </div>
                                     <h3 className="text-gray-900 font-bold text-lg mb-1">Nenhum aluno encontrado</h3>
                                     <p className="text-gray-500 max-w-sm mx-auto">Verifique os filtros de Data, Série, Turno e Turma selecionados acima.</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {activeTab === 'crm' && (
+                        <div className="space-y-6 animate-fade-in-up md:p-6 p-4">
+                            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-3 bg-blue-50 text-blue-950 rounded-xl shadow-sm border border-blue-100">
+                                        <HeartHandshake className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-gray-800">Atendimentos</h2>
+                                        <p className="text-gray-500 text-sm">CRM Pedagógico e Registro de Reuniões</p>
+                                    </div>
+                                </div>
+                                <Button
+                                    onClick={() => { resetCrmForm(); setIsCrmModalOpen(true); }}
+                                    className="!bg-blue-950 hover:!bg-black text-white font-bold px-6 py-2.5 rounded-xl shadow-lg flex items-center gap-2"
+                                >
+                                    <Plus className="w-5 h-5" /> Novo Atendimento
+                                </Button>
+                            </div>
+
+                            {/* FILTERS */}
+                            <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-4 items-center">
+                                <div className="relative flex-1 w-full">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Buscar por aluno ou pauta..."
+                                        value={crmSearch}
+                                        onChange={(e) => setCrmSearch(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-950 outline-none transition-all"
+                                    />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Filter className="w-4 h-4 text-gray-400" />
+                                    <select
+                                        value={crmStatusFilter}
+                                        onChange={(e) => setCrmStatusFilter(e.target.value as any)}
+                                        className="bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold px-3 py-2 outline-none focus:ring-2 focus:ring-blue-950"
+                                    >
+                                        <option value="all">Todos Status</option>
+                                        <option value="Pendente">Pendentes</option>
+                                        <option value="Concluído">Concluídos</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* LIST */}
+                            {crmLoading ? (
+                                <div className="py-20 text-center">
+                                    <Loader2 className="w-10 h-10 animate-spin text-blue-950 mx-auto mb-4" />
+                                    <p className="text-gray-500 font-medium">Carregando atendimentos...</p>
+                                </div>
+                            ) : filteredCrmAttendances.length === 0 ? (
+                                <div className="py-20 text-center bg-white rounded-3xl border border-dashed border-gray-300">
+                                    <HeartHandshake className="w-16 h-16 text-gray-200 mx-auto mb-4" />
+                                    <h3 className="text-gray-900 font-bold text-lg">Nenhum registro encontrado</h3>
+                                    <p className="text-gray-500">Comece registrando um novo atendimento pedagógico.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {filteredCrmAttendances.map(a => (
+                                        <div key={a.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:border-blue-200 transition-all shadow-sm hover:shadow-md">
+                                            <div className="p-5">
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-xs border border-blue-100">
+                                                            {a.studentName.substring(0, 2).toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-bold text-gray-900">{a.studentName}</h4>
+                                                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                                                                {a.gradeLevel} • Turma {a.schoolClass} • {SHIFT_LABELS[a.shift as SchoolShift] || a.shift}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); toggleCrmStatus(a); }}
+                                                            className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all ${a.status === 'Concluído' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}
+                                                        >
+                                                            {a.status}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteCrmAttendance(a.id)}
+                                                            className="p-1.5 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                            title="Excluir Registro"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-3 md:pl-13 pl-0">
+                                                    <div className="flex items-start gap-2">
+                                                        <ClipboardList className="w-4 h-4 text-blue-950 mt-0.5 shrink-0" />
+                                                        <p className="text-sm text-gray-700 font-medium"><span className="text-gray-400 font-bold mr-2">PAUTA:</span> {a.topic}</p>
+                                                    </div>
+                                                    {a.agreements && (
+                                                        <div className="flex items-start gap-2 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                                            <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                                                            <p className="text-sm text-gray-700 italic"><span className="text-gray-400 font-bold not-italic mr-2">COMBINADOS:</span> {a.agreements}</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-3">
+                                                <div className="flex items-center gap-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                                    <span className="flex items-center gap-1"><CalendarIcon className="w-3.5 h-3.5" /> {new Date(a.date).toLocaleDateString()}</span>
+                                                    {a.followUpDate && (
+                                                        <span className="flex items-center gap-1 text-orange-600 font-black"><Clock className="w-3.5 h-3.5" /> RETORNO: {new Date(a.followUpDate).toLocaleDateString()}</span>
+                                                    )}
+                                                </div>
+                                                <div className="text-[10px] text-gray-400 font-medium italic">
+                                                    Registrado por: {a.authorName}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>
@@ -2153,6 +2471,138 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                     ))}
                                 </div>
                             )}
+                        </div>
+                    )}
+
+                    {/* CRM MODAL */}
+                    {isCrmModalOpen && (
+                        <div className="fixed inset-0 bg-blue-950/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                            <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+                                {/* Header */}
+                                <div className="p-6 bg-white border-b border-gray-100 flex justify-between items-center">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                                            <HeartHandshake className="w-6 h-6 text-blue-950" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-gray-900 text-lg">Registro de Atendimento</h3>
+                                            <p className="text-gray-500 text-xs text-medium">Preencha os detalhes do encontro</p>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setIsCrmModalOpen(false)} className="p-2 hover:bg-gray-100 text-gray-400 rounded-full transition-colors">
+                                        <X className="w-6 h-6" />
+                                    </button>
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto p-8 space-y-6">
+                                    {/* Student Search */}
+                                    <div className="space-y-2 relative">
+                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Aluno</label>
+                                        {!crmSelectedStudent ? (
+                                            <div className="relative">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Digite o nome ou Código do aluno..."
+                                                    value={crmStudentSearch}
+                                                    onChange={(e) => handleSearchStudentsForCrm(e.target.value)}
+                                                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-950 outline-none transition-all"
+                                                />
+                                                {crmMatchingStudents.length > 0 && (
+                                                    <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-100 rounded-xl shadow-xl z-50 overflow-hidden ring-1 ring-black ring-opacity-5">
+                                                        {crmMatchingStudents.map(student => (
+                                                            <button
+                                                                key={student.id}
+                                                                onClick={() => {
+                                                                    setCrmSelectedStudent(student);
+                                                                    setCrmMatchingStudents([]);
+                                                                }}
+                                                                className="w-full p-3 flex items-center justify-between hover:bg-blue-50 transition-colors text-left border-b border-gray-50 last:border-0"
+                                                            >
+                                                                <div>
+                                                                    <p className="font-bold text-gray-800 text-sm">{student.name}</p>
+                                                                    <p className="text-[10px] text-gray-400">{student.gradeLevel} • {student.schoolClass}</p>
+                                                                </div>
+                                                                <Plus className="w-4 h-4 text-blue-950" />
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-blue-950 text-white flex items-center justify-center font-bold text-xs">
+                                                        {crmSelectedStudent.name.substring(0, 2).toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-blue-950 text-sm">{crmSelectedStudent.name}</p>
+                                                        <p className="text-[10px] text-blue-600 font-bold uppercase">{crmSelectedStudent.gradeLevel} • {crmSelectedStudent.schoolClass}</p>
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => setCrmSelectedStudent(null)} className="text-blue-950 hover:bg-blue-100 p-1.5 rounded-full transition-colors">
+                                                    <Edit className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Data do Atendimento</label>
+                                            <input
+                                                type="date"
+                                                value={crmForm.date}
+                                                onChange={(e) => setCrmForm({ ...crmForm, date: e.target.value })}
+                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-950 outline-none transition-all font-bold text-gray-700"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Data de Retorno (Opcional)</label>
+                                            <input
+                                                type="date"
+                                                value={crmForm.followUpDate}
+                                                onChange={(e) => setCrmForm({ ...crmForm, followUpDate: e.target.value })}
+                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-950 outline-none transition-all font-bold text-gray-700"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Pauta / Tópico</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Ex: Reunião sobre desempenho, Reclamação..."
+                                            value={crmForm.topic}
+                                            onChange={(e) => setCrmForm({ ...crmForm, topic: e.target.value })}
+                                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-950 outline-none transition-all font-bold text-gray-700"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Combinados / Resoluções</label>
+                                        <textarea
+                                            rows={4}
+                                            placeholder="Descreva o que foi acordado com o aluno/família..."
+                                            value={crmForm.agreements}
+                                            onChange={(e) => setCrmForm({ ...crmForm, agreements: e.target.value })}
+                                            className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-950 outline-none transition-all font-medium text-gray-700 resize-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Footer */}
+                                <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                                    <Button variant="secondary" onClick={() => setIsCrmModalOpen(false)}>Cancelar</Button>
+                                    <Button
+                                        onClick={handleSaveCrmAttendance}
+                                        disabled={crmLoading}
+                                        className="!bg-blue-950 hover:!bg-black text-white font-bold px-8 py-2.5 rounded-xl shadow-lg flex items-center gap-2"
+                                    >
+                                        {crmLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5" /> Salvar Registro</>}
+                                    </Button>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </main>

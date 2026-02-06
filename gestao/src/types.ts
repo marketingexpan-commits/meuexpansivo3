@@ -157,6 +157,7 @@ export interface AcademicSubject {
   order: number;
   shortName?: string; // Sigla antiga, manter por compatibilidade
   weeklyHours?: Record<string, number>; // Mapping: gradeName -> hoursPerWeek
+  classDuration?: number; // In minutes, default usually 60 or 50
 }
 
 export interface AcademicSegment {
