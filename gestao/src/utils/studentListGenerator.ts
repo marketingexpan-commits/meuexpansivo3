@@ -111,7 +111,7 @@ export const generateStudentList = (students: Student[], groupTitle: string, typ
                     <img src="${logoUrl}" alt="Logo">
                 </div>
                 <div class="school-text">
-                    <h1>Expansivo Rede de Ensino</h1>
+                    <h1>EXPANSIVO REDE DE ENSINO</h1>
                     <p><strong>Unidade ${unitName}</strong></p>
                     <p>${unitInfo.address}</p>
                     <p>CNPJ: ${unitInfo.cnpj} | Tel: ${unitInfo.phone}</p>

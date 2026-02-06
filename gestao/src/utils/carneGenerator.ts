@@ -150,7 +150,7 @@ export const generateCarne = (student: Student, installments: Installment[], uni
                                          <img src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png" class="logo-img" style="width: 100%; height: auto; object-fit: contain;">
                                     </div>
                                     <div style="flex:1; margin-left: 8px; display: flex; flex-direction: column; justify-content: center;">
-                                        <div style="font-weight:800; font-size:11px; text-transform:uppercase; line-height: 1.1;">Expansivo Rede de Ensino</div>
+                                        <div style="font-weight:800; font-size:11px; text-transform:uppercase; line-height: 1.1;">EXPANSIVO REDE DE ENSINO</div>
                                         <div style="font-weight:700; font-size:8px; margin-bottom:1px; text-transform: uppercase;">Unidade: ${unitDetail.fullName.replace('Expansivo - ', '')}</div>
                                         <div style="font-size:6px; color:#444; line-height: 1.1;">
                                             ${unitInfo.address}${unitInfo.district ? ` - ${unitInfo.district}` : ''}${unitInfo.city ? `, ${unitInfo.city}` : ''}${unitInfo.uf ? ` - ${unitInfo.uf}` : ''}${unitInfo.cep ? ` - CEP: ${unitInfo.cep}` : ''}

@@ -682,8 +682,8 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                     </div>
 
                     <div className="mt-8 pt-4 border-t border-gray-100 flex justify-between items-end">
-                        <div className="text-[8px] text-gray-400 italic font-medium">
-                            Rede de Ensino Expansivo - Excelência em Educação<br />
+                        <div className="text-[8px] text-gray-400 italic font-medium uppercase tracking-widest">
+                            EXPANSIVO REDE DE ENSINO - Excelência em Educação<br />
                             Este documento é para fins informativos e pode sofrer alterações.
                         </div>
                         <div className="w-32 h-1 bg-blue-900/10 rounded-xl"></div>

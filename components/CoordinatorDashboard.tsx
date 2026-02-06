@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
+import { ScheduleTimeline } from './ScheduleTimeline';
 
 
 
@@ -110,7 +111,11 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     }, [academicSettings]);
 
     // NEW: Navigation State
-    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages' | 'attendance' | 'crm'>('menu');
+    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages' | 'attendance' | 'crm' | 'schedule'>('menu');
+    // --- SCHEDULE STATE ---
+    const [scheduleGrade, setScheduleGrade] = useState('');
+    const [scheduleClass, setScheduleClass] = useState('');
+    const [scheduleShift, setScheduleShift] = useState('');
     // --- OCCURRENCE HISTORY STATE ---
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [historyOccurrences, setHistoryOccurrences] = useState<Occurrence[]>([]);
@@ -1041,17 +1046,17 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     }, [messages, messageFilter]);
 
     return (
-        <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans">
+        <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans transition-all duration-500 ease-in-out print:min-h-0 print:h-auto print:bg-white print:p-0 print:block print:overflow-visible">
             <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${activeTab === 'menu' ? 'max-w-2xl' :
                 (activeTab === 'occurrences' || activeTab === 'messages') ? 'max-w-3xl' :
                     'max-w-5xl'
-                }`}>
+                } print:min-h-0 print:h-auto print:shadow-none print:rounded-none print:max-w-none print:overflow-visible print:w-full print:inline-block`}>
 
                 {/* MAIN CONTENT */}
-                <main className="flex-1 w-full p-4 md:p-8 bg-gray-50/50 overflow-y-auto">
+                <main className="flex-1 w-full p-4 md:p-8 bg-gray-50/50 overflow-y-auto print:p-0 print:overflow-visible print:bg-white">
 
                     {/* Welcome Card with inline header info */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-6">
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-6 print:hidden">
                         {/* Compact top bar with logout */}
                         <div className="flex justify-between items-center mb-3 pb-2 border-b border-gray-100">
                             <div className="flex items-center gap-2 text-base text-gray-600">
@@ -1257,6 +1262,17 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                     <HeartHandshake className="w-6 h-6 text-blue-950" />
                                 </div>
                                 <h3 className="font-bold text-gray-800 text-sm text-center">Atendimentos (CRM)</h3>
+                            </button>
+
+                            {/* GRADE HORÁRIA CARD */}
+                            <button
+                                onClick={() => setActiveTab('schedule')}
+                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                            >
+                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                    <Clock className="w-6 h-6 text-blue-950" />
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-sm text-center">Grade Horária</h3>
                             </button>
                         </div>
                     )}
@@ -2617,6 +2633,92 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                         {crmLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5" /> Salvar Registro</>}
                                     </Button>
                                 </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* SCHEDULE VIEW */}
+                    {activeTab === 'schedule' && (
+                        <div className="animate-fade-in-up">
+                            <h3 className="text-xl font-bold mb-4 text-gray-800 border-b border-gray-200 pb-2 flex items-center gap-2 print:hidden">
+                                <Clock className="w-6 h-6 text-blue-950" />
+                                Consulta de Grades Horárias
+                            </h3>
+
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8 print:p-0 print:border-none print:shadow-none print:bg-transparent">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 print:hidden">
+                                    {/* GRADE FILTER */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Selecione a Série</label>
+                                        <select
+                                            value={scheduleGrade}
+                                            onChange={(e) => setScheduleGrade(e.target.value)}
+                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
+                                        >
+                                            <option value="">-- Selecione --</option>
+                                            {academicGrades
+                                                .filter(g => g.isActive)
+                                                .filter(g => {
+                                                    // Filter based on coordinator competence
+                                                    if (coordinator.segment === CoordinationSegment.GERAL || !coordinator.segment) return true;
+                                                    const infantilFund1 = ['seg_infantil', 'seg_fund_1'];
+                                                    const fund2Medio = ['seg_fund_2', 'seg_medio'];
+                                                    if (coordinator.segment === CoordinationSegment.INFANTIL_FUND1) return infantilFund1.includes(g.segmentId);
+                                                    return fund2Medio.includes(g.segmentId);
+                                                })
+                                                .sort((a, b) => a.order - b.order)
+                                                .map(g => (
+                                                    <option key={g.id} value={g.name || (g as any).label}>{g.name || (g as any).label}</option>
+                                                ))
+                                            }
+                                        </select>
+                                    </div>
+
+                                    {/* CLASS FILTER */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Selecione a Turma</label>
+                                        <select
+                                            value={scheduleClass}
+                                            onChange={(e) => setScheduleClass(e.target.value)}
+                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
+                                        >
+                                            <option value="">-- Selecione --</option>
+                                            {SCHOOL_CLASSES_OPTIONS.map(c => (
+                                                <option key={c.value} value={c.value}>{c.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* SHIFT FILTER */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Selecione o Turno</label>
+                                        <select
+                                            value={scheduleShift}
+                                            onChange={(e) => setScheduleShift(e.target.value)}
+                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
+                                        >
+                                            <option value="">-- Selecione --</option>
+                                            {SCHOOL_SHIFTS_LIST.map(s => (
+                                                <option key={s} value={s}>{SHIFT_LABELS[s as SchoolShift] || s}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {scheduleGrade && scheduleClass && scheduleShift ? (
+                                    <ScheduleTimeline
+                                        unit={coordinator.unit || ''}
+                                        grade={scheduleGrade}
+                                        schoolClass={scheduleClass}
+                                        shift={scheduleShift}
+                                        title={`Grade Horária - ${coordinator.unit}`}
+                                    />
+                                ) : (
+                                    <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                                        <Clock className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                                        <p className="text-gray-500 font-medium">Selecione Série, Turma e Turno para visualizar a grade.</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

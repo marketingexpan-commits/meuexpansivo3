@@ -262,7 +262,7 @@ export const generateSchoolCalendar = (
                         <img src="${logoUrl}" alt="Logo">
                     </div>
                     <div class="school-text">
-                        <h1>Expansivo Rede de Ensino</h1>
+                        <h1>EXPANSIVO REDE DE ENSINO</h1>
                         ${unitInfo.professionalTitle ? `<p style="margin:0; font-size: 8px; font-weight: 700; color: #475569; text-transform: uppercase;">${unitInfo.professionalTitle}</p>` : ''}
                         <p style="color: #1e3a8a; font-weight: 700; text-transform: uppercase;">Unidade: ${unitInfo.name.replace('Expansivo - ', '')}</p>
                         <p>${unitInfo.address}, ${unitInfo.district} - ${unitInfo.city}/${unitInfo.uf}</p>
@@ -319,7 +319,7 @@ export const generateSchoolCalendar = (
 
                 <div class="footer">
                     Documento gerado em ${formattedDate} para fins informativos. <br>
-                    Expansivo Rede de Ensino - Educando com Excelência.
+                    EXPANSIVO REDE DE ENSINO - Educando com Excelência.
                 </div>
             </div>
             <script>

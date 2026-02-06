@@ -31,7 +31,7 @@ export function generateReceipt(m: any, unitDetail: SchoolUnitDetail) {
                         <img src="${logoUrl}" alt="Logo">
                     </div>
                     <div class="school-text">
-                        <h1>Expansivo Rede de Ensino</h1>
+                        <h1>EXPANSIVO REDE DE ENSINO</h1>
                         ${(unitInfo as any).professionalTitle ? `<p style="margin:0; font-size: 8px; font-weight: 700; color: #475569; text-transform: uppercase;">${(unitInfo as any).professionalTitle}</p>` : ''}
                         <p style="font-weight: 700; color: #0f172a; margin-bottom: 2px; text-transform: uppercase;">UNIDADE: ${unitInfo.fullName.replace('Expansivo - ', '')}</p>
                         <p style="font-size: 10px; line-height: 1.2;">

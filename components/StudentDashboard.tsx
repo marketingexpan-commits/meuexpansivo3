@@ -1322,7 +1322,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         </div>
                     )}
 
-                    {currentView === 'schedule' && <ScheduleTimeline student={student} />}
+                    {currentView === 'schedule' && (
+                        <ScheduleTimeline
+                            unit={student.unit}
+                            grade={student.gradeLevel}
+                            schoolClass={student.schoolClass}
+                            shift={student.shift}
+                            studentName={student.name}
+                        />
+                    )}
 
 
                     {currentView === 'materials' && (

@@ -56,7 +56,7 @@ export function StudentEnrollmentPrint({ student, unitDetail, isBlank = false }:
                             <img src={logoUrl} alt="Logo Expansivo" className="max-w-full max-h-full object-contain" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-black uppercase text-black leading-tight">Expansivo Rede de Ensino</h1>
+                            <h1 className="text-lg font-black uppercase text-black leading-tight">EXPANSIVO REDE DE ENSINO</h1>
                             {(unitInfo as any).professionalTitle && <p className="text-[7px] font-bold text-gray-500 uppercase tracking-widest -mt-1">{(unitInfo as any).professionalTitle}</p>}
                             <p className="text-[9px] font-bold text-black/70 uppercase tracking-wider">Unidade: {unitDetail?.fullName?.replace('Expansivo - ', '') || student.unit || '...'}</p>
                             <p className="text-[8px] text-gray-700 leading-tight max-w-sm">

@@ -190,7 +190,7 @@ export function generateSchoolDeclaration(type: DeclarationType, data: Declarati
                         <img src="${logoUrl}" alt="Logo">
                     </div>
                     <div class="school-text">
-                        <h1>Expansivo Rede de Ensino</h1>
+                        <h1>EXPANSIVO REDE DE ENSINO</h1>
                         ${(unitInfo as any).professionalTitle ? `<p style="margin:0; font-size: 8px; font-weight: 700; color: #475569; text-transform: uppercase;">${(unitInfo as any).professionalTitle}</p>` : ''}
                         <p style="color: #1e3a8a; font-weight: 700; text-transform: uppercase;">Unidade: ${unitInfo.fullName.replace('Expansivo - ', '')}</p>
                         <p>
@@ -220,7 +220,7 @@ export function generateSchoolDeclaration(type: DeclarationType, data: Declarati
                 <div class="signature-section">
                     <div class="signature-line"></div>
                     <p>${unitDetail.secretaryName || 'Secretaria Escolar'}</p>
-                    <span>${unitDetail.secretaryName ? 'Secretaria Escolar - ' : ''}Expansivo Rede de Ensino</span>
+                    <span>${unitDetail.secretaryName ? 'Secretaria Escolar - ' : ''}EXPANSIVO REDE DE ENSINO</span>
                 </div>
             </div>
             <script>

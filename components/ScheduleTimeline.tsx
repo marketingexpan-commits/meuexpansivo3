@@ -1,12 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebaseConfig';
-import { ClassSchedule, ScheduleItem, Student, SchoolUnit, SchoolShift, UNIT_LABELS, SHIFT_LABELS, AcademicSubject } from '../types';
-import { parseGradeLevel } from '../src/utils/academicUtils';
-import { Clock, Calendar, ChevronLeft, ChevronRight, Info, Printer } from 'lucide-react';
+import { ClassSchedule, ScheduleItem, SchoolUnit, SchoolShift, UNIT_LABELS, SHIFT_LABELS, AcademicSubject } from '../types';
+import { parseGradeLevel, normalizeUnit, normalizeShift } from '../src/utils/academicUtils';
+import { Clock, Calendar, Printer, Info, Mail, Phone, MapPin } from 'lucide-react';
 import { useAcademicData } from '../hooks/useAcademicData';
+import { UNITS_DATA, DEFAULT_UNIT_DATA } from '../src/constants';
+import { SchoolLogo } from './SchoolLogo';
 
 interface ScheduleTimelineProps {
-    student: Student;
+    unit: string;
+    grade: string;
+    schoolClass: string;
+    shift: string;
+    studentName?: string; // Optional: for display in header
+    title?: string; // Optional override for print title
 }
 
 const DAYS_OF_WEEK = [
@@ -18,7 +25,14 @@ const DAYS_OF_WEEK = [
     { id: 6, name: 'Sábado', short: 'SÁB' }
 ];
 
-export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({ student }) => {
+export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
+    unit,
+    grade,
+    schoolClass,
+    shift,
+    studentName,
+    title
+}) => {
     const { subjects: academicSubjects } = useAcademicData();
     const [selectedDay, setSelectedDay] = useState<number>(new Date().getDay() === 0 ? 1 : new Date().getDay());
     const [schedule, setSchedule] = useState<ClassSchedule | null>(null);
@@ -26,36 +40,33 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({ student }) =
     const [fullScheduleForPrint, setFullScheduleForPrint] = useState<ClassSchedule[] | null>(null);
 
     // HELPER: Normalize inputs to ensure we query with Technical IDs (what is in DB)
-    // but handle legacy "Matutino" strings if they exist in student object.
-    const normalizedUnit = Object.values(SchoolUnit).includes(student.unit as SchoolUnit)
-        ? student.unit
-        : (Object.keys(UNIT_LABELS).find(key => UNIT_LABELS[key as SchoolUnit] === student.unit) || student.unit);
+    const normalizedUnit = useMemo(() => normalizeUnit(unit), [unit]);
+    const normalizedShift = useMemo(() => normalizeShift(shift), [shift]);
 
-    const normalizedShift = Object.values(SchoolShift).includes(student.shift as SchoolShift)
-        ? student.shift
-        : (student.shift === 'Matutino' ? SchoolShift.MORNING :
-            student.shift === 'Vespertino' ? SchoolShift.AFTERNOON : student.shift);
+    // Data for the school unit
+    const unitData = useMemo(() => {
+        const label = UNIT_LABELS[normalizedUnit as SchoolUnit];
+        return UNITS_DATA[label] || DEFAULT_UNIT_DATA;
+    }, [normalizedUnit]);
 
     // HELPER: Normalize Grade Level (e.g. "8º Ano - Fundamental II" -> "8º Ano")
-    // We query for BOTH to be safe.
-    const parsedGradeInfo = parseGradeLevel(student.gradeLevel);
-    const possibleGrades = Array.from(new Set([student.gradeLevel, parsedGradeInfo.grade]));
+    const parsedGradeInfo = useMemo(() => parseGradeLevel(grade), [grade]);
+    const possibleGrades = useMemo(() => Array.from(new Set([grade, parsedGradeInfo.grade])), [grade, parsedGradeInfo.grade]);
 
     useEffect(() => {
-        fetchSchedule();
-    }, [selectedDay, normalizedUnit, student.gradeLevel, student.schoolClass, normalizedShift]);
-
+        if (normalizedUnit && grade && schoolClass && normalizedShift) {
+            fetchSchedule();
+        }
+    }, [selectedDay, normalizedUnit, grade, schoolClass, normalizedShift]);
 
 
     const fetchSchedule = async () => {
         setLoading(true);
         try {
-            // STRICT QUERY: We trust that normalizedUnit and normalizedShift are the correct Technical IDs.
-            // Data in Firestore MUST match these IDs.
             const snapshot = await db.collection('class_schedules')
                 .where('schoolId', '==', normalizedUnit)
                 .where('grade', 'in', possibleGrades)
-                .where('class', '==', student.schoolClass)
+                .where('class', '==', schoolClass)
                 .where('shift', '==', normalizedShift)
                 .where('dayOfWeek', '==', selectedDay)
                 .limit(1)
@@ -67,7 +78,8 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({ student }) =
                 setSchedule(null);
             }
         } catch (error) {
-            console.error("Error fetching student schedule:", error);
+            console.error("Error fetching schedule:", error);
+            setSchedule(null);
         } finally {
             setLoading(false);
         }
@@ -79,7 +91,7 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({ student }) =
             const snapshot = await db.collection('class_schedules')
                 .where('schoolId', '==', normalizedUnit)
                 .where('grade', 'in', possibleGrades)
-                .where('class', '==', student.schoolClass)
+                .where('class', '==', schoolClass)
                 .where('shift', '==', normalizedShift)
                 .get();
 
@@ -104,6 +116,21 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({ student }) =
             setLoading(false);
         }
     };
+
+    // DYNAMIC SCALING LOGIC:
+    const printDensity = useMemo(() => {
+        if (!fullScheduleForPrint) return 'normal';
+        const maxItems = Math.max(...fullScheduleForPrint.map(s => s.items?.length || 0));
+        if (maxItems > 10) return 'ultra-tight';
+        if (maxItems > 8) return 'tight';
+        return 'normal';
+    }, [fullScheduleForPrint]);
+
+    const densityStyles = {
+        'ultra-tight': { itemPadding: 'py-1 px-1.5', fontSize: 'text-[9px]', timeSize: 'text-[8px]', gap: 'gap-1' },
+        'tight': { itemPadding: 'py-1.5 px-2', fontSize: 'text-[10px]', timeSize: 'text-[9px]', gap: 'gap-2' },
+        'normal': { itemPadding: 'py-2 px-3', fontSize: 'text-xs', timeSize: 'text-[10px]', gap: 'gap-3' }
+    }[printDensity];
 
     return (
         <div className="animate-fade-in text-left">
@@ -196,56 +223,117 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({ student }) =
 
             {/* Print-only View */}
             {fullScheduleForPrint && (
-                <div className="hidden print:block fixed inset-0 bg-white z-[200] p-8 text-left">
-                    <div className="flex justify-between items-center mb-8 border-b-2 border-blue-950 pb-6">
-                        <div>
-                            <h1 className="text-3xl font-black text-blue-950 uppercase tracking-tighter mb-1">Grade Horária</h1>
-                            <p className="text-lg font-bold text-gray-700">
-                                {student.name}
-                            </p>
-                            <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                                {student.gradeLevel} - Turma {student.schoolClass} ({SHIFT_LABELS[normalizedShift as SchoolShift] || student.shift})
-                            </p>
+                <div className="hidden print:block absolute top-0 left-0 w-full bg-white z-[200] p-6 text-left overflow-visible min-h-screen">
+                    {/* PRINT STYLES */}
+                    <style>{`
+                        @media print {
+                            @page { size: landscape; margin: 5mm; }
+                            body { margin: 0; padding: 0; background: white; }
+                        }
+                    `}</style>
+
+                    <div className="flex justify-between items-start mb-4 border-b-2 border-blue-950 pb-4">
+                        <div className="flex items-center gap-4 flex-1">
+                            <div className="w-16">
+                                <SchoolLogo variant="header" />
+                            </div>
+                            <div className="flex-1">
+                                <h2 className="text-2xl font-extrabold text-blue-950 uppercase tracking-wide leading-none mb-1">EXPANSIVO REDE DE ENSINO</h2>
+                                <h1 className="text-xl font-bold text-gray-700 uppercase tracking-tight mb-1 leading-none">Grade Horária</h1>
+                                <p className="text-sm font-bold text-gray-500 leading-tight uppercase mb-0.5">
+                                    {grade} - Turma {schoolClass} - {SHIFT_LABELS[normalizedShift as SchoolShift] || shift}
+                                </p>
+                                <div className="flex items-start gap-4 text-[9px] text-gray-400 font-bold uppercase tracking-wide">
+                                    <p className="flex items-center gap-1"><MapPin className="w-3 h-3 text-blue-900" /> {unitData.address}</p>
+                                    <p className="flex items-center gap-1"><Info className="w-3 h-3 text-blue-900" /> CNPJ: {unitData.cnpj}</p>
+                                </div>
+                            </div>
                         </div>
                         <div className="text-right">
-                            <p className="text-xs font-black text-blue-950 uppercase tracking-widest mb-1">Unidade {UNIT_LABELS[normalizedUnit as SchoolUnit] || student.unit}</p>
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Ano Letivo 2026</p>
-                            <div className="mt-2 h-1 w-full bg-blue-950/10 rounded-full"></div>
+                            <p className="text-xs font-black text-blue-950 uppercase tracking-widest leading-none mb-1">Unidade {UNIT_LABELS[normalizedUnit as SchoolUnit] || unit}</p>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ano Letivo 2026</p>
+                            <div className="mt-2 flex flex-col items-end gap-1 text-[9px] text-gray-500">
+                                {unitData.phone && <p className="flex items-center gap-1 font-bold"><Phone className="w-2.5 h-2.5" /> {unitData.phone}</p>}
+                                {unitData.email && <p className="flex items-center gap-1 lowercase"><Mail className="w-2.5 h-2.5" /> {unitData.email}</p>}
+                            </div>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-6 gap-4">
-                        {DAYS_OF_WEEK.map(day => {
-                            const daySchedule = fullScheduleForPrint.find(s => s.dayOfWeek === day.id);
-                            return (
-                                <div key={day.id} className="flex flex-col">
-                                    <div className="bg-blue-950 text-white py-2 px-3 rounded-t-xl text-center text-xs font-black uppercase mb-3 shadow-md">
-                                        {day.name}
-                                    </div>
-                                    <div className="space-y-3">
-                                        {daySchedule?.items && daySchedule.items.length > 0 ? (
-                                            daySchedule.items.map((item, idx) => (
-                                                <div key={idx} className="bg-gray-50/50 border border-gray-100 p-3 rounded-xl">
-                                                    <div className="font-black text-blue-950 text-[10px] mb-1">{item.startTime} - {item.endTime}</div>
-                                                    <div className="font-bold text-gray-800 leading-tight uppercase text-xs">{item.subject}</div>
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Column 1: Mon, Tue, Wed */}
+                        <div className="flex flex-col gap-2">
+                            {DAYS_OF_WEEK.slice(0, 3).map(day => {
+                                const daySchedule = fullScheduleForPrint.find(s => s.dayOfWeek === day.id);
+                                return (
+                                    <div key={day.id} className="flex flex-col mb-1 last:mb-0">
+                                        <div className="bg-blue-950 text-white py-1 px-2 rounded-t-lg text-center text-[9px] font-black uppercase mb-1 shadow-sm">
+                                            {day.name}
+                                        </div>
+                                        <div className={`flex flex-col ${densityStyles.gap}`}>
+                                            {daySchedule?.items && daySchedule.items.length > 0 ? (
+                                                daySchedule.items.map((item, idx) => (
+                                                    <div key={idx} className={`${densityStyles.itemPadding} bg-white border border-gray-200 rounded-lg shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)]`}>
+                                                        <div className={`font-black text-blue-950 ${densityStyles.timeSize} mb-0.5 border-b border-blue-50/50 pb-0.5`}>
+                                                            {item.startTime} - {item.endTime}
+                                                        </div>
+                                                        <div className={`font-bold text-gray-800 leading-[1.1] uppercase ${densityStyles.fontSize} break-words`}>
+                                                            {academicSubjects?.find((s: AcademicSubject) => s.id === item.subject)?.label ||
+                                                                academicSubjects?.find((s: AcademicSubject) => s.id === item.subject)?.name ||
+                                                                item.subject}
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="text-center py-2 text-gray-300 italic text-[8px] border border-dashed border-gray-100 rounded-lg">
+                                                    Sem Disciplinas
                                                 </div>
-                                            ))
-                                        ) : (
-                                            <div className="text-center py-8 text-gray-300 italic text-[10px] bg-gray-50/30 rounded-xl border border-dashed border-gray-100">
-                                                N/A
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            );
-                        })}
+                                );
+                            })}
+                        </div>
+
+                        {/* Column 2: Thu, Fri, Sat */}
+                        <div className="flex flex-col gap-2">
+                            {DAYS_OF_WEEK.slice(3, 6).map(day => {
+                                const daySchedule = fullScheduleForPrint.find(s => s.dayOfWeek === day.id);
+                                return (
+                                    <div key={day.id} className="flex flex-col mb-1 last:mb-0">
+                                        <div className="bg-blue-950 text-white py-1 px-2 rounded-t-lg text-center text-[9px] font-black uppercase mb-1 shadow-sm">
+                                            {day.name}
+                                        </div>
+                                        <div className={`flex flex-col ${densityStyles.gap}`}>
+                                            {daySchedule?.items && daySchedule.items.length > 0 ? (
+                                                daySchedule.items.map((item, idx) => (
+                                                    <div key={idx} className={`${densityStyles.itemPadding} bg-white border border-gray-200 rounded-lg shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)]`}>
+                                                        <div className={`font-black text-blue-950 ${densityStyles.timeSize} mb-0.5 border-b border-blue-50/50 pb-0.5`}>
+                                                            {item.startTime} - {item.endTime}
+                                                        </div>
+                                                        <div className={`font-bold text-gray-800 leading-[1.1] uppercase ${densityStyles.fontSize} break-words`}>
+                                                            {academicSubjects?.find((s: AcademicSubject) => s.id === item.subject)?.label ||
+                                                                academicSubjects?.find((s: AcademicSubject) => s.id === item.subject)?.name ||
+                                                                item.subject}
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="text-center py-2 text-gray-300 italic text-[8px] border border-dashed border-gray-100 rounded-lg">
+                                                    Sem Disciplinas
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
 
-                    <div className="mt-12 pt-6 border-t border-gray-100 flex justify-between items-center">
-                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest italic">
-                            Rede de Ensino Expansivo - Meu Expansivo App
+                    <div className="mt-8 pt-4 border-t border-gray-100 flex justify-between items-center opacity-60">
+                        <div className="text-[9px] text-gray-400 font-bold uppercase tracking-widest italic">
+                            EXPANSIVO REDE DE ENSINO - Meu Expansivo App
                         </div>
-                        <div className="text-[10px] text-gray-400 font-medium">
+                        <div className="text-[9px] text-gray-400 font-medium font-mono uppercase">
                             Gerado em {new Date().toLocaleDateString()} às {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
                     </div>
