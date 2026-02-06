@@ -4,7 +4,7 @@ import { db } from '../firebaseConfig';
 import { UnitContact, SchoolUnit, UNIT_LABELS, SHIFT_LABELS, CoordinationSegment, Subject, SUBJECT_LABELS, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket, SchoolMessage, MessageRecipient, CalendarEvent, ClassSchedule, PedagogicalAttendance } from '../types';
 import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, CURRICULUM_MATRIX, getCurriculumSubjects, calculateBimesterMedia, calculateFinalData, SCHOOL_CLASSES_OPTIONS } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency } from '../utils/frequency';
-import { getDynamicBimester, isClassScheduled, normalizeClass, parseGradeLevel } from '../src/utils/academicUtils';
+import { getDynamicBimester, isClassScheduled, normalizeClass, parseGradeLevel, safeParseDate } from '../src/utils/academicUtils';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 import { SchoolCalendar } from './SchoolCalendar';
@@ -2297,9 +2297,9 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                             </div>
                                             <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-3">
                                                 <div className="flex items-center gap-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                                    <span className="flex items-center gap-1"><CalendarIcon className="w-3.5 h-3.5" /> {new Date(a.date).toLocaleDateString()}</span>
+                                                    <span className="flex items-center gap-1"><CalendarIcon className="w-3.5 h-3.5" /> {safeParseDate(a.date).toLocaleDateString()}</span>
                                                     {a.followUpDate && (
-                                                        <span className="flex items-center gap-1 text-orange-600 font-black"><Clock className="w-3.5 h-3.5" /> RETORNO: {new Date(a.followUpDate).toLocaleDateString()}</span>
+                                                        <span className="flex items-center gap-1 text-orange-600 font-black"><Clock className="w-3.5 h-3.5" /> RETORNO: {safeParseDate(a.followUpDate).toLocaleDateString()}</span>
                                                     )}
                                                 </div>
                                                 <div className="text-[10px] text-gray-400 font-medium italic">

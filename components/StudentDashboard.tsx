@@ -3,7 +3,7 @@ import { useAcademicData } from '../hooks/useAcademicData';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
 import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial, Occurrence, DailyAgenda, ExamGuide, CalendarEvent, AcademicSubject, SUBJECT_LABELS, SUBJECT_SHORT_LABELS, SHIFT_LABELS, UNIT_LABELS } from '../types';
 import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
-import { getDynamicBimester, normalizeClass, normalizeShift, normalizeUnit, parseGradeLevel, calculateSchoolDays, isClassScheduled, calculateEffectiveTaughtClasses, getSubjectDurationForDay, doesEventApplyToStudent, formatDateWithTimeBr } from '../src/utils/academicUtils';
+import { getDynamicBimester, normalizeClass, normalizeShift, normalizeUnit, parseGradeLevel, calculateSchoolDays, isClassScheduled, calculateEffectiveTaughtClasses, getSubjectDurationForDay, doesEventApplyToStudent, formatDateWithTimeBr, safeParseDate } from '../src/utils/academicUtils';
 import { ACADEMIC_GRADES } from '../src/utils/academicDefaults';
 import { calculateBimesterMedia, calculateFinalData, CURRICULUM_MATRIX, getCurriculumSubjects, MOCK_CALENDAR_EVENTS } from '../constants'; // Import Sync Fix
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency, calculateBimesterGeneralFrequency, calculateTaughtClasses } from '../utils/frequency';
@@ -1490,11 +1490,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                         )}
                                                                     </div>
                                                                     <h3 className="font-bold text-xl text-gray-800">{guide.title}</h3>
-                                                                    <p className="text-sm text-gray-500">{new Date(guide.examDate + 'T12:00:00').toLocaleDateString()} • {guide.teacherName}</p>
+                                                                    <p className="text-sm text-gray-500">{safeParseDate(guide.examDate).toLocaleDateString()} • {guide.teacherName}</p>
                                                                 </div>
                                                                 <div className="text-center bg-blue-50 p-3 rounded-lg min-w-[80px]">
-                                                                    <span className="block text-blue-950 font-bold text-2xl leading-none">{new Date(guide.examDate + 'T12:00:00').getDate()}</span>
-                                                                    <span className="block text-blue-800 text-[10px] uppercase font-bold">{new Date(guide.examDate + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</span>
+                                                                    <span className="block text-blue-950 font-bold text-2xl leading-none">{safeParseDate(guide.examDate).getDate()}</span>
+                                                                    <span className="block text-blue-800 text-[10px] uppercase font-bold">{safeParseDate(guide.examDate).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</span>
                                                                 </div>
                                                             </div>
 
@@ -2556,7 +2556,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             <div className="flex justify-between items-start mb-2">
                                                 <div>
                                                     <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 bg-gray-100 px-2 py-0.5 rounded mr-2">{occ.category}</span>
-                                                    <span className="text-xs text-gray-400">{new Date(occ.date).toLocaleDateString()}</span>
+                                                    <span className="text-xs text-gray-400">{safeParseDate(occ.date).toLocaleDateString()}</span>
                                                 </div>
                                                 <div className="text-right">
                                                     <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider block">Coordenador Pedagógico</span>

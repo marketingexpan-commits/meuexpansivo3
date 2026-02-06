@@ -23,6 +23,16 @@ export const getBimesterFromDate = (dateStr: string): 1 | 2 | 3 | 4 => {
 };
 
 /**
+ * Parses a YYYY-MM-DD string into a Date object at exactly 00:00:00 in LOCAL time.
+ * Avoids off-by-one errors caused by UTC-sensitive parsing.
+ */
+export const safeParseDate = (dateStr: string): Date => {
+    if (!dateStr) return new Date();
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day, 0, 0, 0);
+};
+
+/**
  * Returns the bimester for a given date based on dynamic settings.
  */
 export const getDynamicBimester = (dateStr: string, settings?: AcademicSettings | null): number => {

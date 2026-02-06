@@ -23,7 +23,7 @@ import { db, storage } from '../firebaseConfig';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 import { getAttendanceBreakdown, AttendanceBreakdown } from '../src/utils/attendanceUtils';
-import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, parseGradeLevel, normalizeClass, normalizeShift, normalizeUnit, calculateSchoolDays, isClassScheduled, getSubjectDurationForDay, formatDateWithTimeBr } from '../src/utils/academicUtils';
+import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, parseGradeLevel, normalizeClass, normalizeShift, normalizeUnit, calculateSchoolDays, isClassScheduled, getSubjectDurationForDay, formatDateWithTimeBr, safeParseDate } from '../src/utils/academicUtils';
 import { calculateBimesterMedia, calculateFinalData, getCurriculumSubjects, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST, EARLY_CHILDHOOD_REPORT_TEMPLATE, CURRICULUM_MATRIX, ACADEMIC_GRADES } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateTaughtClasses } from '../utils/frequency';
 import { getSubjectLabel } from '../utils/subjectUtils';
@@ -1918,7 +1918,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                 <div className="flex justify-between items-start">
                                                     <div>
                                                         <h3 className="font-bold text-gray-800 text-lg">{guide.title}</h3>
-                                                        <p className="text-sm font-semibold text-orange-600 mb-2">Data da Prova: {new Date(guide.examDate + 'T12:00:00').toLocaleDateString()}</p>
+                                                        <p className="text-sm font-semibold text-orange-600 mb-2">Data da Prova: {safeParseDate(guide.examDate).toLocaleDateString()}</p>
                                                         <div className="text-sm text-gray-600 space-y-1">
                                                             <p><span className="font-medium">Disciplina:</span> {getSubjectLabel(guide.subject, academicSubjects)}</p>
                                                             <p><span className="font-medium">Turma:</span> {guide.gradeLevel} - {guide.schoolClass} ({SHIFT_LABELS[guide.shift as SchoolShift] || guide.shift})</p>
@@ -1974,7 +1974,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                     <div className="flex flex-col md:flex-row justify-between md:items-center border-b border-gray-100 pb-4">
                                         <h3 className="text-2xl font-bold text-gray-800">{viewingGuide.title}</h3>
                                         <span className="text-orange-600 font-bold bg-orange-50 px-3 py-1 rounded-full text-sm border border-orange-100 mt-2 md:mt-0 w-fit">
-                                            {new Date(viewingGuide.examDate).toLocaleDateString()}
+                                            {safeParseDate(viewingGuide.examDate).toLocaleDateString()}
                                         </span>
                                     </div>
 
