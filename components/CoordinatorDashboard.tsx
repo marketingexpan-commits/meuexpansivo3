@@ -80,6 +80,20 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     // --- ACADEMIC DATA ---
     const { segments: academicSegments, grades: academicGrades, subjects: academicSubjects, loading: loadingAcademic } = useAcademicData();
 
+    // NEW: Filtered segments based on coordinator competence
+    const filteredSegments = useMemo(() => {
+        if (!academicSegments.length) return [];
+        if (coordinator.segment === CoordinationSegment.GERAL || !coordinator.segment) {
+            return academicSegments;
+        }
+
+        const allowedIds = coordinator.segment === CoordinationSegment.INFANTIL_FUND1
+            ? ['seg_infantil', 'seg_fund_1']
+            : ['seg_fund_2', 'seg_medio'];
+
+        return academicSegments.filter(s => allowedIds.includes(s.id));
+    }, [academicSegments, coordinator.segment]);
+
     // --- STATE ---
 
     const [quickClassFilter, setQuickClassFilter] = useState<string>('all');
@@ -1678,8 +1692,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                             onChange={(e) => setOccFilters({ ...occFilters, level: e.target.value, grade: '' })}
                                                         >
                                                             <option value="">Selecione o nível</option>
-                                                            {academicSegments.map(s => (
-                                                                <option key={s.id} value={s.name}>{s.name}</option>
+                                                            {filteredSegments.map(s => (
+                                                                <option key={s.id} value={s.id}>{s.name}</option>
                                                             ))}
                                                         </select>
                                                     </div>
@@ -1693,8 +1707,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                         >
                                                             <option value="">Selecione a série</option>
                                                             {occFilters.level && academicGrades.filter(g => {
-                                                                const segment = academicSegments.find(s => s.name === occFilters.level);
-                                                                return segment && g.segmentId === segment.id;
+                                                                return g.segmentId === occFilters.level;
                                                             }).map(grade => (
                                                                 <option key={grade.id} value={grade.id}>{grade.name}</option>
                                                             ))}
