@@ -696,9 +696,11 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
     // 1. Helper to Filter Grades based on Segment
     const availableGradesForAttendance = useMemo(() => {
-        if (!coordinator.segment || coordinator.segment === 'geral') return academicGrades;
+        if (!coordinator.segment || coordinator.segment === 'geral') return academicGrades.filter(g => g.isActive);
 
         return academicGrades.filter(g => {
+            if (!g.isActive) return false;
+
             if (coordinator.segment === 'infantil_fund1') {
                 return g.segmentId === 'seg_infantil' || g.segmentId === 'seg_fund_1';
             }
@@ -1707,7 +1709,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                         >
                                                             <option value="">Selecione a série</option>
                                                             {occFilters.level && academicGrades.filter(g => {
-                                                                return g.segmentId === occFilters.level;
+                                                                return g.segmentId === occFilters.level && g.isActive;
                                                             }).map(grade => (
                                                                 <option key={grade.id} value={grade.id}>{grade.name}</option>
                                                             ))}

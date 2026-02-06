@@ -52,7 +52,9 @@ export default function Disciplinas() {
 
             // Load Grades
             const gradeSnap = await getDocs(query(collection(db, 'academic_grades'), orderBy('order', 'asc')));
-            let gradeData = gradeSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AcademicGrade));
+            let gradeData = gradeSnap.docs
+                .map(doc => ({ id: doc.id, ...doc.data() } as AcademicGrade))
+                .filter(grade => grade.isActive); // Only show active grades in Matrix
 
             // Chronological sorting based on GRADES_BY_LEVEL structure
             const flattenGradesOrder = GRADES_BY_LEVEL.flatMap(level => level.grades);

@@ -364,14 +364,16 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
         }
     };
 
-    const sortedGrades = [...grades].sort((a, b) => {
-        const indexA = GRADE_ORDER.indexOf(a.name);
-        const indexB = GRADE_ORDER.indexOf(b.name);
-        if (indexA === -1 && indexB === -1) return a.name.localeCompare(b.name);
-        if (indexA === -1) return 1;
-        if (indexB === -1) return -1;
-        return indexA - indexB;
-    });
+    const sortedGrades = [...grades]
+        .filter(g => g.isActive) // Only show active grades
+        .sort((a, b) => {
+            const indexA = GRADE_ORDER.indexOf(a.name);
+            const indexB = GRADE_ORDER.indexOf(b.name);
+            if (indexA === -1 && indexB === -1) return a.name.localeCompare(b.name);
+            if (indexA === -1) return 1;
+            if (indexB === -1) return -1;
+            return indexA - indexB;
+        });
 
     return (
         <div className="space-y-6">

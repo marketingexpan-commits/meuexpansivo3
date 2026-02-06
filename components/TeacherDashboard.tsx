@@ -360,7 +360,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         return academicGrades.filter(g => {
             // Strict ID Matching Only
             if (teacher.gradeIds?.length && g.id) {
-                return teacher.gradeIds.includes(g.id);
+                return teacher.gradeIds.includes(g.id) && g.isActive;
             }
             return false;
         });

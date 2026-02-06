@@ -11,7 +11,7 @@ import type { Student } from '../types';
 import { SCHOOL_SHIFTS, SCHOOL_CLASSES_OPTIONS } from '../utils/academicDefaults';
 import { SHIFT_LABELS, SchoolShift } from '../types';
 import { useAcademicData } from '../hooks/useAcademicData';
-import { getCurrentSchoolYear } from '../utils/academicUtils';
+import { getCurrentSchoolYear, parseGradeLevel } from '../utils/academicUtils';
 
 import { financialService } from '../services/financialService';
 import { generateCarne } from '../utils/carneGenerator';
@@ -138,7 +138,12 @@ export function Matriculas() {
                 const segmentGrades = grades.filter(g => g.segmentId === segment.id).map(g => g.name);
                 return segmentGrades.some(g => displayGrade && typeof displayGrade === 'string' && displayGrade.includes(g));
             }
-            return displayGrade && typeof displayGrade === 'string' && displayGrade.includes(filterGrade);
+
+            // Safer Logic using parseGradeLevel to avoid "Nível I" matching "Nível II"
+            if (!displayGrade || typeof displayGrade !== 'string') return false;
+
+            const { grade: parsedName } = parseGradeLevel(displayGrade);
+            return parsedName === filterGrade;
         })();
         const matchesClass = !filterClass || displayClass === filterClass;
         const matchesShift = !filterShift || displayShift === filterShift;
@@ -496,7 +501,7 @@ export function Matriculas() {
                                 options={loadingAcademic ? [{ label: 'Carregando...', value: '' }] : [
                                     ...segments.flatMap(s => [
                                         { label: `--- ${s.name.toUpperCase()} ---`, value: s.name },
-                                        ...grades.filter(g => g.segmentId === s.id).map(g => ({ label: g.name, value: g.name }))
+                                        ...grades.filter(g => g.segmentId === s.id && g.isActive).map(g => ({ label: g.name, value: g.name }))
                                     ])
                                 ]}
                             />

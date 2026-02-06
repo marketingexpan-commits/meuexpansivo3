@@ -79,7 +79,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
     const [activeTab, setActiveTab] = useState<'personal' | 'academic' | 'family' | 'filiation' | 'address' | 'health' | 'documents' | 'observations'>('personal');
     const [isLoading, setIsLoading] = useState(false);
     const [isGeneratingBoleto, setIsGeneratingBoleto] = useState(false);
-    const { loading: loadingAcademic } = useAcademicData();
+    const { loading: loadingAcademic, grades: dynamicGrades } = useAcademicData();
     const { getUnitById } = useSchoolUnits();
     const [printBlank, setPrintBlank] = useState(false);
     const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -1136,6 +1136,15 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                 options={(() => {
                                     const segment = Object.values(ACADEMIC_SEGMENTS).find(s => s.label === selectedLevel);
                                     if (!segment) return [];
+
+                                    // Prefer dynamic grades with isActive check
+                                    if (dynamicGrades && dynamicGrades.length > 0) {
+                                        return dynamicGrades
+                                            .filter(g => g.segmentId === segment.id && g.isActive)
+                                            .map(g => ({ label: g.name, value: g.name }));
+                                    }
+
+                                    // Fallback to static if dynamic not loaded (should generally use dynamic)
                                     return Object.values(ACADEMIC_GRADES)
                                         .filter(g => g.segmentId === segment.id)
                                         .map(g => ({ label: g.label, value: g.label }));
