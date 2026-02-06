@@ -29,8 +29,14 @@ import {
     CheckCircle,
     ChevronDown,
     ChevronUp,
-    Bell
+    Bell,
+    Save,
+    Edit,
+    Users
 } from 'lucide-react';
+
+import { getAttendanceBreakdown } from '../src/utils/attendanceUtils'; // Import helper
+
 
 
 
@@ -89,7 +95,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     }, [academicSettings]);
 
     // NEW: Navigation State
-    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages'>('menu');
+    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages' | 'attendance'>('menu');
     // --- OCCURRENCE HISTORY STATE ---
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [historyOccurrences, setHistoryOccurrences] = useState<Occurrence[]>([]);
@@ -241,6 +247,21 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         description: ''
     });
     const [isSavingOcc, setIsSavingOcc] = useState(false);
+
+    // --- ATTENDANCE MANAGEMENT STATE (NEW) ---
+    const [attDate, setAttDate] = useState(new Date().toLocaleDateString('en-CA'));
+    const [attGrade, setAttGrade] = useState('');
+    const [attClass, setAttClass] = useState<SchoolClass>(SchoolClass.A);
+    const [attShift, setAttShift] = useState<string>('');
+    const [attSubject, setAttSubject] = useState<string>('');
+    const [attStudents, setAttStudents] = useState<Student[]>([]);
+    const [attStatuses, setAttStatuses] = useState<Record<string, AttendanceStatus>>({});
+    const [attLessonCount, setAttLessonCount] = useState<number>(1);
+    const [attAbsenceOverrides, setAttAbsenceOverrides] = useState<Record<string, number>>({});
+    const [attLoading, setAttLoading] = useState(false);
+    const [attSaving, setAttSaving] = useState(false);
+    const [attLoadedRecord, setAttLoadedRecord] = useState<AttendanceRecord | null>(null);
+
 
     // --- CALENDAR MANAGEMENT STATE ---
 
@@ -641,6 +662,121 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
     // --- ATTENDANCE MANAGEMENT LOGIC ---
 
+    // 1. Helper to Filter Grades based on Segment
+    const availableGradesForAttendance = useMemo(() => {
+        if (!coordinator.segment || coordinator.segment === 'geral') return academicGrades;
+
+        return academicGrades.filter(g => {
+            if (coordinator.segment === 'infantil_fund1') {
+                return g.segmentId === 'seg_infantil' || g.segmentId === 'seg_fund_1';
+            }
+            if (coordinator.segment === 'fund2_medio') {
+                return g.segmentId === 'seg_fund_2' || g.segmentId === 'seg_medio';
+            }
+            return g.segmentId === coordinator.segment;
+        });
+    }, [academicGrades, coordinator.segment]);
+
+    // 2. Load Attendance Sheet
+    const handleLoadCoordinatorAttendance = async () => {
+        if (!attGrade || !attClass || !attSubject || !attShift) {
+            alert("Preencha todos os campos obrigatórios (Série, Turno, Turma, Disciplina).");
+            return;
+        }
+
+        setAttLoading(true);
+        setAttStudents([]);
+        setAttLoadedRecord(null);
+
+        try {
+            // A. Fetch Record for this Specific Date/Class/Subject
+            // ID Format: YYYY-MM-DD_UNIT_GRADE_CLASS_SUBJECT
+            const recordId = `${attDate}_${coordinator.unit}_${attGrade}_${attClass}_${attSubject}`;
+            const recordSnap = await db.collection('attendance').doc(recordId).get();
+
+            // B. Fetch Students for this Class
+            const studentsSnap = await db.collection('students')
+                .where('unit', '==', coordinator.unit)
+                .where('shift', '==', attShift) // Filter by Shift too
+                .get();
+
+            let studentsInClass = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Student[];
+
+            // Refine Filtering (Normalize Class & Strict Grade ID)
+            studentsInClass = studentsInClass.filter(s => {
+                const sGradeId = s.gradeId; // Should match attGrade (which is an ID now?) -> Wait, attGrade from select is Name or ID? 
+                // In generic selects usually Name. But let's check Grade Select implementation. 
+                // Checking academicGrades map: usually filtering by 'gradeLevel' string.
+                // Let's assume attGrade is the string Name from options.
+                // But robust filter uses ID if possible. 
+
+                // Let's standardise: attGrade is the Grade Name (string). 
+                const { grade: sGradeName } = parseGradeLevel(s.gradeLevel);
+
+                return normalizeClass(s.schoolClass) === normalizeClass(attClass) &&
+                    sGradeName === attGrade &&
+                    s.shift === attShift;
+            });
+
+            setAttStudents(studentsInClass);
+
+            if (recordSnap.exists) {
+                const record = { id: recordSnap.id, ...recordSnap.data() } as AttendanceRecord;
+                setAttLoadedRecord(record);
+                setAttStatuses(record.studentStatus || {});
+                setAttLessonCount(record.lessonCount || 1);
+                setAttAbsenceOverrides(record.studentAbsenceCount || {});
+            } else {
+                // New Sheet
+                const defaultStatuses: Record<string, AttendanceStatus> = {};
+                studentsInClass.forEach(s => { defaultStatuses[s.id] = AttendanceStatus.PRESENT; });
+
+                setAttLoadedRecord(null);
+                setAttStatuses(defaultStatuses);
+                setAttLessonCount(1);
+                setAttAbsenceOverrides({});
+            }
+
+        } catch (error) {
+            console.error("Erro ao carregar pauta:", error);
+            alert("Erro ao carregar lista de alunos.");
+        } finally {
+            setAttLoading(false);
+        }
+    };
+
+    // 3. Save Attendance Sheet
+    const handleSaveCoordinatorAttendance = async () => {
+        if (attStudents.length === 0) return;
+        setAttSaving(true);
+
+        const recordId = `${attDate}_${coordinator.unit}_${attGrade}_${attClass}_${attSubject}`;
+        const record: AttendanceRecord = {
+            id: recordId,
+            date: attDate,
+            unit: coordinator.unit as SchoolUnit,
+            gradeLevel: attGrade,
+            schoolClass: attClass,
+            teacherId: coordinator.id, // Coordinator ID as author
+            teacherName: `${coordinator.name} (Coordenação)`,
+            discipline: attSubject,
+            studentStatus: attStatuses,
+            lessonCount: attLessonCount,
+            studentAbsenceCount: attAbsenceOverrides
+        };
+
+        try {
+            await db.collection('attendance').doc(recordId).set(record);
+            alert("Frequência salva com sucesso!");
+            setAttLoadedRecord(record);
+        } catch (error) {
+            console.error("Erro ao salvar frequência:", error);
+            alert("Erro ao salvar.");
+        } finally {
+            setAttSaving(false);
+        }
+    };
+
 
     const handleMarkAsRead = async (messageId: string) => {
         try {
@@ -868,6 +1004,19 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                     <ClipboardList className="w-6 h-6 text-blue-950" />
                                 </div>
                                 <h3 className="font-bold text-gray-800 text-sm text-center">Ocorrências</h3>
+                            </button>
+
+                            <button
+                                onClick={() => setActiveTab('attendance')}
+                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                            >
+                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                    <div className="relative">
+                                        <Users className="w-6 h-6 text-blue-950" />
+                                        <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white"></div>
+                                    </div>
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-sm text-center">Frequência</h3>
                             </button>
 
 
@@ -1622,6 +1771,229 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                     )
                     }
 
+
+                    {/* ATTENDANCE VIEW (activeTab === 'attendance') */}
+                    {activeTab === 'attendance' && (
+                        <div className="space-y-6 animate-fade-in-up md:p-6 p-4">
+                            {/* Header */}
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="p-3 bg-blue-50 text-blue-950 rounded-xl shadow-sm">
+                                    <Users className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h1 className="text-2xl font-bold text-gray-800">Controle de Frequência</h1>
+                                    <p className="text-gray-500 text-sm">Gerencie a chamada diária (Permite edições retroativas).</p>
+                                </div>
+                            </div>
+
+                            {/* FILTERS CARD */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Data</label>
+                                        <input
+                                            type="date"
+                                            value={attDate}
+                                            onChange={e => setAttDate(e.target.value)}
+                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg font-medium text-gray-700 focus:ring-2 focus:ring-blue-950 outline-none transition-all hover:bg-white focus:bg-white"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Série</label>
+                                        <select
+                                            value={attGrade}
+                                            onChange={e => setAttGrade(e.target.value)}
+                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-950 transition-all hover:bg-white focus:bg-white"
+                                        >
+                                            <option value="">Selecione...</option>
+                                            {availableGradesForAttendance.map(g => (
+                                                <option key={g.id} value={g.name}>{g.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="md:col-span-1">
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Turno</label>
+                                        <select
+                                            value={attShift}
+                                            onChange={e => setAttShift(e.target.value)}
+                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-950 transition-all hover:bg-white focus:bg-white"
+                                        >
+                                            <option value="">Selecione...</option>
+                                            {SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{SHIFT_LABELS[s as SchoolShift] || s}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Turma</label>
+                                        <select
+                                            value={attClass}
+                                            onChange={e => setAttClass(e.target.value as SchoolClass)}
+                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-950 transition-all hover:bg-white focus:bg-white"
+                                        >
+                                            {SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Disciplina</label>
+                                        <select
+                                            value={attSubject}
+                                            onChange={e => setAttSubject(e.target.value)}
+                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-950 transition-all hover:bg-white focus:bg-white"
+                                        >
+                                            <option value="">Selecione...</option>
+                                            {academicSubjects?.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="mt-4 flex justify-end">
+                                    <Button
+                                        onClick={handleLoadCoordinatorAttendance}
+                                        disabled={attLoading}
+                                        className="!bg-blue-950 hover:!bg-black text-white font-bold px-8 py-2.5 shadow-lg shadow-blue-100 rounded-xl transition-all active:scale-95"
+                                    >
+                                        {attLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Buscar Pauta'}
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {/* LOADING STATE */}
+                            {attLoading && (
+                                <div className="text-center py-12">
+                                    <Loader2 className="w-10 h-10 animate-spin text-blue-950 mx-auto mb-4" />
+                                    <p className="text-gray-500 animate-pulse font-medium">Carregando lista de alunos...</p>
+                                </div>
+                            )}
+
+                            {/* LISTA DE ALUNOS */}
+                            {!attLoading && attStudents.length > 0 && (
+                                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4">
+                                    <div className="p-4 bg-gray-50 border-b border-gray-200 flex flex-col md:flex-row justify-between md:items-center gap-4">
+                                        <div>
+                                            <h3 className="font-bold text-gray-800 text-lg">Lista de Presença</h3>
+                                            <p className="text-xs text-gray-500 font-medium mt-1">
+                                                {attStudents.length} alunos encontrados • {attDate.split('-').reverse().join('/')} • {attSubject}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-3 bg-white px-3 py-2 rounded-xl border border-gray-200 shadow-sm">
+                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Aulas no Dia:</label>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => setAttLessonCount(Math.max(1, attLessonCount - 1))}
+                                                    className="w-6 h-6 rounded bg-gray-100 hover:bg-gray-200 flex items-center justify-center font-bold text-gray-600"
+                                                >-</button>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max="5"
+                                                    value={attLessonCount}
+                                                    onChange={e => setAttLessonCount(Number(e.target.value))}
+                                                    className="w-10 text-center font-bold text-gray-800 outline-none"
+                                                />
+                                                <button
+                                                    onClick={() => setAttLessonCount(Math.min(5, attLessonCount + 1))}
+                                                    className="w-6 h-6 rounded bg-gray-100 hover:bg-gray-200 flex items-center justify-center font-bold text-gray-600"
+                                                >+</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="bg-gray-50 text-gray-500 uppercase font-bold text-xs sticky top-0 z-10">
+                                                <tr>
+                                                    <th className="px-6 py-4 border-b border-gray-100">Aluno</th>
+                                                    <th className="px-6 py-4 text-center border-b border-gray-100 w-64">Status</th>
+                                                    <th className="px-6 py-4 text-center border-b border-gray-100 w-32">Faltas Reg.</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-50">
+                                                {attStudents.map(student => {
+                                                    const status = attStatuses[student.id] ?? AttendanceStatus.PRESENT;
+                                                    const absenceCount = attAbsenceOverrides[student.id] !== undefined
+                                                        ? attAbsenceOverrides[student.id]
+                                                        : (status === AttendanceStatus.ABSENT ? attLessonCount : 0);
+
+                                                    return (
+                                                        <tr key={student.id} className={`hover:bg-blue-50/30 transition-colors ${status === AttendanceStatus.ABSENT ? 'bg-red-50/30' : ''}`}>
+                                                            <td className="px-6 py-4">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${status === AttendanceStatus.ABSENT ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'}`}>
+                                                                        {student.name.substring(0, 2).toUpperCase()}
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className={`font-bold ${status === AttendanceStatus.ABSENT ? 'text-red-900' : 'text-gray-900'}`}>{student.name}</p>
+                                                                        <p className="text-[10px] text-gray-400 font-medium">RM: {student.code}</p>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-center">
+                                                                <div className="flex justify-center bg-gray-100 p-1 rounded-lg inline-flex">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setAttStatuses(prev => ({ ...prev, [student.id]: AttendanceStatus.PRESENT }));
+                                                                            setAttAbsenceOverrides(prev => {
+                                                                                const copy = { ...prev };
+                                                                                delete copy[student.id]; // Remove override on Present
+                                                                                return copy;
+                                                                            });
+                                                                        }}
+                                                                        className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all shadow-sm ${status === AttendanceStatus.PRESENT ? 'bg-white text-green-700 shadow ring-1 ring-black/5' : 'text-gray-400 hover:text-gray-600'}`}
+                                                                    >
+                                                                        Presente
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setAttStatuses(prev => ({ ...prev, [student.id]: AttendanceStatus.ABSENT }));
+                                                                        }}
+                                                                        className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all shadow-sm ${status === AttendanceStatus.ABSENT ? 'bg-white text-red-700 shadow ring-1 ring-black/5' : 'text-gray-400 hover:text-gray-600'}`}
+                                                                    >
+                                                                        Faltou
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-center">
+                                                                <div className={`transition-opacity duration-200 ${status === AttendanceStatus.ABSENT ? 'opacity-100' : 'opacity-20 grayscale pointer-events-none'}`}>
+                                                                    <input
+                                                                        type="number"
+                                                                        min="1"
+                                                                        max="10"
+                                                                        value={absenceCount}
+                                                                        onChange={(e) => {
+                                                                            const val = parseInt(e.target.value) || 1;
+                                                                            setAttAbsenceOverrides(prev => ({ ...prev, [student.id]: val }));
+                                                                        }}
+                                                                        className="w-16 p-2 text-center border border-gray-200 rounded-lg focus:border-blue-950 focus:ring-2 focus:ring-blue-100 outline-none font-bold text-gray-700 shadow-sm"
+                                                                    />
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    )
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+                                        <Button
+                                            onClick={handleSaveCoordinatorAttendance}
+                                            disabled={attSaving}
+                                            className="!bg-green-600 hover:!bg-green-700 text-white font-bold px-8 py-3 shadow-lg shadow-green-200 flex items-center gap-2 rounded-xl transition-all hover:-translate-y-0.5"
+                                        >
+                                            {attSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5" /> Salvar Frequência</>}
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Messages if no students found after search */}
+                            {!attLoading && attStudents.length === 0 && attSubject && (
+                                <div className="text-center py-20">
+                                    <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-100">
+                                        <ClipboardList className="w-10 h-10 text-gray-300" />
+                                    </div>
+                                    <h3 className="text-gray-900 font-bold text-lg mb-1">Nenhum aluno encontrado</h3>
+                                    <p className="text-gray-500 max-w-sm mx-auto">Verifique os filtros de Data, Série, Turno e Turma selecionados acima.</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* MESSAGES VIEW (activeTab === 'messages') */}
                     {activeTab === 'messages' && (
