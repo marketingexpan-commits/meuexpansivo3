@@ -1,5 +1,5 @@
-
 // src/App.tsx
+// Trigger Vercel Production Build: 2026-02-07 06:10
 
 import React, { useState, useEffect } from 'react';
 import firebase from 'firebase/compat/app';
