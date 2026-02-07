@@ -1,5 +1,6 @@
 /**
  * Centralized Academic Utility for Bimester mapping and Data Normalization.
+ * Trigger Vercel Build: 2026-02-07
  */
 import { SchoolUnit } from "../types";
 import type { AcademicSettings } from "../types";
