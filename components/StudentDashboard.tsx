@@ -1154,12 +1154,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             <div className="flex flex-col items-end gap-2">
                                                 <button
                                                     onClick={() => setShowIdCard(true)}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-blue-200 rounded-lg shadow-sm hover:border-blue-400 hover:shadow-md transition-all group"
+                                                    className="flex items-center gap-2 px-4 py-2 bg-white border border-blue-200 rounded-xl shadow-sm hover:border-blue-400 hover:shadow-md transition-all group"
                                                 >
-                                                    <QrCode className="w-4 h-4 text-blue-600 group-hover:text-blue-700" />
-                                                    <div className="text-left hidden sm:block">
-                                                        <span className="block text-[9px] text-gray-500 font-bold uppercase leading-none">Abrir</span>
-                                                        <span className="block text-xs font-bold text-blue-900 leading-none">Carteirinha</span>
+                                                    <QrCode className="w-6 h-6 text-blue-600 group-hover:text-blue-700" />
+                                                    <div className="text-left">
+                                                        <span className="block text-[10px] text-gray-500 font-bold uppercase leading-none">Abrir</span>
+                                                        <span className="block text-sm font-black text-blue-900 leading-none">Carteirinha</span>
                                                     </div>
                                                 </button>
                                                 <span className="text-[9px] font-bold text-gray-400 bg-white px-1.5 py-0.5 rounded border border-gray-100 uppercase tracking-wide">

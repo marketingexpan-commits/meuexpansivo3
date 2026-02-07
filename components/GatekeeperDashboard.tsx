@@ -23,8 +23,10 @@ export const GatekeeperDashboard: React.FC = () => {
     // --- STATE ---
     const [activeTab, setActiveTab] = useState<'menu' | 'scanner' | 'manual' | 'list'>('menu');
     const [releases, setReleases] = useState<AuthorizedRelease[]>([]);
+
     const [scanning, setScanning] = useState(false);
     const scannerRef = useRef<Html5Qrcode | null>(null);
+    const isProcessingRef = useRef(false); // Lock to prevent multiple scans
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -130,9 +132,40 @@ export const GatekeeperDashboard: React.FC = () => {
     }, [unit, releases]);
 
     const onScanSuccess = useCallback(async (decodedText: string) => {
+        if (isProcessingRef.current) return;
+
+        isProcessingRef.current = true;
+
+        // Pause to prevent multiple reads
+        if (scannerRef.current?.isScanning) {
+            try {
+                scannerRef.current.pause(true);
+            } catch (e) { console.warn("Could not pause scanner", e); }
+        }
+
         const studentId = decodedText.trim();
-        handleVerifyStudent(studentId);
-    }, [handleVerifyStudent]);
+        await handleVerifyStudent(studentId);
+
+        // Resume after processing
+        // We might not want to resume if we switched tabs or released successfully, 
+        // but typically for continuous scanning we do. 
+        // However, if we just released, maybe we want to stay paused until the user is ready? 
+        // For now, let's resume to allow next student.
+
+        // Small delay to prevent accidental double-scan of same code if user hasn't moved it
+        setTimeout(() => {
+            if (scannerRef.current && activeTab === 'scanner') {
+                try {
+                    scannerRef.current.resume();
+                } catch (e) {
+                    // If resume fails (e.g. was stopped), ignore
+                    console.log("Scanner resume skipped/failed", e);
+                }
+            }
+            isProcessingRef.current = false;
+        }, 1500);
+
+    }, [handleVerifyStudent, activeTab]);
 
     useEffect(() => {
         if (activeTab === 'scanner') {
