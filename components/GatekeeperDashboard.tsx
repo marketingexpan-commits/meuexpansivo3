@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Html5Qrcode } from 'html5-qrcode';
 import { collection, query, where, onSnapshot, updateDoc, doc, getDocs, getDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { Button } from './Button';
@@ -23,6 +23,7 @@ export const GatekeeperDashboard: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'menu' | 'scanner' | 'manual' | 'list'>('menu');
     const [releases, setReleases] = useState<AuthorizedRelease[]>([]);
     const [scanning, setScanning] = useState(false);
+    const scannerRef = useRef<Html5Qrcode | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -66,50 +67,12 @@ export const GatekeeperDashboard: React.FC = () => {
         return () => unsubscribe();
     }, [unit]);
 
-    useEffect(() => {
-        if (activeTab === 'scanner' && !scanning) {
-            // Include a small delay to ensure DOM is ready inside the new container
-            const timer = setTimeout(() => {
-                const scanner = new Html5QrcodeScanner(
-                    'reader',
-                    { fps: 10, qrbox: { width: 250, height: 250 } },
-                    false
-                );
 
-                scanner.render(onScanSuccess, onScanFailure);
-                setScanning(true);
-
-                return () => {
-                    scanner.clear();
-                    setScanning(false);
-                };
-            }, 100);
-
-            return () => clearTimeout(timer);
-        } else {
-            setScanning(false);
-        }
-    }, [activeTab]);
-
-    // --- HANDLERS ---
-    const onScanSuccess = async (decodedText: string) => {
-        setLoading(true);
-        try {
-            const studentId = decodedText.trim();
-            handleVerifyStudent(studentId);
-        } catch (error) {
-            console.error("Scan error:", error);
-            alert("Erro ao processar QR Code.");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const onScanFailure = (error: any) => {
+    const onScanFailure = useCallback((error: any) => {
         // Ignored
-    };
+    }, []);
 
-    const handleVerifyStudent = async (studentId: string) => {
+    const handleVerifyStudent = useCallback(async (studentId: string) => {
         if (!unit) return;
         setLoading(true);
         try {
@@ -163,7 +126,60 @@ export const GatekeeperDashboard: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [unit, releases]);
+
+    const onScanSuccess = useCallback(async (decodedText: string) => {
+        const studentId = decodedText.trim();
+        handleVerifyStudent(studentId);
+    }, [handleVerifyStudent]);
+
+    useEffect(() => {
+        if (activeTab === 'scanner') {
+            const startScanner = async () => {
+                try {
+                    // Small delay to ensure the DOM element 'reader' is mounted
+                    const html5QrCode = new Html5Qrcode("reader");
+                    scannerRef.current = html5QrCode;
+
+                    await html5QrCode.start(
+                        { facingMode: "environment" },
+                        {
+                            fps: 10,
+                            qrbox: { width: 250, height: 250 },
+                        },
+                        onScanSuccess,
+                        onScanFailure
+                    );
+                    setScanning(true);
+                } catch (err) {
+                    console.error("Erro ao iniciar scanner:", err);
+                    setScanning(false);
+                }
+            };
+
+            const timer = setTimeout(startScanner, 300);
+
+            return () => {
+                clearTimeout(timer);
+                if (scannerRef.current) {
+                    if (scannerRef.current.isScanning) {
+                        scannerRef.current.stop().catch(err => console.error("Erro ao parar scanner:", err));
+                    }
+                    scannerRef.current = null;
+                    setScanning(false);
+                }
+            };
+        } else {
+            // Cleanup when leaving scanner tab
+            if (scannerRef.current) {
+                if (scannerRef.current.isScanning) {
+                    scannerRef.current.stop().catch(err => console.error("Erro ao parar scanner:", err));
+                }
+                scannerRef.current = null;
+                setScanning(false);
+            }
+        }
+    }, [activeTab, onScanSuccess, onScanFailure]);
 
     const handleManualSearch = async () => {
         const queryText = searchQuery.trim();
