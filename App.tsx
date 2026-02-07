@@ -619,7 +619,7 @@ const AppContent: React.FC = () => {
         const teacher = {
           ...data,
           id: snapshot.docs[0].id,
-          unit: normalizeUnit(data.unit) // Normalize to canonical ID
+          unit: data.unit
         } as Teacher;
         setSession({ role: UserRole.TEACHER, user: teacher });
         setLoginError('');
@@ -656,7 +656,7 @@ const AppContent: React.FC = () => {
         const coord = {
           ...data,
           id: snapshot.docs[0].id,
-          unit: normalizeUnit(data.unit) // Normalize to canonical ID
+          unit: data.unit
         } as UnitContact;
         setSession({ role: UserRole.COORDINATOR, user: coord });
         setLoginError('');
