@@ -370,19 +370,19 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
             style={{
               background: showHiddenTabs
                 ? `linear-gradient(90deg, 
-                    ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 0%, 
-                    ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 33.33%, 
-                    ${activeTab === 'teacher' || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} 33.33%, 
-                    ${activeTab === 'teacher' || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} 66.66%, 
-                    ${activeTab === 'coordinator' || hoveredTab === 'coordinator' ? '#D1D5DB' : '#E5E7EB'} 66.66%, 
-                    ${activeTab === 'coordinator' || hoveredTab === 'coordinator' ? '#D1D5DB' : '#E5E7EB'} 100%)`
+                        ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 0%, 
+                        ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 25%, 
+                        ${activeTab === 'teacher' || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} 25%, 
+                        ${activeTab === 'teacher' || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} 50%, 
+                        ${activeTab === 'coordinator' || hoveredTab === 'coordinator' ? '#D1D5DB' : '#E5E7EB'} 50%, 
+                        ${activeTab === 'coordinator' || hoveredTab === 'coordinator' ? '#D1D5DB' : '#E5E7EB'} 75%, 
+                        ${activeTab === 'gatekeeper' || hoveredTab === 'gatekeeper' ? '#D1D5DB' : '#E5E7EB'} 75%, 
+                        ${activeTab === 'gatekeeper' || hoveredTab === 'gatekeeper' ? '#D1D5DB' : '#E5E7EB'} 100%)`
                 : `linear-gradient(90deg, 
-                    ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 0%, 
-                    ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 33.33%, 
-                    ${activeTab === 'teacher' || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} 33.33%, 
-                    ${activeTab === 'teacher' || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} 66.66%, 
-                    ${['coordinator', 'gatekeeper'].includes(activeTab) || hoveredTab === 'coordinator' ? '#D1D5DB' : '#E5E7EB'} 66.66%, 
-                    ${['coordinator', 'gatekeeper'].includes(activeTab) || hoveredTab === 'coordinator' ? '#D1D5DB' : '#E5E7EB'} 100%)`
+                        ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 0%, 
+                        ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 50%, 
+                        ${activeTab === 'teacher' || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} 50%, 
+                        ${activeTab === 'teacher' || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} 100%)`
             }}
           >
 
