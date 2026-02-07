@@ -1,6 +1,7 @@
 /**
  * Centralized Academic Utility for Bimester mapping and Data Normalization.
  */
+import { SchoolUnit } from "../types";
 import type { AcademicSettings } from "../types";
 
 /**
