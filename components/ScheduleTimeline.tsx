@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebaseConfig';
 import { ClassSchedule, ScheduleItem, SchoolUnit, SchoolShift, UNIT_LABELS, SHIFT_LABELS, AcademicSubject } from '../types';
-import { parseGradeLevel, normalizeUnit, normalizeShift } from '../src/utils/academicUtils';
+import { resolveGradeId, normalizeUnit, normalizeShift } from '../src/utils/academicUtils';
 import { Clock, Calendar, Printer, Info, Mail, Phone, MapPin } from 'lucide-react';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { UNITS_DATA, DEFAULT_UNIT_DATA } from '../src/constants';
@@ -49,15 +49,14 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
         return UNITS_DATA[label] || DEFAULT_UNIT_DATA;
     }, [normalizedUnit]);
 
-    // HELPER: Normalize Grade Level (e.g. "8º Ano - Fundamental II" -> "8º Ano")
-    const parsedGradeInfo = useMemo(() => parseGradeLevel(grade), [grade]);
-    const possibleGrades = useMemo(() => Array.from(new Set([grade, parsedGradeInfo.grade])), [grade, parsedGradeInfo.grade]);
+    // HELPER: Resolve technical Grade ID (e.g. "8º Ano - Fundamental II" -> "grade_8_ano")
+    const resolvedGradeId = useMemo(() => resolveGradeId(grade), [grade]);
 
     useEffect(() => {
-        if (normalizedUnit && grade && schoolClass && normalizedShift) {
+        if (normalizedUnit && resolvedGradeId && schoolClass && normalizedShift) {
             fetchSchedule();
         }
-    }, [selectedDay, normalizedUnit, grade, schoolClass, normalizedShift]);
+    }, [selectedDay, normalizedUnit, resolvedGradeId, schoolClass, normalizedShift]);
 
 
     const fetchSchedule = async () => {
@@ -65,7 +64,7 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
         try {
             const snapshot = await db.collection('class_schedules')
                 .where('schoolId', '==', normalizedUnit)
-                .where('grade', 'in', possibleGrades)
+                .where('grade', '==', resolvedGradeId)
                 .where('class', '==', schoolClass)
                 .where('shift', '==', normalizedShift)
                 .where('dayOfWeek', '==', selectedDay)
@@ -90,7 +89,7 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
         try {
             const snapshot = await db.collection('class_schedules')
                 .where('schoolId', '==', normalizedUnit)
-                .where('grade', 'in', possibleGrades)
+                .where('grade', '==', resolvedGradeId)
                 .where('class', '==', schoolClass)
                 .where('shift', '==', normalizedShift)
                 .get();
