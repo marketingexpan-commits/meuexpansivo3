@@ -6,6 +6,10 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
     helperText?: string;
     className?: string;
     id?: string;
+    placeholder?: string;
+    type?: string;
+    value?: string | number | readonly string[];
+    onChange?: React.ChangeEventHandler<HTMLInputElement>;
 }
 
 export function Input({ label, error, helperText, className = '', id, ...props }: InputProps) {

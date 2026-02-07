@@ -778,3 +778,13 @@ export interface MuralItem {
   isActive: boolean;
   createdAt: string;
 }
+
+export interface Gatekeeper {
+  id: string;
+  name: string;
+  password: string; // Plain text per requirements/current pattern
+  unit: SchoolUnit;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}

@@ -16,6 +16,7 @@ import { SchoolConfig } from './pages/SchoolConfig';
 import AdminUnidades from './pages/AdminUnidades';
 import { RematriculaPage } from './pages/RematriculaPage.tsx';
 import { DirectorMessages } from './pages/DirectorMessages';
+import { Porteiros } from './pages/Porteiros';
 
 
 
@@ -45,6 +46,7 @@ function App() {
           <Route path="/config/mural-digital" element={<MuralDigital />} />
           <Route path="/config/escola" element={<SchoolConfig />} />
           <Route path="/config/admin-unidades" element={<AdminUnidades />} />
+          <Route path="/config/porteiros" element={<Porteiros />} />
 
         </Route>
 

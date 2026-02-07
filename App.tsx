@@ -11,6 +11,7 @@ import { TeacherDashboard } from './components/TeacherDashboard';
 
 import { CoordinatorDashboard } from './components/CoordinatorDashboard';
 import { db } from './firebaseConfig';
+import { GatekeeperDashboard } from './components/GatekeeperDashboard';
 import { BackToTopButton } from './components/BackToTopButton';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { SchoolLogo } from './components/SchoolLogo';
@@ -614,7 +615,12 @@ const AppContent: React.FC = () => {
       }
 
       if (!snapshot.empty) {
-        const teacher = { ...snapshot.docs[0].data(), id: snapshot.docs[0].id } as Teacher;
+        const data = snapshot.docs[0].data();
+        const teacher = {
+          ...data,
+          id: snapshot.docs[0].id,
+          unit: normalizeUnit(data.unit) // Normalize to canonical ID
+        } as Teacher;
         setSession({ role: UserRole.TEACHER, user: teacher });
         setLoginError('');
         logAccess(teacher.id);
@@ -646,7 +652,12 @@ const AppContent: React.FC = () => {
         .get();
 
       if (!snapshot.empty) {
-        const coord = { ...snapshot.docs[0].data(), id: snapshot.docs[0].id } as UnitContact;
+        const data = snapshot.docs[0].data();
+        const coord = {
+          ...data,
+          id: snapshot.docs[0].id,
+          unit: normalizeUnit(data.unit) // Normalize to canonical ID
+        } as UnitContact;
         setSession({ role: UserRole.COORDINATOR, user: coord });
         setLoginError('');
         logAccess(coord.id);
@@ -1358,6 +1369,7 @@ const App: React.FC = () => {
     <Router>
       <Routes>
         <Route path="/validar-recibo/:id" element={<ValidateReceipt />} />
+        <Route path="/porteiro" element={<GatekeeperDashboard />} />
         <Route path="/*" element={<AppContent />} />
       </Routes>
     </Router>

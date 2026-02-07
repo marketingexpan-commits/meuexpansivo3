@@ -11,3 +11,21 @@
 @layer components {
   /* Adicione aqui componentes customizados se necessário */
 }
+
+/* Custom QR Scanner Styles */
+#reader {
+  border: none !important;
+}
+#reader video {
+  object-fit: cover;
+  border-radius: 1rem;
+}
+#reader > div:first-child {
+  display: none; /* Hide top bar of the library if possible or style it */
+}
+#reader__dashboard_section_csr span {
+  display: none;
+}
+#reader__dashboard_section_swaplink {
+  display: none !important;
+}

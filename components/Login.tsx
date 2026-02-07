@@ -80,13 +80,14 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
     };
   }, []);
 
-  const [activeTab, setActiveTab] = useState<'student' | 'teacher' | 'coordinator'>('student');
+  const [activeTab, setActiveTab] = useState<'student' | 'teacher' | 'coordinator' | 'gatekeeper'>('student');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
 
 
   const [selectedTeacherUnit, setSelectedTeacherUnit] = useState(SCHOOL_UNITS_LIST[0]);
   const [selectedCoordinatorUnit, setSelectedCoordinatorUnit] = useState(SCHOOL_UNITS_LIST[0]);
+  const [selectedGatekeeperUnit, setSelectedGatekeeperUnit] = useState(SCHOOL_UNITS_LIST[0]);
 
   const [isMuralOpen, setIsMuralOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
@@ -122,14 +123,14 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
   const [hoveredTab, setHoveredTab] = useState<string | null>(null);
 
   const handleSecretClick = () => {
-    if (showHiddenTabs) return;
+    if (showHiddenTabs) return; // Prevent extra clicks if already shown
 
     const newCount = secretClickCount + 1;
     setSecretClickCount(newCount);
 
     if (newCount === 5) {
       setShowHiddenTabs(true);
-      alert("🔐 Modo Administrativo/Coordenação Desbloqueado!");
+      alert("🔐 Modo Administrativo/Coordenação/Portaria Desbloqueado!");
     }
   };
 
@@ -182,7 +183,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
     return () => unsubscribe();
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Save or Remove 'remember me' (Student Only)
@@ -208,15 +209,57 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
         return;
       }
       onLoginCoordinator(identifier, password, selectedCoordinatorUnit);
+    } else if (activeTab === 'gatekeeper') {
+      if (!selectedGatekeeperUnit) {
+        alert("Por favor, selecione a unidade escolar.");
+        return;
+      }
+
+      try {
+        const snapshot = await db.collection('gatekeepers')
+          .where('unit', '==', selectedGatekeeperUnit)
+          .where('name', '==', identifier)
+          .get();
+
+        if (snapshot.empty) {
+          alert('Porteiro não encontrado nesta unidade ou nome incorreto.');
+          return;
+        }
+
+        const gatekeeperDoc = snapshot.docs[0];
+        const gatekeeperData = gatekeeperDoc.data();
+
+        if (!gatekeeperData.isActive) {
+          alert('Acesso negado. Usuário inativo.');
+          return;
+        }
+
+        if (gatekeeperData.password !== password) {
+          alert('Senha incorreta.');
+          return;
+        }
+
+        // Login success
+        localStorage.setItem('userUnit', selectedGatekeeperUnit);
+        localStorage.setItem('gatekeeperName', gatekeeperData.name);
+        localStorage.setItem('gatekeeperId', gatekeeperDoc.id);
+
+        window.location.href = '/porteiro';
+
+      } catch (err) {
+        console.error("Login error:", err);
+        alert('Erro ao realizar login. Tente novamente.');
+      }
     }
   };
 
-  const switchTab = (tab: 'student' | 'teacher' | 'coordinator') => {
+  const switchTab = (tab: 'student' | 'teacher' | 'coordinator' | 'gatekeeper') => {
     setActiveTab(tab);
     setIdentifier('');
     setPassword('');
     if (tab === 'teacher') setSelectedTeacherUnit(SCHOOL_UNITS_LIST[0]);
     if (tab === 'coordinator') setSelectedCoordinatorUnit(SCHOOL_UNITS_LIST[0]);
+    if (tab === 'gatekeeper') setSelectedGatekeeperUnit(SCHOOL_UNITS_LIST[0]);
   };
 
   const handleIdentifierChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -335,9 +378,11 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                     ${activeTab === 'coordinator' || hoveredTab === 'coordinator' ? '#D1D5DB' : '#E5E7EB'} 100%)`
                 : `linear-gradient(90deg, 
                     ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 0%, 
-                    ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 50%, 
-                    ${activeTab === 'teacher' || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} 50%, 
-                    ${activeTab === 'teacher' || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} 100%)`
+                    ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 33.33%, 
+                    ${activeTab === 'teacher' || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} 33.33%, 
+                    ${activeTab === 'teacher' || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} 66.66%, 
+                    ${['coordinator', 'gatekeeper'].includes(activeTab) || hoveredTab === 'coordinator' ? '#D1D5DB' : '#E5E7EB'} 66.66%, 
+                    ${['coordinator', 'gatekeeper'].includes(activeTab) || hoveredTab === 'coordinator' ? '#D1D5DB' : '#E5E7EB'} 100%)`
             }}
           >
 
@@ -368,7 +413,6 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                 Professor
               </button>
 
-              {/* ABAS OCULTAS (COORDENADOR) */}
               {showHiddenTabs && (
                 <>
                   <button
@@ -382,6 +426,18 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                     onMouseLeave={() => setHoveredTab(null)}
                   >
                     Coord.
+                  </button>
+                  <button
+                    className={`flex-1 py-4 text-sm font-semibold text-center transition-all ${activeTab === 'gatekeeper'
+                      ? 'bg-gray-300 text-blue-950 hover:bg-gray-400'
+                      : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+                      }`}
+                    style={{ WebkitTapHighlightColor: 'transparent' }}
+                    onClick={() => switchTab('gatekeeper')}
+                    onMouseEnter={() => setHoveredTab('gatekeeper')}
+                    onMouseLeave={() => setHoveredTab(null)}
+                  >
+                    Portaria
                   </button>
                 </>
               )}
@@ -424,12 +480,28 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                     </select>
                   </div>
                 )}
+                {activeTab === 'gatekeeper' && (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Selecione a Unidade</label>
+                    <select
+                      value={selectedGatekeeperUnit}
+                      onChange={(e) => setSelectedGatekeeperUnit(e.target.value as SchoolUnit)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-700 focus:outline-none focus:border-blue-950 bg-white transition-colors"
+                      required
+                    >
+                      {SCHOOL_UNITS_LIST.map(unit => (
+                        <option key={unit} value={unit}>{UNIT_LABELS[unit as SchoolUnit] || unit}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">
                     {activeTab === 'student' ? 'Código do Aluno' :
                       activeTab === 'teacher' ? 'CPF do Professor' :
-                        activeTab === 'coordinator' ? 'Nome do Coordenador' : 'Usuário'}
+                        activeTab === 'coordinator' ? 'Nome do Coordenador' :
+                          activeTab === 'gatekeeper' ? 'Usuário Portaria' : 'Usuário'}
                   </label>
                   <input
                     type="text"
@@ -441,7 +513,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                       activeTab === 'student' ? 'Ex.: 12345 (Consulte o Código)' :
                         activeTab === 'teacher' ? '000.000.000-00' :
                           activeTab === 'coordinator' ? 'Ex: Maria Silva' :
-                            'Usuário'
+                            activeTab === 'gatekeeper' ? 'Ex: João da Silva' :
+                              'Usuário'
                     }
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-700 placeholder-gray-400 focus:outline-none focus:border-blue-950 transition-colors"
                     required

@@ -16,6 +16,7 @@ import { FinanceiroScreen } from './FinanceiroScreen';
 import { SchoolCalendar } from './SchoolCalendar';
 import { useNavigate } from 'react-router-dom';
 import { Skeleton, TableSkeleton, GridSkeleton } from './Skeleton';
+import { QRCodeSVG } from 'qrcode.react';
 import { ErrorState } from './ErrorState';
 import { useFinancialSettings } from '../hooks/useFinancialSettings';
 import { ScheduleTimeline } from './ScheduleTimeline';
@@ -37,9 +38,15 @@ import {
     User,
     Folder,
     ClipboardList,
-    LogOut
+    LogOut,
+    QrCode
 } from 'lucide-react';
 import { db } from '../firebaseConfig';
+
+// Simple Info Icon Component for the Modal
+const InfoIcon = ({ className }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+);
 
 // --- DADOS DAS UNIDADES (Definidos localmente) ---
 const UNITS_DATA: Record<string, { address: string; cep: string; phone: string; email: string; cnpj: string }> = {
@@ -176,7 +183,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const [modalContent, setModalContent] = useState({ title: '', tip: '' });
     const [isLoadingAI, setIsLoadingAI] = useState(false);
     const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro' | 'tickets' | 'materials' | 'occurrences' | 'calendar' | 'schedule'>('menu');
-
+    const [showIdCard, setShowIdCard] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
 
     // Estado para o sistema de Dúvidas (Tickets) - UI ONLY
@@ -1031,41 +1038,123 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 )}
                                 {/* ALERT: Reposições e Aulas Extras - FIM */}
 
-                                {/* Student Info Card */}
-                                <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-100 mb-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            {/* Foto do Aluno */}
-                                            {student.photoUrl ? (
-                                                <img
-                                                    src={student.photoUrl}
-                                                    alt={student.name}
-                                                    className="w-20 h-24 object-cover rounded shadow-sm border border-blue-200"
-                                                />
-                                            ) : (
-                                                <div className="w-20 h-24 rounded bg-blue-100 flex items-center justify-center text-blue-300 shadow-sm border border-blue-200">
-                                                    <User size={40} />
+                                {/* Student Info Card / Carteirinha Digital Toggle */}
+                                <div className={`relative transition-all duration-500 overflow-hidden mb-4 rounded-xl border ${showIdCard ? 'bg-white border-blue-900 shadow-xl' : 'bg-blue-50/50 border-blue-100'}`}>
+                                    {showIdCard ? (
+                                        // --- ID CARD VIEW ---
+                                        <div
+                                            className="p-5 flex flex-col items-center animate-flip-in-y cursor-pointer select-none"
+                                            onClick={() => setShowIdCard(false)}
+                                            title="Toque para voltar"
+                                        >
+                                            {/* 1. Photo Centered (Top) */}
+                                            <div className="flex justify-center mb-3 pt-4">
+                                                <div className="w-32 h-40 bg-gray-100 rounded-lg overflow-hidden border-2 border-blue-900 shadow-md relative">
+                                                    {student.photoUrl ? (
+                                                        <img
+                                                            src={student.photoUrl}
+                                                            alt={student.name}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-16 h-16">
+                                                                <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clipRule="evenodd" />
+                                                            </svg>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
+                                            </div>
 
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Aluno(a)</span>
-                                                <span className="text-sm font-bold text-blue-900 leading-tight">{student.name}</span>
+                                            {/* 2. Student Data */}
+                                            <h2 className="text-xl font-black text-blue-900 uppercase leading-none text-center mb-1">{student.name}</h2>
+                                            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 text-center">{student.gradeLevel || 'Aluno(a) Regular'}</p>
+
+                                            {/* 3. Data Card with Logo in Middle */}
+                                            <div className="w-full flex items-center justify-between gap-2 text-center bg-gray-50 p-3 rounded-xl border border-gray-100 mb-4 relative">
+                                                <div className="flex-1">
+                                                    <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Código</span>
+                                                    <span className="block text-base font-bold text-gray-800">{student.code}</span>
+                                                </div>
+
+                                                {/* Logo inserted here */}
+                                                <div className="w-auto flex-shrink-0" style={{ height: '58px' }}>
+                                                    <SchoolLogo className="h-full w-auto object-contain" />
+                                                </div>
+
+                                                <div className="flex-1">
+                                                    <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Turma</span>
+                                                    <span className="block text-base font-bold text-gray-800">
+                                                        {student.schoolClass} <span className="text-gray-400 text-[10px] align-middle">•</span> {SHIFT_LABELS[student.shift as SchoolShift] || student.shift}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* 4. QR Code (Bottom) - +20% size (~168px/170px) */}
+                                            <div className="flex justify-center mb-2">
+                                                <div className="bg-white p-2 rounded-lg border-2 border-blue-900 shadow-inner">
+                                                    <QRCodeSVG
+                                                        value={student.id}
+                                                        size={170}
+                                                        level="H"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Back/Return Icon */}
+                                            <div className="absolute top-4 right-4 text-blue-300 animate-pulse">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-8 h-8">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                                                </svg>
+                                            </div>
+
+                                            <div className="mt-4 flex flex-col items-center gap-1">
+                                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                                                    Válido: {currentYear} • {getUnitLabel(student.unit)}
+                                                </span>
                                             </div>
                                         </div>
-                                        <div className="flex flex-col items-end">
+                                    ) : (
+                                        // --- NORMAL PROFILE VIEW ---
+                                        <div className="p-2 flex items-center justify-between animate-fade-in">
+                                            <div className="flex items-center gap-3">
+                                                {/* Foto do Aluno */}
+                                                {student.photoUrl ? (
+                                                    <img
+                                                        src={student.photoUrl}
+                                                        alt={student.name}
+                                                        className="w-16 h-20 object-cover rounded shadow-sm border border-blue-200"
+                                                    />
+                                                ) : (
+                                                    <div className="w-16 h-20 rounded bg-blue-100 flex items-center justify-center text-blue-300 shadow-sm border border-blue-200">
+                                                        <User size={32} />
+                                                    </div>
+                                                )}
 
-                                            <div className="text-right">
-                                                <span className="text-xs font-bold text-gray-700 block mb-1 whitespace-nowrap">
-                                                    {student.gradeLevel || 'N/A'}
+                                                <div className="flex flex-col">
+                                                    <span className="text-[9px] text-gray-500 uppercase tracking-wider font-bold">Aluno(a)</span>
+                                                    <span className="text-sm font-bold text-blue-900 leading-tight max-w-[150px] sm:max-w-none line-clamp-2">{student.name}</span>
+                                                    <span className="text-[10px] text-gray-500 mt-1">{student.gradeLevel || 'N/A'}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex flex-col items-end gap-2">
+                                                <button
+                                                    onClick={() => setShowIdCard(true)}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-blue-200 rounded-lg shadow-sm hover:border-blue-400 hover:shadow-md transition-all group"
+                                                >
+                                                    <QrCode className="w-4 h-4 text-blue-600 group-hover:text-blue-700" />
+                                                    <div className="text-left hidden sm:block">
+                                                        <span className="block text-[9px] text-gray-500 font-bold uppercase leading-none">Abrir</span>
+                                                        <span className="block text-xs font-bold text-blue-900 leading-none">Carteirinha</span>
+                                                    </div>
+                                                </button>
+                                                <span className="text-[9px] font-bold text-gray-400 bg-white px-1.5 py-0.5 rounded border border-gray-100 uppercase tracking-wide">
+                                                    {student.schoolClass} • {SHIFT_LABELS[student.shift as SchoolShift] || student.shift}
                                                 </span>
-                                                <span className="text-xs font-bold text-gray-700 bg-white px-2 py-0.5 rounded border border-gray-200 inline-block">
-                                                    {student.schoolClass} <span className="text-gray-300">|</span> {SHIFT_LABELS[student.shift as SchoolShift] || student.shift}
-                                                </span>
-                                                <span className="text-[10px] font-semibold text-gray-500 mt-0.5 block">Unid. {getUnitLabel(student.unit)}</span>
                                             </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
 
 
@@ -1187,6 +1276,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     )}
 
                     {currentView === 'financeiro' && <FinanceiroScreen student={student} mensalidades={mensalidades} eventos={eventos} unitContacts={unitContacts} contactSettings={contactSettings} />}
+
 
                     {currentView === 'attendance' && (
                         <div className="mb-8 print:hidden">
@@ -2680,67 +2770,62 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         </div>
                     )}
                 </div>
-            </div >
 
-            {/* --- Banner Modal --- */}
-            {
-                isBannerOpen && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm animate-fade-in">
-                        <div
-                            className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden animate-scale-in"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            {/* Modal Header */}
-                            <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-4 text-white relative">
-                                <button
-                                    onClick={() => setIsBannerOpen(false)}
-                                    className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 p-1.5 rounded-full transition-colors"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                                </button>
-                                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-2 backdrop-blur-sm">
-                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
-                                </div>
-                                <h3 className="text-lg font-bold">Informativo Escolar</h3>
-                            </div>
-
-                            {/* Modal Content */}
-                            <div className="p-4">
-                                <div className="flex items-start gap-4">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <h4 className="text-gray-900 font-bold text-lg">Rematrículas Abertas 2026</h4>
-                                            <span className="bg-orange-100 text-orange-700 text-[10px] px-2 py-0.5 rounded-full font-bold border border-orange-200">NOVO</span>
-                                        </div>
-                                        <p className="text-gray-600 text-sm leading-relaxed mb-4">
-                                            Garanta sua renovação com condições especiais até o final deste mês. Procure a secretaria da sua unidade para mais informações e não perca os prazos!
-                                        </p>
-
-                                        <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-sm text-blue-800 flex gap-3">
-                                            <InfoIcon className="w-5 h-5 shrink-0 text-blue-500" />
-                                            <span>Horário de atendimento: Segunda a Sexta, das 8h às 11h30 | das 13h às 17h.</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="mt-4 flex justify-end">
+                {/* --- Banner Modal --- */}
+                {
+                    isBannerOpen && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm animate-fade-in">
+                            <div
+                                className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden animate-scale-in"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                {/* Modal Header */}
+                                <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-4 text-white relative">
                                     <button
                                         onClick={() => setIsBannerOpen(false)}
-                                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium text-sm transition-colors"
+                                        className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 p-1.5 rounded-full transition-colors"
                                     >
-                                        Fechar
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                                     </button>
+                                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-2 backdrop-blur-sm">
+                                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
+                                    </div>
+                                    <h3 className="text-lg font-bold">Informativo Escolar</h3>
+                                </div>
+
+                                {/* Modal Content */}
+                                <div className="p-4">
+                                    <div className="flex items-start gap-4">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <h4 className="text-gray-900 font-bold text-lg">Rematrículas Abertas 2026</h4>
+                                                <span className="bg-orange-100 text-orange-700 text-[10px] px-2 py-0.5 rounded-full font-bold border border-orange-200">NOVO</span>
+                                            </div>
+                                            <p className="text-gray-600 text-sm leading-relaxed mb-4">
+                                                Garanta sua renovação com condições especiais até o final deste mês. Procure a secretaria da sua unidade para mais informações e não perca os prazos!
+                                            </p>
+
+                                            <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-sm text-blue-800 flex gap-3">
+                                                <InfoIcon className="w-5 h-5 shrink-0 text-blue-500" />
+                                                <span>Horário de atendimento: Segunda a Sexta, das 8h às 11h30 | das 13h às 17h.</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-4 flex justify-end">
+                                        <button
+                                            onClick={() => setIsBannerOpen(false)}
+                                            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium text-sm transition-colors"
+                                        >
+                                            Fechar
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )
-            }
-        </div >
+                    )
+                }
+            </div>
+        </div>
     );
 };
-
-// Simple Info Icon Component for the Modal
-const InfoIcon = ({ className }: { className?: string }) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-);

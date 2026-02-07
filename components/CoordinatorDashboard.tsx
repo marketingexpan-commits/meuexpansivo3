@@ -1142,6 +1142,39 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         }
     };
 
+    const handleAuthorizeDeparture = async (student: Student) => {
+        if (!window.confirm(`Autorizar a saída de ${student.name} agora?`)) return;
+
+        try {
+            const releaseRecord = {
+                studentId: student.id,
+                studentName: student.name,
+                studentCode: student.code,
+                gradeLevel: student.gradeLevel,
+                schoolClass: student.schoolClass,
+                unit: coordinator.unit,
+                timestamp: new Date().toISOString(),
+                coordinatorId: coordinator.id,
+                coordinatorName: coordinator.name,
+                status: 'pending' // Pending gatekeeper scan
+            };
+
+            await db.collection('authorized_releases').add(releaseRecord);
+            alert("Saída autorizada! O porteiro já pode visualizar na lista de liberação.");
+
+            if (onCreateNotification) {
+                await onCreateNotification(
+                    "Saída Autorizada",
+                    "A coordenação autorizou sua saída antecipada. Procure a portaria.",
+                    student.id
+                );
+            }
+        } catch (error) {
+            console.error("Error authorizing departure:", error);
+            alert("Erro ao autorizar saída.");
+        }
+    };
+
     const resetCrmForm = () => {
         setCrmForm({
             date: new Date().toISOString().split('T')[0],
@@ -2996,7 +3029,20 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                                 <span className="text-blue-600 font-black">COD: {s.code || '---'}</span> • {s.gradeLevel} • Turma {s.schoolClass}
                                                             </div>
                                                         </div>
-                                                        <ChevronRight className="w-5 h-5 text-blue-200" />
+                                                        <div className="flex items-center gap-2">
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleAuthorizeDeparture(s);
+                                                                }}
+                                                                className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-[10px] font-black uppercase rounded-lg shadow-sm transition-all flex items-center gap-1 opacity-0 group-hover:opacity-100"
+                                                                title="Autorizar Saída Direta"
+                                                            >
+                                                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                                                Liberar
+                                                            </button>
+                                                            <ChevronRight className="w-5 h-5 text-blue-200" />
+                                                        </div>
                                                     </button>
                                                 ))}
                                             </div>
