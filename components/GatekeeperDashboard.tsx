@@ -16,6 +16,7 @@ interface AuthorizedRelease {
     timestamp: string;
     status: 'pending' | 'released' | 'expired';
     unit: string;
+    linkedAccessRecordId?: string;
 }
 
 export const GatekeeperDashboard: React.FC = () => {
@@ -222,12 +223,25 @@ export const GatekeeperDashboard: React.FC = () => {
 
     const handleRelease = async (releaseId: string) => {
         try {
+            const release = releases.find(r => r.id === releaseId);
+            const now = new Date().toISOString();
+
             const ref = doc(db, 'authorized_releases', releaseId);
             await updateDoc(ref, {
                 status: 'released',
-                releasedAt: new Date().toISOString(),
+                releasedAt: now,
                 gatekeeperName: gatekeeperName
             });
+
+            // Update linked Access Record if exists
+            if (release?.linkedAccessRecordId) {
+                const accessRef = doc(db, 'accessRecords', release.linkedAccessRecordId);
+                await updateDoc(accessRef, {
+                    exitTime: now,
+                    gatekeeperName: gatekeeperName
+                });
+            }
+
             alert("Saída confirmada com sucesso!");
             setSelectedStudent(null);
             // Optionally redirect back to menu or scanner?

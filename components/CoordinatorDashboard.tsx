@@ -44,6 +44,22 @@ import { ScheduleTimeline } from './ScheduleTimeline';
 
 
 // Types for Grade coordination (copied/adapted from AdminDashboard)
+// Helper to ensure we always save the Canonical Unit ID (e.g., 'unit_ext')
+// even if the coordinator profile has the friendly name (e.g., 'Extremoz')
+const getCanonicalUnit = (unit: string): string => {
+    // 1. Check if it's already a canonical ID (value of enum)
+    const isCanonical = Object.values(SchoolUnit).includes(unit as SchoolUnit);
+    if (isCanonical) return unit;
+
+    // 2. Check if it's a friendly name (value in UNIT_LABELS)
+    // UNIT_LABELS is { unit_ext: 'Extremoz', ... }
+    const entry = Object.entries(UNIT_LABELS).find(([key, label]) => label === unit);
+    if (entry) return entry[0];
+
+    // 3. Fallback
+    return unit;
+};
+
 interface GradeEntry {
     id: string; // Document ID
     studentId: string;
@@ -1025,30 +1041,29 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             loadAccessRecords();
         }
     }, [activeTab, coordinator.unit]);
+    // REAL-TIME LISTENER FOR ACCESS RECORDS
+    useEffect(() => {
+        if (!coordinator.unit || activeTab !== 'access_control') return;
 
-    const loadAccessRecords = async () => {
         setAccessLoading(true);
-        try {
-            // Optimized Query: Uses Index for native sorting and limiting.
-            // Requires Index: Collection 'accessRecords' -> Fields: 'unit' Ascending, 'timestamp' Descending
-            const snap = await db.collection('accessRecords')
-                .where('unit', '==', coordinator.unit)
-                .orderBy('timestamp', 'desc')
-                .limit(50)
-                .get();
+        const unsubscribe = db.collection('accessRecords')
+            .where('unit', '==', coordinator.unit)
+            .orderBy('timestamp', 'desc')
+            .limit(50)
+            .onSnapshot(snapshot => {
+                const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+                setAccessRecords(data);
+                setAccessLoading(false);
+            }, error => {
+                console.error("Error loading access records:", error);
+                setAccessLoading(false);
+            });
 
-            let data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-            setAccessRecords(data);
-        } catch (error) {
-            console.error("Error loading access records:", error);
-            // Alert user to check console for Index creation link if it fails
-            if ((error as any)?.code === 'failed-precondition') {
-                alert("Falta criar o índice no Firebase! Abra o console (F12) e clique no link do erro.");
-            }
-        } finally {
-            setAccessLoading(false);
-        }
-    };
+        return () => unsubscribe();
+    }, [coordinator.unit, activeTab]);
+
+    // Removed manual loadAccessRecords as we now listen to changes
+    const loadAccessRecords = () => { }; // No-op to keep TS happy if used elsewhere, or remove calls.
 
     const handleSearchStudentsForAccess = async (searchTerm: string) => {
         setAccessStudentSearch(searchTerm);
@@ -1098,13 +1113,33 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 studentGrade: accessSelectedStudent.gradeLevel,
                 studentClass: accessSelectedStudent.schoolClass,
                 studentShift: accessSelectedStudent.shift,
-                unit: coordinator.unit,
+                unit: getCanonicalUnit(coordinator.unit),
                 coordinatorId: coordinator.id,
                 coordinatorName: coordinator.name,
                 timestamp: new Date().toISOString()
             };
 
-            await db.collection('accessRecords').add(record);
+            const docRef = await db.collection('accessRecords').add(record);
+
+            // AUTO-AUTHORIZE WITH GATEKEEPER IF 'Saída Antecipada'
+            if (accessForm.type === 'Saída Antecipada') {
+                const releaseRecord = {
+                    studentId: accessSelectedStudent.id,
+                    studentName: accessSelectedStudent.name,
+                    studentCode: accessSelectedStudent.code,
+                    gradeLevel: accessSelectedStudent.gradeLevel,
+                    schoolClass: accessSelectedStudent.schoolClass,
+                    unit: getCanonicalUnit(coordinator.unit),
+                    timestamp: new Date().toISOString(),
+                    coordinatorId: coordinator.id,
+                    coordinatorName: coordinator.name,
+                    status: 'pending',
+                    linkedAccessRecordId: docRef.id,
+                    reason: accessForm.reason
+                };
+
+                await db.collection('authorized_releases').add(releaseRecord);
+            }
 
             // Notify Student/Parents
             if (onCreateNotification) {
@@ -1146,27 +1181,56 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         if (!window.confirm(`Autorizar a saída de ${student.name} agora?`)) return;
 
         try {
+            // RELEASE-LOGGING FIX: unexpected behavior found where "Quick Authorize"
+            // was not creating a permanent Access Record, only a temporary Release ticket.
+            // We must create the Access Record first to track history and Exit Time.
+
+            const accessRecord = {
+                type: 'Saída Antecipada',
+                reason: 'Autorização Rápida (Via Painel)',
+                authorizer: coordinator.name, // Self-authorized
+                authorizerRelation: 'Coordenação',
+                studentId: student.id,
+                studentCode: student.code,
+                studentName: student.name,
+                studentGrade: student.gradeLevel,
+                studentClass: student.schoolClass,
+                studentShift: student.shift,
+                unit: getCanonicalUnit(coordinator.unit),
+                coordinatorId: coordinator.id,
+                coordinatorName: coordinator.name,
+                timestamp: new Date().toISOString()
+            };
+
+            const docRef = await db.collection('accessRecords').add(accessRecord);
+
             const releaseRecord = {
                 studentId: student.id,
                 studentName: student.name,
                 studentCode: student.code,
                 gradeLevel: student.gradeLevel,
                 schoolClass: student.schoolClass,
-                unit: coordinator.unit,
+                unit: getCanonicalUnit(coordinator.unit),
                 timestamp: new Date().toISOString(),
                 coordinatorId: coordinator.id,
                 coordinatorName: coordinator.name,
-                status: 'pending' // Pending gatekeeper scan
+                status: 'pending', // Pending gatekeeper scan
+                linkedAccessRecordId: docRef.id, // LINKED!
+                reason: 'Autorização Rápida'
             };
 
             await db.collection('authorized_releases').add(releaseRecord);
             alert("Saída autorizada! O porteiro já pode visualizar na lista de liberação.");
 
+            // Refresh list if needed
+            loadAccessRecords();
+
             if (onCreateNotification) {
                 await onCreateNotification(
                     "Saída Autorizada",
                     "A coordenação autorizou sua saída antecipada. Procure a portaria.",
-                    student.id
+                    student.id,
+                    undefined
                 );
             }
         } catch (error) {
@@ -2913,6 +2977,11 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                                 <div className="text-xs font-bold text-blue-950 bg-blue-50 px-2 py-1 rounded-lg inline-block">
                                                                     {new Date(record.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                                 </div>
+                                                                {record.exitTime && (
+                                                                    <div className="text-[10px] font-bold text-green-700 mt-1 block">
+                                                                        Saída: {new Date(record.exitTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                    </div>
+                                                                )}
                                                             </td>
                                                             <td className="px-6 py-4">
                                                                 <div className="text-sm font-bold text-gray-800">{record.studentName}</div>
@@ -3035,11 +3104,11 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                                     e.stopPropagation();
                                                                     handleAuthorizeDeparture(s);
                                                                 }}
-                                                                className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-[10px] font-black uppercase rounded-lg shadow-sm transition-all flex items-center gap-1 opacity-0 group-hover:opacity-100"
+                                                                className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-[10px] font-black uppercase rounded-lg shadow-sm transition-all flex items-center gap-1 group-hover:scale-105"
                                                                 title="Autorizar Saída Direta"
                                                             >
                                                                 <CheckCircle2 className="w-3.5 h-3.5" />
-                                                                Liberar
+                                                                Autorizar
                                                             </button>
                                                             <ChevronRight className="w-5 h-5 text-blue-200" />
                                                         </div>

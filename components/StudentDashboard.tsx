@@ -256,6 +256,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const [materialsTab, setMaterialsTab] = useState<'files' | 'agenda' | 'exams'>('files');
 
     // Estados para Ocorrências
+    const [pedagogicalEvents, setPedagogicalEvents] = useState<any[]>([]);
+    const [accessEvents, setAccessEvents] = useState<any[]>([]);
     const [occurrences, setOccurrences] = useState<Occurrence[]>([]);
     const [isLoadingOccurrences, setIsLoadingOccurrences] = useState(false);
 
@@ -672,53 +674,64 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
 
     // --- OCCURRENCES LOADING LOGIC ---
+    // 1. Pedagogical Occurrences (One-time fetch or simpler listener)
     useEffect(() => {
-        console.log('[StudentDashboard] Effect triggered. currentView:', currentView);
-        if (currentView === 'occurrences') {
-            console.log('[StudentDashboard] Calling loadOccurrences...');
-            loadOccurrences();
-        }
-    }, [currentView]);
+        if (currentView !== 'occurrences') return;
 
-    const loadOccurrences = async () => {
         setIsLoadingOccurrences(true);
-        try {
-            // 1. Fetch Pedagogical Occurrences
-            const occSnap = await db.collection('occurrences')
-                .where('studentId', '==', student.id)
-                .get();
-            const occData = occSnap.docs.map(d => ({
-                id: d.id,
-                ...d.data(),
-                recordType: 'occurrence'
-            }));
+        const unsubscribe = db.collection('occurrences')
+            .where('studentId', '==', student.id)
+            .onSnapshot(snapshot => {
+                const data = snapshot.docs.map(d => ({
+                    id: d.id,
+                    ...d.data(),
+                    recordType: 'occurrence'
+                }));
+                setPedagogicalEvents(data);
+                setIsLoadingOccurrences(false);
+            }, err => {
+                console.error("Error loading occurrences:", err);
+                setIsLoadingOccurrences(false);
+            });
 
-            // 2. Fetch Access Records
-            const accessSnap = await db.collection('accessRecords')
-                .where('studentId', '==', student.id)
-                .get();
-            const accessData = accessSnap.docs.map(d => ({
-                id: d.id,
-                ...d.data(),
-                recordType: 'access',
-                date: d.data().timestamp, // Map timestamp to date for sorting/display
-                title: d.data().type,
-                description: `Motivo: ${d.data().reason}\nAutorizado por: ${d.data().authorizer} (${d.data().authorizerRelation})`,
-                authorName: d.data().coordinatorName || 'Coordenação',
-                category: 'Acesso'
-            }));
+        return () => unsubscribe();
+    }, [currentView, student.id]);
 
-            // 3. Merge & Sort
-            const allRecords = [...occData, ...accessData];
-            allRecords.sort((a: any, b: any) => new Date(b.date || b.timestamp).getTime() - new Date(a.date || a.timestamp).getTime());
+    // 2. Access Records (REAL-TIME LISTENER)
+    useEffect(() => {
+        if (currentView !== 'occurrences') return;
 
-            setOccurrences(allRecords as any[]);
-        } catch (error) {
-            console.error("Erro ao carregar ocorrências:", error);
-        } finally {
-            setIsLoadingOccurrences(false);
-        }
-    };
+        const unsubscribe = db.collection('accessRecords')
+            .where('studentId', '==', student.id)
+            .onSnapshot(snapshot => {
+                const data = snapshot.docs.map(d => ({
+                    id: d.id,
+                    ...d.data(),
+                    recordType: 'access',
+                    date: d.data().timestamp,
+                    exitTime: d.data().exitTime,
+                    gatekeeperName: d.data().gatekeeperName,
+                    title: d.data().type,
+                    description: `Motivo: ${d.data().reason}\nAutorizado por: ${d.data().authorizer} (${d.data().authorizerRelation})`,
+                    authorName: d.data().coordinatorName || 'Coordenação',
+                    category: 'Acesso'
+                }));
+                setAccessEvents(data);
+            }, err => {
+                console.error("Error loading access records:", err);
+            });
+
+        return () => unsubscribe();
+    }, [currentView, student.id]);
+
+    // 3. Merge & Sort Logic
+    useEffect(() => {
+        const allRecords = [...pedagogicalEvents, ...accessEvents];
+        allRecords.sort((a: any, b: any) => new Date(b.date || b.timestamp).getTime() - new Date(a.date || a.timestamp).getTime());
+        setOccurrences(allRecords as any[]);
+    }, [pedagogicalEvents, accessEvents]);
+
+    const loadOccurrences = () => { }; // Deprecated placeholder
 
 
     return (
@@ -2749,6 +2762,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                     ? `${new Date(occ.date || occ.timestamp).toLocaleDateString()} às ${new Date(occ.date || occ.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
                                                                     : safeParseDate(occ.date || occ.timestamp).toLocaleDateString()
                                                                 }
+                                                                {(isAccess && occ.exitTime) && (
+                                                                    <span className="block text-green-700 font-bold mt-0.5">
+                                                                        Saída: {new Date(occ.exitTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                    </span>
+                                                                )}
                                                             </span>
                                                         </div>
                                                         <div className="text-right">
