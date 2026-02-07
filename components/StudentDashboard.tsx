@@ -1784,10 +1784,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     <Button
                                         type="button"
                                         onClick={handleDownloadPDF}
-                                        className="flex items-center gap-2"
+                                        className="flex items-center justify-center gap-2 h-auto whitespace-normal text-center py-3"
                                     >
-                                        <Download className="w-5 h-5" />
-                                        {isEarlyChildhood ? 'Baixar Relatório (PDF)' : 'Baixar Boletim (PDF)'}
+                                        <Download className="w-5 h-5 flex-shrink-0" />
+                                        <span className="leading-tight">{isEarlyChildhood ? 'Baixar Relatório (PDF)' : 'Baixar Boletim (PDF)'}</span>
                                     </Button>
                                 </div>
 
