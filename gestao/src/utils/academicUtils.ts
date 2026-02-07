@@ -83,6 +83,78 @@ import { ACADEMIC_GRADES, ACADEMIC_SEGMENTS } from "./academicDefaults";
  * Normalizes class strings from numeric format to letters (e.g. "03" -> "C").
  * Now strictly enforced as a single letter ID.
  */
+/**
+ * Normalizes unit strings to internal IDs (e.g. "Zona Norte" -> "unit_zn").
+ */
+export const normalizeUnit = (unit: any): SchoolUnit | string => {
+    if (!unit) return '';
+    const u = String(unit).trim().toLowerCase();
+    if (u.includes('zona norte') || u === 'unit_zn') return SchoolUnit.UNIT_ZN;
+    if (u.includes('boa sorte') || u === 'unit_bs') return SchoolUnit.UNIT_BS;
+    if (u.includes('extremoz') || u === 'unit_ext') return SchoolUnit.UNIT_EXT;
+    if (u.includes('quintas') || u === 'unit_qui') return SchoolUnit.UNIT_QUI;
+    return u;
+};
+
+/**
+ * 🔒 STRICT ID RESOLUTION: Unit
+ * strictly returns a valid SchoolUnit ID or null.
+ */
+export const resolveUnitId = (input: string): string | null => {
+    if (!input) return null;
+    const normalized = normalizeUnit(input);
+    if (Object.values(SchoolUnit).includes(normalized as SchoolUnit)) {
+        return normalized as string;
+    }
+    return null;
+};
+
+/**
+ * 🔒 STRICT ID RESOLUTION: Shift
+ * strictly returns a valid SchoolShift ID or null.
+ */
+export const resolveShiftId = (input: string): string | null => {
+    if (!input) return null;
+    const s = String(input).trim().toLowerCase();
+    if (s.includes('morning') || s === 'matutino' || s === 'shift_morning') return 'shift_morning';
+    if (s.includes('afternoon') || s === 'vespertino' || s === 'shift_afternoon') return 'shift_afternoon';
+    return null;
+};
+
+/**
+ * Normalizes shift strings to internal IDs (e.g. "Matutino" -> "shift_morning").
+ */
+export const normalizeShift = (shift: any): string => {
+    const resolved = resolveShiftId(shift);
+    return resolved || String(shift);
+};
+
+/**
+ * 🔒 STRICT ID RESOLUTION: Grade
+ * strictly returns a valid Grade ID (e.g., 'grade_1_ser') or null.
+ * Checks both ID matches and exact Label matches against ACADEMIC_GRADES.
+ */
+export const resolveGradeId = (input: string): string | null => {
+    if (!input) return null;
+    const trimmed = input.trim();
+
+    // 1. Direct ID Match
+    const directMatch = Object.values(ACADEMIC_GRADES).find(g => g.id === trimmed);
+    if (directMatch) return directMatch.id;
+
+    // 2. Canonical Label Match
+    const labelMatch = Object.values(ACADEMIC_GRADES).find(g => g.label === trimmed);
+    if (labelMatch) return labelMatch.id;
+
+    // 3. Fallback: Try parsing the label if it contains extra info like " - Ensino Médio"
+    const parts = trimmed.split(/ - | \(/);
+    const candidateLabel = parts[0].trim();
+    const fuzzyMatch = Object.values(ACADEMIC_GRADES).find(g => g.label === candidateLabel);
+    if (fuzzyMatch) return fuzzyMatch.id;
+
+    return null;
+};
+
 export const normalizeClass = (schoolClass: any): string => {
     if (!schoolClass) return '';
     const classStr = String(schoolClass).trim().toUpperCase();
@@ -107,10 +179,23 @@ export const normalizeClass = (schoolClass: any): string => {
 export const parseGradeLevel = (gradeLevel: string) => {
     if (!gradeLevel) return { grade: '', level: ACADEMIC_SEGMENTS.FUND_1.label };
 
-    // 1. Try to find by official "Grade - Segment" string
+    // 1. Try Strict ID Resolution first
+    const resolvedId = resolveGradeId(gradeLevel);
+    if (resolvedId) {
+        const gradeDef = Object.values(ACADEMIC_GRADES).find(g => g.id === resolvedId);
+        if (gradeDef) {
+            const segment = Object.values(ACADEMIC_SEGMENTS).find(s => s.id === gradeDef.segmentId);
+            return {
+                grade: gradeDef.label,
+                level: segment?.label || ACADEMIC_SEGMENTS.FUND_1.label
+            };
+        }
+    }
+
+    // 2. Fallback to parsing string (for legacy/display compatibility)
     const [gradePart, levelPart] = gradeLevel.split(' - ');
 
-    // 2. Validate against official list
+    // Match against official list
     const officialGrade = Object.values(ACADEMIC_GRADES).find(
         g => g.label === gradePart && (levelPart ? ACADEMIC_SEGMENTS[Object.keys(ACADEMIC_SEGMENTS).find(k => ACADEMIC_SEGMENTS[k as keyof typeof ACADEMIC_SEGMENTS].label === levelPart) as keyof typeof ACADEMIC_SEGMENTS]?.label === levelPart : true)
     );
@@ -123,7 +208,7 @@ export const parseGradeLevel = (gradeLevel: string) => {
         };
     }
 
-    // Fallback logic for legacy cases (still slightly tolerant but logs for future cleanup)
+    // Fallback logic for legacy cases
     let level = ACADEMIC_SEGMENTS.FUND_1.label;
     if (gradeLevel.includes('Fundamental II')) level = ACADEMIC_SEGMENTS.FUND_2.label;
     else if (gradeLevel.includes('Ensino Médio') || gradeLevel.includes('Ens. Médio') || gradeLevel.includes('Série')) level = ACADEMIC_SEGMENTS.MEDIO.label;
@@ -278,18 +363,22 @@ export const calculateEffectiveTaughtClasses = (
     studentShift?: string,
     subjectId?: string // Now required for granular filtering
 ): { taught: number, isEstimated: boolean } => {
+    // 1. Resolve Strict Target IDs
+    const targetGradeId = gradeLevel ? resolveGradeId(gradeLevel) : null;
+    const targetUnitId = unit ? resolveUnitId(unit) : null;
+    const targetShiftId = studentShift ? resolveShiftId(studentShift) : null;
+
     // 1. Find Schedule for this unit/grade/class
     const scheduleMap: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
     let hasScheduleForSubject = false;
     let hasAnyScheduleForClass = false;
 
     classSchedules.forEach(schedule => {
-        // Filter by Grade/Class if provided
-        if (gradeLevel) {
-            const sGrade = parseGradeLevel(schedule.grade).grade;
-            const tGrade = parseGradeLevel(gradeLevel).grade;
-            if (sGrade !== tGrade) return;
-        }
+        // STRICT FILTERING
+        if (targetUnitId && resolveUnitId(schedule.schoolId) !== targetUnitId) return;
+        if (targetShiftId && resolveShiftId(schedule.shift) !== targetShiftId) return;
+        if (targetGradeId && resolveGradeId(schedule.grade) !== targetGradeId) return;
+
         if (schoolClass) {
             if (normalizeClass(schedule.class) !== normalizeClass(schoolClass)) return;
         }
@@ -396,7 +485,9 @@ export const isClassScheduled = (
     calendarEvents: any[],
     unit?: string,
     gradeLevel?: string,
-    schoolClass?: string
+    schoolClass?: string,
+    shift?: string,
+    subjectId?: string
 ): boolean => {
     const date = new Date(dateStr + 'T00:00:00');
     if (isNaN(date.getTime())) return false;
@@ -409,7 +500,7 @@ export const isClassScheduled = (
     const extraSchoolDates = new Set<string>();
 
     (calendarEvents || []).forEach(e => {
-        if (!doesEventApplyToStudent(e, unit, gradeLevel, schoolClass)) return;
+        if (!doesEventApplyToStudent(e, unit, gradeLevel, schoolClass, shift, subjectId)) return;
 
         const s = new Date(e.startDate + 'T00:00:00');
         const f = e.endDate ? new Date(e.endDate + 'T00:00:00') : new Date(e.startDate + 'T00:00:00');
@@ -429,7 +520,7 @@ export const isClassScheduled = (
 
     // Find the specific event for this date to check for substitution
     const dayEvent = (calendarEvents || []).find(e => {
-        if (!doesEventApplyToStudent(e, unit, gradeLevel, schoolClass)) return false;
+        if (!doesEventApplyToStudent(e, unit, gradeLevel, schoolClass, shift, subjectId)) return false;
         return dateStr >= e.startDate && dateStr <= (e.endDate || e.startDate);
     });
 
@@ -445,12 +536,20 @@ export const isClassScheduled = (
     const isWeekend = actualDayOfWeek === 0 || actualDayOfWeek === 6;
     if (isWeekend && !extraSchoolDates.has(dateStr)) return false;
 
+    // Resolve Target IDs
+    const targetGradeId = gradeLevel ? resolveGradeId(gradeLevel) : null;
+    const targetUnitId = unit ? resolveUnitId(unit) : null;
+    const targetShiftId = shift ? resolveShiftId(shift) : null;
+
     // 2. Check Schedule for the effective day
     const daySchedule = classSchedules.find((s: any) => {
         if (s.dayOfWeek !== effectiveDay) return false;
-        if (gradeLevel) {
-            if (parseGradeLevel(s.grade).grade !== parseGradeLevel(gradeLevel).grade) return false;
-        }
+
+        // Strict Filters
+        if (targetGradeId && resolveGradeId(s.grade) !== targetGradeId) return false;
+        if (targetUnitId && resolveUnitId(s.schoolId) !== targetUnitId) return false;
+        if (targetShiftId && resolveShiftId(s.shift) !== targetShiftId) return false;
+
         if (schoolClass) {
             if (normalizeClass(s.class) !== normalizeClass(schoolClass)) return false;
         }
