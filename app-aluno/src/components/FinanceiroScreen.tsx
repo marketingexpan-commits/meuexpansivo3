@@ -1136,7 +1136,7 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                             <Payment
                                                 initialization={{
                                                     amount: Number(((activeTab === 'mensalidades' ? totalMensalidadesValue : totalSelectedValue) * (selectedMethod === 'credito' || selectedMethod === 'debito' ? 1.05 : 1)).toFixed(2)),
-                                                    preferenceId: preferenceId,
+                                                    preferenceId: preferenceId || undefined,
                                                     // payer: transactionPayer <--- REMOVED: Relying on Backend Preference to avoid Conflicts
                                                 }}
                                                 customization={{

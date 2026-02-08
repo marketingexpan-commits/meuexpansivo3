@@ -35,5 +35,8 @@
     "node_modules",
     "dist",
     "functions"
+  ],
+  "include": [
+    "src"
   ]
 }
