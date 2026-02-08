@@ -45,6 +45,12 @@ import { studentService } from '../services/studentService';
 import { generateReceipt } from '../utils/receiptGenerator';
 import { useSchoolUnits } from '../hooks/useSchoolUnits';
 import type { Student, Expense, Mensalidade, EventoFinanceiro } from '../types';
+import {
+    ACADEMIC_SEGMENTS,
+    ACADEMIC_GRADES,
+    SCHOOL_SHIFTS,
+    UNIT_DETAILS
+} from '../utils/academicDefaults';
 
 interface EnrichedMensalidade {
     id: string;
@@ -137,6 +143,7 @@ export function Financeiro() {
         unit: 'all',
         segment: 'all',
         grade: 'all',
+        shift: 'all',
         schoolClass: 'all',
         studentId: 'all'
     });
@@ -151,50 +158,7 @@ export function Financeiro() {
 
     const [isCreatingEvent, setIsCreatingEvent] = useState(false);
 
-    // Mapeamento de Séries por Segmento
-    const segmentGrades: Record<string, string[]> = {
-        'Educação Infantil': ['Berçário', 'Nível I', 'Nível II', 'Nível III', 'Nível IV', 'Nível V'],
-        'Fundamental I': ['1º Ano', '2º Ano', '3º Ano', '4º Ano', '5º Ano'],
-        'Fundamental II': ['6º Ano', '7º Ano', '8º Ano', '9º Ano'],
-        'Ensino Médio': ['1ª Série', '2ª Série', '3ª Série']
-    };
 
-    // Helpers de Ordenação
-    const getGradeWeight = (grade: string) => {
-        const normalized = grade.toLowerCase();
-        // Check order strictly to avoid substring overlaps (e.g., 'i' is inside 'ii', 'iii', 'iv')
-        if (normalized.includes('berçário')) return 0;
-        if (normalized.includes('nível v')) return 5;
-        if (normalized.includes('nível iv')) return 4;
-        if (normalized.includes('nível iii')) return 3;
-        if (normalized.includes('nível ii')) return 2;
-        if (normalized.includes('nível i')) return 1;
-
-        if (normalized.includes('1º ano')) return 11;
-        if (normalized.includes('2º ano')) return 12;
-        if (normalized.includes('3º ano')) return 13;
-        if (normalized.includes('4º ano')) return 14;
-        if (normalized.includes('5º ano')) return 15;
-        if (normalized.includes('6º ano')) return 16;
-        if (normalized.includes('7º ano')) return 17;
-        if (normalized.includes('8º ano')) return 18;
-        if (normalized.includes('9º ano')) return 19;
-
-        if (normalized.includes('1ª série')) return 21;
-        if (normalized.includes('2ª série')) return 22;
-        if (normalized.includes('3ª série')) return 23;
-
-        return 99;
-    };
-
-    const getSegmentWeight = (segment: string) => {
-        const normalized = segment.toLowerCase();
-        if (normalized.includes('infantil')) return 1;
-        if (normalized.includes('fundamental i') && !normalized.includes('ii')) return 2;
-        if (normalized.includes('fundamental ii')) return 3;
-        if (normalized.includes('médio')) return 4;
-        return 99;
-    };
 
 
 
@@ -203,8 +167,6 @@ export function Financeiro() {
     const isFilterMatch = (studentValue: string | undefined, filterValue: string) => {
         if (filterValue === 'all') return true;
         if (!studentValue) return false;
-
-        // Com a padronização, a comparação agora é direta via ID (unit_bs, unit_zn, etc)
         return studentValue === filterValue;
     };
 
@@ -355,21 +317,54 @@ export function Financeiro() {
             const expensesData = results[2] as any[] || [];
             const eventosData = results[3] as any[] || [];
 
-            // Inferred Segment Logic (Fix for missing data)
+            // Mapping Logic (Fix for missing data and normalization to Canonical IDs)
             const studentsData = studentsDataRaw.map(s => {
-                if (s.segment && s.segment !== 'undefined') return s;
+                let segment = s.segment || '';
+                let unit = s.unit || '';
+                let shift = s.shift || '';
+                let gradeId = s.gradeId || '';
+                let schoolClass = s.schoolClass || '';
 
-                let inferredSegment = '';
-                const grade = s.gradeLevel || '';
-                const normGrade = grade.toLowerCase();
+                // 1. Normalize Segment to ID
+                if (!segment || !segment.startsWith('seg_')) {
+                    const grade = s.gradeLevel || '';
+                    const normGrade = grade.toLowerCase();
+                    if (normGrade.includes('médio')) segment = ACADEMIC_SEGMENTS.MEDIO.id;
+                    else if (normGrade.includes('fundamental ii') || normGrade.match(/[6-9]º/)) segment = ACADEMIC_SEGMENTS.FUND_2.id;
+                    else if (normGrade.includes('fundamental i') || normGrade.match(/[1-5]º/)) segment = ACADEMIC_SEGMENTS.FUND_1.id;
+                    else if (normGrade.includes('infantil') || normGrade.includes('nível') || normGrade.includes('berçário')) segment = ACADEMIC_SEGMENTS.INFANTIL.id;
+                }
 
-                if (normGrade.includes('médio')) inferredSegment = 'Ensino Médio';
-                else if (normGrade.includes('fundamental ii') || normGrade.match(/[6-9]º/)) inferredSegment = 'Fundamental II';
-                else if (normGrade.includes('fundamental i') || normGrade.match(/[1-5]º/)) inferredSegment = 'Fundamental I';
-                else if (normGrade.includes('infantil') || normGrade.includes('nível') || normGrade.includes('berçário')) inferredSegment = 'Educação Infantil';
+                // 2. Normalize Unit to ID
+                if (!unit || !unit.startsWith('unit_')) {
+                    const foundUnitId = Object.entries(UNIT_DETAILS).find(([_, details]) =>
+                        details.name.toLowerCase().includes(unit.toLowerCase()) ||
+                        unit === details.name.replace('Expansivo - ', '')
+                    )?.[0];
+                    if (foundUnitId) unit = foundUnitId as any;
+                }
 
-                return { ...s, segment: inferredSegment || s.segment };
-            });
+                // 3. Normalize Shift to ID
+                if (!shift || !shift.startsWith('shift_')) {
+                    const normShift = shift.toLowerCase();
+                    if (normShift.includes('matutino') || normShift === 'm') shift = 'shift_morning' as any;
+                    else if (normShift.includes('vespertino') || normShift === 'v') shift = 'shift_afternoon' as any;
+                }
+
+                // 4. Normalize Grade to ID
+                if (!gradeId || !gradeId.startsWith('grade_')) {
+                    // Try to match by label in ACADEMIC_GRADES
+                    const foundGrade = Object.values(ACADEMIC_GRADES).find(g =>
+                        g.label === s.gradeLevel ||
+                        (s.gradeLevel && s.gradeLevel.startsWith(g.label)) // Simple prefix match
+                    );
+                    if (foundGrade) gradeId = foundGrade.id;
+                }
+
+
+
+                return { ...s, segment, unit, shift, gradeId, schoolClass } as any;
+            }) as any[];
 
             setStudents(studentsData);
 
@@ -798,6 +793,7 @@ export function Financeiro() {
                 unit: 'all',
                 segment: 'all',
                 grade: 'all',
+                shift: 'all',
                 schoolClass: 'all',
                 studentId: 'all'
             });
@@ -2036,47 +2032,46 @@ export function Financeiro() {
                             <Select
                                 label="Unidade"
                                 value={eventTarget.unit}
-                                onChange={(e) => setEventTarget({ ...eventTarget, unit: e.target.value, segment: 'all', grade: 'all', schoolClass: 'all', studentId: 'all' })}
+                                onChange={(e) => setEventTarget({ ...eventTarget, unit: e.target.value, segment: 'all', grade: 'all', schoolClass: 'all', shift: 'all', studentId: 'all' })}
                                 disabled={localStorage.getItem('userUnit') !== 'admin_geral' && !!localStorage.getItem('userUnit')}
                                 options={[
                                     { label: 'Todas', value: 'all' },
-                                    { label: 'Boa Sorte', value: 'unit_bs' },
-                                    { label: 'Extremoz', value: 'unit_ext' },
-                                    { label: 'Quintas', value: 'unit_qui' },
-                                    { label: 'Zona Norte', value: 'unit_zn' }
+                                    ...Object.entries(UNIT_DETAILS).map(([id, details]) => ({
+                                        label: details.name.replace('Expansivo - ', ''),
+                                        value: id
+                                    }))
                                 ]}
                             />
                             <Select
                                 label="Segmento"
                                 value={eventTarget.segment}
-                                onChange={(e) => setEventTarget({ ...eventTarget, segment: e.target.value, grade: 'all', schoolClass: 'all', studentId: 'all' })}
+                                onChange={(e) => setEventTarget({ ...eventTarget, segment: e.target.value, grade: 'all', schoolClass: 'all', shift: 'all', studentId: 'all' })}
                                 options={[
                                     { label: 'Todos', value: 'all' },
-                                    ...Array.from(new Set([
-                                        'Educação Infantil',
-                                        'Fundamental I',
-                                        'Fundamental II',
-                                        'Ensino Médio',
-                                        ...students.map(s => s.segment)
-                                    ]))
-                                        .filter((s): s is string => !!s)
-                                        .sort((a, b) => getSegmentWeight(a) - getSegmentWeight(b))
-                                        .map(s => ({ label: s, value: s }))
+                                    ...Object.values(ACADEMIC_SEGMENTS)
+                                        .sort((a, b) => a.order - b.order)
+                                        .map(seg => ({ label: seg.label, value: seg.id }))
                                 ]}
                             />
                             <Select
                                 label="Série"
                                 value={eventTarget.grade}
-                                onChange={(e) => setEventTarget({ ...eventTarget, grade: e.target.value, schoolClass: 'all', studentId: 'all' })}
+                                onChange={(e) => setEventTarget({ ...eventTarget, grade: e.target.value, schoolClass: 'all', shift: 'all', studentId: 'all' })}
                                 options={[
                                     { label: 'Todas', value: 'all' },
-                                    ...Array.from(new Set([
-                                        ...(eventTarget.segment !== 'all' && segmentGrades[eventTarget.segment] ? segmentGrades[eventTarget.segment] : []),
-                                        ...students.filter(s => isFilterMatch(s.segment, eventTarget.segment)).map(s => s.gradeLevel)
-                                    ]))
-                                        .filter((s): s is string => !!s)
-                                        .sort((a, b) => getGradeWeight(a) - getGradeWeight(b))
-                                        .map(s => ({ label: s, value: s }))
+                                    ...Object.values(ACADEMIC_GRADES)
+                                        .filter(g => eventTarget.segment === 'all' || g.segmentId === eventTarget.segment)
+                                        .sort((a, b) => a.order - b.order)
+                                        .map(g => ({ label: g.label, value: g.id }))
+                                ]}
+                            />
+                            <Select
+                                label="Turno"
+                                value={eventTarget.shift}
+                                onChange={(e) => setEventTarget({ ...eventTarget, shift: e.target.value, studentId: 'all' })}
+                                options={[
+                                    { label: 'Todos', value: 'all' },
+                                    ...SCHOOL_SHIFTS.map(s => ({ label: s.label, value: s.value }))
                                 ]}
                             />
                             <Select
@@ -2085,13 +2080,11 @@ export function Financeiro() {
                                 onChange={(e) => setEventTarget({ ...eventTarget, schoolClass: e.target.value, studentId: 'all' })}
                                 options={[
                                     { label: 'Todas', value: 'all' },
-                                    ...Array.from(new Set([
-                                        'A', 'B', 'C', 'D', 'E',
-                                        ...students.filter(s => isFilterMatch(s.gradeLevel, eventTarget.grade) && isFilterMatch(s.unit, eventTarget.unit)).map(s => s.schoolClass)
-                                    ]))
-                                        .filter((s) => !!s)
-                                        .sort()
-                                        .map(s => ({ label: s, value: s }))
+                                    { label: 'A', value: 'A' },
+                                    { label: 'B', value: 'B' },
+                                    { label: 'C', value: 'C' },
+                                    { label: 'D', value: 'D' },
+                                    { label: 'E', value: 'E' }
                                 ]}
                             />
                         </div>
@@ -2108,8 +2101,9 @@ export function Financeiro() {
                                     .filter(s =>
                                         isFilterMatch(s.unit, eventTarget.unit) &&
                                         isFilterMatch(s.segment, eventTarget.segment) &&
-                                        isFilterMatch(s.gradeLevel, eventTarget.grade) &&
-                                        isFilterMatch(s.schoolClass, eventTarget.schoolClass)
+                                        isFilterMatch(s.gradeId, eventTarget.grade) &&
+                                        isFilterMatch(s.schoolClass, eventTarget.schoolClass) &&
+                                        isFilterMatch(s.shift, eventTarget.shift)
                                     )
                                     .sort((a, b) => a.name.localeCompare(b.name))
                                     .map(s => (
