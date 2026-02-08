@@ -1618,7 +1618,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                         >
                                             <option value="all">Todos os Turnos</option>
                                             {uniqueShifts.map(s => (
-                                                <option key={s} value={s}>{s}</option>
+                                                <option key={s} value={s}>{SHIFT_LABELS[s as SchoolShift] || s}</option>
                                             ))}
                                         </select>
                                     </div>
