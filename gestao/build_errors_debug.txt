@@ -1,7 +1,0 @@
-﻿
-> gestao@0.0.1 build
-> tsc -b && vite build
-
-src/components/CalendarManagement.tsx(157,91): error TS2345: Argument of type 'string' is not assignable to parameter of type 'SchoolUnit | "all"'.
-src/components/CalendarManagement.tsx(241,76): error TS2345: Argument of type 'string' is not assignable to parameter of type 'SetStateAction<SchoolUnit | "all">'.
-src/components/DatabaseCleanupTool.tsx(535,78): error TS2345: Argument of type 'string' is not assignable to parameter of type 'SetStateAction<SchoolUnit>'.

@@ -1,6 +1,0 @@
-﻿gestao/src/services/statsService.ts(48,91): error TS2339: Property 'studentId' does not exist on type 'unknown'.
-gestao/src/services/statsService.ts(50,67): error TS2339: Property 'status' does not exist on type 'unknown'.
-gestao/src/services/statsService.ts(52,66): error TS2339: Property 'status' does not exist on type 'unknown'.
-gestao/src/services/studentService.ts(40,17): error TS2698: Spread types may only be created from object types.
-src/components/StudentDashboard.tsx(136,71): error TS2554: Expected 2 arguments, but got 3.
-src/utils/attendanceUtils.ts(69,55): error TS2339: Property 'sort' does not exist on type 'unknown'.

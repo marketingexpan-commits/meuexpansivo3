@@ -1,6 +1,0 @@
-﻿
-> meu-expansivo---portal-escolar@0.0.0 build
-> tsc -b && vite build
-
-src/components/AdminDashboard.tsx(594,42): error TS17008: JSX element 'div' has no corresponding closing tag.
-src/components/AdminDashboard.tsx(719,46): error TS17008: JSX element 'div' has no corresponding closing tag.

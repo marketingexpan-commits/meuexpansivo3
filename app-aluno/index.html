@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meu Expansivo</title>
+  <link id="favicon" rel="icon" type="image/png" href="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png" />
+  <script>
+    (function () {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = function () {
+        console.log('Favicon image loaded successfully');
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, 128, 128);
+        ctx.translate(64, 64);
+        ctx.rotate(7 * Math.PI / 180);
+        ctx.drawImage(img, -64, -64, 128, 128);
+
+        const newLink = document.createElement('link');
+        newLink.rel = 'icon';
+        newLink.id = 'favicon';
+        newLink.type = 'image/png';
+        newLink.href = canvas.toDataURL('image/png');
+
+        const head = document.getElementsByTagName('head')[0];
+        const oldLinks = document.querySelectorAll('link[rel*="icon"]');
+        oldLinks.forEach(link => head.removeChild(link));
+        head.appendChild(newLink);
+        console.log('Favicon rotated and injected');
+      };
+      img.onerror = function () {
+        console.error('Failed to load favicon image for rotation');
+      };
+      img.src = 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png?v=' + Date.now();
+    })();
+  </script>
+  <link rel="stylesheet" href="/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f3f4f6;
+    }
+
+    @keyframes progress-indeterminate {
+      0% {
+        transform: translateX(-100%);
+        width: 30%;
+      }
+
+      50% {
+        transform: translateX(100%);
+        width: 60%;
+      }
+
+      100% {
+        transform: translateX(300%);
+        width: 30%;
+      }
+    }
+
+    .animate-progress-indeterminate {
+      animation: progress-indeterminate 2s infinite linear;
+      transform-origin: left;
+    }
+
+    /* Scrollbar-hide utility */
+    .scrollbar-hide::-webkit-scrollbar {
+      display: none;
+    }
+
+    .scrollbar-hide {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/index.tsx"></script>
+</body>
+
+</html>
