@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { collection, query, where, onSnapshot, updateDoc, doc, getDocs, getDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, updateDoc, doc, getDocs, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -274,6 +274,25 @@ export const GatekeeperDashboard: React.FC = () => {
                     gatekeeperName: gatekeeperName
                 });
             }
+
+            // --- NOTIFICATION FIX: Notify student that departure happened ---
+            if (release) {
+                const notifId = `notif-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+                const notifRef = doc(db, 'notifications', notifId);
+
+                // Format time for a friendly message
+                const timeStr = new Date(now).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+                await setDoc(notifRef, {
+                    id: notifId,
+                    studentId: release.studentId,
+                    title: "Saída Confirmada",
+                    message: `Sua saída da escola foi confirmada agora às ${timeStr}.`,
+                    timestamp: now,
+                    read: false
+                });
+            }
+            // -----------------------------------------------------------------
 
             alert("Saída confirmada com sucesso!");
             setSelectedStudent(null);
