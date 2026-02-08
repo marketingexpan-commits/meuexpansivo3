@@ -1140,7 +1140,9 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                     coordinatorName: coordinator.name,
                     status: 'pending',
                     linkedAccessRecordId: docRef.id,
-                    reason: accessForm.reason
+                    reason: accessForm.reason,
+                    studentPhoto: accessSelectedStudent.photoUrl || null,
+                    shift: accessSelectedStudent.shift || null
                 };
 
                 await db.collection('authorized_releases').add(releaseRecord);
@@ -1221,7 +1223,9 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 coordinatorName: coordinator.name,
                 status: 'pending', // Pending gatekeeper scan
                 linkedAccessRecordId: docRef.id, // LINKED!
-                reason: 'Autorização Rápida'
+                reason: 'Autorização Rápida',
+                studentPhoto: student.photoUrl || null,
+                shift: student.shift || null
             };
 
             await db.collection('authorized_releases').add(releaseRecord);

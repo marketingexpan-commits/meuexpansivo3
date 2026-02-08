@@ -4,7 +4,7 @@ import { collection, query, where, onSnapshot, updateDoc, doc, getDocs, getDoc, 
 import { db } from '../firebaseConfig';
 import { Button } from './Button';
 import { Input } from './Input';
-import { Search, QrCode, UserCheck, Clock, ShieldAlert, LogOut, ChevronRight, Loader2, Home, ArrowLeft, Bell, ChevronUp, User } from 'lucide-react';
+import { Search, QrCode, UserCheck, Clock, ShieldAlert, LogOut, ChevronRight, Loader2, Home, ArrowLeft, Bell, ChevronUp, User, CheckCircle } from 'lucide-react';
 import { SchoolLogo } from './SchoolLogo';
 import { UNIT_LABELS, SchoolUnit } from '../types';
 
@@ -17,6 +17,10 @@ interface AuthorizedRelease {
     status: 'pending' | 'released' | 'expired';
     unit: string;
     linkedAccessRecordId?: string;
+    studentPhoto?: string;
+    gradeLevel?: string;
+    schoolClass?: string;
+    shift?: string;
 }
 
 export const GatekeeperDashboard: React.FC = () => {
@@ -34,6 +38,21 @@ export const GatekeeperDashboard: React.FC = () => {
     const [unit, setUnit] = useState(localStorage.getItem('userUnit') || '');
     const gatekeeperName = localStorage.getItem('gatekeeperName') || 'Portaria';
     const [showNotifications, setShowNotifications] = useState(false); // Placeholder for uniformity
+    const [dialogConfig, setDialogConfig] = useState<{
+        isOpen: boolean;
+        type: 'alert' | 'confirm';
+        title: string;
+        message: string;
+        studentPhoto?: string;
+        onConfirm?: () => void;
+        onCancel?: () => void;
+    }>({ isOpen: false, type: 'alert', title: '', message: '' });
+
+    const showDialog = (config: Omit<typeof dialogConfig, 'isOpen'>) => {
+        setDialogConfig({ ...config, isOpen: true });
+    };
+
+    const closeDialog = () => setDialogConfig(prev => ({ ...prev, isOpen: false }));
 
     // --- EFFECTS ---
     useEffect(() => {
@@ -109,23 +128,41 @@ export const GatekeeperDashboard: React.FC = () => {
             }
 
             if (!studentData) {
-                alert("Aluno não encontrado nesta unidade.");
+                setLoading(false);
+                showDialog({
+                    type: 'alert',
+                    title: 'Atenção',
+                    message: "Aluno não encontrado nesta unidade."
+                });
                 return;
             }
 
             setSelectedStudent({ id: finalId, ...studentData });
 
             const release = releases.find(r => r.studentId === finalId || r.studentId === studentId);
+            setLoading(false);
             if (release) {
-                if (confirm(`LIBERAÇÃO ENCONTRADA!\n\nAluno: ${studentData.name}\nAutorizado por: ${release.coordinatorName}\n\nConfirmar saída agora?`)) {
-                    await handleRelease(release.id);
-                }
+                showDialog({
+                    type: 'confirm',
+                    title: 'LIBERAÇÃO ENCONTRADA!',
+                    message: `Aluno: ${studentData.name}\nAutorizado por: ${release.coordinatorName}\n\nConfirmar saída agora?`,
+                    studentPhoto: studentData.photoUrl,
+                    onConfirm: () => handleRelease(release.id)
+                });
             } else {
-                alert(`ALERTA: Aluno ${studentData.name} não possui autorização de saída para este momento.`);
+                showDialog({
+                    type: 'alert',
+                    title: 'ALERTA',
+                    message: `Aluno ${studentData.name} não possui autorização de saída para este momento.`
+                });
             }
         } catch (error) {
             console.error("Verification error:", error);
-            alert("Erro ao verificar aluno.");
+            showDialog({
+                type: 'alert',
+                title: 'Erro',
+                message: "Erro ao verificar aluno."
+            });
         } finally {
             setLoading(false);
         }
@@ -248,7 +285,11 @@ export const GatekeeperDashboard: React.FC = () => {
             console.error("Search error:", error);
             // Minimal fallback: check results already in memory (fuzzy search local)
             setSearchResults([]);
-            alert("Erro ao realizar busca. Verifique sua conexão.");
+            showDialog({
+                type: 'alert',
+                title: 'Erro na Busca',
+                message: "Não foi possível realizar a busca. Verifique sua conexão."
+            });
         } finally {
             setLoading(false);
         }
@@ -294,13 +335,23 @@ export const GatekeeperDashboard: React.FC = () => {
             }
             // -----------------------------------------------------------------
 
-            alert("Saída confirmada com sucesso!");
+            // -----------------------------------------------------------------
+
+            showDialog({
+                type: 'alert',
+                title: 'Sucesso',
+                message: "Saída confirmada com sucesso!"
+            });
             setSelectedStudent(null);
             // Optionally redirect back to menu or scanner?
             // setActiveTab('menu'); 
         } catch (error) {
             console.error(error);
-            alert("Erro ao confirmar saída.");
+            showDialog({
+                type: 'alert',
+                title: 'Erro',
+                message: "Erro ao confirmar saída."
+            });
         }
     };
 
@@ -313,6 +364,7 @@ export const GatekeeperDashboard: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans transition-all duration-500 ease-in-out">
+            {/* Professional Dialog Modal moved to end */}
             <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out max-w-2xl`}>
 
                 {/* MAIN CONTENT */}
@@ -528,6 +580,11 @@ export const GatekeeperDashboard: React.FC = () => {
                                                     <p className="text-[10px] font-bold text-blue-950/70 uppercase mt-1 flex items-center gap-1">
                                                         <UserCheck className="w-3 h-3" />
                                                         Autorizado por {r.coordinatorName}
+                                                        {(r.gradeLevel || r.schoolClass || r.shift) && (
+                                                            <span className="ml-1 text-orange-600">
+                                                                • {r.gradeLevel} {r.schoolClass} {r.shift === 'shift_morning' ? '(MAT)' : r.shift === 'shift_afternoon' ? '(VESP)' : ''}
+                                                            </span>
+                                                        )}
                                                     </p>
                                                 </div>
                                                 <span className="text-[10px] font-mono font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">
@@ -535,7 +592,29 @@ export const GatekeeperDashboard: React.FC = () => {
                                                 </span>
                                             </div>
                                             <Button
-                                                onClick={() => handleRelease(r.id)}
+                                                onClick={async () => {
+                                                    let photoToDisplay = r.studentPhoto;
+
+                                                    // If missing (older record), try a quick fetch
+                                                    if (!photoToDisplay) {
+                                                        try {
+                                                            const studentDoc = await getDoc(doc(db, 'students', r.studentId));
+                                                            if (studentDoc.exists()) {
+                                                                photoToDisplay = studentDoc.data().photoUrl;
+                                                            }
+                                                        } catch (e) {
+                                                            console.error("Erro ao buscar foto:", e);
+                                                        }
+                                                    }
+
+                                                    showDialog({
+                                                        type: 'confirm',
+                                                        title: 'Confirmar Liberação',
+                                                        message: `Deseja confirmar a saída de ${r.studentName}?`,
+                                                        studentPhoto: photoToDisplay,
+                                                        onConfirm: () => handleRelease(r.id)
+                                                    });
+                                                }}
                                                 className="w-full bg-blue-950 hover:bg-black text-white font-bold uppercase text-xs tracking-wider py-3.5 rounded-xl shadow-lg shadow-blue-950/10 active:scale-95 transition-all"
                                             >
                                                 Confirmar Saída
@@ -560,6 +639,79 @@ export const GatekeeperDashboard: React.FC = () => {
                 )}
 
             </div>
+
+            {/* Professional Dialog Modal - Moved to the end with HIGHEST z-index */}
+            {dialogConfig.isOpen && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-md animate-fade-in">
+                    <div className="bg-white rounded-2xl p-6 sm:p-8 w-[95%] sm:w-full max-w-sm shadow-2xl animate-scale-in relative border border-gray-100 text-center">
+                        <div className={`w-24 h-32 rounded-2xl flex items-center justify-center mx-auto mb-4 overflow-hidden border-4 border-white shadow-lg ${dialogConfig.studentPhoto ? 'bg-gray-100' : dialogConfig.type === 'confirm' || dialogConfig.title.includes('SUCESSO') || dialogConfig.title.includes('Sucesso') ? 'bg-blue-50' : dialogConfig.title.includes('ERRO') || dialogConfig.title.includes('Erro') ? 'bg-red-50' : 'bg-orange-50'}`}>
+                            {dialogConfig.studentPhoto ? (
+                                <img
+                                    src={dialogConfig.studentPhoto}
+                                    alt="Foto do Aluno"
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                        // Fallback if image fails to load
+                                        (e.target as any).style.display = 'none';
+                                        (e.target as any).parentElement.innerHTML = '<svg class="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>';
+                                    }}
+                                />
+                            ) : dialogConfig.type === 'confirm' ? (
+                                <UserCheck className="w-12 h-12 text-blue-600" />
+                            ) : dialogConfig.title.includes('SUCESSO') || dialogConfig.title.includes('Sucesso') ? (
+                                <CheckCircle className="w-12 h-12 text-blue-600" />
+                            ) : dialogConfig.title.includes('Erro') ? (
+                                <ShieldAlert className="w-12 h-12 text-red-600" />
+                            ) : (
+                                <Bell className="w-12 h-12 text-orange-600" />
+                            )}
+                        </div>
+
+                        <h3 className="text-xl font-black text-gray-900 mb-2 uppercase tracking-tight">
+                            {dialogConfig.title}
+                        </h3>
+
+                        <div className="text-gray-600 text-sm mb-8 leading-relaxed whitespace-pre-wrap">
+                            {dialogConfig.message}
+                        </div>
+
+                        <div className="flex gap-3">
+                            {dialogConfig.type === 'confirm' ? (
+                                <>
+                                    <button
+                                        onClick={() => {
+                                            closeDialog();
+                                            dialogConfig.onCancel?.();
+                                        }}
+                                        className="flex-1 px-4 py-3 rounded-xl font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            closeDialog();
+                                            dialogConfig.onConfirm?.();
+                                        }}
+                                        className="flex-1 px-4 py-3 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all"
+                                    >
+                                        Confirmar
+                                    </button>
+                                </>
+                            ) : (
+                                <button
+                                    onClick={() => {
+                                        closeDialog();
+                                        dialogConfig.onConfirm?.();
+                                    }}
+                                    className="w-full px-4 py-3 rounded-xl font-bold text-white bg-gray-900 hover:bg-black shadow-lg transition-all"
+                                >
+                                    OK
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
