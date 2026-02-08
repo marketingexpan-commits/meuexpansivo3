@@ -61,8 +61,8 @@ type PaymentMethod = 'pix' | 'debito' | 'credito' | 'boleto'; // Import constant
 // ...
 
 interface ErrorBoundaryProps {
-    children: React.ReactNode;
     onError: (error: Error) => void;
+    children: React.ReactNode;
 }
 
 interface ErrorBoundaryState {
