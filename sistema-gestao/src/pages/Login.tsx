@@ -152,23 +152,15 @@ export function Login() {
             if (adminFound) {
                 const adminData = adminFound.data();
 
-                // Verificar permissão de unidade
-                const adminUnit = adminData.unit;
-                const isGeneral = !adminUnit || adminUnit === 'admin_geral';
+                // Strict Unit Verification (User Request)
+                // If the user's unit in DB is null/undefined, treat as 'admin_geral'.
+                const dbUnit = adminData.unit || 'admin_geral';
+                const isGeneral = dbUnit === 'admin_geral';
 
-                // Mapa para normalizar nomes de unidade para códigos (compatibilidade legado)
-                const unitNormalization: Record<string, string> = {
-                    'unit_qui': 'unit_qui',
-                    'unit_zn': 'unit_zn',
-                    'unit_ext': 'unit_ext',
-                    'unit_bs': 'unit_bs'
-                };
-
-                const normalizedAdminUnit = unitNormalization[adminUnit] || adminUnit;
-
-                if (!isGeneral && normalizedAdminUnit !== selectedUnit && selectedUnit !== 'admin_geral') {
-                    // Tenta validar mapeamento legado se necessário, mas por segurança bloqueia mismatch
-                    alert(`Este usuário pertence à unidade ${adminUnit} e não tem permissão para acessar a unidade selecionada.`);
+                if (dbUnit !== selectedUnit) {
+                    const dbUnitLabel = units.find(u => u.value === dbUnit)?.label || dbUnit;
+                    const selectedUnitLabel = units.find(u => u.value === selectedUnit)?.label || selectedUnit;
+                    alert(`Este usuário pertence à "${dbUnitLabel}" e não tem permissão para acessar a "${selectedUnitLabel}".`);
                     setLoading(false);
                     return;
                 }
