@@ -227,7 +227,29 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
 
         // Normalize schoolClass (e.g. "03" -> "C")
         if (student && student.schoolClass) {
-            initialData.schoolClass = normalizeClass(student.schoolClass);
+            const normalized = normalizeClass(student.schoolClass);
+            initialData.schoolClass = normalized === 'U' ? 'A' : normalized;
+        }
+
+        // AUTO-FIX: Sync history with root class for Current Year
+        // If the student has a root class like "A" but history says "U", we fix it here.
+        if (student) {
+            const currentYear = getCurrentSchoolYear();
+            const history = [...(initialData.enrollmentHistory || [])];
+            const currentIndex = history.findIndex((h: any) => h.year === currentYear);
+
+            if (currentIndex >= 0) {
+                const historyClass = history[currentIndex].schoolClass;
+                const targetClass = initialData.schoolClass;
+
+                // FORCE 'A' if 'U' appears in history
+                // OR sync if history differs from root
+                if (historyClass === 'U' || (targetClass && historyClass !== targetClass)) {
+                    // console.log(`Auto-fixing class for ${student.name}: ${historyClass} -> ${targetClass}`);
+                    history[currentIndex] = { ...history[currentIndex], schoolClass: targetClass || 'A' };
+                    initialData.enrollmentHistory = history;
+                }
+            }
         }
 
         return initialData;

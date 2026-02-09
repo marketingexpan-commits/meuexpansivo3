@@ -11,7 +11,7 @@ import type { Student } from '../types';
 import { SCHOOL_SHIFTS, SCHOOL_CLASSES_OPTIONS } from '../utils/academicDefaults';
 import { SHIFT_LABELS, SchoolShift } from '../types';
 import { useAcademicData } from '../hooks/useAcademicData';
-import { getCurrentSchoolYear, parseGradeLevel } from '../utils/academicUtils';
+import { getCurrentSchoolYear, parseGradeLevel, normalizeClass } from '../utils/academicUtils';
 
 import { financialService } from '../services/financialService';
 import { generateCarne } from '../utils/carneGenerator';
@@ -441,6 +441,66 @@ export function Matriculas() {
 
 
 
+    const handleSyncClasses = async () => {
+        if (!confirm("Isso irá verificar TODOS os alunos listados e corrigir a enturmação de 2026 (ex: mudar de 'U' para 'A' se necessário).\n\nDeseja continuar?")) return;
+
+        setIsGenerating(true);
+        let fixedCount = 0;
+
+        try {
+            const currentYear = getCurrentSchoolYear();
+
+            for (const student of students) {
+                // Skip if no history
+                if (!student.enrollmentHistory || student.enrollmentHistory.length === 0) continue;
+
+                const history = [...student.enrollmentHistory];
+                const index = history.findIndex(h => h.year === currentYear);
+
+                // If enrolled in current year
+                if (index >= 0) {
+                    // THE FIX: We want everyone to be out of 'U' for 2026.
+                    // 1. Calculate the 'Target' class (trust Root, but map 'U' to 'A')
+                    const normalizedRoot = normalizeClass(student.schoolClass || 'A');
+                    const targetClass = normalizedRoot === 'U' ? 'A' : normalizedRoot;
+
+                    const historyClass = history[index].schoolClass;
+                    // 2. Check if we need to update (if history differs from target OR if root is 'U')
+                    if (historyClass !== targetClass || (student.schoolClass as any) === 'U') {
+
+                        // Update History Entry
+                        history[index] = {
+                            ...history[index],
+                            schoolClass: targetClass
+                        };
+
+                        // Construct Update Payload
+                        const updates = {
+                            schoolClass: targetClass as any,
+                            enrollmentHistory: history
+                        };
+
+                        await studentService.updateStudent(student.id, updates);
+                        fixedCount++;
+                    }
+                }
+            }
+
+            if (fixedCount > 0) {
+                alert(`Sucesso! ${fixedCount} alunos tiveram a enturmação corrigida para 2026.`);
+                loadStudents(); // Reload list
+            } else {
+                alert("Nenhuma correção necessária encontrada. Todos os alunos já estão sincronizados.");
+            }
+
+        } catch (error) {
+            console.error("Erro na sincronização:", error);
+            alert("Erro ao sincronizar turmas.");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             {/* Page Header */}
@@ -461,7 +521,7 @@ export function Matriculas() {
                             </div>
                         )}
                     </div>
-                    <p className="text-slate-500 text-sm">Gerencie alunos, enturmações e vagas escolares.</p>
+
                 </div>
 
             </div>
@@ -534,6 +594,15 @@ export function Matriculas() {
                                     { label: 'CONCLUÍDO', value: 'CONCLUÍDO' }
                                 ]}
                             />
+                            <Button
+                                variant="outline"
+                                onClick={handleSyncClasses}
+                                disabled={isGenerating}
+                                className="w-full text-slate-500 hover:text-blue-600 hover:bg-blue-50 border-dashed border-slate-300"
+                            >
+                                {isGenerating ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <ShieldCheck className="w-3 h-3 mr-2" />}
+                                Sincronizar Turmas
+                            </Button>
                             <Button variant="ghost" onClick={clearFilters} className="w-full text-slate-500 hover:text-red-500 hover:bg-red-50">
                                 Limpar Filtros
                             </Button>
