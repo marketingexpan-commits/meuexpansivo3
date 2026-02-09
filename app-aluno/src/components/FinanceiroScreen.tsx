@@ -506,9 +506,9 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
             } else if (activeTab === 'eventos') {
                 const selectedItems = studentEventos.filter(e => selectedEventIds.includes(e.id));
                 if (selectedItems.length === 1) {
-                    description = selectedItems[0].title;
+                    description = selectedItems[0].title || selectedItems[0].description;
                 } else if (selectedItems.length > 0) {
-                    description = `Eventos: ${selectedItems.map(e => e.title).join(', ')}`;
+                    description = `Eventos: ${selectedItems.map(e => e.title || e.description).join(', ')}`;
                 }
             }
 
@@ -683,6 +683,12 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                             selectedItems.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
                             const months = selectedItems.map(i => i.month).join(', ');
                             desc = selectedItems.length === 1 ? `Mensalidade ${months}` : `Mensalidades: ${months}`;
+                        }
+                    } else if (activeTab === 'eventos') {
+                        const selectedItems = studentEventos.filter(e => selectedEventIds.includes(e.id));
+                        if (selectedItems.length > 0) {
+                            const eventNames = selectedItems.map(e => e.title || e.description).join(', ');
+                            desc = selectedItems.length === 1 ? (selectedItems[0].title || selectedItems[0].description) : `Eventos: ${eventNames}`;
                         }
                     }
                     return desc.replace(/[^a-zA-Z0-9À-ÿ \-\/\,\.]/g, "").substring(0, 60);
@@ -1540,8 +1546,8 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                         } else {
                                                             const selectedItems = studentEventos.filter(e => selectedEventIds.includes(e.id));
                                                             if (selectedItems.length === 0) return 'Selecione um evento';
-                                                            const titles = selectedItems.map(e => e.title).join(', ');
-                                                            return selectedItems.length === 1 ? titles : `Eventos: ${titles}`;
+                                                            const titles = selectedItems.map(e => e.title || e.description).join(', ');
+                                                            return selectedItems.length === 1 ? (selectedItems[0].title || selectedItems[0].description) : `Eventos: ${titles}`;
                                                         }
                                                     })()}
                                                 </p>
