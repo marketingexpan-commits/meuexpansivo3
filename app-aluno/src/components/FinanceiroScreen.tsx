@@ -154,6 +154,13 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
 
     // State to hold the final Payer object for the Brick initialization
     const [transactionPayer, setTransactionPayer] = useState<any>(null);
+    const [copySuccess, setCopySuccess] = useState<string | null>(null);
+
+    const handleCopy = (text: string, id: string) => {
+        navigator.clipboard.writeText(text);
+        setCopySuccess(id);
+        setTimeout(() => setCopySuccess(null), 2000);
+    };
 
     useEffect(() => {
         if (preferenceId && isModalOpen) {
@@ -1234,10 +1241,10 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                         className="w-full bg-transparent text-xs text-gray-600 outline-none font-mono"
                                                     />
                                                     <button
-                                                        onClick={() => navigator.clipboard.writeText(paymentResult.point_of_interaction.transaction_data.qr_code)}
-                                                        className="text-blue-600 hover:text-blue-800 font-bold text-xs whitespace-nowrap"
+                                                        onClick={() => handleCopy(paymentResult.point_of_interaction.transaction_data.qr_code, 'pix')}
+                                                        className={`font-bold text-xs whitespace-nowrap transition-colors ${copySuccess === 'pix' ? 'text-green-600 animate-pulse' : 'text-blue-600 hover:text-blue-800'}`}
                                                     >
-                                                        COPIAR
+                                                        {copySuccess === 'pix' ? '✓ COPIADO!' : 'COPIAR'}
                                                     </button>
                                                 </div>
                                                 <Button onClick={handleCloseModal} variant="secondary" className="w-full">Fechar e Aguardar</Button>
@@ -1353,10 +1360,10 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                                             className="w-full bg-transparent text-xs text-gray-600 outline-none font-mono"
                                                         />
                                                         <button
-                                                            onClick={() => navigator.clipboard.writeText(paymentResult.barcode.content)}
-                                                            className="text-blue-600 hover:text-blue-800 font-bold text-xs whitespace-nowrap"
+                                                            onClick={() => handleCopy(paymentResult.barcode.content, 'boleto')}
+                                                            className={`font-bold text-xs whitespace-nowrap transition-colors ${copySuccess === 'boleto' ? 'text-green-600 animate-pulse' : 'text-blue-600 hover:text-blue-800'}`}
                                                         >
-                                                            COPIAR
+                                                            {copySuccess === 'boleto' ? '✓ COPIADO!' : 'COPIAR'}
                                                         </button>
                                                     </div>
                                                 )}
