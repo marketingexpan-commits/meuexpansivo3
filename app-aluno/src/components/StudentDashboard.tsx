@@ -39,9 +39,13 @@ import {
     Folder,
     ClipboardList,
     LogOut,
-    QrCode
+    QrCode,
+    Package,
+    X
 } from 'lucide-react';
 import { db } from '../firebaseConfig';
+import { useLostAndFound } from '../hooks/useLostAndFound';
+import { Dialog } from './Dialog';
 
 // Simple Info Icon Component for the Modal
 const InfoIcon = ({ className }: { className?: string }) => (
@@ -172,6 +176,169 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     classSchedules = [],
     schoolMessages = []
 }) => {
+    const StudentLostFoundView: React.FC<{ unit: SchoolUnit }> = ({ unit }) => {
+        const { items, loading, claimItem } = useLostAndFound(unit);
+        const [claimingId, setClaimingId] = useState<string | null>(null);
+        const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
+
+        const [dialogConfig, setDialogConfig] = useState<{
+            isOpen: boolean;
+            type: 'alert' | 'confirm';
+            title: string;
+            message: string;
+            image?: string;
+            onConfirm?: () => void;
+            variant?: 'success' | 'danger' | 'warning' | 'info';
+        }>({ isOpen: false, type: 'alert', title: '', message: '' });
+
+        const showDialog = (config: Omit<typeof dialogConfig, 'isOpen'>) => {
+            setDialogConfig({ ...config, isOpen: true });
+        };
+
+        const closeDialog = () => setDialogConfig(prev => ({ ...prev, isOpen: false }));
+
+        const activeItems = items.filter(item => item.status === 'active' || item.status === 'claimed' || item.status === 'delivered');
+
+        const handleClaim = async (itemId: string) => {
+            setClaimingId(itemId);
+            try {
+                await claimItem(itemId, student.id, student.name, student.gradeLevel, student.schoolClass, student.shift);
+                showDialog({
+                    type: 'alert',
+                    title: 'Voto de Reivindicação',
+                    message: 'Item reivindicado com sucesso!\n\nProcure a coordenação da sua unidade para retirar o objeto.',
+                    variant: 'success'
+                });
+            } catch (error) {
+                console.error('Error claiming item:', error);
+                showDialog({
+                    type: 'alert',
+                    title: 'Erro',
+                    message: 'Não foi possível reivindicar o item agora. Tente novamente mais tarde.',
+                    variant: 'danger'
+                });
+            } finally {
+                setClaimingId(null);
+            }
+        };
+
+        return (
+            <div className="space-y-6 animate-in slide-in-from-right-4 fade-in duration-300 pb-20">
+                <div className="flex items-center gap-3">
+                    <h2 className="text-2xl font-black text-gray-800">Achados e Perdidos</h2>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-blue-800 text-sm flex gap-3">
+                    <div className="bg-blue-100 p-2 rounded-lg h-fit">
+                        <Package className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                        <p className="font-bold">Como funciona?</p>
+                        <p className="opacity-90">Se você perdeu algum objeto na escola, veja se ele foi encontrado abaixo. Caso identifique um item seu, clique em "É Meu" para sinalizar à coordenação.</p>
+                    </div>
+                </div>
+
+                {loading ? (
+                    <GridSkeleton count={3} />
+                ) : activeItems.length === 0 ? (
+                    <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-gray-200">
+                        <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                        <h3 className="font-bold text-gray-800">Nenhum item encontrado</h3>
+                        <p className="text-gray-500 text-sm">Não há registros recentes de objetos perdidos nesta unidade.</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 gap-4">
+                        {activeItems.map((item) => (
+                            <div key={item.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition-all">
+                                <div className="flex p-4 gap-4">
+                                    {item.photoUrl && (
+                                        <div
+                                            onClick={() => setViewingPhoto(item.photoUrl!)}
+                                            className="w-24 h-24 flex-shrink-0 bg-gray-100 rounded-xl overflow-hidden border border-gray-100 cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all active:scale-95"
+                                        >
+                                            <img src={item.photoUrl} alt={item.description} className="w-full h-full object-cover" />
+                                        </div>
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full uppercase">
+                                                {item.locationFound}
+                                            </span>
+                                            <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">
+                                                Publicado em {new Date(item.timestamp).toLocaleDateString('pt-BR')} às {new Date(item.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        </div>
+                                        <h4 className="font-bold text-gray-900 text-lg line-clamp-2 leading-tight mb-2">
+                                            {item.description}
+                                        </h4>
+                                        <div className="flex flex-col gap-2 mt-auto">
+                                            {item.status === 'delivered' ? (
+                                                <div className="flex flex-col gap-1 items-end">
+                                                    <div className="flex items-center gap-1 text-gray-400 bg-gray-50 px-3 py-1 rounded-lg border border-gray-100 w-fit">
+                                                        <span className="text-[10px] font-black uppercase tracking-widest">OBJETO ENTREGUE</span>
+                                                    </div>
+                                                    <span className="text-[9px] text-gray-400 font-bold uppercase">
+                                                        Entregue em {item.deliveredAt ? new Date(item.deliveredAt).toLocaleDateString('pt-BR') : ''} às {item.deliveredAt ? new Date(item.deliveredAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                                                    </span>
+                                                </div>
+                                            ) : item.status === 'claimed' ? (
+                                                <div className="flex items-center gap-2 text-orange-600 bg-orange-50 px-4 py-2 rounded-xl border border-orange-100 w-fit ml-auto">
+                                                    <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest">REIVINDICADO</span>
+                                                </div>
+                                            ) : (
+                                                <Button
+                                                    onClick={() => handleClaim(item.id)}
+                                                    isLoading={claimingId === item.id}
+                                                    className="ml-auto rounded-xl shadow-lg shadow-blue-950/20 active:scale-95 transition-all px-8"
+                                                >
+                                                    É Meu
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Photo Preview Modal */}
+                {viewingPhoto && (
+                    <div
+                        className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+                        onClick={() => setViewingPhoto(null)}
+                    >
+                        <div className="relative max-w-4xl w-full h-full flex items-center justify-center">
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setViewingPhoto(null); }}
+                                className="absolute top-0 right-0 m-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors z-10"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                            <img
+                                src={viewingPhoto}
+                                alt="Vista ampliada"
+                                className="max-w-full max-h-full object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-300"
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                        </div>
+                    </div>
+                )}
+                {dialogConfig.isOpen && (
+                    <Dialog
+                        {...dialogConfig}
+                        onConfirm={() => {
+                            closeDialog();
+                            dialogConfig.onConfirm?.();
+                        }}
+                        onCancel={closeDialog}
+                    />
+                )}
+            </div>
+        );
+    };
+
     const formatWorkload = (hours: number) => {
         if (hours === 0) return '-';
         const rounded = Math.round(hours * 10) / 10;
@@ -182,7 +349,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState({ title: '', tip: '' });
     const [isLoadingAI, setIsLoadingAI] = useState(false);
-    const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro' | 'tickets' | 'materials' | 'occurrences' | 'calendar' | 'schedule'>('menu');
+    const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro' | 'tickets' | 'materials' | 'occurrences' | 'calendar' | 'schedule' | 'lost_found'>('menu');
     const [showIdCard, setShowIdCard] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
 
@@ -1283,6 +1450,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Financeiro</h3>
                                     </button>
+
+                                    <button
+                                        onClick={() => setCurrentView('lost_found')}
+                                        className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                                    >
+                                        <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
+                                            <Package className="w-6 h-6 text-blue-950" />
+                                        </div>
+                                        <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Achados e Perdidos</h3>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -1461,6 +1638,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             shift={student.shift}
                             studentName={student.name}
                         />
+                    )}
+
+                    {currentView === 'lost_found' && (
+                        <StudentLostFoundView unit={student.unit as SchoolUnit} />
                     )}
 
 

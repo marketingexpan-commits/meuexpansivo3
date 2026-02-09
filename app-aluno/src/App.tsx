@@ -10,7 +10,7 @@ import { StudentDashboard } from './components/StudentDashboard';
 import { TeacherDashboard } from './components/TeacherDashboard';
 
 import { CoordinatorDashboard } from './components/CoordinatorDashboard';
-import { db } from './firebaseConfig';
+import { db, auth } from './firebaseConfig';
 import { GatekeeperDashboard } from './components/GatekeeperDashboard';
 import { BackToTopButton } from './components/BackToTopButton';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
@@ -85,6 +85,13 @@ const AppContent: React.FC = () => {
   });
 
   const [isSeeding, setIsSeeding] = useState(false);
+
+  // 0. Firebase Authentication (Anonymous) for Storage Permissions
+  useEffect(() => {
+    auth.signInAnonymously().catch((error) => {
+      console.error("Firebase Anonymous Auth Error:", error);
+    });
+  }, []);
 
   // 1. Static/Public Data (Loaded on mount)
   useEffect(() => {

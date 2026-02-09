@@ -34,14 +34,363 @@ import {
     Edit,
     Users,
     HeartHandshake,
-    LogOut
+    LogOut,
+    Package,
+    Camera,
+    ArrowLeft
 } from 'lucide-react';
+
+import { Input } from './Input';
+import { useLostAndFound } from '../hooks/useLostAndFound';
+
+import { Dialog } from './Dialog';
 
 import { getAttendanceBreakdown } from '../utils/attendanceUtils'; // Import helper
 import { ScheduleTimeline } from './ScheduleTimeline';
 
 
 
+
+// --- SUB-COMPONENT: LOST AND FOUND (COORDINATOR) ---
+const CoordinatorLostFoundView: React.FC<{ unit: SchoolUnit }> = ({ unit }) => {
+    const { items, loading: hookLoading, addItem, deliverItem, deleteItem, uploadPhoto } = useLostAndFound(unit);
+    const [showAddForm, setShowAddForm] = useState(false);
+    const [description, setDescription] = useState('');
+    const [location, setLocation] = useState('');
+    const [photo, setPhoto] = useState<File | null>(null);
+    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    const [uploading, setUploading] = useState(false);
+
+    const [dialogConfig, setDialogConfig] = useState<{
+        isOpen: boolean;
+        type: 'alert' | 'confirm';
+        title: string;
+        message: string;
+        image?: string;
+        onConfirm?: () => void;
+        variant?: 'success' | 'danger' | 'warning' | 'info';
+    }>({ isOpen: false, type: 'alert', title: '', message: '' });
+
+    const showDialog = (config: Omit<typeof dialogConfig, 'isOpen'>) => {
+        setDialogConfig({ ...config, isOpen: true });
+    };
+
+    const closeDialog = () => setDialogConfig(prev => ({ ...prev, isOpen: false }));
+
+    const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setPhoto(file);
+            const reader = new FileReader();
+            reader.onloadend = () => setPhotoPreview(reader.result as string);
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!description || !location) return;
+
+        setUploading(true);
+        try {
+            let photoUrl = '';
+            if (photo) {
+                photoUrl = await uploadPhoto(photo);
+            }
+
+            await addItem({
+                unit,
+                description,
+                locationFound: location,
+                createdBy: 'coordinator',
+                photoUrl
+            });
+
+            setDescription('');
+            setLocation('');
+            setPhoto(null);
+            setPhotoPreview(null);
+            setShowAddForm(false);
+            showDialog({
+                type: 'alert',
+                title: 'Sucesso',
+                message: 'Item cadastrado com sucesso!',
+                variant: 'success'
+            });
+        } catch (error) {
+            console.error("Erro ao salvar item:", error);
+            showDialog({
+                type: 'alert',
+                title: 'Erro',
+                message: 'Não foi possível salvar o item. Verifique sua conexão.',
+                variant: 'danger'
+            });
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleDeliver = async (itemId: string, description: string, photoUrl?: string) => {
+        showDialog({
+            type: 'confirm',
+            title: 'Confirmar Entrega',
+            message: `Deseja confirmar a entrega de "${description}"?\n(O registro será arquivado automaticamente em 2 dias)`,
+            image: photoUrl,
+            onConfirm: async () => {
+                try {
+                    await deliverItem(itemId);
+                } catch (error) {
+                    console.error("Erro ao entregar item:", error);
+                    showDialog({
+                        type: 'alert',
+                        title: 'Erro',
+                        message: 'Não foi possível marcar o item como entregue.',
+                        variant: 'danger'
+                    });
+                }
+            }
+        });
+    };
+
+    const handleDelete = async (itemId: string, description: string, photoUrl?: string) => {
+        showDialog({
+            type: 'confirm',
+            title: 'Excluir Item',
+            message: `Tem certeza que deseja EXCLUIR permanentemente o item "${description}"? Esta ação não pode ser desfeita.`,
+            image: photoUrl,
+            variant: 'danger',
+            onConfirm: async () => {
+                try {
+                    await deleteItem(itemId, photoUrl);
+                } catch (error) {
+                    console.error("Erro ao excluir item:", error);
+                    showDialog({
+                        type: 'alert',
+                        title: 'Erro',
+                        message: 'Não foi possível excluir o item.',
+                        variant: 'danger'
+                    });
+                }
+            }
+        });
+    };
+
+    if (hookLoading && items.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20">
+                <Loader2 className="w-10 h-10 text-blue-950 animate-spin mb-4" />
+                <p className="text-gray-500 font-bold uppercase text-xs tracking-widest">Carregando itens...</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6 animate-in slide-in-from-right-4 fade-in duration-300 pb-20">
+            <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                <div>
+                    <h2 className="text-xl font-black text-blue-950 uppercase tracking-tight">Gestão de Achados e Perdidos</h2>
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mt-0.5">Controle unitário de itens</p>
+                </div>
+                <button
+                    onClick={() => setShowAddForm(!showAddForm)}
+                    className="flex items-center gap-2 bg-blue-950 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-950/20 hover:bg-black transition-all active:scale-95"
+                >
+                    {showAddForm ? <ArrowLeft className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                    {showAddForm ? 'Voltar' : 'Registrar Item'}
+                </button>
+            </div>
+
+            {showAddForm ? (
+                <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xl max-w-xl mx-auto animate-in zoom-in-95 duration-200">
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        <div>
+                            <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 ml-1 tracking-widest">Descrição do Objeto</label>
+                            <Input
+                                placeholder="Descreva o item detalhadamente..."
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                className="h-12 bg-gray-50 border-gray-200 rounded-xl font-bold"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 ml-1 tracking-widest">Local Encontrado</label>
+                            <Input
+                                placeholder="Onde foi encontrado?"
+                                value={location}
+                                onChange={(e) => setLocation(e.target.value)}
+                                className="h-12 bg-gray-50 border-gray-200 rounded-xl font-bold"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 ml-1 tracking-widest">Foto (Opcional)</label>
+                            {photoPreview ? (
+                                <div className="relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-blue-950/10">
+                                    <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                                    <button
+                                        type="button"
+                                        onClick={() => { setPhoto(null); setPhotoPreview(null); }}
+                                        className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full text-red-600 shadow-lg"
+                                    >
+                                        <Trash2 className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <label className="flex flex-col items-center justify-center w-full aspect-video rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 hover:bg-blue-50 transition-all cursor-pointer">
+                                    <Camera className="w-8 h-8 text-blue-950 mb-2" />
+                                    <span className="text-xs font-bold text-gray-500 uppercase">Tirar Foto / Upload</span>
+                                    <input type="file" accept="image/*" capture="environment" onChange={handlePhotoChange} className="hidden" />
+                                </label>
+                            )}
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={uploading}
+                            className="w-full h-14 bg-blue-950 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-blue-950/20 hover:bg-black transition-all disabled:opacity-50"
+                        >
+                            {uploading ? 'Salvando...' : 'Cadastrar Registro'}
+                        </button>
+                    </form>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {items.map((item) => {
+                        const isDelivered = item.status === 'delivered';
+                        return (
+                            <div key={item.id} className={`bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden transition-all hover:shadow-md ${isDelivered ? 'opacity-50 grayscale blur-[1px]' : ''}`}>
+                                <div className="aspect-square bg-gray-100 relative overflow-hidden flex items-center justify-center">
+                                    {item.photoUrl ? (
+                                        <img src={item.photoUrl} alt={item.description} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <Package className="w-12 h-12 text-gray-300" />
+                                    )}
+                                    <div className="absolute top-3 right-3">
+                                        <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-md shadow-sm tracking-widest ${item.status === 'active' ? 'bg-blue-950 text-white' :
+                                            item.status === 'claimed' ? 'bg-orange-500 text-white' :
+                                                'bg-green-600 text-white'
+                                            }`}>
+                                            {item.status === 'active' ? 'Ativo' :
+                                                item.status === 'claimed' ? 'Reivindicado' :
+                                                    'Entregue'}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="p-4 space-y-3">
+                                    <h4 className="font-black text-blue-950 text-sm leading-tight uppercase line-clamp-2">{item.description}</h4>
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2 text-gray-400">
+                                            <Search className="w-3 h-3" />
+                                            <span className="text-[10px] font-bold uppercase">{item.locationFound}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-gray-400">
+                                            <Clock className="w-3 h-3" />
+                                            <span className="text-[10px] font-bold uppercase">
+                                                Publicado: {new Date(item.timestamp).toLocaleDateString()} às {new Date(item.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        </div>
+                                        {isDelivered && item.deliveredAt && (
+                                            <div className="flex items-center gap-2 text-green-600">
+                                                <CheckCircle2 className="w-3 h-3" />
+                                                <span className="text-[10px] font-bold uppercase">
+                                                    Entregue: {new Date(item.deliveredAt).toLocaleDateString()} às {new Date(item.deliveredAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {(item.status === 'claimed' || item.status === 'delivered') && (
+                                        <div className={`p-2.5 rounded-xl border mb-2 transition-colors ${item.status === 'delivered'
+                                                ? 'bg-gray-50 border-gray-100'
+                                                : 'bg-orange-50 border-orange-100'
+                                            }`}>
+                                            <div className={`flex items-center gap-2 mb-1 ${item.status === 'delivered' ? 'text-gray-500' : 'text-orange-600'
+                                                }`}>
+                                                <User className="w-3 h-3" />
+                                                <span className="text-[9px] font-black uppercase">
+                                                    {item.status === 'delivered' ? 'Entregue para:' : 'Reivindicado p/:'}
+                                                </span>
+                                            </div>
+                                            <p className={`text-xs font-bold truncate ${item.status === 'delivered' ? 'text-gray-600' : 'text-gray-700'
+                                                }`}>
+                                                {item.claimedByStudentName}
+                                            </p>
+                                            <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
+                                                {item.claimedByStudentGrade && (
+                                                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${item.status === 'delivered'
+                                                            ? 'text-gray-600 bg-gray-200/50'
+                                                            : 'text-orange-700 bg-orange-100/50'
+                                                        }`}>
+                                                        {item.claimedByStudentGrade}
+                                                    </span>
+                                                )}
+                                                {(item.claimedByStudentClass || item.claimedByStudentShift) && (
+                                                    <span className={`text-[9px] font-bold border-l pl-2 uppercase ${item.status === 'delivered'
+                                                            ? 'text-gray-400 border-gray-200'
+                                                            : 'text-orange-600/70 border-orange-200'
+                                                        }`}>
+                                                        {item.claimedByStudentClass && `Turma ${item.claimedByStudentClass}`}
+                                                        {item.claimedByStudentClass && item.claimedByStudentShift && ' | '}
+                                                        {item.claimedByStudentShift && (SHIFT_LABELS[item.claimedByStudentShift as SchoolShift] || item.claimedByStudentShift)}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="flex gap-2">
+                                        {item.status !== 'delivered' && (
+                                            <button
+                                                disabled={item.status === 'active'}
+                                                onClick={() => handleDeliver(item.id, item.description, item.photoUrl)}
+                                                className={`flex-1 py-2.5 rounded-xl font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-2 group ${item.status === 'active'
+                                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none border border-gray-100'
+                                                    : 'bg-green-600 hover:bg-green-700 text-white shadow-green-100'
+                                                    }`}
+                                                title={item.status === 'active' ? "Aguardando reivindicação do aluno" : "Confirmar entrega"}
+                                            >
+                                                <div className={`w-5 h-5 rounded-lg flex items-center justify-center transition-transform ${item.status === 'active' ? 'bg-gray-200' : 'bg-white/20 group-hover:scale-110'
+                                                    }`}>
+                                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                                </div>
+                                                ENTREGUE
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => handleDelete(item.id, item.description, item.photoUrl)}
+                                            className="p-2.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl font-bold text-xs transition-colors border border-red-200/50 flex items-center justify-center"
+                                            title="Excluir Item"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                    {items.length === 0 && (
+                        <div className="col-span-full py-20 bg-white rounded-3xl border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-center">
+                            <Package className="w-12 h-12 text-gray-200 mb-4" />
+                            <h3 className="text-gray-400 font-black uppercase tracking-widest text-xs">Sem itens no momento</h3>
+                        </div>
+                    )}
+                </div>
+            )
+            }
+            {
+                dialogConfig.isOpen && (
+                    <Dialog
+                        {...dialogConfig}
+                        onConfirm={() => {
+                            closeDialog();
+                            dialogConfig.onConfirm?.();
+                        }}
+                        onCancel={closeDialog}
+                    />
+                )
+            }
+        </div >
+    );
+};
 
 // Types for Grade coordination (copied/adapted from AdminDashboard)
 // Helper to ensure we always save the Canonical Unit ID (e.g., 'unit_ext')
@@ -135,7 +484,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     }, [academicSettings]);
 
     // NEW: Navigation State
-    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages' | 'attendance' | 'crm' | 'schedule' | 'access_control'>('menu');
+    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages' | 'attendance' | 'crm' | 'schedule' | 'access_control' | 'lost_found'>('menu');
     // --- SCHEDULE STATE ---
     const [scheduleGrade, setScheduleGrade] = useState('');
     const [scheduleClass, setScheduleClass] = useState('');
@@ -230,6 +579,10 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     const [pendingGradesStudents, setPendingGradesStudents] = useState<any[]>([]);
     const [pendingGradesMap, setPendingGradesMap] = useState<Record<string, CoordinationGradeEntry[]>>({});
     const [allStudentGradesMap, setAllStudentGradesMap] = useState<Record<string, CoordinationGradeEntry[]>>({}); // NEW: Holds ALL grades for frequency calc
+
+    // --- LOST AND FOUND REAL-TIME BADGE ---
+    const { items: lostFoundItems } = useLostAndFound(getCanonicalUnit(coordinator.unit) as SchoolUnit);
+    const claimedCount = useMemo(() => lostFoundItems.filter(item => item.status === 'claimed').length, [lostFoundItems]);
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]); // Added for frequency calc
 
     // --- MESSAGES STATE ---
@@ -1442,15 +1795,17 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                             <p className="text-gray-600 max-w-2xl">
                                 {activeTab === 'menu'
                                     ? "Selecione uma opção para gerenciar as atividades pedagógicas da unidade."
-                                    : activeTab === 'approvals'
-                                        ? "Utilize os filtros abaixo para localizar e aprovar notas pendentes."
-                                        : activeTab === 'occurrences'
-                                            ? "Gerencie o histórico e registre novas ocorrências disciplinares."
-                                            : activeTab === 'messages'
-                                                ? "Gerencie as mensagens e feedbacks enviados pelos alunos."
-                                                : activeTab === 'calendar'
-                                                    ? "Calendário letivo da unidade."
-                                                    : null
+                                    : activeTab === 'lost_found'
+                                        ? "Gerencie os itens achados e perdidos e registre novas entradas."
+                                        : activeTab === 'approvals'
+                                            ? "Utilize os filtros abaixo para localizar e aprovar notas pendentes."
+                                            : activeTab === 'occurrences'
+                                                ? "Gerencie o histórico e registre novas ocorrências disciplinares."
+                                                : activeTab === 'messages'
+                                                    ? "Gerencie as mensagens e feedbacks enviados pelos alunos."
+                                                    : activeTab === 'calendar'
+                                                        ? "Calendário letivo da unidade."
+                                                        : null
                                 }
                             </p>
                         </div>
@@ -1548,6 +1903,22 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                     <LogOut className="w-6 h-6 text-blue-950" />
                                 </div>
                                 <h3 className="font-bold text-gray-800 text-sm text-center">Controle de Acessos</h3>
+                            </button>
+
+                            {/* LOST AND FOUND CARD */}
+                            <button
+                                onClick={() => setActiveTab('lost_found')}
+                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square relative"
+                            >
+                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                    <Package className="w-6 h-6 text-blue-950" />
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-sm text-center">Achados e Perdidos</h3>
+                                {claimedCount > 0 && (
+                                    <span className="absolute top-4 right-4 bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg animate-pulse">
+                                        {claimedCount}
+                                    </span>
+                                )}
                             </button>
                         </div>
                     )}
@@ -3388,6 +3759,11 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                 )}
                             </div>
                         </div>
+                    )}
+
+                    {/* LOST AND FOUND VIEW */}
+                    {activeTab === 'lost_found' && (
+                        <CoordinatorLostFoundView unit={getCanonicalUnit(coordinator.unit) as SchoolUnit} />
                     )}
                 </main>
             </div >

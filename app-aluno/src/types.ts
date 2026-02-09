@@ -698,3 +698,23 @@ export interface AccessRecord {
   timestamp: string;
   authorizerRelation?: string; // e.g., 'Pai', 'Mãe', 'Próprio'
 }
+
+export type LostAndFoundStatus = 'active' | 'claimed' | 'delivered';
+
+export interface LostAndFoundItem {
+  id: string;
+  unit: SchoolUnit; // Use canonical ID from enum
+  description: string;
+  photoUrl?: string;
+  locationFound: string;
+  timestamp: string; // ISO format
+  createdBy: 'doorman' | 'coordinator';
+  status: LostAndFoundStatus;
+  claimedByStudentId?: string;
+  claimedByStudentName?: string;
+  claimedByStudentGrade?: string;
+  claimedByStudentClass?: string;
+  claimedByStudentShift?: string;
+  claimedAt?: string; // ISO format
+  deliveredAt?: string; // ISO format
+}

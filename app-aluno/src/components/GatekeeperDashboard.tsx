@@ -6,7 +6,7 @@ import { Button } from './Button';
 import { Input } from './Input';
 import { SchoolLogo } from './SchoolLogo';
 import { SchoolCalendar } from './SchoolCalendar';
-import { UNIT_LABELS, SchoolUnit, CalendarEvent, AcademicSubject } from '../types';
+import { UNIT_LABELS, SchoolUnit, CalendarEvent, AcademicSubject, SHIFT_LABELS, SchoolShift } from '../types';
 import {
     Search,
     QrCode,
@@ -23,8 +23,14 @@ import {
     User,
     CheckCircle,
     CalendarDays,
-    Calendar as CalendarIcon
+    Calendar as CalendarIcon,
+    Package,
+    Camera,
+    Trash2,
+    Plus
 } from 'lucide-react';
+import { useLostAndFound } from '../hooks/useLostAndFound';
+import { Dialog } from './Dialog';
 
 interface AuthorizedRelease {
     id: string;
@@ -41,9 +47,296 @@ interface AuthorizedRelease {
     shift?: string;
 }
 
+// --- SUB-COMPONENT: LOST AND FOUND ---
+const LostFoundView: React.FC<{ unit: SchoolUnit }> = ({ unit }) => {
+    const { items, loading: hookLoading, addItem, uploadPhoto } = useLostAndFound(unit);
+    const [showAddForm, setShowAddForm] = useState(false);
+    const [description, setDescription] = useState('');
+    const [location, setLocation] = useState('');
+    const [photo, setPhoto] = useState<File | null>(null);
+    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    const [uploading, setUploading] = useState(false);
+
+    const [dialogConfig, setDialogConfig] = useState<{
+        isOpen: boolean;
+        type: 'alert' | 'confirm';
+        title: string;
+        message: string;
+        image?: string;
+        onConfirm?: () => void;
+        variant?: 'success' | 'danger' | 'warning' | 'info';
+    }>({ isOpen: false, type: 'alert', title: '', message: '' });
+
+    const showDialog = (config: Omit<typeof dialogConfig, 'isOpen'>) => {
+        setDialogConfig({ ...config, isOpen: true });
+    };
+
+    const closeDialog = () => setDialogConfig(prev => ({ ...prev, isOpen: false }));
+
+    const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setPhoto(file);
+            const reader = new FileReader();
+            reader.onloadend = () => setPhotoPreview(reader.result as string);
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!description || !location) return;
+
+        setUploading(true);
+        try {
+            let photoUrl = '';
+            if (photo) {
+                photoUrl = await uploadPhoto(photo);
+            }
+
+            await addItem({
+                unit,
+                description,
+                locationFound: location,
+                createdBy: 'doorman',
+                photoUrl
+            });
+
+            setDescription('');
+            setLocation('');
+            setPhoto(null);
+            setPhotoPreview(null);
+            setShowAddForm(false);
+            showDialog({
+                type: 'alert',
+                title: 'Sucesso',
+                message: 'Item cadastrado com sucesso!',
+                variant: 'success'
+            });
+        } catch (error) {
+            console.error("Erro ao salvar item:", error);
+            showDialog({
+                type: 'alert',
+                title: 'Erro',
+                message: 'Não foi possível salvar o item. Verifique sua conexão.',
+                variant: 'danger'
+            });
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    if (hookLoading && items.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20">
+                <Loader2 className="w-10 h-10 text-blue-950 animate-spin mb-4" />
+                <p className="text-gray-500 font-bold uppercase text-xs tracking-widest">Carregando itens...</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6 animate-in slide-in-from-right-4 fade-in duration-300 pb-20">
+            <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                <div>
+                    <h2 className="text-xl font-black text-blue-950 uppercase tracking-tight">Achados e Perdidos</h2>
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mt-0.5">Gestão de itens na portaria</p>
+                </div>
+                <button
+                    onClick={() => setShowAddForm(!showAddForm)}
+                    className="flex items-center gap-2 bg-blue-950 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-950/20 hover:bg-black transition-all active:scale-95"
+                >
+                    {showAddForm ? <ArrowLeft className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                    {showAddForm ? 'Voltar' : 'Novo Item'}
+                </button>
+            </div>
+
+            {showAddForm ? (
+                <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-xl max-w-xl mx-auto">
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        <div>
+                            <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 ml-1 tracking-widest">O que foi encontrado?</label>
+                            <Input
+                                placeholder="Ex: Casaco amarelo, Lancheira do Batman..."
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                className="h-12 bg-gray-50 border-gray-200 rounded-xl font-bold"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 ml-1 tracking-widest">Onde foi encontrado?</label>
+                            <Input
+                                placeholder="Ex: Pátio, Quadra, Refeitório..."
+                                value={location}
+                                onChange={(e) => setLocation(e.target.value)}
+                                className="h-12 bg-gray-50 border-gray-200 rounded-xl font-bold"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 ml-1 tracking-widest">Foto do Item</label>
+                            <div className="relative group">
+                                {photoPreview ? (
+                                    <div className="relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-blue-950/10">
+                                        <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                                        <button
+                                            type="button"
+                                            onClick={() => { setPhoto(null); setPhotoPreview(null); }}
+                                            className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full text-red-600 shadow-lg hover:bg-red-50 transition-colors"
+                                        >
+                                            <Trash2 className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <label className="flex flex-col items-center justify-center w-full aspect-video rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 hover:bg-blue-50/50 hover:border-blue-950/20 transition-all cursor-pointer group">
+                                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mb-3 shadow-sm group-hover:scale-110 transition-transform">
+                                            <Camera className="w-6 h-6 text-blue-950" />
+                                        </div>
+                                        <span className="text-xs font-bold text-gray-500 uppercase">Tirar foto / Upload</span>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            capture="environment"
+                                            onChange={handlePhotoChange}
+                                            className="hidden"
+                                        />
+                                    </label>
+                                )}
+                            </div>
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={uploading}
+                            className="w-full h-14 bg-blue-950 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-blue-950/20 hover:bg-black transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+                        >
+                            {uploading ? (
+                                <div className="flex items-center justify-center gap-3">
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    <span>Salvando...</span>
+                                </div>
+                            ) : 'Cadastrar Item'}
+                        </button>
+                    </form>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {items.map((item) => {
+                        const isDelivered = item.status === 'delivered';
+                        return (
+                            <div
+                                key={item.id}
+                                className={`bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden transition-all hover:shadow-md ${isDelivered ? 'opacity-50 grayscale blur-[1px]' : ''}`}
+                            >
+                                <div className="aspect-square bg-gray-100 relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+                                    {item.photoUrl ? (
+                                        <img src={item.photoUrl} alt={item.description} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <Package className="w-12 h-12 text-gray-300" />
+                                    )}
+                                    <div className="absolute top-3 right-3">
+                                        <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-md shadow-sm tracking-widest ${item.status === 'active' ? 'bg-blue-950 text-white' :
+                                            item.status === 'claimed' ? 'bg-orange-500 text-white' :
+                                                'bg-green-600 text-white'
+                                            }`}>
+                                            {item.status === 'active' ? 'Ativo' :
+                                                item.status === 'claimed' ? 'Reivindicado' :
+                                                    'Entregue'}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="p-4 space-y-2">
+                                    <h4 className="font-black text-blue-950 text-sm leading-tight uppercase tracking-tight line-clamp-2">{item.description}</h4>
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2 text-gray-400">
+                                            <Search className="w-3 h-3" />
+                                            <span className="text-[10px] font-bold uppercase">{item.locationFound}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-gray-400 border-t border-gray-50 pt-1">
+                                            <Clock className="w-3 h-3" />
+                                            <span className="text-[10px] font-bold uppercase">
+                                                Postado: {new Date(item.timestamp).toLocaleDateString()} às {new Date(item.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        </div>
+                                        {isDelivered && item.deliveredAt && (
+                                            <div className="flex items-center gap-2 text-green-600">
+                                                <CheckCircle className="w-3 h-3" />
+                                                <span className="text-[10px] font-bold uppercase">
+                                                    Entregue: {new Date(item.deliveredAt).toLocaleDateString()} às {new Date(item.deliveredAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {(item.status === 'claimed' || item.status === 'delivered') && (
+                                        <div className={`p-2.5 rounded-xl border mt-2 transition-colors ${item.status === 'delivered'
+                                                ? 'bg-gray-50 border-gray-100'
+                                                : 'bg-orange-50 border-orange-100'
+                                            }`}>
+                                            <div className={`flex items-center gap-2 mb-1 ${item.status === 'delivered' ? 'text-gray-500' : 'text-orange-600'
+                                                }`}>
+                                                <User className="w-3 h-3" />
+                                                <span className="text-[9px] font-black uppercase">
+                                                    {item.status === 'delivered' ? 'Entregue para:' : 'Reivindicado p/:'}
+                                                </span>
+                                            </div>
+                                            <p className={`text-xs font-bold truncate ${item.status === 'delivered' ? 'text-gray-600' : 'text-gray-700'
+                                                }`}>
+                                                {item.claimedByStudentName}
+                                            </p>
+                                            <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
+                                                {item.claimedByStudentGrade && (
+                                                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${item.status === 'delivered'
+                                                            ? 'text-gray-600 bg-gray-200/50'
+                                                            : 'text-orange-700 bg-orange-100/50'
+                                                        }`}>
+                                                        {item.claimedByStudentGrade}
+                                                    </span>
+                                                )}
+                                                {(item.claimedByStudentClass || item.claimedByStudentShift) && (
+                                                    <span className={`text-[9px] font-bold border-l pl-2 uppercase ${item.status === 'delivered'
+                                                            ? 'text-gray-400 border-gray-200'
+                                                            : 'text-orange-600/70 border-orange-200'
+                                                        }`}>
+                                                        {item.claimedByStudentClass && `Turma ${item.claimedByStudentClass}`}
+                                                        {item.claimedByStudentClass && item.claimedByStudentShift && ' | '}
+                                                        {item.claimedByStudentShift && (SHIFT_LABELS[item.claimedByStudentShift as SchoolShift] || item.claimedByStudentShift)}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                    {items.length === 0 && (
+                        <div className="col-span-full py-20 bg-white rounded-3xl border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-center">
+                            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                <Package className="w-8 h-8 text-gray-200" />
+                            </div>
+                            <h3 className="text-gray-400 font-black uppercase tracking-widest">Nada por aqui</h3>
+                            <p className="text-[10px] text-gray-300 font-bold uppercase mt-1">Nenhum item registrado recentemente</p>
+                        </div>
+                    )}
+                </div>
+            )}
+            {dialogConfig.isOpen && (
+                <Dialog
+                    {...dialogConfig}
+                    onConfirm={() => {
+                        closeDialog();
+                        dialogConfig.onConfirm?.();
+                    }}
+                    onCancel={closeDialog}
+                />
+            )}
+        </div>
+    );
+};
+
 export const GatekeeperDashboard: React.FC = () => {
     // --- STATE ---
-    const [activeTab, setActiveTab] = useState<'menu' | 'scanner' | 'manual' | 'list' | 'calendar'>('menu');
+    const [activeTab, setActiveTab] = useState<'menu' | 'scanner' | 'manual' | 'list' | 'calendar' | 'lost_found'>('menu');
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
     const [academicSubjects, setAcademicSubjects] = useState<AcademicSubject[]>([]);
     const [releases, setReleases] = useState<AuthorizedRelease[]>([]);
@@ -63,9 +356,10 @@ export const GatekeeperDashboard: React.FC = () => {
         type: 'alert' | 'confirm';
         title: string;
         message: string;
-        studentPhoto?: string;
+        image?: string;
         onConfirm?: () => void;
         onCancel?: () => void;
+        variant?: 'success' | 'danger' | 'warning' | 'info';
     }>({ isOpen: false, type: 'alert', title: '', message: '' });
 
     const showDialog = (config: Omit<typeof dialogConfig, 'isOpen'>) => {
@@ -184,7 +478,7 @@ export const GatekeeperDashboard: React.FC = () => {
                     type: 'confirm',
                     title: 'LIBERAÇÃO ENCONTRADA!',
                     message: `Aluno: ${studentData.name}\nAutorizado por: ${release.coordinatorName}\n\nConfirmar saída agora?`,
-                    studentPhoto: studentData.photoUrl,
+                    image: studentData.photoUrl,
                     onConfirm: () => handleRelease(release.id)
                 });
             } else {
@@ -403,7 +697,7 @@ export const GatekeeperDashboard: React.FC = () => {
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans transition-all duration-500 ease-in-out">
             {/* Professional Dialog Modal moved to end */}
-            <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${activeTab === 'calendar' ? 'max-w-5xl' : 'max-w-2xl'}`}>
+            <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${(activeTab === 'calendar' || activeTab === 'lost_found') ? 'max-w-5xl' : 'max-w-2xl'}`}>
 
                 {/* MAIN CONTENT */}
                 <main className="flex-1 w-full p-4 md:p-8 bg-gray-50/50 overflow-y-auto">
@@ -469,7 +763,9 @@ export const GatekeeperDashboard: React.FC = () => {
                                                 ? "Visualize as saídas autorizadas pela coordenação que aguardam liberação."
                                                 : activeTab === 'calendar'
                                                     ? "Acompanhe o calendário escolar, feriados e eventos da unidade."
-                                                    : ""
+                                                    : activeTab === 'lost_found'
+                                                        ? "Gerencie os itens achados e perdidos na unidade escolar."
+                                                        : ""
                                 }
                             </p>
                         </div>
@@ -521,6 +817,16 @@ export const GatekeeperDashboard: React.FC = () => {
                                     <CalendarIcon className="w-6 h-6 text-blue-950" />
                                 </div>
                                 <h3 className="font-bold text-gray-800 text-sm text-center leading-tight">Calendário Escolar</h3>
+                            </button>
+
+                            <button
+                                onClick={() => setActiveTab('lost_found')}
+                                className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                            >
+                                <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
+                                    <Package className="w-6 h-6 text-blue-950" />
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-sm text-center leading-tight">Achados e Perdidos</h3>
                             </button>
 
 
@@ -656,7 +962,7 @@ export const GatekeeperDashboard: React.FC = () => {
                                                         type: 'confirm',
                                                         title: 'Confirmar Liberação',
                                                         message: `Deseja confirmar a saída de ${r.studentName}?`,
-                                                        studentPhoto: photoToDisplay,
+                                                        image: photoToDisplay,
                                                         onConfirm: () => handleRelease(r.id)
                                                     });
                                                 }}
@@ -676,6 +982,11 @@ export const GatekeeperDashboard: React.FC = () => {
                         <SchoolCalendar events={calendarEvents} academicSubjects={academicSubjects} />
                     )}
 
+                    {/* LOST AND FOUND VIEW */}
+                    {activeTab === 'lost_found' && (
+                        <LostFoundView unit={unit as SchoolUnit} />
+                    )}
+
                 </main>
 
                 {/* LOADING OVERLAY */}
@@ -690,77 +1001,15 @@ export const GatekeeperDashboard: React.FC = () => {
 
             </div>
 
-            {/* Professional Dialog Modal - Moved to the end with HIGHEST z-index */}
             {dialogConfig.isOpen && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-md animate-fade-in">
-                    <div className="bg-white rounded-2xl p-6 sm:p-8 w-[95%] sm:w-full max-w-sm shadow-2xl animate-scale-in relative border border-gray-100 text-center">
-                        <div className={`w-24 h-32 rounded-2xl flex items-center justify-center mx-auto mb-4 overflow-hidden border-4 border-white shadow-lg ${dialogConfig.studentPhoto ? 'bg-gray-100' : dialogConfig.type === 'confirm' || dialogConfig.title.includes('SUCESSO') || dialogConfig.title.includes('Sucesso') ? 'bg-blue-50' : dialogConfig.title.includes('ERRO') || dialogConfig.title.includes('Erro') ? 'bg-red-50' : 'bg-orange-50'}`}>
-                            {dialogConfig.studentPhoto ? (
-                                <img
-                                    src={dialogConfig.studentPhoto}
-                                    alt="Foto do Aluno"
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                        // Fallback if image fails to load
-                                        (e.target as any).style.display = 'none';
-                                        (e.target as any).parentElement.innerHTML = '<svg class="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>';
-                                    }}
-                                />
-                            ) : dialogConfig.type === 'confirm' ? (
-                                <UserCheck className="w-12 h-12 text-blue-600" />
-                            ) : dialogConfig.title.includes('SUCESSO') || dialogConfig.title.includes('Sucesso') ? (
-                                <CheckCircle className="w-12 h-12 text-blue-600" />
-                            ) : dialogConfig.title.includes('Erro') ? (
-                                <ShieldAlert className="w-12 h-12 text-red-600" />
-                            ) : (
-                                <Bell className="w-12 h-12 text-orange-600" />
-                            )}
-                        </div>
-
-                        <h3 className="text-xl font-black text-gray-900 mb-2 uppercase tracking-tight">
-                            {dialogConfig.title}
-                        </h3>
-
-                        <div className="text-gray-600 text-sm mb-8 leading-relaxed whitespace-pre-wrap">
-                            {dialogConfig.message}
-                        </div>
-
-                        <div className="flex gap-3">
-                            {dialogConfig.type === 'confirm' ? (
-                                <>
-                                    <button
-                                        onClick={() => {
-                                            closeDialog();
-                                            dialogConfig.onCancel?.();
-                                        }}
-                                        className="flex-1 px-4 py-3 rounded-xl font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors"
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            closeDialog();
-                                            dialogConfig.onConfirm?.();
-                                        }}
-                                        className="flex-1 px-4 py-3 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all"
-                                    >
-                                        Confirmar
-                                    </button>
-                                </>
-                            ) : (
-                                <button
-                                    onClick={() => {
-                                        closeDialog();
-                                        dialogConfig.onConfirm?.();
-                                    }}
-                                    className="w-full px-4 py-3 rounded-xl font-bold text-white bg-gray-900 hover:bg-black shadow-lg transition-all"
-                                >
-                                    OK
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                </div>
+                <Dialog
+                    {...dialogConfig}
+                    onConfirm={() => {
+                        closeDialog();
+                        dialogConfig.onConfirm?.();
+                    }}
+                    onCancel={closeDialog}
+                />
             )}
         </div>
     );
