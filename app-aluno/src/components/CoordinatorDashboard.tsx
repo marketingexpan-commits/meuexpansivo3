@@ -255,7 +255,11 @@ const CoordinatorLostFoundView: React.FC<{ unit: SchoolUnit }> = ({ unit }) => {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {items.map((item) => {
+                    {[...items].sort((a, b) => {
+                        if (a.status === 'delivered' && b.status !== 'delivered') return 1;
+                        if (a.status !== 'delivered' && b.status === 'delivered') return -1;
+                        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+                    }).map((item) => {
                         const isDelivered = item.status === 'delivered';
                         return (
                             <div key={item.id} className={`bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden transition-all hover:shadow-md ${isDelivered ? 'opacity-50 grayscale blur-[1px]' : ''}`}>
@@ -301,8 +305,8 @@ const CoordinatorLostFoundView: React.FC<{ unit: SchoolUnit }> = ({ unit }) => {
 
                                     {(item.status === 'claimed' || item.status === 'delivered') && (
                                         <div className={`p-2.5 rounded-xl border mb-2 transition-colors ${item.status === 'delivered'
-                                                ? 'bg-gray-50 border-gray-100'
-                                                : 'bg-orange-50 border-orange-100'
+                                            ? 'bg-gray-50 border-gray-100'
+                                            : 'bg-orange-50 border-orange-100'
                                             }`}>
                                             <div className={`flex items-center gap-2 mb-1 ${item.status === 'delivered' ? 'text-gray-500' : 'text-orange-600'
                                                 }`}>
@@ -318,16 +322,16 @@ const CoordinatorLostFoundView: React.FC<{ unit: SchoolUnit }> = ({ unit }) => {
                                             <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
                                                 {item.claimedByStudentGrade && (
                                                     <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${item.status === 'delivered'
-                                                            ? 'text-gray-600 bg-gray-200/50'
-                                                            : 'text-orange-700 bg-orange-100/50'
+                                                        ? 'text-gray-600 bg-gray-200/50'
+                                                        : 'text-orange-700 bg-orange-100/50'
                                                         }`}>
                                                         {item.claimedByStudentGrade}
                                                     </span>
                                                 )}
                                                 {(item.claimedByStudentClass || item.claimedByStudentShift) && (
                                                     <span className={`text-[9px] font-bold border-l pl-2 uppercase ${item.status === 'delivered'
-                                                            ? 'text-gray-400 border-gray-200'
-                                                            : 'text-orange-600/70 border-orange-200'
+                                                        ? 'text-gray-400 border-gray-200'
+                                                        : 'text-orange-600/70 border-orange-200'
                                                         }`}>
                                                         {item.claimedByStudentClass && `Turma ${item.claimedByStudentClass}`}
                                                         {item.claimedByStudentClass && item.claimedByStudentShift && ' | '}

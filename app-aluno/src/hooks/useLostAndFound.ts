@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db, storage } from '../firebaseConfig';
 import { LostAndFoundItem, LostAndFoundStatus, SchoolUnit } from '../types';
+import { compressImage } from '../utils/imageUtils';
 
 /**
  * Hook to manage Lost and Found (Achados e Perdidos) items.
@@ -79,9 +80,10 @@ export function useLostAndFound(unit?: SchoolUnit | string) {
      * Uploads a photo to Firebase Storage and returns the download URL.
      */
     const uploadPhoto = async (file: File): Promise<string> => {
-        const filename = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+        const compressedBlob = await compressImage(file);
+        const filename = `${Date.now()}_${file.name.replace(/\s+/g, '_')}.jpg`;
         const storageRef = storage.ref(`lost_and_found/${filename}`);
-        const snapshot = await storageRef.put(file);
+        const snapshot = await storageRef.put(compressedBlob);
         return await snapshot.ref.getDownloadURL();
     };
 

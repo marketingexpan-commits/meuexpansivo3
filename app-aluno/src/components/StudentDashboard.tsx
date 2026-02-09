@@ -197,7 +197,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
         const closeDialog = () => setDialogConfig(prev => ({ ...prev, isOpen: false }));
 
-        const activeItems = items.filter(item => item.status === 'active' || item.status === 'claimed' || item.status === 'delivered');
+        const activeItems = items
+            .filter(item => item.status === 'active' || item.status === 'claimed' || item.status === 'delivered')
+            .sort((a, b) => {
+                // Se um está entregue e o outro não, o entregue vai para baixo (1)
+                if (a.status === 'delivered' && b.status !== 'delivered') return 1;
+                if (a.status !== 'delivered' && b.status === 'delivered') return -1;
+                // Caso contrário, mantém a ordem cronológica (mais recentes primeiro)
+                return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+            });
 
         const handleClaim = async (itemId: string) => {
             setClaimingId(itemId);
