@@ -4,9 +4,27 @@ import { collection, query, where, onSnapshot, updateDoc, doc, getDocs, getDoc, 
 import { db } from '../firebaseConfig';
 import { Button } from './Button';
 import { Input } from './Input';
-import { Search, QrCode, UserCheck, Clock, ShieldAlert, LogOut, ChevronRight, Loader2, Home, ArrowLeft, Bell, ChevronUp, User, CheckCircle } from 'lucide-react';
 import { SchoolLogo } from './SchoolLogo';
-import { UNIT_LABELS, SchoolUnit } from '../types';
+import { SchoolCalendar } from './SchoolCalendar';
+import { UNIT_LABELS, SchoolUnit, CalendarEvent, AcademicSubject } from '../types';
+import {
+    Search,
+    QrCode,
+    UserCheck,
+    Clock,
+    ShieldAlert,
+    LogOut,
+    ChevronRight,
+    Loader2,
+    Home,
+    ArrowLeft,
+    Bell,
+    ChevronUp,
+    User,
+    CheckCircle,
+    CalendarDays,
+    Calendar as CalendarIcon
+} from 'lucide-react';
 
 interface AuthorizedRelease {
     id: string;
@@ -25,7 +43,9 @@ interface AuthorizedRelease {
 
 export const GatekeeperDashboard: React.FC = () => {
     // --- STATE ---
-    const [activeTab, setActiveTab] = useState<'menu' | 'scanner' | 'manual' | 'list'>('menu');
+    const [activeTab, setActiveTab] = useState<'menu' | 'scanner' | 'manual' | 'list' | 'calendar'>('menu');
+    const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+    const [academicSubjects, setAcademicSubjects] = useState<AcademicSubject[]>([]);
     const [releases, setReleases] = useState<AuthorizedRelease[]>([]);
 
     const [scanning, setScanning] = useState(false);
@@ -86,7 +106,25 @@ export const GatekeeperDashboard: React.FC = () => {
             setReleases(list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
         });
 
-        return () => unsubscribe();
+        // Fetch School Calendar Events
+        const eventsRef = collection(db, 'calendar_events');
+        const unsubscribeEvents = onSnapshot(eventsRef, (snapshot) => {
+            const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CalendarEvent));
+            setCalendarEvents(list);
+        });
+
+        // Fetch Academic Subjects
+        const subjectsRef = collection(db, 'academic_subjects');
+        const unsubscribeSubjects = onSnapshot(subjectsRef, (snapshot) => {
+            const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AcademicSubject));
+            setAcademicSubjects(list);
+        });
+
+        return () => {
+            unsubscribe();
+            unsubscribeEvents();
+            unsubscribeSubjects();
+        };
     }, [unit]);
 
 
@@ -365,7 +403,7 @@ export const GatekeeperDashboard: React.FC = () => {
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans transition-all duration-500 ease-in-out">
             {/* Professional Dialog Modal moved to end */}
-            <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out max-w-2xl`}>
+            <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${activeTab === 'calendar' ? 'max-w-5xl' : 'max-w-2xl'}`}>
 
                 {/* MAIN CONTENT */}
                 <main className="flex-1 w-full p-4 md:p-8 bg-gray-50/50 overflow-y-auto">
@@ -429,7 +467,9 @@ export const GatekeeperDashboard: React.FC = () => {
                                             ? "Busque o aluno pelo nome para verificar autorizações manualmente."
                                             : activeTab === 'list'
                                                 ? "Visualize as saídas autorizadas pela coordenação que aguardam liberação."
-                                                : ""
+                                                : activeTab === 'calendar'
+                                                    ? "Acompanhe o calendário escolar, feriados e eventos da unidade."
+                                                    : ""
                                 }
                             </p>
                         </div>
@@ -473,11 +513,16 @@ export const GatekeeperDashboard: React.FC = () => {
                                 )}
                             </button>
 
-                            {/* Placeholder filler if needed, or maybe History */}
-                            <div className="flex flex-col items-center justify-center p-6 bg-gray-50 border border-gray-100 rounded-xl border-dashed opacity-60 aspect-square">
-                                <ShieldAlert className="w-8 h-8 text-gray-300 mb-2" />
-                                <span className="text-xs font-bold text-gray-400 uppercase text-center">Área Segura</span>
-                            </div>
+                            <button
+                                onClick={() => setActiveTab('calendar')}
+                                className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                            >
+                                <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
+                                    <CalendarIcon className="w-6 h-6 text-blue-950" />
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-sm text-center leading-tight">Calendário Escolar</h3>
+                            </button>
+
 
                         </div>
                     )}
@@ -624,6 +669,11 @@ export const GatekeeperDashboard: React.FC = () => {
                                 </div>
                             )}
                         </div>
+                    )}
+
+                    {/* CALENDAR VIEW */}
+                    {activeTab === 'calendar' && (
+                        <SchoolCalendar events={calendarEvents} academicSubjects={academicSubjects} />
                     )}
 
                 </main>
