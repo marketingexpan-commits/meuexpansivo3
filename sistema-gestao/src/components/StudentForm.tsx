@@ -952,10 +952,10 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
     ] as const;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
-            <div className="bg-white w-full max-w-5xl rounded-xl shadow-2xl flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-0 md:p-4 overflow-y-auto">
+            <div className="bg-white w-full max-w-5xl md:rounded-xl shadow-2xl flex flex-col h-full md:max-h-[90vh] animate-in zoom-in-95 duration-200">
                 {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                <div className="flex items-center justify-between p-4 border-b border-gray-100 flex-shrink-0">
                     <div>
                         <h2 className="text-xl font-bold text-gray-900">{student ? 'Editar Cadastro' : 'Novo Aluno'}</h2>
                         <p className="text-sm text-gray-500">{student ? 'Edite os dados do aluno.' : 'Preencha os dados do aluno para realizar a matrícula.'}</p>
@@ -966,7 +966,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                 </div>
 
                 {/* Tabs */}
-                <div className="flex overflow-x-auto border-b border-gray-100 px-6 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent pb-4 overflow-y-hidden">
+                <div className="flex overflow-x-auto border-b border-gray-100 px-6 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent pb-4 flex-shrink-0">
                     {tabs.map((tab) => {
                         const Icon = tab.icon;
                         return (
