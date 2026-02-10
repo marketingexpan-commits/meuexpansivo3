@@ -95,6 +95,36 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
     });
 
     const [selectedYear, setSelectedYear] = useState(getCurrentSchoolYear());
+    const [loadingCep, setLoadingCep] = useState(false);
+
+    const handleCepSearch = async () => {
+        if (!formData.cep || formData.cep.replace(/\D/g, '').length !== 8) {
+            return;
+        }
+
+        try {
+            setLoadingCep(true);
+            const response = await fetch(`https://viacep.com.br/ws/${formData.cep.replace(/\D/g, '')}/json/`);
+            const data = await response.json();
+
+            if (data.erro) {
+                alert('CEP não encontrado.');
+                return;
+            }
+
+            setFormData((prev: any) => ({
+                ...prev,
+                endereco_logradouro: data.logradouro || prev.endereco_logradouro,
+                endereco_bairro: data.bairro || prev.endereco_bairro,
+                endereco_cidade: data.localidade || prev.endereco_cidade,
+                endereco_uf: data.uf || prev.endereco_uf
+            }));
+        } catch (error) {
+            console.error("Erro ao buscar CEP:", error);
+        } finally {
+            setLoadingCep(false);
+        }
+    };
 
     // Helper state for Level dropdown - MUST BE INITIALIZED BEFORE formData TO SYNC
     const [selectedLevel, setSelectedLevel] = useState<string>(() => {
@@ -1113,7 +1143,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
 
 
                     {activeTab === 'academic' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-2 gap-x-3 gap-y-4">
                             <Select
                                 label="Ano Letivo"
                                 value={selectedYear}
@@ -1195,8 +1225,8 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                 value={formData.nis || ''}
                                 onChange={handleChange}
                                 label="NIS (Bolsa Família)"
-                                placeholder="000.00000.00-0"
-                                className="col-span-full md:col-span-1"
+                                placeholder="000.00...-0"
+                                className="col-span-1"
                             />
 
                             <Input
@@ -1205,84 +1235,78 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                 onChange={handleChange}
                                 label="Escola de Origem"
                                 placeholder="Escola anterior"
-                                className="col-span-full"
+                                className="col-span-1"
                             />
 
-                            <div className="col-span-full grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <Input
-                                    name="data_inicio"
-                                    type="date"
-                                    value={formData.data_inicio || ''}
-                                    onChange={handleChange}
-                                    label="Início/Admissão"
-                                    className="w-full"
-                                />
-                                <Input
-                                    name="data_desligamento"
-                                    type="date"
-                                    value={formData.data_desligamento || ''}
-                                    onChange={handleChange}
-                                    label="Desligamento"
-                                    className="w-full"
-                                />
-                            </div>
+                            <Input
+                                name="data_inicio"
+                                type="date"
+                                value={formData.data_inicio || ''}
+                                onChange={handleChange}
+                                label="Início/Admissão"
+                                className="col-span-1"
+                            />
+                            <Input
+                                name="data_desligamento"
+                                type="date"
+                                value={formData.data_desligamento || ''}
+                                onChange={handleChange}
+                                label="Desligamento"
+                                className="col-span-1"
+                            />
 
-                            <div className="col-span-full flex flex-col sm:flex-row gap-4">
-                                <Input
-                                    name="code"
-                                    label="Cód. Global"
-                                    value={formData.code || ''}
-                                    onChange={handleChange}
-                                    placeholder={student ? "Matrícula" : "Gerando..."}
-                                    className="w-full sm:w-48 bg-blue-50/30 border-blue-900/10 font-bold"
-                                />
-                                <Input
-                                    name="matricula"
-                                    label="Matrícula"
-                                    value={formData.matricula || ''}
-                                    onChange={handleChange}
-                                    placeholder="000000"
-                                    className="w-full sm:flex-1"
-                                />
-                            </div>
+                            <Input
+                                name="code"
+                                label="Cód. Global"
+                                value={formData.code || ''}
+                                onChange={handleChange}
+                                placeholder={student ? "Matrícula" : "Gerando..."}
+                                className="col-span-1 bg-blue-50/30 border-blue-900/10 font-bold"
+                            />
+                            <Input
+                                name="matricula"
+                                label="Matrícula"
+                                value={formData.matricula || ''}
+                                onChange={handleChange}
+                                placeholder="000000"
+                                className="col-span-1"
+                            />
 
-                            <div className="col-span-full relative mb-2">
-                                <label className="text-sm font-medium text-gray-700 mb-2 block text-xs sm:text-sm">Senha de Acesso (App)</label>
-                                <div className="flex flex-col sm:flex-row gap-3">
-                                    <div className="relative flex-1">
-                                        <Input
-                                            name="password"
-                                            type={showPassword ? "text" : "password"}
-                                            value={formData.password || ''}
-                                            onChange={handleChange}
-                                            placeholder="Senha app"
-                                            className="pr-10 w-full h-11"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowPassword(!showPassword)}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
-                                        >
-                                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                                        </button>
-                                    </div>
-                                    <Button
+                            <div className="col-span-1">
+                                <label className="text-[11px] font-medium text-gray-700 mb-1 block">Senha Acesso</label>
+                                <div className="relative">
+                                    <Input
+                                        name="password"
+                                        type={showPassword ? "text" : "password"}
+                                        value={formData.password || ''}
+                                        onChange={handleChange}
+                                        placeholder="Senha"
+                                        className="pr-8 w-full h-10"
+                                    />
+                                    <button
                                         type="button"
-                                        variant="outline"
-                                        onClick={handleGeneratePassword}
-                                        className="whitespace-nowrap bg-blue-50 text-blue-950 border-blue-950/20 hover:bg-blue-100 w-full sm:w-auto h-11 px-6 font-bold text-sm"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
                                     >
-                                        Gerar Senha
-                                    </Button>
+                                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
                                 </div>
-                                <p className="text-[10px] text-gray-500 mt-2 italic">
-                                    Acesso ao Portal da Família / Mobile
-                                </p>
+                            </div>
+                            <div className="col-span-1">
+                                <label className="text-[11px] font-medium text-transparent mb-1 block">.</label>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={handleGeneratePassword}
+                                    className="whitespace-nowrap bg-blue-50 text-blue-950 border-blue-950/20 hover:bg-blue-100 w-full h-10 px-1 font-bold text-[10px]"
+                                >
+                                    Gerar Senha
+                                </Button>
                             </div>
 
-                            <div className="col-span-full">
-                                <label className="text-sm font-medium text-gray-700 mb-1 block text-xs sm:text-sm">Status de Acesso</label>
-                                <label className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer h-auto min-h-[46px] ${formData.isBlocked ? 'border-red-200 bg-red-50' : 'border-blue-100 bg-blue-50 hover:bg-blue-100'}`}>
+                            <div className="col-span-2">
+                                <label className="text-[11px] font-medium text-gray-700 mb-1 block">Status de Acesso</label>
+                                <label className={`flex items-center gap-3 p-2 rounded-xl border transition-all cursor-pointer h-auto ${formData.isBlocked ? 'border-red-200 bg-red-50' : 'border-blue-100 bg-blue-50 hover:bg-blue-100'}`}>
                                     <div className="flex items-center h-5">
                                         <input
                                             type="checkbox"
@@ -1293,7 +1317,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                         />
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className={`text-xs font-bold flex items-center gap-1.5 ${formData.isBlocked ? 'text-red-700' : 'text-blue-700'}`}>
+                                        <span className={`text-[10px] sm:text-xs font-bold flex items-center gap-1.5 ${formData.isBlocked ? 'text-red-700' : 'text-blue-700'}`}>
                                             {formData.isBlocked ? (
                                                 <><ShieldAlert className="w-4 h-4" /> Acesso Bloqueado</>
                                             ) : (
@@ -1305,8 +1329,8 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                             </div>
 
                             <div className="col-span-2 pt-2">
-                                <label className={`flex items-start gap-3 p-4 rounded-xl border transition-colors cursor-pointer ${formData.isScholarship ? 'border-orange-200 bg-orange-50' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
-                                    <div className="flex items-center h-5 mt-1">
+                                <label className={`flex items-start gap-2 p-3 rounded-xl border transition-colors cursor-pointer ${formData.isScholarship ? 'border-orange-200 bg-orange-50' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+                                    <div className="flex items-center h-5 mt-0.5">
                                         <input
                                             type="checkbox"
                                             name="isScholarship"
@@ -1316,10 +1340,10 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                         />
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                                             Aluno Bolsista (100%) 🎓
                                         </span>
-                                        <span className="text-xs text-slate-600 mt-1 leading-relaxed">
+                                        <span className="text-[10px] text-slate-600 mt-1 leading-tight">
                                             Se marcado, o aluno terá isenção total (100%) nas mensalidades.
                                         </span>
                                     </div>
@@ -1331,8 +1355,8 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                     name="autorizacao_bolsa"
                                     value={formData.autorizacao_bolsa || ''}
                                     onChange={handleChange}
-                                    label="Autorização de Desconto/Bolsa (Obrigatório se houver desconto)"
-                                    placeholder="Nome de quem autorizou (Ex: João Silva)"
+                                    label="Autorização de Desconto/Bolsa"
+                                    placeholder="Nome de quem autorizou"
                                     className="border-slate-200 focus:ring-blue-950 bg-white"
                                 />
                             </div>
@@ -1597,29 +1621,45 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                     )}
 
                     {activeTab === 'address' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="col-span-2 md:col-span-1">
-                                <Input name="cep" value={formData.cep} onChange={handleChange} label="CEP" placeholder="00000-000" />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="col-span-full">
+                                <div className="flex gap-2">
+                                    <Input name="cep" value={formData.cep} onChange={handleChange} label="CEP" placeholder="00000-000" className="flex-1" />
+                                    <button
+                                        type="button"
+                                        onClick={handleCepSearch}
+                                        disabled={loadingCep || !formData.cep}
+                                        className="h-[40px] mt-[26px] px-4 bg-blue-950 text-white rounded-xl hover:bg-blue-900 transition-colors disabled:opacity-50 font-bold text-xs"
+                                    >
+                                        {loadingCep ? <span className="animate-spin truncate">...</span> : "Buscar"}
+                                    </button>
+                                </div>
                             </div>
-                            <div className="hidden md:block"></div> {/* Spacer */}
 
-                            <Input name="endereco_logradouro" value={formData.endereco_logradouro} onChange={handleChange} label="Logradouro" placeholder="Rua, Av..." className="col-span-2" />
-                            <Input name="endereco_numero" value={formData.endereco_numero} onChange={handleChange} label="Número" placeholder="123" />
-                            <Input name="endereco_complemento" value={formData.endereco_complemento} onChange={handleChange} label="Complemento" placeholder="Apto, Bloco..." />
-                            <Input name="endereco_bairro" value={formData.endereco_bairro} onChange={handleChange} label="Bairro" placeholder="Bairro" />
-                            <Input name="endereco_cidade" value={formData.endereco_cidade} onChange={handleChange} label="Cidade" placeholder="Natal" />
-                            <Select
-                                label="UF"
-                                value={formData.endereco_uf}
-                                onChange={(e) => handleSelectChange('endereco_uf', e.target.value)}
-                                options={[{ label: 'RN', value: 'RN' }, { label: 'PB', value: 'PB' }]}
-                            />
-                            <Select
-                                label="Zona"
-                                value={formData.localizacao_tipo}
-                                onChange={(e) => handleSelectChange('localizacao_tipo', e.target.value)}
-                                options={[{ label: 'Urbana', value: 'Urbana' }, { label: 'Rural', value: 'Rural' }]}
-                            />
+                            <Input name="endereco_logradouro" value={formData.endereco_logradouro} onChange={handleChange} label="Logradouro" placeholder="Rua, Av..." className="col-span-full" />
+
+                            <div className="grid grid-cols-2 gap-4 col-span-full">
+                                <Input name="endereco_numero" value={formData.endereco_numero} onChange={handleChange} label="Número" placeholder="123" />
+                                <Input name="endereco_complemento" value={formData.endereco_complemento} onChange={handleChange} label="Complemento" placeholder="Apto, Bloco..." />
+                            </div>
+
+                            <Input name="endereco_bairro" value={formData.endereco_bairro} onChange={handleChange} label="Bairro" placeholder="Bairro" className="col-span-full" />
+                            <Input name="endereco_cidade" value={formData.endereco_cidade} onChange={handleChange} label="Cidade" placeholder="Natal" className="col-span-full" />
+
+                            <div className="grid grid-cols-2 gap-4 col-span-full">
+                                <Select
+                                    label="UF"
+                                    value={formData.endereco_uf}
+                                    onChange={(e) => handleSelectChange('endereco_uf', e.target.value)}
+                                    options={[{ label: 'RN', value: 'RN' }, { label: 'PB', value: 'PB' }]}
+                                />
+                                <Select
+                                    label="Zona"
+                                    value={formData.localizacao_tipo}
+                                    onChange={(e) => handleSelectChange('localizacao_tipo', e.target.value)}
+                                    options={[{ label: 'Urbana', value: 'Urbana' }, { label: 'Rural', value: 'Rural' }]}
+                                />
+                            </div>
                         </div>
                     )}
 
