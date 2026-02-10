@@ -1143,7 +1143,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
 
 
                     {activeTab === 'academic' && (
-                        <div className="grid grid-cols-2 md:grid-cols-2 gap-x-3 gap-y-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-4">
                             <Select
                                 label="Ano Letivo"
                                 value={selectedYear}
@@ -1235,7 +1235,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                 onChange={handleChange}
                                 label="Escola de Origem"
                                 placeholder="Escola anterior"
-                                className="col-span-1"
+                                className="col-span-2 md:col-span-2"
                             />
 
                             <Input
@@ -1272,39 +1272,40 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                 className="col-span-1"
                             />
 
-                            <div className="col-span-1">
-                                <label className="text-[11px] font-medium text-gray-700 mb-1 block">Senha Acesso</label>
-                                <div className="relative">
-                                    <Input
-                                        name="password"
-                                        type={showPassword ? "text" : "password"}
-                                        value={formData.password || ''}
-                                        onChange={handleChange}
-                                        placeholder="Senha"
-                                        className="pr-8 w-full h-10"
-                                    />
-                                    <button
+                            <div className="col-span-2 md:col-span-2 flex flex-col sm:flex-row gap-x-3 items-end">
+                                <div className="flex-1 w-full">
+                                    <label className="text-[11px] font-medium text-gray-700 mb-1 block">Senha Acesso</label>
+                                    <div className="relative">
+                                        <Input
+                                            name="password"
+                                            type={showPassword ? "text" : "password"}
+                                            value={formData.password || ''}
+                                            onChange={handleChange}
+                                            placeholder="Senha"
+                                            className="pr-8 w-full h-10"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                                        >
+                                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="flex-shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
+                                    <Button
                                         type="button"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                                        variant="outline"
+                                        onClick={handleGeneratePassword}
+                                        className="whitespace-nowrap bg-blue-50 text-blue-950 border-blue-950/20 hover:bg-blue-100 w-full sm:w-32 h-10 px-1 font-bold text-[10px]"
                                     >
-                                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                    </button>
+                                        Gerar Senha
+                                    </Button>
                                 </div>
                             </div>
-                            <div className="col-span-1">
-                                <label className="text-[11px] font-medium text-transparent mb-1 block">.</label>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={handleGeneratePassword}
-                                    className="whitespace-nowrap bg-blue-50 text-blue-950 border-blue-950/20 hover:bg-blue-100 w-full h-10 px-1 font-bold text-[10px]"
-                                >
-                                    Gerar Senha
-                                </Button>
-                            </div>
 
-                            <div className="col-span-2">
+                            <div className="col-span-2 md:col-span-2">
                                 <label className="text-[11px] font-medium text-gray-700 mb-1 block">Status de Acesso</label>
                                 <label className={`flex items-center gap-3 p-2 rounded-xl border transition-all cursor-pointer h-auto ${formData.isBlocked ? 'border-red-200 bg-red-50' : 'border-blue-100 bg-blue-50 hover:bg-blue-100'}`}>
                                     <div className="flex items-center h-5">
@@ -1350,7 +1351,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                 </label>
                             </div>
 
-                            <div className="col-span-2">
+                            <div className="col-span-2 md:col-span-4">
                                 <Input
                                     name="autorizacao_bolsa"
                                     value={formData.autorizacao_bolsa || ''}
@@ -1364,7 +1365,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
 
 
                             {/* Financial Calculation Section */}
-                            <div className={`col-span-2 grid grid-cols-1 md:grid-cols-4 gap-4 border-t border-gray-100 pt-4 mt-2 transition-opacity ${formData.isScholarship ? 'opacity-50 pointer-events-none grayscale' : 'opacity-100'}`}>
+                            <div className={`col-span-2 md:col-span-4 grid grid-cols-1 md:grid-cols-4 gap-4 border-t border-gray-100 pt-4 mt-2 transition-opacity ${formData.isScholarship ? 'opacity-50 pointer-events-none grayscale' : 'opacity-100'}`}>
                                 <Input
                                     label="Valor da Mensalidade (Integral)"
                                     value={baseTuition}
@@ -1621,8 +1622,8 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                     )}
 
                     {activeTab === 'address' && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="col-span-full">
+                        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                            <div className="col-span-full md:col-span-2">
                                 <div className="flex gap-2">
                                     <Input name="cep" value={formData.cep} onChange={handleChange} label="CEP" placeholder="00000-000" className="flex-1" />
                                     <button
@@ -1636,30 +1637,28 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                 </div>
                             </div>
 
-                            <Input name="endereco_logradouro" value={formData.endereco_logradouro} onChange={handleChange} label="Logradouro" placeholder="Rua, Av..." className="col-span-full" />
+                            <Input name="endereco_logradouro" value={formData.endereco_logradouro} onChange={handleChange} label="Logradouro" placeholder="Rua, Av..." className="col-span-full md:col-span-6" />
 
-                            <div className="grid grid-cols-2 gap-4 col-span-full">
-                                <Input name="endereco_numero" value={formData.endereco_numero} onChange={handleChange} label="Número" placeholder="123" />
-                                <Input name="endereco_complemento" value={formData.endereco_complemento} onChange={handleChange} label="Complemento" placeholder="Apto, Bloco..." />
-                            </div>
+                            <Input name="endereco_numero" value={formData.endereco_numero} onChange={handleChange} label="Número" placeholder="123" className="col-span-full md:col-span-1" />
+                            <Input name="endereco_complemento" value={formData.endereco_complemento} onChange={handleChange} label="Complemento" placeholder="Apto, Bloco..." className="col-span-full md:col-span-2" />
+                            <Input name="endereco_bairro" value={formData.endereco_bairro} onChange={handleChange} label="Bairro" placeholder="Bairro" className="col-span-full md:col-span-3" />
 
-                            <Input name="endereco_bairro" value={formData.endereco_bairro} onChange={handleChange} label="Bairro" placeholder="Bairro" className="col-span-full" />
-                            <Input name="endereco_cidade" value={formData.endereco_cidade} onChange={handleChange} label="Cidade" placeholder="Natal" className="col-span-full" />
+                            <Input name="endereco_cidade" value={formData.endereco_cidade} onChange={handleChange} label="Cidade" placeholder="Natal" className="col-span-full md:col-span-3" />
 
-                            <div className="grid grid-cols-2 gap-4 col-span-full">
-                                <Select
-                                    label="UF"
-                                    value={formData.endereco_uf}
-                                    onChange={(e) => handleSelectChange('endereco_uf', e.target.value)}
-                                    options={[{ label: 'RN', value: 'RN' }, { label: 'PB', value: 'PB' }]}
-                                />
-                                <Select
-                                    label="Zona"
-                                    value={formData.localizacao_tipo}
-                                    onChange={(e) => handleSelectChange('localizacao_tipo', e.target.value)}
-                                    options={[{ label: 'Urbana', value: 'Urbana' }, { label: 'Rural', value: 'Rural' }]}
-                                />
-                            </div>
+                            <Select
+                                label="UF"
+                                value={formData.endereco_uf}
+                                onChange={(e) => handleSelectChange('endereco_uf', e.target.value)}
+                                options={[{ label: 'RN', value: 'RN' }, { label: 'PB', value: 'PB' }]}
+                                className="col-span-full md:col-span-1"
+                            />
+                            <Select
+                                label="Zona"
+                                value={formData.localizacao_tipo}
+                                onChange={(e) => handleSelectChange('localizacao_tipo', e.target.value)}
+                                options={[{ label: 'Urbana', value: 'Urbana' }, { label: 'Rural', value: 'Rural' }]}
+                                className="col-span-full md:col-span-2"
+                            />
                         </div>
                     )}
 
