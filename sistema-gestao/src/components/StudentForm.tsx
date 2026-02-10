@@ -2080,74 +2080,80 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                     )}
                 </div>
                 {/* Footer */}
-                <div className="p-3 sm:p-4 border-t border-gray-100 flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-2 bg-white flex-shrink-0 z-10">
+                <div className="p-4 sm:p-4 border-t border-gray-100 flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-4 sm:gap-2 bg-white flex-shrink-0 z-10">
                     <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                         {student && (
                             <Button
                                 variant="outline"
                                 onClick={handleDelete}
                                 disabled={isLoading}
-                                className="cursor-pointer flex items-center justify-center gap-2 border-red-100 text-red-500 hover:bg-red-50 hover:border-red-200 transition-colors w-full sm:w-auto whitespace-nowrap px-3 text-xs"
+                                className="cursor-pointer flex items-center justify-center gap-2 border-red-100 text-red-500 hover:bg-red-50 hover:border-red-200 transition-colors w-full sm:w-auto whitespace-nowrap px-4 sm:px-3 sm:text-xs"
                                 title="Excluir Matrícula Permanentemente"
                             >
                                 <Trash2 className="w-4 h-4" />
                                 <span className="inline">Excluir Aluno</span>
                             </Button>
                         )}
-                        <Button variant="outline" onClick={() => onClose()} className="cursor-pointer w-full sm:w-auto justify-center whitespace-nowrap px-3 text-xs">
+                        <Button variant="outline" onClick={() => onClose()} className="cursor-pointer w-full sm:w-auto justify-center whitespace-nowrap px-4 sm:px-3 sm:text-xs">
                             Cancelar
                         </Button>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto items-center justify-end overflow-x-auto sm:overflow-visible pb-1 sm:pb-0">
-                        <Button
-                            variant="outline"
-                            onClick={handlePrint}
-                            className="cursor-pointer flex-1 sm:flex-none items-center justify-center gap-2 border-blue-950/20 text-blue-950 hover:bg-blue-950/5 whitespace-nowrap px-3 text-xs"
-                            title="Imprimir Ficha"
-                        >
-                            <Printer className="w-4 h-4" />
-                            <span className="sm:hidden">Ficha</span>
-                            <span className="hidden sm:inline">Imprimir Ficha</span>
-                        </Button>
-                        <Button
-                            variant="outline"
-                            onClick={handlePrintBlank}
-                            className="cursor-pointer flex-1 sm:flex-none items-center justify-center gap-2 border-slate-200 text-slate-700 hover:bg-slate-50 whitespace-nowrap px-3 text-xs"
-                            title="Ficha em Branco"
-                        >
-                            <Printer className="w-4 h-4" />
-                            <span className="sm:hidden">Em Branco</span>
-                            <span className="hidden sm:inline">Ficha em Branco</span>
-                        </Button>
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-2 w-full sm:w-auto items-center justify-end overflow-x-auto sm:overflow-visible pb-1 sm:pb-0">
+                        {/* Group Print Actions - 2 Col Grid on Mobile */}
+                        <div className="grid grid-cols-2 gap-2 w-full sm:contents">
+                            <Button
+                                variant="outline"
+                                onClick={handlePrint}
+                                className="cursor-pointer flex-1 sm:flex-none items-center justify-center gap-2 border-blue-950/20 text-blue-950 hover:bg-blue-950/5 whitespace-nowrap px-3 sm:px-3 sm:text-xs"
+                                title="Imprimir Ficha"
+                            >
+                                <Printer className="w-4 h-4" />
+                                <span className="sm:hidden">Ficha</span>
+                                <span className="hidden sm:inline">Imprimir Ficha</span>
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={handlePrintBlank}
+                                className="cursor-pointer flex-1 sm:flex-none items-center justify-center gap-2 border-slate-200 text-slate-700 hover:bg-slate-50 whitespace-nowrap px-3 sm:px-3 sm:text-xs"
+                                title="Ficha em Branco"
+                            >
+                                <Printer className="w-4 h-4" />
+                                <span className="sm:hidden">Em Branco</span>
+                                <span className="hidden sm:inline">Ficha em Branco</span>
+                            </Button>
+                        </div>
 
-                        <Button
-                            variant="outline"
-                            onClick={handleGenerateBoletos}
-                            disabled={isGeneratingBoleto || !student?.id || isLoading}
-                            className="cursor-pointer flex-1 sm:flex-none items-center justify-center gap-2 border-blue-900/30 text-blue-900 font-bold hover:bg-blue-50 whitespace-nowrap px-3 text-xs"
-                            title="Gerar Boletos"
-                        >
-                            {isGeneratingBoleto ? <Loader2 className="w-4 h-4 animate-spin" /> : <Barcode className="w-4 h-4" />}
-                            <span className="sm:hidden">Boletos</span>
-                            <span className="hidden sm:inline">Gerar Boletos</span>
-                        </Button>
-                        <Button
-                            variant="outline"
-                            onClick={handleGenerateCarne}
-                            disabled={isLoading || !student?.id}
-                            className="cursor-pointer flex-1 sm:flex-none items-center justify-center gap-2 border-orange-600 text-orange-600 font-bold hover:bg-orange-50 whitespace-nowrap px-3 text-xs"
-                            title="Gerar Carnê"
-                        >
-                            <FileText className="w-4 h-4" />
-                            <span className="sm:hidden">Carnê</span>
-                            <span className="hidden sm:inline">Gerar Carnê</span>
-                        </Button>
+                        {/* Group Financial Actions - 2 Col Grid on Mobile */}
+                        <div className="grid grid-cols-2 gap-2 w-full sm:contents">
+                            <Button
+                                variant="outline"
+                                onClick={handleGenerateBoletos}
+                                disabled={isGeneratingBoleto || !student?.id || isLoading}
+                                className="cursor-pointer flex-1 sm:flex-none items-center justify-center gap-2 border-blue-900/30 text-blue-900 font-bold hover:bg-blue-50 whitespace-nowrap px-3 sm:px-3 sm:text-xs"
+                                title="Gerar Boletos"
+                            >
+                                {isGeneratingBoleto ? <Loader2 className="w-4 h-4 animate-spin" /> : <Barcode className="w-4 h-4" />}
+                                <span className="sm:hidden">Boletos</span>
+                                <span className="hidden sm:inline">Gerar Boletos</span>
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={handleGenerateCarne}
+                                disabled={isLoading || !student?.id}
+                                className="cursor-pointer flex-1 sm:flex-none items-center justify-center gap-2 border-orange-600 text-orange-600 font-bold hover:bg-orange-50 whitespace-nowrap px-3 sm:px-3 sm:text-xs"
+                                title="Gerar Carnê"
+                            >
+                                <FileText className="w-4 h-4" />
+                                <span className="sm:hidden">Carnê</span>
+                                <span className="hidden sm:inline">Gerar Carnê</span>
+                            </Button>
+                        </div>
 
                         <Button
                             onClick={handleSubmit}
                             disabled={isLoading}
-                            className="cursor-pointer w-full sm:w-auto flex items-center justify-center gap-2 whitespace-nowrap px-5 text-xs font-bold"
+                            className="cursor-pointer w-full sm:w-auto flex items-center justify-center gap-2 whitespace-nowrap px-6 sm:px-5 sm:text-xs font-bold"
                         >
                             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                             {student ? 'Salvar' : 'Cadastrar'}
