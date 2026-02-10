@@ -80,11 +80,16 @@ export function useLostAndFound(unit?: SchoolUnit | string) {
      * Uploads a photo to Firebase Storage and returns the download URL.
      */
     const uploadPhoto = async (file: File): Promise<string> => {
-        const compressedBlob = await compressImage(file);
-        const filename = `${Date.now()}_${file.name.replace(/\s+/g, '_')}.jpg`;
-        const storageRef = storage.ref(`lost_and_found/${filename}`);
-        const snapshot = await storageRef.put(compressedBlob);
-        return await snapshot.ref.getDownloadURL();
+        try {
+            const compressedBlob = await compressImage(file);
+            const filename = `${Date.now()}_${file.name.replace(/\s+/g, '_')}.jpg`;
+            const storageRef = storage.ref(`lost_and_found/${filename}`);
+            const snapshot = await storageRef.put(compressedBlob);
+            return await snapshot.ref.getDownloadURL();
+        } catch (error) {
+            console.error("Error uploading photo:", error);
+            throw error;
+        }
     };
 
     /**
@@ -144,17 +149,24 @@ export function useLostAndFound(unit?: SchoolUnit | string) {
      */
     const deleteItem = async (itemId: string, photoUrl?: string) => {
         try {
+            console.log(`[Storage] Tentando excluir item: ${itemId}, URL: ${photoUrl}`);
+
             // Delete photo from storage if it exists
             if (photoUrl && photoUrl.includes('firebasestorage')) {
                 try {
+                    // Tenta obter a referência pela URL
                     const fileRef = storage.refFromURL(photoUrl);
+                    console.log(`[Storage] Referência obtida: ${fileRef.fullPath}. Excluindo...`);
                     await fileRef.delete();
-                } catch (storageErr) {
-                    console.warn("Could not delete photo from storage:", storageErr);
+                    console.log(`[Storage] Foto excluída com sucesso do bucket.`);
+                } catch (storageErr: any) {
+                    console.error("[Storage] Falha ao excluir foto:", storageErr.message);
+                    // Não trava o processo se a foto já não existir ou houver erro de permissão
                 }
             }
             // Delete document from Firestore
             await db.collection('lost_and_found').doc(itemId).delete();
+            console.log(`[Firestore] Documento ${itemId} excluído com sucesso.`);
         } catch (error) {
             console.error("Error deleting item:", error);
             throw error;
