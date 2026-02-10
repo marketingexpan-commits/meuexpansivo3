@@ -727,6 +727,7 @@ export type EventType =
   | 'holiday_national'
   | 'holiday_state'
   | 'holiday_municipal'
+  | 'holiday_school'
   | 'vacation'
   | 'recess'
   | 'meeting'

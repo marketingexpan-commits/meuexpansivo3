@@ -243,7 +243,7 @@ export const calculateSchoolDays = (
     const extraSchoolDates = new Set<string>();
 
     (events || []).forEach(e => {
-        const isHoliday = e.type === 'holiday_national' || e.type === 'holiday_state' || e.type === 'holiday_municipal' || e.type === 'vacation' || e.type === 'recess';
+        const isHoliday = e.type === 'holiday_national' || e.type === 'holiday_state' || e.type === 'holiday_municipal' || e.type === 'holiday_school' || e.type === 'vacation' || e.type === 'recess';
         const isExtraSchoolDay = e.type === 'school_day' || e.type === 'substitution';
 
         if (isHoliday || isExtraSchoolDay) {
@@ -426,7 +426,7 @@ export const calculateEffectiveTaughtClasses = (
         const f = e.endDate ? new Date(e.endDate + 'T00:00:00') : new Date(e.startDate + 'T00:00:00');
 
         if (!isNaN(s.getTime())) {
-            if (e.type === 'holiday_national' || e.type === 'holiday_state' || e.type === 'holiday_municipal' || e.type === 'vacation' || e.type === 'recess') {
+            if (e.type === 'holiday_national' || e.type === 'holiday_state' || e.type === 'holiday_municipal' || e.type === 'holiday_school' || e.type === 'vacation' || e.type === 'recess') {
                 for (let d = new Date(s); d <= f; d.setDate(d.getDate() + 1)) {
                     holidayDates.add(d.toISOString().split('T')[0]);
                 }
@@ -508,7 +508,7 @@ export const isClassScheduled = (
         const f = e.endDate ? new Date(e.endDate + 'T00:00:00') : new Date(e.startDate + 'T00:00:00');
 
         if (!isNaN(s.getTime())) {
-            if (e.type === 'holiday_national' || e.type === 'holiday_state' || e.type === 'holiday_municipal' || e.type === 'vacation' || e.type === 'recess') {
+            if (e.type === 'holiday_national' || e.type === 'holiday_state' || e.type === 'holiday_municipal' || e.type === 'holiday_school' || e.type === 'vacation' || e.type === 'recess') {
                 for (let d = new Date(s); d <= f; d.setDate(d.getDate() + 1)) {
                     holidayDates.add(d.toISOString().split('T')[0]);
                 }

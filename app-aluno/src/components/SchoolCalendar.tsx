@@ -69,6 +69,7 @@ export const SchoolCalendar: React.FC<SchoolCalendarProps> = ({ events, academic
             case 'holiday_national':
             case 'holiday_state':
             case 'holiday_municipal':
+            case 'holiday_school':
                 return '#ef4444'; // red-500
             case 'vacation':
                 return '#eab308'; // yellow-500
@@ -94,6 +95,7 @@ export const SchoolCalendar: React.FC<SchoolCalendarProps> = ({ events, academic
             case 'holiday_national':
             case 'holiday_state':
             case 'holiday_municipal':
+            case 'holiday_school':
                 return 'bg-red-500';
             case 'vacation':
                 return 'bg-yellow-500';
@@ -119,6 +121,7 @@ export const SchoolCalendar: React.FC<SchoolCalendarProps> = ({ events, academic
             case 'holiday_national': return 'Feriado Nacional';
             case 'holiday_state': return 'Feriado Estadual';
             case 'holiday_municipal': return 'Feriado Municipal';
+            case 'holiday_school': return 'Feriado Escolar';
             case 'vacation': return 'Férias';
             case 'recess': return 'Recesso';
             case 'school_day': return 'Letivo';
@@ -206,7 +209,7 @@ export const SchoolCalendar: React.FC<SchoolCalendarProps> = ({ events, academic
                                     if (weekDay === 0 || weekDay === 6) return false;
                                     // 2. Omit if there's a holiday, recess or vacation on the same day
                                     const hasConflict = allDayEvents.some(other =>
-                                        ['holiday_national', 'holiday_state', 'holiday_municipal', 'recess', 'vacation', 'exam'].includes(other.type)
+                                        ['holiday_national', 'holiday_state', 'holiday_municipal', 'holiday_school', 'recess', 'vacation', 'exam'].includes(other.type)
                                     );
                                     if (hasConflict) return false;
                                 }

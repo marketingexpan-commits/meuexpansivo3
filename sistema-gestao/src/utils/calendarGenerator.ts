@@ -22,6 +22,7 @@ export const generateSchoolCalendar = (
             case 'holiday_national':
             case 'holiday_state':
             case 'holiday_municipal':
+            case 'holiday_school':
             case 'holiday': // Fallback legacy
                 return '#ef4444'; // Vermelho
             case 'exam': return '#f97316'; // Laranja Escuro/Prova
@@ -40,6 +41,7 @@ export const generateSchoolCalendar = (
             case 'holiday_national': return 'Feriado Nacional';
             case 'holiday_state': return 'Feriado Estadual';
             case 'holiday_municipal': return 'Feriado Municipal';
+            case 'holiday_school': return 'Feriado Escolar';
             case 'holiday': return 'Feriado';
             case 'exam': return 'Avaliação';
             case 'meeting': return 'Reunião';
