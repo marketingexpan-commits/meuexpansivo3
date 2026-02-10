@@ -6,7 +6,8 @@ import { Menu } from 'lucide-react';
 export function MainLayout() {
     const unitLabel = localStorage.getItem('userUnitLabel') || 'Administração Geral';
     const [adminSelectedUnit, setAdminSelectedUnit] = useState<string | null>(localStorage.getItem('adminSelectedUnitName'));
-    const [collapsed, setCollapsed] = useState(() => window.innerWidth < 768);
+    const [collapsed, setCollapsed] = useState(false); // Desktop only state
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile only state
 
     useEffect(() => {
         const handleUnitChange = () => {
@@ -17,30 +18,34 @@ export function MainLayout() {
         return () => window.removeEventListener('adminUnitChange', handleUnitChange);
     }, []);
 
-    useEffect(() => {
-        const handleResize = () => {
-            if (window.innerWidth < 768) {
-                setCollapsed(true);
-            } else {
-                setCollapsed(false);
-            }
-        };
-
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
+    // Effect for desktop responsiveness (Auto-collapse on smaller desktop screens if needed, but keeping user preference is better)
+    // We remove the auto-collapse logic that was affecting mobile to keep things strict.
 
     return (
         <div className="flex h-screen bg-slate-50 overflow-hidden">
-            <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+            <Sidebar
+                collapsed={collapsed}
+                setCollapsed={setCollapsed}
+                mobileMenuOpen={mobileMenuOpen}
+                setMobileMenuOpen={setMobileMenuOpen}
+            />
             <main className="flex-1 overflow-y-auto overflow-x-hidden relative">
                 <header className="h-16 bg-white border-b border-slate-200 sticky top-0 z-30 flex items-center justify-between px-4 md:px-8 shadow-sm">
                     <div className="flex items-center gap-3">
+                        {/* Mobile Menu Toggle */}
                         <button
-                            onClick={() => setCollapsed(!collapsed)}
+                            onClick={() => setMobileMenuOpen(true)}
                             className="p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-lg md:hidden"
                         >
                             <Menu className="w-6 h-6" />
+                        </button>
+
+                        {/* Desktop Collapse Toggle (Hidden on mobile) */}
+                        <button
+                            onClick={() => setCollapsed(!collapsed)}
+                            className="hidden md:flex p-2 text-slate-500 hover:bg-slate-100 rounded-lg mr-2"
+                        >
+                            <Menu className="w-5 h-5" />
                         </button>
 
                         <div className="flex items-center gap-2">

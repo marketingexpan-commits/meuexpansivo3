@@ -1074,8 +1074,8 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                         { label: 'Estrangeira', value: 'Estrangeira' }
                                     ]}
                                 />
-                                <div className="grid grid-cols-3 gap-2 col-span-2 md:col-span-1">
-                                    <div className="col-span-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 col-span-2 md:col-span-1">
+                                    <div className="sm:col-span-2">
                                         <Input name="naturalidade" value={formData.naturalidade} onChange={handleChange} label="Naturalidade (Cidade)" placeholder="Cidade de nascimento" />
                                     </div>
                                     <Input name="uf_naturalidade" value={formData.uf_naturalidade} onChange={handleChange} label="UF" placeholder="RN" maxLength={2} />
@@ -1205,7 +1205,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                 className="col-span-2"
                             />
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <Input
                                     name="data_inicio"
                                     type="date"
@@ -1222,14 +1222,14 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                 />
                             </div>
 
-                            <div className="flex gap-4">
+                            <div className="flex flex-col sm:flex-row gap-4">
                                 <Input
                                     name="code"
                                     label="Código do Aluno (Global)"
                                     value={formData.code || ''}
                                     onChange={handleChange}
                                     placeholder={student ? "Matrícula do aluno" : "Gerando sugestão..."}
-                                    className="w-48 bg-blue-50/30 border-blue-900/10 font-bold"
+                                    className="w-full sm:w-48 bg-blue-50/30 border-blue-900/10 font-bold"
                                 />
                                 <Input
                                     name="matricula"
