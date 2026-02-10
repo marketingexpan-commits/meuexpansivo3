@@ -22,8 +22,8 @@ export const generateSchoolCalendar = (
         letivo: { label: 'Letivo', color: '#22c55e' },
         reposicao: { label: 'Reposição', color: '#a855f7' },
         feriado: { label: 'Feriado', color: '#ef4444' },
-        ferias: { label: 'Férias', color: '#eab308' },
-        recesso: { label: 'Recesso', color: '#fb923c' },
+        ferias: { label: 'Férias', color: '#06b6d4' },
+        recesso: { label: 'Recesso', color: '#92400e' }, // Alterado para Marrom para contraste total com Red/Orange/Pink
         prova: { label: 'Prova', color: '#f97316' },
         evento: { label: 'Evento/Geral', color: '#1e40af' },
         reuniao: { label: 'Reunião', color: '#6b7280' }
@@ -94,7 +94,7 @@ export const generateSchoolCalendar = (
                     <strong>${new Date(bim.startDate + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</strong> a 
                     <strong>${new Date(bim.endDate + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</strong>
                 </div>
-                <div class="bimester-badge">${days} Letivos</div>
+                <div class="bimester-badge">${days} Dias Letivos</div>
             </div>
         `;
     }).join('');
@@ -119,7 +119,7 @@ export const generateSchoolCalendar = (
     const monthlySummaryHtml = monthlyDays.map(m => `
         <div class="month-item">
             <span class="month-name">${m.month}:</span>
-            <span class="month-count">${String(m.days).padStart(2, '0')}</span>
+            <span class="month-count">${String(m.days).padStart(2, '0')} dias</span>
         </div>
     `).join('');
 
@@ -202,12 +202,14 @@ export const generateSchoolCalendar = (
                     align-items: center;
                     background: white;
                     border: 1px solid #e2e8f0;
-                    margin-bottom: 20px;
+                    border-radius: 8px;
+                    padding: 12px 20px;
+                    margin-bottom: 12px;
                 }
-                .logo-info { display: flex; align-items: center; gap: 10px; }
-                .logo-info img { height: 28px; width: auto; }
-                .header h1 { font-size: 14px; font-weight: 800; color: #1e3a8a; }
-                .unit-badge { font-size: 8px; color: #64748b; font-weight: 700; text-align: right; line-height: 1.1; }
+                .logo-info { display: flex; align-items: center; gap: 15px; }
+                .logo-info img { height: 32px; width: auto; }
+                .header h1 { font-size: 16px; font-weight: 800; color: #1e3a8a; }
+                .unit-badge { font-size: 9px; color: #64748b; font-weight: 700; text-align: right; line-height: 1.2; }
 
                 .top-content {
                     display: grid;
@@ -253,9 +255,10 @@ export const generateSchoolCalendar = (
                 .monthly-summary {
                     display: grid;
                     grid-template-columns: repeat(4, 1fr);
-                    gap: 3px;
+                    column-gap: 25px;
+                    row-gap: 4px;
                     background: white;
-                    padding: 4px;
+                    padding: 6px 15px;
                     border-radius: 6px;
                     border: 1px solid #e2e8f0;
                 }
@@ -265,13 +268,13 @@ export const generateSchoolCalendar = (
 
                 .event-desc { display: flex; justify-content: space-between; font-size: 6.8px; border-bottom: 1px dashed #cbd5e1; padding: 0.5px 0; }
                 .event-date { font-weight: 800; color: #1e3a8a; min-width: 22px; }
-                .event-title { text-align: right; color: #475569; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 130px; }
+                .event-title { text-align: right; color: #475569; }
 
                 .calendar-grid {
                     display: grid;
                     grid-template-columns: repeat(6, 1fr);
                     gap: 6px;
-                    margin-top: 25px;
+                    margin-top: 10px;
                 }
                 .month-card { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 4px; }
                 .month-header { font-size: 9px; font-weight: 800; color: #1e3a8a; margin-bottom: 2px; }
@@ -280,19 +283,20 @@ export const generateSchoolCalendar = (
                     border-bottom: 1px solid #f1f5f9; padding-bottom: 2px; margin-bottom: 2px;
                 }
                 .days-container { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
-                .day-cell { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 7.5px; font-weight: 500; border-radius: 3px; }
+                .day-cell { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 7.5px; font-weight: 500; border-radius: 4px; border: 1px solid #cbd5e1; }
+                .day-empty { border: none !important; }
                 .day-cell.bim-start { background: #eff6ff; border: 1px solid #3b82f6; font-weight: 800; }
-                .dots-container { display: flex; gap: 1px; margin-top: 1px; height: 2px; }
-                .dot { width: 2.5px; height: 2.5px; border-radius: 50%; }
+                .dots-container { display: flex; gap: 1.5px; margin-top: 1.5px; height: 4px; }
+                .dot { width: 4px; height: 4px; border-radius: 50%; }
 
                 .legend-section {
                     background: white; padding: 4px; border-radius: 6px; display: flex; justify-content: center; gap: 8px; border: 1px solid #e2e8f0;
-                    margin-top: 25px;
+                    margin-top: 10px;
                 }
                 .legend-item { display: flex; align-items: center; gap: 3px; font-size: 7.5px; font-weight: 600; color: #475569; }
-                .legend-dot { width: 5px; height: 5px; border-radius: 50%; }
+                .legend-dot { width: 7px; height: 7px; border-radius: 50%; }
 
-                .footer { text-align: center; font-size: 6.5px; color: #94a3b8; margin-top: 15px; }
+                .footer { text-align: center; font-size: 6.5px; color: #94a3b8; margin-top: 5px; }
 
                 @media print {
                     body { background: transparent; padding: 0; }

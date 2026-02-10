@@ -24,13 +24,30 @@ export const generateSchoolCalendar = (
             case 'holiday_state':
             case 'holiday_municipal':
             case 'holiday_school':
-            case 'holiday': // Fallback legacy
-                return '#ef4444';
-            case 'exam': return '#f59e0b';
-            case 'meeting': return '#3b82f6';
+            case 'holiday':
+                return '#ef4444'; // Red
+            case 'exam':
+            case 'prova':
+                return '#f97316'; // Orange
+            case 'meeting':
+            case 'reuniao':
+                return '#6b7280'; // Gray
             case 'vacation':
+            case 'vacations':
+            case 'ferias':
+                return '#06b6d4'; // Cyan
             case 'recess':
-                return '#10b981';
+            case 'recesso':
+                return '#92400e'; // Brown
+            case 'substitution':
+            case 'reposicao':
+                return '#a855f7'; // Purple
+            case 'school_day':
+            case 'letivo':
+                return '#22c55e'; // Green
+            case 'event':
+            case 'geral':
+                return '#1e40af'; // Dark Blue
             default: return '#64748b';
         }
     };

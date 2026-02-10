@@ -337,14 +337,14 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                                     </div>
                                                     <div>
                                                         <div className="flex items-center gap-2 mb-1">
-                                                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-xl uppercase tracking-wider text-white ${event.type === 'holiday_national' || event.type === 'holiday_state' || event.type === 'holiday_municipal' || event.type === 'holiday_school' ? 'bg-red-500' :
-                                                                event.type === 'exam' ? 'bg-orange-500' :
-                                                                    event.type === 'meeting' ? 'bg-gray-500' :
-                                                                        event.type === 'school_day' ? 'bg-green-500' :
-                                                                            event.type === 'substitution' ? 'bg-purple-500' :
-                                                                                event.type === 'vacation' ? 'bg-yellow-500' :
-                                                                                    event.type === 'recess' ? 'bg-orange-400' :
-                                                                                        'bg-blue-800'
+                                                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-xl uppercase tracking-wider text-white ${event.type === 'holiday_national' || event.type === 'holiday_state' || event.type === 'holiday_municipal' || event.type === 'holiday_school' ? 'bg-[#ef4444]' :
+                                                                event.type === 'exam' ? 'bg-[#f97316]' :
+                                                                    event.type === 'meeting' ? 'bg-[#6b7280]' :
+                                                                        event.type === 'school_day' ? 'bg-[#22c55e]' :
+                                                                            event.type === 'substitution' ? 'bg-[#a855f7]' :
+                                                                                event.type === 'vacation' ? 'bg-[#06b6d4]' :
+                                                                                    event.type === 'recess' ? 'bg-[#92400e]' :
+                                                                                        'bg-[#1e40af]'
                                                                 }`}>
                                                                 {event.type === 'holiday_national' ? 'Feriado Nacional' :
                                                                     event.type === 'holiday_state' ? 'Feriado Estadual' :
