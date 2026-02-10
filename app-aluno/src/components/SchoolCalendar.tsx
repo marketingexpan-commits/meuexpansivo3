@@ -252,37 +252,37 @@ export const SchoolCalendar: React.FC<SchoolCalendarProps> = ({ events, academic
                         })}
                     </div>
 
-                    {/* Legend */}
-                    <div className="flex flex-wrap gap-4 mt-6 border-t border-gray-100 pt-4 justify-center">
-                        <div className="flex items-center gap-2 text-[10px] text-gray-600">
-                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#22c55e' }}></div> Letivo
+                    {/* Legend - More compact on mobile */}
+                    <div className="flex flex-wrap gap-2 sm:gap-4 mt-6 border-t border-gray-100 pt-4 justify-center">
+                        <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] text-gray-600">
+                            <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: '#22c55e' }}></div> Letivo
                         </div>
-                        <div className="flex items-center gap-2 text-[10px] text-gray-600">
-                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#a855f7' }}></div> Reposição
+                        <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] text-gray-600">
+                            <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: '#a855f7' }}></div> Reposição
                         </div>
-                        <div className="flex items-center gap-2 text-[10px] text-gray-600">
-                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#ef4444' }}></div> Feriado
+                        <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] text-gray-600">
+                            <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: '#ef4444' }}></div> Feriado
                         </div>
-                        <div className="flex items-center gap-2 text-[10px] text-gray-600">
-                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#eab308' }}></div> Férias
+                        <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] text-gray-600">
+                            <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: '#eab308' }}></div> Férias
                         </div>
-                        <div className="flex items-center gap-2 text-[10px] text-gray-600">
-                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#fb923c' }}></div> Recesso
+                        <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] text-gray-600">
+                            <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: '#fb923c' }}></div> Recesso
                         </div>
-                        <div className="flex items-center gap-2 text-[10px] text-gray-600">
-                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#f97316' }}></div> Prova
+                        <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] text-gray-600">
+                            <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: '#f97316' }}></div> Prova
                         </div>
-                        <div className="flex items-center gap-2 text-[10px] text-gray-600">
-                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#1e40af' }}></div> Evento/Geral
+                        <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] text-gray-600">
+                            <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: '#1e40af' }}></div> Evento/Geral
                         </div>
-                        <div className="flex items-center gap-2 text-[10px] text-gray-600">
-                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#6b7280' }}></div> Reunião
+                        <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] text-gray-600">
+                            <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: '#6b7280' }}></div> Reunião
                         </div>
                     </div>
                 </div>
 
                 {/* EVENTS LIST (Sidebar) */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col h-full lg:max-h-[600px] overflow-hidden">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col h-auto lg:h-full lg:max-h-[600px] overflow-visible lg:overflow-hidden">
                     <h3 className="font-bold text-gray-800 mb-4 flex items-center justify-between">
                         <div className="flex flex-col">
                             <span>Eventos</span>
