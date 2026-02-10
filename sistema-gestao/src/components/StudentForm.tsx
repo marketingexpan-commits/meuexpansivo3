@@ -1076,9 +1076,11 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                 />
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 col-span-2 md:col-span-1">
                                     <div className="sm:col-span-2">
-                                        <Input name="naturalidade" value={formData.naturalidade} onChange={handleChange} label="Naturalidade (Cidade)" placeholder="Cidade de nascimento" />
+                                        <Input name="naturalidade" value={formData.naturalidade} onChange={handleChange} label="Naturalidade (Cidade)" placeholder="Cidade de nascimento" className="w-full" />
                                     </div>
-                                    <Input name="uf_naturalidade" value={formData.uf_naturalidade} onChange={handleChange} label="UF" placeholder="RN" maxLength={2} />
+                                    <div className="sm:col-span-1">
+                                        <Input name="uf_naturalidade" value={formData.uf_naturalidade} onChange={handleChange} label="UF" placeholder="RN" maxLength={2} className="w-full" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1194,41 +1196,44 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                 onChange={handleChange}
                                 label="NIS (Bolsa Família)"
                                 placeholder="000.00000.00-0"
+                                className="col-span-full md:col-span-1"
                             />
 
                             <Input
                                 name="procedencia_escolar"
                                 value={formData.procedencia_escolar || ''}
                                 onChange={handleChange}
-                                label="Escola de Origem / Procedência"
+                                label="Escola de Origem"
                                 placeholder="Escola anterior"
-                                className="col-span-2"
+                                className="col-span-full"
                             />
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="col-span-full grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <Input
                                     name="data_inicio"
                                     type="date"
                                     value={formData.data_inicio || ''}
                                     onChange={handleChange}
-                                    label="Data de Início/Admissão"
+                                    label="Início/Admissão"
+                                    className="w-full"
                                 />
                                 <Input
                                     name="data_desligamento"
                                     type="date"
                                     value={formData.data_desligamento || ''}
                                     onChange={handleChange}
-                                    label="Data de Desligamento"
+                                    label="Desligamento"
+                                    className="w-full"
                                 />
                             </div>
 
-                            <div className="flex flex-col sm:flex-row gap-4">
+                            <div className="col-span-full flex flex-col sm:flex-row gap-4">
                                 <Input
                                     name="code"
-                                    label="Código do Aluno (Global)"
+                                    label="Cód. Global"
                                     value={formData.code || ''}
                                     onChange={handleChange}
-                                    placeholder={student ? "Matrícula do aluno" : "Gerando sugestão..."}
+                                    placeholder={student ? "Matrícula" : "Gerando..."}
                                     className="w-full sm:w-48 bg-blue-50/30 border-blue-900/10 font-bold"
                                 />
                                 <Input
@@ -1237,62 +1242,62 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                     value={formData.matricula || ''}
                                     onChange={handleChange}
                                     placeholder="000000"
-                                    className="flex-1"
+                                    className="w-full sm:flex-1"
                                 />
                             </div>
 
-                            <div className="relative">
-                                <label className="text-sm font-medium text-gray-700 mb-1 block">Senha de Acesso (App)</label>
-                                <div className="flex flex-col sm:flex-row gap-2">
+                            <div className="col-span-full relative mb-2">
+                                <label className="text-sm font-medium text-gray-700 mb-2 block text-xs sm:text-sm">Senha de Acesso (App)</label>
+                                <div className="flex flex-col sm:flex-row gap-3">
                                     <div className="relative flex-1">
                                         <Input
                                             name="password"
                                             type={showPassword ? "text" : "password"}
                                             value={formData.password || ''}
                                             onChange={handleChange}
-                                            placeholder="Sugerida: 8 caracteres"
-                                            className="pr-10 w-full"
+                                            placeholder="Senha app"
+                                            className="pr-10 w-full h-11"
                                         />
                                         <button
                                             type="button"
                                             onClick={() => setShowPassword(!showPassword)}
                                             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
                                         >
-                                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                         </button>
                                     </div>
                                     <Button
                                         type="button"
                                         variant="outline"
                                         onClick={handleGeneratePassword}
-                                        className="whitespace-nowrap bg-blue-50 text-blue-950 border-blue-950/20 hover:bg-blue-100 w-full sm:w-auto"
+                                        className="whitespace-nowrap bg-blue-50 text-blue-950 border-blue-950/20 hover:bg-blue-100 w-full sm:w-auto h-11 px-6 font-bold text-sm"
                                     >
-                                        Gerar
+                                        Gerar Senha
                                     </Button>
                                 </div>
-                                <p className="text-[10px] text-gray-500 mt-1 italic">
-                                    Acesso do aluno ao Portal da Família / Mobile
+                                <p className="text-[10px] text-gray-500 mt-2 italic">
+                                    Acesso ao Portal da Família / Mobile
                                 </p>
                             </div>
 
-                            <div>
-                                <label className="text-sm font-medium text-gray-700 mb-1 block">Status de Acesso</label>
-                                <label className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer h-auto sm:h-[42px] ${formData.isBlocked ? 'border-red-200 bg-red-50' : 'border-blue-100 bg-blue-50 hover:bg-blue-100'}`}>
+                            <div className="col-span-full">
+                                <label className="text-sm font-medium text-gray-700 mb-1 block text-xs sm:text-sm">Status de Acesso</label>
+                                <label className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer h-auto min-h-[46px] ${formData.isBlocked ? 'border-red-200 bg-red-50' : 'border-blue-100 bg-blue-50 hover:bg-blue-100'}`}>
                                     <div className="flex items-center h-5">
                                         <input
                                             type="checkbox"
                                             name="isBlocked"
                                             checked={formData.isBlocked || false}
                                             onChange={handleChange}
-                                            className="w-4 h-4 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer"
+                                            className="w-5 h-5 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer"
                                         />
                                     </div>
                                     <div className="flex flex-col">
                                         <span className={`text-xs font-bold flex items-center gap-1.5 ${formData.isBlocked ? 'text-red-700' : 'text-blue-700'}`}>
                                             {formData.isBlocked ? (
-                                                <><ShieldAlert className="w-3.5 h-3.5" /> Acesso Bloqueado</>
+                                                <><ShieldAlert className="w-4 h-4" /> Acesso Bloqueado</>
                                             ) : (
-                                                <><ShieldCheck className="w-3.5 h-3.5" /> Acesso Liberado</>
+                                                <><ShieldCheck className="w-4 h-4" /> Acesso Liberado</>
                                             )}
                                         </span>
                                     </div>
