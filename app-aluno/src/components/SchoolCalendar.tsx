@@ -70,19 +70,19 @@ export const SchoolCalendar: React.FC<SchoolCalendarProps> = ({ events, academic
             case 'holiday_state':
             case 'holiday_municipal':
             case 'holiday_school':
-                return '#ef4444'; // red-500
+                return '#ef4444'; // Red
             case 'vacation':
-                return '#eab308'; // yellow-500
+                return '#06b6d4'; // Cyan (Atualizado)
             case 'recess':
-                return '#fb923c'; // orange-400
+                return '#92400e'; // Brown (Atualizado para contraste total)
             case 'exam':
-                return '#f97316'; // orange-500
+                return '#f97316'; // Orange
             case 'meeting':
-                return '#6b7280'; // gray-500
+                return '#6b7280'; // Gray
             case 'school_day':
-                return '#22c55e'; // green-500
+                return '#22c55e'; // Green
             case 'substitution':
-                return '#a855f7'; // purple-500
+                return '#a855f7'; // Purple
             case 'event':
                 return '#1e40af'; // blue-800
             default:
@@ -96,21 +96,21 @@ export const SchoolCalendar: React.FC<SchoolCalendarProps> = ({ events, academic
             case 'holiday_state':
             case 'holiday_municipal':
             case 'holiday_school':
-                return 'bg-red-500';
+                return 'bg-[#ef4444]'; // Red
             case 'vacation':
-                return 'bg-yellow-500';
+                return 'bg-[#06b6d4]'; // Cyan
             case 'recess':
-                return 'bg-orange-400';
+                return 'bg-[#92400e]'; // Brown
             case 'exam':
-                return 'bg-orange-500';
+                return 'bg-[#f97316]'; // Orange
             case 'meeting':
-                return 'bg-gray-500';
+                return 'bg-[#6b7280]'; // Gray
             case 'school_day':
-                return 'bg-green-500';
+                return 'bg-[#22c55e]'; // Green
             case 'substitution':
-                return 'bg-purple-500';
+                return 'bg-[#a855f7]'; // Purple
             case 'event':
-                return 'bg-blue-800';
+                return 'bg-[#1e40af]'; // Blue-800
             default:
                 return 'bg-blue-500';
         }
@@ -267,10 +267,10 @@ export const SchoolCalendar: React.FC<SchoolCalendarProps> = ({ events, academic
                             <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: '#ef4444' }}></div> Feriado
                         </div>
                         <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] text-gray-600">
-                            <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: '#eab308' }}></div> Férias
+                            <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: '#06b6d4' }}></div> Férias
                         </div>
                         <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] text-gray-600">
-                            <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: '#fb923c' }}></div> Recesso
+                            <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: '#92400e' }}></div> Recesso
                         </div>
                         <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] text-gray-600">
                             <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: '#f97316' }}></div> Prova
