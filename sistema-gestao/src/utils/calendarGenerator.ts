@@ -17,69 +17,64 @@ export const generateSchoolCalendar = (
         year: 'numeric'
     });
 
-    const getEventBadgeColor = (type: string) => {
-        switch (type) {
-            case 'holiday_national':
-            case 'holiday_state':
-            case 'holiday_municipal':
-            case 'holiday_school':
-            case 'holiday': // Fallback legacy
-                return '#ef4444'; // Vermelho
-            case 'exam': return '#f97316'; // Laranja Escuro/Prova
-            case 'meeting': return '#6b7280'; // Cinza/Reunião
-            case 'vacation': return '#eab308'; // Amarelo/Férias
-            case 'recess': return '#fb923c'; // Laranja/Recesso
-            case 'school_day': return '#22c55e'; // Verde/Letivo
-            case 'substitution': return '#a855f7'; // Roxo/Reposição
-            case 'event': return '#1e40af'; // Azul/Evento
-            default: return '#1e40af';
-        }
+    // Standard Category Colors
+    const CATEGORIES = {
+        letivo: { label: 'Letivo', color: '#22c55e' },
+        reposicao: { label: 'Reposição', color: '#a855f7' },
+        feriado: { label: 'Feriado', color: '#ef4444' },
+        ferias: { label: 'Férias', color: '#eab308' },
+        recesso: { label: 'Recesso', color: '#fb923c' },
+        prova: { label: 'Prova', color: '#f97316' },
+        evento: { label: 'Evento/Geral', color: '#1e40af' },
+        reuniao: { label: 'Reunião', color: '#6b7280' }
     };
 
-    const getEventLabel = (type: string) => {
-        switch (type) {
-            case 'holiday_national': return 'Feriado Nacional';
-            case 'holiday_state': return 'Feriado Estadual';
-            case 'holiday_municipal': return 'Feriado Municipal';
-            case 'holiday_school': return 'Feriado Escolar';
-            case 'holiday': return 'Feriado';
-            case 'exam': return 'Avaliação';
-            case 'meeting': return 'Reunião';
-            case 'vacation': return 'Férias';
-            case 'recess': return 'Recesso';
-            case 'school_day': return 'Letivo';
-            case 'substitution': return 'Reposição';
-            case 'event': return 'Evento';
-            default: return 'Geral';
-        }
-    };
+    const getDayDots = (dateStr: string): string[] => {
+        const dayEvents = events.filter(e => {
+            const start = e.startDate;
+            const end = e.endDate || e.startDate;
+            return dateStr >= start && dateStr <= end;
+        });
 
-    const sortedEvents = [...events].sort((a, b) => a.startDate.localeCompare(b.startDate));
+        const dots: string[] = [];
+        const addedTypes = new Set<string>();
+
+        if (dayEvents.some(e => e.type.startsWith('holiday'))) { dots.push(CATEGORIES.feriado.color); addedTypes.add('feriado'); }
+        if (dayEvents.some(e => e.type === 'recess')) { dots.push(CATEGORIES.recesso.color); addedTypes.add('recesso'); }
+        if (dayEvents.some(e => e.type === 'exam')) { dots.push(CATEGORIES.prova.color); addedTypes.add('prova'); }
+        if (dayEvents.some(e => e.type === 'vacation')) { dots.push(CATEGORIES.ferias.color); addedTypes.add('ferias'); }
+        if (dayEvents.some(e => e.type === 'substitution')) { dots.push(CATEGORIES.reposicao.color); addedTypes.add('reposicao'); }
+        if (dayEvents.some(e => e.type === 'meeting')) { dots.push(CATEGORIES.reuniao.color); addedTypes.add('reuniao'); }
+        if (dayEvents.some(e => e.type === 'event')) { dots.push(CATEGORIES.evento.color); addedTypes.add('evento'); }
+        if (dayEvents.some(e => e.type === 'school_day')) {
+            const dayNum = new Date(dateStr + 'T12:00:00').getDay();
+            if (dayNum !== 0 && dayNum !== 6) {
+                if (!addedTypes.has('feriado') && !addedTypes.has('recesso') && !addedTypes.has('ferias')) {
+                    if (!addedTypes.has('letivo')) dots.push(CATEGORIES.letivo.color);
+                }
+            }
+        }
+        return dots;
+    };
 
     const calculateSchoolDays = (start: string, end: string, events: CalendarEvent[]) => {
         let count = 0;
         const curDate = new Date(start + 'T00:00:00');
         const endDate = new Date(end + 'T00:00:00');
-
-        // Map holidays for faster lookup (check ranges)
         const holidayDates = new Set<string>();
         events.forEach(e => {
             const isHoliday = e.type === 'vacation' || e.type === 'recess' || e.type.startsWith('holiday');
             if (isHoliday) {
                 const s = new Date(e.startDate + 'T00:00:00');
-                // Use startDate if endDate missing, else iterate range
                 const f = e.endDate ? new Date(e.endDate + 'T00:00:00') : new Date(e.startDate + 'T00:00:00');
-
                 for (let d = new Date(s); d <= f; d.setDate(d.getDate() + 1)) {
                     holidayDates.add(d.toISOString().split('T')[0]);
                 }
             }
         });
-
         while (curDate <= endDate) {
             const dayOfWeek = curDate.getDay();
             const dateStr = curDate.toISOString().split('T')[0];
-            // 0 = Sunday, 6 = Saturday
             if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidayDates.has(dateStr)) {
                 count++;
             }
@@ -92,7 +87,6 @@ export const generateSchoolCalendar = (
     const bimesterCards = settings?.bimesters.map(bim => {
         const days = calculateSchoolDays(bim.startDate, bim.endDate, events);
         totalSchoolDays += days;
-
         return `
             <div class="bimester-card">
                 <div class="bimester-label">${bim.label}</div>
@@ -100,319 +94,263 @@ export const generateSchoolCalendar = (
                     <strong>${new Date(bim.startDate + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</strong> a 
                     <strong>${new Date(bim.endDate + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</strong>
                 </div>
-                <div style="margin-top: 4px; font-size: 10px; font-weight: 700; color: #1e3a8a; background: #dbeafe; padding: 2px 6px; border-radius: 4px; display: inline-block;">
-                    ${days} Dias Letivos
-                </div>
+                <div class="bimester-badge">${days} Letivos</div>
             </div>
         `;
     }).join('');
 
-    // Generate monthly school days summary
     const monthlyDays: { month: string, days: number }[] = [];
     if (settings?.bimesters && settings.bimesters.length > 0) {
         const firstBim = settings.bimesters[0];
         const lastBim = settings.bimesters[settings.bimesters.length - 1];
-
-        const startYear = new Date(firstBim.startDate + 'T00:00:00').getFullYear();
-        const startMonth = new Date(firstBim.startDate + 'T00:00:00').getMonth();
-        const endYear = new Date(lastBim.endDate + 'T00:00:00').getFullYear();
-        const endMonth = new Date(lastBim.endDate + 'T00:00:00').getMonth();
-
-        let iterDate = new Date(startYear, startMonth, 1);
-        const finalDate = new Date(endYear, endMonth, 1);
-
-        while (iterDate <= finalDate) {
-            const m = iterDate.getMonth();
-            const y = iterDate.getFullYear();
-
-            const firstDay = new Date(y, m, 1).toISOString().split('T')[0];
-            const lastDay = new Date(y, m + 1, 0).toISOString().split('T')[0];
-
+        for (let m = 0; m < 12; m++) {
+            const firstDay = new Date(currentYear, m, 1).toISOString().split('T')[0];
+            const lastDay = new Date(currentYear, m + 1, 0).toISOString().split('T')[0];
             const academicStart = firstBim.startDate;
             const academicEnd = lastBim.endDate;
-
             const effectiveStart = academicStart > firstDay ? academicStart : firstDay;
             const effectiveEnd = academicEnd < lastDay ? academicEnd : lastDay;
-
             let days = 0;
-            if (effectiveStart <= effectiveEnd) {
-                days = calculateSchoolDays(effectiveStart, effectiveEnd, events);
-            }
-
-            if (days > 0 || (m >= startMonth && m <= endMonth)) {
-                monthlyDays.push({
-                    month: iterDate.toLocaleDateString('pt-BR', { month: 'long' }),
-                    days
-                });
-            }
-
-            iterDate.setMonth(iterDate.getMonth() + 1);
+            if (effectiveStart <= effectiveEnd) days = calculateSchoolDays(effectiveStart, effectiveEnd, events);
+            monthlyDays.push({ month: new Date(currentYear, m, 1).toLocaleDateString('pt-BR', { month: 'long' }), days });
         }
     }
 
-    const monthlySummaryHtml = monthlyDays.length > 0 ? `
-        <div class="monthly-summary">
-            ${monthlyDays.map(m => `
-                <div class="month-item">
-                    <span class="month-name">${m.month}:</span>
-                    <span class="month-count">${String(m.days).padStart(2, '0')} dias</span>
-                </div>
-            `).join('')}
+    const monthlySummaryHtml = monthlyDays.map(m => `
+        <div class="month-item">
+            <span class="month-name">${m.month}:</span>
+            <span class="month-count">${String(m.days).padStart(2, '0')}</span>
         </div>
-    ` : '';
+    `).join('');
+
+    const generateMonthHtml = (monthIndex: number) => {
+        const MONTH_LABELS = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
+        const firstDay = new Date(currentYear, monthIndex, 1);
+        const lastDay = new Date(currentYear, monthIndex + 1, 0);
+        let firstDayOfWeek = firstDay.getDay();
+        const padding = firstDayOfWeek;
+        const daysHtml: string[] = [];
+        for (let i = 0; i < padding; i++) daysHtml.push('<div class="day-cell empty"></div>');
+        for (let d = 1; d <= lastDay.getDate(); d++) {
+            const dateStr = `${currentYear}-${String(monthIndex + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const dots = getDayDots(dateStr);
+            const isBimStart = settings?.bimesters.some(b => b.startDate === dateStr);
+            daysHtml.push(`
+                <div class="day-cell ${isBimStart ? 'bim-start' : ''}">
+                    <span class="day-number">${d}</span>
+                    <div class="dots-container">
+                        ${dots.map(color => `<span class="dot" style="background-color: ${color}"></span>`).join('')}
+                    </div>
+                </div>
+            `);
+        }
+        return `
+            <div class="month-card">
+                <div class="month-header">${MONTH_LABELS[monthIndex]}</div>
+                <div class="weekdays-grid">
+                    <span>DOM</span><span>SEG</span><span>TER</span><span>QUA</span><span>QUI</span><span>SEX</span><span>SAB</span>
+                </div>
+                <div class="days-container">${daysHtml.join('')}</div>
+            </div>
+        `;
+    };
+
+    const importantEvents = events
+        .filter(e => e.type !== 'school_day')
+        .sort((a, b) => a.startDate.localeCompare(b.startDate));
+
+    // Reorder for column-major display in a 2-column grid
+    const half = Math.ceil(importantEvents.length / 2);
+    const sortedByColumn: (typeof importantEvents[0])[] = [];
+    for (let i = 0; i < half; i++) {
+        sortedByColumn.push(importantEvents[i]);
+        if (i + half < importantEvents.length) {
+            sortedByColumn.push(importantEvents[i + half]);
+        }
+    }
+
+    const eventsListHtml = sortedByColumn.map(e => {
+        const dateStr = new Date(e.startDate + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        return `<div class="event-desc">
+            <span class="event-date">${dateStr}</span>
+            <span class="event-title">${e.title.toUpperCase()}</span>
+        </div>`;
+    }).join('');
 
     const html = `
         <html>
         <head>
-            <title>Calendário Escolar ${currentYear} - ${unitId}</title>
+            <title>Calendário Escolar ${currentYear}</title>
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-                @page { size: A4 portrait; margin: 1cm; }
+                @page { size: A4 landscape; margin: 4mm; }
                 * { margin: 0; padding: 0; box-sizing: border-box; }
                 body {
                     font-family: 'Inter', sans-serif;
-                    color: #1e293b;
-                    line-height: 1.5;
                     background: #f8fafc;
-                    padding: 20px;
+                    color: #1e293b;
+                    padding: 5px;
+                    line-height: 1.1;
                     -webkit-print-color-adjust: exact !important;
                     print-color-adjust: exact !important;
                 }
-                .container {
-                    max-width: 800px;
-                    margin: 0 auto;
-                    background: white;
-                    padding: 40px;
-                    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-                    min-height: 297mm;
-                }
+                .container { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+                
                 .header {
                     display: flex;
+                    justify-content: space-between;
                     align-items: center;
-                    gap: 20px;
-                    border-bottom: 2px solid #e2e8f0;
-                    padding-bottom: 20px;
-                    margin-bottom: 30px;
+                    background: white;
+                    border: 1px solid #e2e8f0;
+                    margin-bottom: 20px;
                 }
-                .logo-container img { height: 60px; width: auto; }
-                .school-text h1 {
-                    font-size: 20px;
-                    font-weight: 800;
-                    color: #1e3a8a;
-                    text-transform: uppercase;
+                .logo-info { display: flex; align-items: center; gap: 10px; }
+                .logo-info img { height: 28px; width: auto; }
+                .header h1 { font-size: 14px; font-weight: 800; color: #1e3a8a; }
+                .unit-badge { font-size: 8px; color: #64748b; font-weight: 700; text-align: right; line-height: 1.1; }
+
+                .top-content {
+                    display: grid;
+                    grid-template-columns: 0.9fr 1.1fr;
+                    gap: 8px;
                 }
-                .school-text p { font-size: 11px; color: #64748b; font-weight: 500; }
-                
-                .title-section { text-align: center; margin-bottom: 30px; }
-                .title-section h2 {
-                    font-size: 24px;
-                    font-weight: 900;
-                    color: #0f172a;
-                    text-transform: uppercase;
-                    letter-spacing: -0.025em;
+                .tables-column { display: flex; flex-direction: column; gap: 8px; }
+                .events-column {
+                    background: white;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    padding: 4px 6px;
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    column-gap: 10px;
+                    row-gap: 0px;
+                    align-content: start;
                 }
-                .title-section p { color: #64748b; font-size: 14px; font-weight: 600; }
 
                 .section-header {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
-                    margin-top: 30px;
-                    margin-bottom: 15px;
-                    border-left: 4px solid #1e3a8a;
-                    padding-left: 10px;
+                    border-left: 3px solid #1e3a8a;
+                    padding-left: 6px;
+                    margin-bottom: 2px;
                 }
+                .section-header h3 { font-size: 9px; font-weight: 800; color: #1e3a8a; text-transform: uppercase; }
+                .total-badge { font-size: 8px; font-weight: 700; color: #64748b; }
 
-                .section-title {
-                    font-size: 14px;
-                    font-weight: 800;
-                    color: #1e3a8a;
-                    text-transform: uppercase;
-                    margin: 0;
-                }
-                
-                .total-badge {
-                    color: #64748b;
-                    font-size: 11px;
-                    font-weight: 700;
-                    text-transform: uppercase;
-                }
-
-                table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-                th {
-                    background: #f1f5f9;
-                    color: #475569;
-                    font-size: 11px;
-                    font-weight: 800;
-                    text-transform: uppercase;
-                    text-align: left;
-                    padding: 10px;
-                    border: 1px solid #e2e8f0;
-                    -webkit-print-color-adjust: exact !important;
-                    print-color-adjust: exact !important;
-                }
-                td {
-                    padding: 10px;
-                    font-size: 12px;
-                    border: 1px solid #e2e8f0;
-                    color: #334155;
-                }
-                .date-cell { font-family: monospace; font-weight: 700; width: 120px; }
-                .type-badge {
-                    display: inline-block;
-                    padding: 2px 8px;
-                    border-radius: 4px;
-                    color: white;
-                    font-size: 10px;
-                    font-weight: 800;
-                    text-transform: uppercase;
-                    -webkit-print-color-adjust: exact !important;
-                    print-color-adjust: exact !important;
-                }
-
-                .bimester-grid {
-                    display: flex !important;
-                    flex-direction: row !important;
-                    gap: 10px !important;
-                    margin-bottom: 20px !important;
-                    width: 100% !important;
-                }
+                .bimester-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
                 .bimester-card {
-                    flex: 1 !important;
-                    padding: 10px !important;
-                    border: 1px solid #e2e8f0 !important;
-                    border-radius: 8px !important;
-                    background: #f8fafc !important;
-                    text-align: center !important;
-                    min-width: 0 !important;
-                    -webkit-print-color-adjust: exact !important;
-                    print-color-adjust: exact !important;
+                    background: white;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 6px;
+                    padding: 4px;
+                    text-align: center;
                 }
-                .bimester-label { font-weight: 800; color: #1e3a8a; font-size: 11px; margin-bottom: 4px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
-                .bimester-dates { font-size: 10px; color: #475569; line-height: 1.4; margin-bottom: 4px; }
+                .bimester-label { font-size: 9px; font-weight: 800; color: #1e3a8a; border-bottom: 1px solid #f1f5f9; padding-bottom: 1px; }
+                .bimester-dates { font-size: 8.5px; color: #475569; margin-top: 2px; }
+                .bimester-badge { margin-top: 2px; font-size: 8.5px; font-weight: 700; color: #1e3a8a; background: #dbeafe; padding: 1px 4px; border-radius: 3px; display: inline-block; }
 
                 .monthly-summary {
                     display: grid;
                     grid-template-columns: repeat(4, 1fr);
-                    gap: 10px;
-                    margin-top: 15px;
-                    background: #f1f5f9;
-                    padding: 15px;
-                    border-radius: 8px;
+                    gap: 3px;
+                    background: white;
+                    padding: 4px;
+                    border-radius: 6px;
                     border: 1px solid #e2e8f0;
                 }
-                .month-item {
-                    display: flex;
-                    justify-content: space-between;
-                    font-size: 11px;
-                    border-bottom: 1px dashed #cbd5e1;
-                    padding-bottom: 2px;
-                }
-                .month-item:last-child { border-bottom: none; }
+                .month-item { display: flex; justify-content: space-between; font-size: 8.5px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 1px; }
                 .month-name { font-weight: 700; color: #475569; text-transform: capitalize; }
                 .month-count { font-weight: 800; color: #1e3a8a; }
 
-                .footer {
-                    margin-top: 50px;
-                    text-align: center;
-                    font-size: 10px;
-                    color: #94a3b8;
-                    border-top: 1px solid #e2e8f0;
-                    padding-top: 20px;
+                .event-desc { display: flex; justify-content: space-between; font-size: 6.8px; border-bottom: 1px dashed #cbd5e1; padding: 0.5px 0; }
+                .event-date { font-weight: 800; color: #1e3a8a; min-width: 22px; }
+                .event-title { text-align: right; color: #475569; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 130px; }
+
+                .calendar-grid {
+                    display: grid;
+                    grid-template-columns: repeat(6, 1fr);
+                    gap: 6px;
+                    margin-top: 25px;
                 }
+                .month-card { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 4px; }
+                .month-header { font-size: 9px; font-weight: 800; color: #1e3a8a; margin-bottom: 2px; }
+                .weekdays-grid {
+                    display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 6px; font-weight: 700; color: #94a3b8;
+                    border-bottom: 1px solid #f1f5f9; padding-bottom: 2px; margin-bottom: 2px;
+                }
+                .days-container { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
+                .day-cell { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 7.5px; font-weight: 500; border-radius: 3px; }
+                .day-cell.bim-start { background: #eff6ff; border: 1px solid #3b82f6; font-weight: 800; }
+                .dots-container { display: flex; gap: 1px; margin-top: 1px; height: 2px; }
+                .dot { width: 2.5px; height: 2.5px; border-radius: 50%; }
+
+                .legend-section {
+                    background: white; padding: 4px; border-radius: 6px; display: flex; justify-content: center; gap: 8px; border: 1px solid #e2e8f0;
+                    margin-top: 25px;
+                }
+                .legend-item { display: flex; align-items: center; gap: 3px; font-size: 7.5px; font-weight: 600; color: #475569; }
+                .legend-dot { width: 5px; height: 5px; border-radius: 50%; }
+
+                .footer { text-align: center; font-size: 6.5px; color: #94a3b8; margin-top: 15px; }
 
                 @media print {
-                    body { 
-                        background: white; 
-                        padding: 0; 
-                        -webkit-print-color-adjust: exact !important;   /* Chrome, Safari, Edge */
-                        print-color-adjust: exact !important;           /* Firefox */
-                    }
-                    .container { box-shadow: none; width: 100%; padding: 0; }
-                    .type-badge, .bimester-card, th, .total-badge, .bimester-card div[style*="background"] {
-                        -webkit-print-color-adjust: exact !important;
-                        print-color-adjust: exact !important;
-                    }
+                    body { background: transparent; padding: 0; }
+                    .header, .month-card, .bimester-card, .monthly-summary, .legend-section, .events-column { box-shadow: none; border-color: #cbd5e1; }
                 }
             </style>
         </head>
         <body>
             <div class="container">
                 <div class="header">
-                    <div class="logo-container">
+                    <div class="logo-info">
                         <img src="${logoUrl}" alt="Logo">
+                        <h1>CALENDÁRIO ESCOLAR ${currentYear}</h1>
                     </div>
-                    <div class="school-text">
-                        <h1>EXPANSIVO REDE DE ENSINO</h1>
-                        ${unitInfo.professionalTitle ? `<p style="margin:0; font-size: 8px; font-weight: 700; color: #475569; text-transform: uppercase;">${unitInfo.professionalTitle}</p>` : ''}
-                        <p style="color: #1e3a8a; font-weight: 700; text-transform: uppercase;">Unidade: ${unitInfo.name.replace('Expansivo - ', '')}</p>
-                        <p>${unitInfo.address}, ${unitInfo.district} - ${unitInfo.city}/${unitInfo.uf}</p>
-                        <p>CNPJ: ${unitInfo.cnpj} | Telefone: ${unitInfo.phone}</p>
-                        ${unitInfo.authorization ? `<p style="margin:0; font-size: 8px; font-style: italic; color: #64748b;">${unitInfo.authorization}</p>` : ''}
+                    <div class="unit-badge">
+                        UNIDADE: ${unitInfo.name.toUpperCase().replace('EXPANSIVO - ', '')} <br>
+                        ${unitId === 'all' ? 'REDE DE ENSINO' : unitInfo.city + ' / ' + unitInfo.uf}
                     </div>
                 </div>
 
-                <div class="title-section">
-                    <h2>CALENDÁRIO ESCOLAR ${currentYear}</h2>
-                    <p>${unitId === 'all' ? 'Cronograma Geral da Rede' : `Unidade: ${unitInfo.name.replace('Expansivo - ', '')}`}</p>
-                </div>
+                <div class="top-content">
+                    <div class="tables-column">
+                        <div class="section-header">
+                            <h3>Períodos Letivos (Bimestres)</h3>
+                            <div class="total-badge">Total: ${totalSchoolDays} Dias Letivos</div>
+                        </div>
+                        <div class="bimester-grid">${bimesterCards}</div>
 
-                <div class="section-header">
-                    <h3 class="section-title">Períodos Letivos (Bimestres)</h3>
-                    <div class="total-badge">Total Anual: ${totalSchoolDays} Dias Letivos</div>
-                </div>
-                
-                <div class="bimester-grid">
-                    ${bimesterCards || '<div style="flex: 1; text-align: center; padding: 20px; color: #94a3b8;">Datas não configuradas</div>'}
-                </div>
-
-                ${monthlySummaryHtml ? `
-                    <div class="section-header" style="margin-top: 20px; border-left-color: #64748b;">
-                        <h3 class="section-title" style="color: #64748b; font-size: 11px;">Resumo Mensal de Dias Letivos</h3>
+                        <div class="section-header" style="border-left-color: #64748b; margin-top: 2px;">
+                            <h3 style="color: #64748b;">Resumo Mensal de Dias Letivos</h3>
+                        </div>
+                        <div class="monthly-summary">${monthlySummaryHtml}</div>
                     </div>
-                    ${monthlySummaryHtml}
-                ` : ''}
 
-                <div class="section-header">
-                     <h3 class="section-title">Eventos e Datas Importantes</h3>
+                    <div class="events-column">
+                        <div style="grid-column: span 2; font-size: 9px; font-weight: 800; color: #1e3a8a; border-bottom: 1px solid #1e3a8a; margin-bottom: 3px; text-transform: uppercase;">Acontecimentos e Feriados</div>
+                        ${eventsListHtml}
+                    </div>
                 </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Data</th>
-                            <th>Tipo</th>
-                            <th>Descrição / Título</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${sortedEvents.map(event => `
-                            <tr>
-                                <td class="date-cell">
-                                    ${new Date(event.startDate + 'T00:00:00').toLocaleDateString('pt-BR')}
-                                    ${event.endDate ? ` - ${new Date(event.endDate + 'T00:00:00').toLocaleDateString('pt-BR')}` : ''}
-                                </td>
-                                <td style="width: 100px;">
-                                    <span class="type-badge" style="background: ${getEventBadgeColor(event.type)}">
-                                        ${getEventLabel(event.type)}
-                                    </span>
-                                </td>
-                                <td>
-                                    <strong>${event.title}</strong>
-                                    ${event.description ? `<br><span style="font-size: 10px; color: #64748b;">${event.description}</span>` : ''}
-                                </td>
-                            </tr>
-                        `).join('') || '<tr><td colspan="3" style="text-align: center; padding: 40px; color: #94a3b8;">Nenhum evento cadastrado para este período.</td></tr>'}
-                    </tbody>
-                </table>
+
+                <div class="calendar-grid">
+                    ${Array.from({ length: 12 }, (_, i) => generateMonthHtml(i)).join('')}
+                </div>
+
+                <div class="legend-section">
+                    ${Object.entries(CATEGORIES).map(([_, cat]) => `
+                        <div class="legend-item">
+                            <span class="legend-dot" style="background-color: ${cat.color}"></span>
+                            ${cat.label}
+                        </div>
+                    `).join('')}
+                </div>
 
                 <div class="footer">
-                    Documento gerado em ${formattedDate} para fins informativos. <br>
-                    EXPANSIVO REDE DE ENSINO - Educando com Excelência.
+                    Documento gerado em ${formattedDate} para fins informativos. EXPANSIVO REDE DE ENSINO.
                 </div>
             </div>
-            <script>
-                window.onload = () => { window.print(); };
-            </script>
+            <script>window.onload = () => window.print();</script>
         </body>
         </html>
     `;
