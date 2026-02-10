@@ -116,7 +116,15 @@ export const generateSchoolCalendar = (
         }
     }
 
-    const monthlySummaryHtml = monthlyDays.map(m => `
+    const orderedMonthlyDays: typeof monthlyDays = [];
+    for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 4; col++) {
+            const index = col * 3 + row;
+            if (monthlyDays[index]) orderedMonthlyDays.push(monthlyDays[index]);
+        }
+    }
+
+    const monthlySummaryHtml = orderedMonthlyDays.map(m => `
         <div class="month-item">
             <span class="month-name">${m.month}:</span>
             <span class="month-count">${String(m.days).padStart(2, '0')} dias</span>
