@@ -258,25 +258,25 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     <div className="grid grid-cols-1 gap-4">
                         {activeItems.map((item) => (
                             <div key={item.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition-all">
-                                <div className="flex p-4 gap-4">
+                                <div className="flex p-3 sm:p-4 gap-3 sm:gap-4 items-center">
                                     {item.photoUrl && (
                                         <div
                                             onClick={() => setViewingPhoto(item.photoUrl!)}
-                                            className="w-24 h-24 flex-shrink-0 bg-gray-100 rounded-xl overflow-hidden border border-gray-100 cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all active:scale-95"
+                                            className="w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 bg-gray-100 rounded-xl overflow-hidden border border-gray-100 cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all active:scale-95"
                                         >
                                             <img src={item.photoUrl} alt={item.description} className="w-full h-full object-cover" />
                                         </div>
                                     )}
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex justify-between items-start mb-1">
-                                            <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full uppercase">
+                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-1 gap-1 sm:gap-2">
+                                            <span className="text-[10px] sm:text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full uppercase w-fit">
                                                 {item.locationFound}
                                             </span>
-                                            <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">
+                                            <span className="text-[9px] sm:text-[10px] text-gray-400 font-medium whitespace-nowrap sm:whitespace-normal">
                                                 Publicado em {new Date(item.timestamp).toLocaleDateString('pt-BR')} às {new Date(item.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                             </span>
                                         </div>
-                                        <h4 className="font-bold text-gray-900 text-lg line-clamp-2 leading-tight mb-2">
+                                        <h4 className="font-bold text-gray-900 text-base sm:text-lg line-clamp-2 leading-tight mb-2">
                                             {item.description}
                                         </h4>
                                         <div className="flex flex-col gap-2 mt-auto">

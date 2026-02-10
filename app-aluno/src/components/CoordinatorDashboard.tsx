@@ -186,14 +186,14 @@ const CoordinatorLostFoundView: React.FC<{ unit: SchoolUnit }> = ({ unit }) => {
 
     return (
         <div className="space-y-6 animate-in slide-in-from-right-4 fade-in duration-300 pb-20">
-            <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-white p-4 sm:p-5 rounded-2xl border border-gray-100 shadow-sm gap-4 sm:gap-2">
                 <div>
-                    <h2 className="text-xl font-black text-blue-950 uppercase tracking-tight">Gestão de Achados e Perdidos</h2>
-                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mt-0.5">Controle unitário de itens</p>
+                    <h2 className="text-lg sm:text-xl font-black text-blue-950 uppercase tracking-tight">Gestão de Achados e Perdidos</h2>
+                    <p className="text-[10px] sm:text-xs text-gray-400 font-bold uppercase tracking-wider mt-0.5">Controle unitário de itens</p>
                 </div>
                 <button
                     onClick={() => setShowAddForm(!showAddForm)}
-                    className="flex items-center gap-2 bg-blue-950 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-950/20 hover:bg-black transition-all active:scale-95"
+                    className="flex items-center justify-center gap-2 bg-blue-950 text-white px-5 py-3 sm:py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-950/20 hover:bg-black transition-all active:scale-95 w-full sm:w-auto"
                 >
                     {showAddForm ? <ArrowLeft className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                     {showAddForm ? 'Voltar' : 'Registrar Item'}
@@ -315,11 +315,11 @@ const CoordinatorLostFoundView: React.FC<{ unit: SchoolUnit }> = ({ unit }) => {
                                                     {item.status === 'delivered' ? 'Entregue para:' : 'Reivindicado p/:'}
                                                 </span>
                                             </div>
-                                            <p className={`text-xs font-bold truncate ${item.status === 'delivered' ? 'text-gray-600' : 'text-gray-700'
-                                                }`}>
+                                            <p className={`text-xs font-bold ${item.status === 'delivered' ? 'text-gray-600' : 'text-gray-700'
+                                                } break-words line-clamp-1`}>
                                                 {item.claimedByStudentName}
                                             </p>
-                                            <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
+                                            <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1.5 items-center">
                                                 {item.claimedByStudentGrade && (
                                                     <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${item.status === 'delivered'
                                                         ? 'text-gray-600 bg-gray-200/50'
@@ -329,7 +329,7 @@ const CoordinatorLostFoundView: React.FC<{ unit: SchoolUnit }> = ({ unit }) => {
                                                     </span>
                                                 )}
                                                 {(item.claimedByStudentClass || item.claimedByStudentShift) && (
-                                                    <span className={`text-[9px] font-bold border-l pl-2 uppercase ${item.status === 'delivered'
+                                                    <span className={`text-[9px] font-bold sm:border-l sm:pl-2 uppercase whitespace-nowrap ${item.status === 'delivered'
                                                         ? 'text-gray-400 border-gray-200'
                                                         : 'text-orange-600/70 border-orange-200'
                                                         }`}>
