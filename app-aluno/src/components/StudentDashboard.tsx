@@ -267,18 +267,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             <img src={item.photoUrl} alt={item.description} className="w-full h-full object-cover" />
                                         </div>
                                     )}
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-1 gap-1 sm:gap-2">
-                                            <span className="text-[10px] sm:text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full uppercase w-fit">
-                                                {item.locationFound}
-                                            </span>
-                                            <span className="text-[9px] sm:text-[10px] text-gray-400 font-medium whitespace-nowrap sm:whitespace-normal">
-                                                Publicado em {new Date(item.timestamp).toLocaleDateString('pt-BR')} às {new Date(item.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                            </span>
-                                        </div>
+                                    <div className="flex-1 min-w-0 flex flex-col">
                                         <h4 className="font-bold text-gray-900 text-base sm:text-lg line-clamp-2 leading-tight mb-2">
                                             {item.description}
                                         </h4>
+                                        <div className="flex flex-col gap-1.5 mb-2">
+                                            <span className="text-[10px] sm:text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full uppercase w-fit">
+                                                {item.locationFound}
+                                            </span>
+                                            <span className="text-[9px] sm:text-[10px] text-gray-400 font-medium">
+                                                Publicado em {new Date(item.timestamp).toLocaleDateString('pt-BR')} às {new Date(item.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        </div>
                                         <div className="flex flex-col gap-2 mt-auto">
                                             {item.status === 'delivered' ? (
                                                 <div className="flex flex-col gap-1 items-end">
