@@ -107,6 +107,60 @@ export const generateSchoolCalendar = (
         `;
     }).join('');
 
+    // Generate monthly school days summary
+    const monthlyDays: { month: string, days: number }[] = [];
+    if (settings?.bimesters && settings.bimesters.length > 0) {
+        const firstBim = settings.bimesters[0];
+        const lastBim = settings.bimesters[settings.bimesters.length - 1];
+
+        const startYear = new Date(firstBim.startDate + 'T00:00:00').getFullYear();
+        const startMonth = new Date(firstBim.startDate + 'T00:00:00').getMonth();
+        const endYear = new Date(lastBim.endDate + 'T00:00:00').getFullYear();
+        const endMonth = new Date(lastBim.endDate + 'T00:00:00').getMonth();
+
+        let iterDate = new Date(startYear, startMonth, 1);
+        const finalDate = new Date(endYear, endMonth, 1);
+
+        while (iterDate <= finalDate) {
+            const m = iterDate.getMonth();
+            const y = iterDate.getFullYear();
+
+            const firstDay = new Date(y, m, 1).toISOString().split('T')[0];
+            const lastDay = new Date(y, m + 1, 0).toISOString().split('T')[0];
+
+            const academicStart = firstBim.startDate;
+            const academicEnd = lastBim.endDate;
+
+            const effectiveStart = academicStart > firstDay ? academicStart : firstDay;
+            const effectiveEnd = academicEnd < lastDay ? academicEnd : lastDay;
+
+            let days = 0;
+            if (effectiveStart <= effectiveEnd) {
+                days = calculateSchoolDays(effectiveStart, effectiveEnd, events);
+            }
+
+            if (days > 0 || (m >= startMonth && m <= endMonth)) {
+                monthlyDays.push({
+                    month: iterDate.toLocaleDateString('pt-BR', { month: 'long' }),
+                    days
+                });
+            }
+
+            iterDate.setMonth(iterDate.getMonth() + 1);
+        }
+    }
+
+    const monthlySummaryHtml = monthlyDays.length > 0 ? `
+        <div class="monthly-summary">
+            ${monthlyDays.map(m => `
+                <div class="month-item">
+                    <span class="month-name">${m.month}:</span>
+                    <span class="month-count">${String(m.days).padStart(2, '0')} dias</span>
+                </div>
+            `).join('')}
+        </div>
+    ` : '';
+
     const html = `
         <html>
         <head>
@@ -237,6 +291,27 @@ export const generateSchoolCalendar = (
                 .bimester-label { font-weight: 800; color: #1e3a8a; font-size: 11px; margin-bottom: 4px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
                 .bimester-dates { font-size: 10px; color: #475569; line-height: 1.4; margin-bottom: 4px; }
 
+                .monthly-summary {
+                    display: grid;
+                    grid-template-columns: repeat(4, 1fr);
+                    gap: 10px;
+                    margin-top: 15px;
+                    background: #f1f5f9;
+                    padding: 15px;
+                    border-radius: 8px;
+                    border: 1px solid #e2e8f0;
+                }
+                .month-item {
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 11px;
+                    border-bottom: 1px dashed #cbd5e1;
+                    padding-bottom: 2px;
+                }
+                .month-item:last-child { border-bottom: none; }
+                .month-name { font-weight: 700; color: #475569; text-transform: capitalize; }
+                .month-count { font-weight: 800; color: #1e3a8a; }
+
                 .footer {
                     margin-top: 50px;
                     text-align: center;
@@ -290,6 +365,13 @@ export const generateSchoolCalendar = (
                 <div class="bimester-grid">
                     ${bimesterCards || '<div style="flex: 1; text-align: center; padding: 20px; color: #94a3b8;">Datas não configuradas</div>'}
                 </div>
+
+                ${monthlySummaryHtml ? `
+                    <div class="section-header" style="margin-top: 20px; border-left-color: #64748b;">
+                        <h3 class="section-title" style="color: #64748b; font-size: 11px;">Resumo Mensal de Dias Letivos</h3>
+                    </div>
+                    ${monthlySummaryHtml}
+                ` : ''}
 
                 <div class="section-header">
                      <h3 class="section-title">Eventos e Datas Importantes</h3>
