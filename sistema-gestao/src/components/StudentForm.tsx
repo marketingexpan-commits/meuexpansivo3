@@ -974,13 +974,13 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={clsx(
-                                    "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap cursor-pointer",
+                                    "flex items-center gap-2 px-3 py-2.5 sm:px-4 sm:py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap cursor-pointer",
                                     activeTab === tab.id
                                         ? "border-blue-950 text-blue-950"
                                         : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                                 )}
                             >
-                                <Icon className="w-4 h-4" />
+                                <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                 {tab.label}
                             </button>
                         )
@@ -988,7 +988,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-6">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6">
                     {activeTab === 'personal' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {/* Photo Upload Section */}
@@ -1514,9 +1514,9 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                     Responsável Financeiro/Pedagógico
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <Input key="resp-name-input" name="nome_responsavel" value={formData.nome_responsavel} onChange={handleChange} label="Nome do Responsável" placeholder="Nome completo do responsável" className="col-span-2" />
-                                    <Input name="cpf_responsavel" value={formData.cpf_responsavel} onChange={handleChange} label="CPF do Responsável" placeholder="000.000.000-00" />
-                                    <Input name="rg_responsavel" value={formData.rg_responsavel} onChange={handleChange} label="RG do Responsável" placeholder="Documento de identidade" />
+                                    <Input key="resp-name-input" name="nome_responsavel" value={formData.nome_responsavel} onChange={handleChange} label="Nome do Responsável" placeholder="Nome completo do responsável" className="col-span-full md:col-span-2" />
+                                    <Input name="cpf_responsavel" value={formData.cpf_responsavel} onChange={handleChange} label="CPF do Responsável" placeholder="000.000.000-00" className="col-span-full md:col-span-1" />
+                                    <Input name="rg_responsavel" value={formData.rg_responsavel} onChange={handleChange} label="RG do Responsável" placeholder="Documento de identidade" className="col-span-full md:col-span-1" />
                                     <Input
                                         name="telefone_responsavel"
                                         value={formData.telefone_responsavel}
@@ -1524,8 +1524,9 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                         label="Telefone (WhatsApp)"
                                         placeholder="5584999999999"
                                         helperText="Apenas números (Ex: 5584...)"
+                                        className="col-span-full md:col-span-1"
                                     />
-                                    <Input name="email_responsavel" value={formData.email_responsavel} onChange={handleChange} label="E-mail" type="email" placeholder="email@exemplo.com" />
+                                    <Input name="email_responsavel" value={formData.email_responsavel} onChange={handleChange} label="E-mail" type="email" placeholder="email@exemplo.com" className="col-span-full md:col-span-1" />
                                 </div>
                             </div>
                         </div>
