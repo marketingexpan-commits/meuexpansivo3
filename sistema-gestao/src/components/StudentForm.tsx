@@ -1243,7 +1243,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
 
                             <div className="relative">
                                 <label className="text-sm font-medium text-gray-700 mb-1 block">Senha de Acesso (App)</label>
-                                <div className="flex gap-2">
+                                <div className="flex flex-col sm:flex-row gap-2">
                                     <div className="relative flex-1">
                                         <Input
                                             name="password"
@@ -1251,7 +1251,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                             value={formData.password || ''}
                                             onChange={handleChange}
                                             placeholder="Sugerida: 8 caracteres"
-                                            className="pr-10"
+                                            className="pr-10 w-full"
                                         />
                                         <button
                                             type="button"
@@ -1265,7 +1265,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                         type="button"
                                         variant="outline"
                                         onClick={handleGeneratePassword}
-                                        className="whitespace-nowrap bg-blue-50 text-blue-950 border-blue-950/20 hover:bg-blue-100"
+                                        className="whitespace-nowrap bg-blue-50 text-blue-950 border-blue-950/20 hover:bg-blue-100 w-full sm:w-auto"
                                     >
                                         Gerar
                                     </Button>
@@ -1277,7 +1277,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
 
                             <div>
                                 <label className="text-sm font-medium text-gray-700 mb-1 block">Status de Acesso</label>
-                                <label className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer h-[42px] ${formData.isBlocked ? 'border-red-200 bg-red-50' : 'border-blue-100 bg-blue-50 hover:bg-blue-100'}`}>
+                                <label className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer h-auto sm:h-[42px] ${formData.isBlocked ? 'border-red-200 bg-red-50' : 'border-blue-100 bg-blue-50 hover:bg-blue-100'}`}>
                                     <div className="flex items-center h-5">
                                         <input
                                             type="checkbox"
@@ -1377,7 +1377,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
 
 
                             {/* --- TABELA DE ENTURMAÇÕES (HISTÓRICO) --- */}
-                            <div className="col-span-2 mt-8 border-t border-gray-100 pt-6">
+                            <div className="col-span-full mt-8 border-t border-gray-100 pt-6">
                                 <div className="flex items-center justify-between mb-4">
                                     <div>
                                         <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
@@ -1394,8 +1394,8 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                     </button>
                                 </div>
 
-                                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                                    <table className="w-full text-left text-sm border-collapse">
+                                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm overflow-x-auto">
+                                    <table className="w-full text-left text-sm border-collapse min-w-[600px]">
                                         <thead>
                                             <tr className="bg-gray-50 border-b border-gray-200">
                                                 <th className="px-3 py-2 font-bold text-gray-600 text-[11px] uppercase w-20">Ano</th>
