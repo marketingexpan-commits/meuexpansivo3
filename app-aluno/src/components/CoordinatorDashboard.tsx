@@ -498,6 +498,23 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     const [historyOccurrences, setHistoryOccurrences] = useState<Occurrence[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
 
+    // --- DIALOG STATE ---
+    const [dialogConfig, setDialogConfig] = useState<{
+        isOpen: boolean;
+        type: 'alert' | 'confirm';
+        title: string;
+        message: string;
+        image?: string;
+        onConfirm?: () => void;
+        variant?: 'success' | 'danger' | 'warning' | 'info';
+    }>({ isOpen: false, type: 'alert', title: '', message: '' });
+
+    const showDialog = (config: Omit<typeof dialogConfig, 'isOpen'>) => {
+        setDialogConfig({ ...config, isOpen: true });
+    };
+
+    const closeDialog = () => setDialogConfig(prev => ({ ...prev, isOpen: false }));
+
     // --- CRM / ATENDIMENTOS STATE ---
     const [crmAttendances, setCrmAttendances] = useState<PedagogicalAttendance[]>([]);
     const [crmLoading, setCrmLoading] = useState(false);
@@ -596,6 +613,46 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     const [replyText, setReplyText] = useState('');
     const [isSendingReply, setIsSendingReply] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
+
+    // NEW: Student Profiles Cache for Messages
+    const [studentProfiles, setStudentProfiles] = useState<Record<string, Student>>({});
+
+    // Effect to fetch student profiles for messages
+    useEffect(() => {
+        const fetchStudentProfiles = async () => {
+            const uniqueStudentIds = Array.from(new Set(messages.map(m => m.studentId)));
+            const missingIds = uniqueStudentIds.filter(id => !studentProfiles[id]);
+
+            if (missingIds.length === 0) return;
+
+            const newProfiles: Record<string, Student> = {};
+
+            await Promise.all(missingIds.map(async (id) => {
+                try {
+                    const doc = await db.collection('students').doc(id).get();
+                    if (doc.exists) {
+                        newProfiles[id] = { id: doc.id, ...doc.data() } as Student;
+                    }
+                } catch (err) {
+                    console.error(`Error fetching student profile ${id}:`, err);
+                }
+            }));
+
+            setStudentProfiles(prev => ({ ...prev, ...newProfiles }));
+        };
+
+        if (messages.length > 0) {
+            fetchStudentProfiles();
+        }
+    }, [messages]);
+
+    const filteredMessages = useMemo(() => {
+        return messages.filter(msg => {
+            if (messageFilter === 'new') return msg.status === 'new';
+            if (messageFilter === 'read') return msg.status !== 'new';
+            return true;
+        });
+    }, [messages, messageFilter]);
 
 
 
@@ -1293,10 +1350,21 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
             setReplyingTo(null);
             setReplyText('');
-            alert(`Resposta enviada com sucesso! (Notificação enviada para ID: ${message.studentId})`);
+            // REPLACE ALERT WITH DIALOG
+            showDialog({
+                type: 'alert',
+                title: 'Sucesso',
+                message: 'Sua resposta foi enviada com sucesso ao aluno.',
+                variant: 'success'
+            });
         } catch (error) {
             console.error("Erro ao enviar resposta:", error);
-            alert("Erro ao enviar resposta. Verifique os logs.");
+            showDialog({
+                type: 'alert',
+                title: 'Erro',
+                message: 'Erro ao enviar resposta. Verifique sua conexão.',
+                variant: 'danger'
+            });
         } finally {
             setIsSendingReply(false);
         }
@@ -1657,14 +1725,6 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             return matchesSearch && matchesStatus;
         });
     }, [crmAttendances, crmSearch, crmStatusFilter]);
-
-    const filteredMessages = useMemo(() => {
-        return messages.filter(m => {
-            if (messageFilter === 'new') return m.status === 'new';
-            if (messageFilter === 'read') return m.status === 'read';
-            return true;
-        });
-    }, [messages, messageFilter]);
 
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans transition-all duration-500 ease-in-out print:min-h-0 print:h-auto print:bg-white print:p-0 print:block print:overflow-visible">
@@ -3148,16 +3208,36 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                             <div className="p-6">
                                                 {/* Header: Student Info & Metadata */}
                                                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-4 border-b border-gray-50">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 border border-slate-200 shadow-sm">
-                                                            <User className="w-6 h-6" />
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-12 h-16 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 border border-slate-200 shadow-sm overflow-hidden shrink-0">
+                                                            {studentProfiles[msg.studentId]?.photoUrl ? (
+                                                                <img src={studentProfiles[msg.studentId].photoUrl} alt={msg.studentName} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <User className="w-6 h-6" />
+                                                            )}
                                                         </div>
                                                         <div>
-                                                            <h4 className="font-bold text-gray-900 text-base">{msg.studentName}</h4>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-[10px] text-blue-600 font-bold tracking-wider">{UNIT_LABELS[msg.unit as SchoolUnit] || msg.unit}</span>
+                                                            <h4 className="font-black text-gray-900 text-lg leading-tight">{msg.studentName}</h4>
+
+                                                            {/* Student Details */}
+                                                            {studentProfiles[msg.studentId] && (
+                                                                <div className="flex flex-wrap gap-2 mt-1 mb-1">
+                                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                                                                        {studentProfiles[msg.studentId].gradeLevel}
+                                                                    </span>
+                                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                                                                        Turma {studentProfiles[msg.studentId].schoolClass}
+                                                                    </span>
+                                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                                                                        {SHIFT_LABELS[studentProfiles[msg.studentId].shift] || studentProfiles[msg.studentId].shift}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <span className="text-[10px] text-blue-600 font-bold tracking-wider uppercase">{UNIT_LABELS[msg.unit as SchoolUnit] || msg.unit}</span>
                                                                 <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                                                                <span className="text-[10px] text-gray-400 font-bold flex items-center gap-1">
+                                                                <span className="text-[10px] text-gray-400 font-bold flex items-center gap-1 uppercase">
                                                                     <Clock className="w-3 h-3" />
                                                                     {new Date(msg.timestamp).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                                                 </span>
@@ -3198,7 +3278,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                                 <Reply className="w-3 h-3" />
                                                                 SUA RESPOSTA
                                                             </div>
-                                                            <p className="text-slate-700 text-sm font-medium leading-relaxed italic">
+                                                            <p className="text-slate-700 text-sm font-medium leading-relaxed italic pt-6">
                                                                 "{msg.response}"
                                                             </p>
                                                             <div className="mt-3 text-[9px] text-blue-300 font-bold uppercase tracking-widest text-right">
@@ -3768,6 +3848,18 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                     {/* LOST AND FOUND VIEW */}
                     {activeTab === 'lost_found' && (
                         <CoordinatorLostFoundView unit={getCanonicalUnit(coordinator.unit) as SchoolUnit} />
+                    )}
+
+                    {/* GLOBAL DIALOG */}
+                    {dialogConfig.isOpen && (
+                        <Dialog
+                            {...dialogConfig}
+                            onConfirm={() => {
+                                closeDialog();
+                                dialogConfig.onConfirm?.();
+                            }}
+                            onCancel={closeDialog}
+                        />
                     )}
                 </main>
             </div >
