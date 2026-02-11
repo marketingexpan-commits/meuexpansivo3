@@ -523,9 +523,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         const mergedGradesMap = new Map<string, GradeEntry>();
 
         rawGrades.forEach(g => {
-            // Robust ID Resolution: Check if g.subject is already an ID or a friendly Name
-            const subObj = academicSubjects.find(s => s.id === g.subject);
-            const subjectId = subObj ? subObj.id : g.subject;
+            // STRICT TECHNICAL ID RESOLUTION: Relies exclusively on technical IDs
+            // The mapping/normalization is handled at the database level via migration.
+            const subjectId = g.subject;
 
             const existing = mergedGradesMap.get(subjectId);
 
@@ -2129,7 +2129,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 let weeklyClasses = 0;
                                                                 let foundDynamic = false;
 
-                                                                // 1. Matrix lookup (Primary for 2026)
+                                                                // 1. Matrix lookup (Primary for Current Year)
                                                                 if (matrices) {
                                                                     // Resolve Grade ID from Label (Robust Match)
                                                                     const gradeEntry = Object.values(ACADEMIC_GRADES).find(g =>
@@ -2138,12 +2138,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                         (g.label.includes('Ano') && student.gradeLevel.includes(g.label))
                                                                     );
                                                                     const targetGradeId = gradeEntry ? gradeEntry.id : '';
+                                                                    const currentYear = new Date().getFullYear().toString();
 
                                                                     const matchingMatrix = matrices.find(m =>
                                                                         m.unit === student.unit &&
                                                                         m.shift === student.shift &&
-                                                                        (m.gradeId === targetGradeId || m.gradeId === student.gradeLevel)
+                                                                        (m.gradeId === targetGradeId || m.gradeId === student.gradeLevel) &&
+                                                                        // STRICT YEAR FILTER: Only use matrices for the current year (or explicitly marked 2026)
+                                                                        (m.id.includes(currentYear) || m.id.includes('2026'))
                                                                     );
+
                                                                     if (matchingMatrix) {
                                                                         const ms = matchingMatrix.subjects.find(s => s.id === grade.subject);
                                                                         if (ms) {
@@ -2167,9 +2171,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                                                 if (!foundDynamic) {
                                                                     let levelKey = '';
-                                                                    if (student.gradeLevel.includes('Fundamental I')) levelKey = 'Fundamental I';
-                                                                    else if (student.gradeLevel.includes('Fundamental II')) levelKey = 'Fundamental II';
-                                                                    else if (student.gradeLevel.includes('Ensino Médio') || student.gradeLevel.includes('Série')) levelKey = 'Ensino Médio';
+                                                                    if (student.gradeLevel.includes('Fundamental I')) levelKey = 'seg_fund_1';
+                                                                    else if (student.gradeLevel.includes('Fundamental II')) levelKey = 'seg_fund_2';
+                                                                    else if (student.gradeLevel.includes('Ensino Médio') || student.gradeLevel.includes('Série')) levelKey = 'seg_medio';
 
                                                                     weeklyClasses = (CURRICULUM_MATRIX[levelKey] || {})[grade.subject] || 0;
                                                                 }

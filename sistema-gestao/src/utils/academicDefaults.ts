@@ -170,26 +170,26 @@ export const GRADES_BY_LEVEL = Object.values(ACADEMIC_SEGMENTS).map(seg => ({
 }));
 
 export const SUBJECTS_DATA = {
-    PORTUGUESE: { id: 'sub_portuguese', label: 'Português' },
-    MATH: { id: 'sub_math', label: 'Matemática' },
-    HISTORY: { id: 'sub_history', label: 'História' },
-    GEOGRAPHY: { id: 'sub_geography', label: 'Geografia' },
-    SCIENCE: { id: 'sub_science', label: 'Ciências' },
-    ENGLISH: { id: 'sub_english', label: 'Inglês' },
-    ARTS: { id: 'sub_arts', label: 'Ens. Artes' },
-    PHYSICAL_ED: { id: 'sub_physical_ed', label: 'Ed. Física' },
-    RELIGIOUS_ED: { id: 'sub_religious_ed', label: 'Ensino Religioso' },
-    WRITING: { id: 'sub_writing', label: 'Redação' },
-    LITERATURE: { id: 'sub_literature', label: 'Literatura' },
-    BIOLOGY: { id: 'sub_biology', label: 'Biologia' },
-    PHYSICS: { id: 'sub_physics', label: 'Física' },
-    CHEMISTRY: { id: 'sub_chemistry', label: 'Química' },
-    SPANISH: { id: 'sub_spanish', label: 'Espanhol' },
-    PHILOSOPHY: { id: 'sub_philosophy', label: 'Filosofia' },
-    SOCIOLOGY: { id: 'sub_sociology', label: 'Sociologia' },
+    PORTUGUESE: { id: 'disc_portugues', label: 'Português' },
+    MATH: { id: 'disc_matematica', label: 'Matemática' },
+    HISTORY: { id: 'disc_historia', label: 'História' },
+    GEOGRAPHY: { id: 'disc_geografia', label: 'Geografia' },
+    SCIENCE: { id: 'disc_ciencias', label: 'Ciências' },
+    ENGLISH: { id: 'disc_ingles', label: 'Inglês' },
+    ARTS: { id: 'disc_artes', label: 'Ens. Artes' },
+    PHYSICAL_ED: { id: 'disc_educacao_fisica', label: 'Ed. Física' },
+    RELIGIOUS_ED: { id: 'disc_ensino_religioso', label: 'Ensino Religioso' },
+    WRITING: { id: 'disc_redacao', label: 'Redação' },
+    LITERATURE: { id: 'disc_literatura', label: 'Literatura' },
+    BIOLOGY: { id: 'disc_biologia', label: 'Biologia' },
+    PHYSICS: { id: 'disc_fisica', label: 'Física' },
+    CHEMISTRY: { id: 'disc_quimica', label: 'Química' },
+    SPANISH: { id: 'disc_espanhol', label: 'Espanhol' },
+    PHILOSOPHY: { id: 'disc_filosofia', label: 'Filosofia' },
+    SOCIOLOGY: { id: 'disc_sociologia', label: 'Sociologia' },
     LIFE_PROJECT: { id: 'disc_projeto_vida', label: 'Projeto de Vida' },
-    ENTREPRENEURSHIP: { id: 'sub_entrepreneurship', label: 'Empreendedorismo' },
-    MUSIC: { id: 'sub_music', label: 'Música' }
+    ENTREPRENEURSHIP: { id: 'disc_empreendedorismo', label: 'Empreendedorismo' },
+    MUSIC: { id: 'disc_musica', label: 'Música' }
 };
 
 export const DEFAULT_SUBJECTS = Object.values(SUBJECTS_DATA).map(s => s.label);

@@ -368,7 +368,12 @@ export const getCurriculumSubjects = (
       const gradeMatch = (gradeLevel && m.gradeId) ?
         (m.gradeId === targetGradeId || m.gradeId === gradeLevel || gradeLevel.includes(m.gradeId) || m.gradeId.includes(gradeLevel)) :
         false;
-      return unitMatch && shiftMatch && gradeMatch;
+
+      // STRICT YEAR FILTER: Ensure we only match matrices for the current academic contexts
+      const currentYear = new Date().getFullYear().toString();
+      const yearMatch = m.id.includes(currentYear) || m.id.includes('2026');
+
+      return unitMatch && shiftMatch && gradeMatch && yearMatch;
     });
 
     if (matchingMatrix) {
