@@ -106,7 +106,7 @@ export const ScheduleManagement: React.FC<ScheduleManagementProps> = ({ unit, is
     };
 
     const handleAddItem = () => {
-        const defaultSubject = academicSubjects.length > 0 ? academicSubjects[0].name : '';
+        const defaultSubject = academicSubjects.length > 0 ? academicSubjects[0].id : '';
         setItems([...items, { startTime: '', endTime: '', subject: defaultSubject }]);
     };
 
@@ -359,7 +359,7 @@ export const ScheduleManagement: React.FC<ScheduleManagementProps> = ({ unit, is
                                                 <option>Carregando...</option>
                                             ) : (
                                                 academicSubjects.map(sub => (
-                                                    <option key={sub.id} value={sub.name}>{sub.name}</option>
+                                                    <option key={sub.id} value={sub.id}>{sub.name}</option>
                                                 ))
                                             )}
                                         </select>

@@ -491,7 +491,31 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         const studentGradeObj = allGrades.find(g => g.name === student.gradeLevel);
         const gradeIdToUse = studentGradeObj ? studentGradeObj.id : student.gradeLevel;
 
-        const matrixSubjects = getCurriculumSubjects(gradeIdToUse, academicSubjects, matrices, student.unit, student.shift, student.gradeLevel);
+        const initialMatrixSubjects = getCurriculumSubjects(gradeIdToUse, academicSubjects, matrices, student.unit, student.shift, student.gradeLevel);
+        const matrixSubjects = [...initialMatrixSubjects];
+
+        // SYNC FIX: Ensure subjects from schedule are always included in the report card visibility
+        if (classSchedules && classSchedules.length > 0) {
+            const sGrade = parseGradeLevel(student.gradeLevel).grade;
+            const sClass = normalizeClass(student.schoolClass);
+
+            classSchedules.forEach(sch => {
+                const schGrade = parseGradeLevel(sch.grade).grade;
+                const schClass = normalizeClass(sch.class);
+
+                if (schGrade === sGrade && schClass === sClass && sch.items) {
+                    sch.items.forEach((item: any) => {
+                        if (item.subject) {
+                            const subObj = academicSubjects.find(s => s.id === item.subject);
+                            const subjectId = subObj ? subObj.id : item.subject;
+                            if (subjectId && !matrixSubjects.includes(subjectId)) {
+                                matrixSubjects.push(subjectId);
+                            }
+                        }
+                    });
+                }
+            });
+        }
 
 
         // --- NOVO: NORMALIZAÇÃO E MESCLAGEM DE NOTAS DUPLICADAS ---
@@ -499,7 +523,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         const mergedGradesMap = new Map<string, GradeEntry>();
 
         rawGrades.forEach(g => {
-            const subjectId = g.subject;
+            // Robust ID Resolution: Check if g.subject is already an ID or a friendly Name
+            const subObj = academicSubjects.find(s => s.id === g.subject);
+            const subjectId = subObj ? subObj.id : g.subject;
+
             const existing = mergedGradesMap.get(subjectId);
 
             if (!existing) {
@@ -618,7 +645,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     hasScheduleForClass = true; // Found matching schedule with items
                     sch.items.forEach((item: any) => {
                         if (item.subject) {
-                            validSubjects.add(item.subject); // This must be the academic_subject.id
+                            // Robust ID Resolution: Check if item.subject is already an ID or a friendly Name
+                            const subObj = academicSubjects.find(s => s.id === item.subject || s.name === item.subject);
+                            const subjectId = subObj ? subObj.id : item.subject;
+                            validSubjects.add(subjectId);
                         }
                     });
                 }

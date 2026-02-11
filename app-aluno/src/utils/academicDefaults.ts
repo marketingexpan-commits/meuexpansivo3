@@ -58,7 +58,7 @@ export const SUBJECTS_DATA = {
     SPANISH: { id: 'sub_spanish', label: 'Espanhol' },
     PHILOSOPHY: { id: 'sub_philosophy', label: 'Filosofia' },
     SOCIOLOGY: { id: 'sub_sociology', label: 'Sociologia' },
-    LIFE_PROJECT: { id: 'sub_life_project', label: 'Projeto de Vida' },
+    LIFE_PROJECT: { id: 'disc_projeto_vida', label: 'Projeto de Vida' },
     ENTREPRENEURSHIP: { id: 'sub_entrepreneurship', label: 'Empreendedorismo' },
     MUSIC: { id: 'sub_music', label: 'Música' }
 };
@@ -175,10 +175,20 @@ export const CURRICULUM_MATRIX: Record<string, Record<string, number>> = {
         [SUBJECTS_DATA.ARTS.id]: 1,
         [SUBJECTS_DATA.WRITING.id]: 1,
         [SUBJECTS_DATA.PHYSICAL_ED.id]: 1,
-        [SUBJECTS_DATA.LIFE_PROJECT.id]: 1
+        [SUBJECTS_DATA.LIFE_PROJECT.id]: 1,
     },
-    'Ensino Médio': {
-
+    [ACADEMIC_GRADES.SERIE_1.id]: {
+        [SUBJECTS_DATA.PORTUGUESE.id]: 5,
+        [SUBJECTS_DATA.MATH.id]: 5,
+        [SUBJECTS_DATA.HISTORY.id]: 2,
+        [SUBJECTS_DATA.GEOGRAPHY.id]: 2,
+        [SUBJECTS_DATA.SCIENCE.id]: 3,
+        [SUBJECTS_DATA.ENGLISH.id]: 2,
+        [SUBJECTS_DATA.PHYSICAL_ED.id]: 2,
+        [SUBJECTS_DATA.ARTS.id]: 1,
+        [SUBJECTS_DATA.LIFE_PROJECT.id]: 1,
+    },
+    [ACADEMIC_SEGMENTS.MEDIO.id]: {
         [SUBJECTS_DATA.PORTUGUESE.id]: 2,
         [SUBJECTS_DATA.MATH.id]: 4,
         [SUBJECTS_DATA.PHYSICS.id]: 4,
@@ -192,7 +202,7 @@ export const CURRICULUM_MATRIX: Record<string, Record<string, number>> = {
         [SUBJECTS_DATA.WRITING.id]: 2,
         [SUBJECTS_DATA.ENGLISH.id]: 1,
         [SUBJECTS_DATA.SPANISH.id]: 1,
-        [SUBJECTS_DATA.LIFE_PROJECT.id]: 0,
+        [SUBJECTS_DATA.LIFE_PROJECT.id]: 1,
         [SUBJECTS_DATA.ENTREPRENEURSHIP.id]: 0
     }
 };

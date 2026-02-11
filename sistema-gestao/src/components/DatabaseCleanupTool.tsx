@@ -34,7 +34,7 @@ interface GhostGrade {
 
 interface IdDiscrepancy {
     id: string;
-    collection: 'grades' | 'attendance' | 'academic_subjects' | 'students' | 'teachers' | 'teachers_assignments' | 'class_schedules' | 'calendar_events' | 'students_history';
+    collection: 'grades' | 'attendance' | 'academic_subjects' | 'students' | 'teachers' | 'teachers_assignments' | 'class_schedules' | 'calendar_events' | 'students_history' | 'academic_matrices';
     studentName: string;
     studentUnit: string;
     currentSubject: string;
@@ -67,6 +67,7 @@ export const DatabaseCleanupTool = () => {
     const [discrepancies, setDiscrepancies] = useState<Discrepancy[]>([]);
     const [selectedDiscrepancies, setSelectedDiscrepancies] = useState<number[]>([]);
     const [debugStats, setDebugStats] = useState<string>('');
+    const [showDebug, setShowDebug] = useState(false);
     const [ghostGrades, setGhostGrades] = useState<GhostGrade[]>([]);
     const [selectedGrades, setSelectedGrades] = useState<string[]>([]);
     const [ghostSchedules, setGhostSchedules] = useState<ClassSchedule[]>([]);
@@ -112,25 +113,21 @@ export const DatabaseCleanupTool = () => {
         'sub_french': 'disc_frances',
 
         // Legacy Names / Misc
-        'Matematica': 'disc_matematica',
-        'Portugues': 'disc_portugues',
-        'Historia': 'disc_historia',
-        'Ciencias': 'disc_ciencias',
+        'Matemática': 'disc_matematica',
+        'Português': 'disc_portugues',
+        'História': 'disc_historia',
+        'Ciências': 'disc_ciencias',
         'Geografia': 'disc_geografia',
-        'Ingles': 'disc_ingles',
-        'Ens. Artes': 'disc_artes',
-        'Ens. Religioso': 'disc_ensino_religioso',
-        'Ed. Fisica': 'disc_educacao_fisica',
-        'Biologia': 'disc_biologia',
-        'Quimica': 'disc_quimica',
-        'Fisica': 'disc_fisica',
-        'Redacao': 'disc_redacao',
-        'Literatura': 'disc_literatura',
+        'Inglês': 'disc_ingles',
+        'Educação Física': 'disc_educacao_fisica',
+        'Química': 'disc_quimica',
+        'Física': 'disc_fisica',
+        'Redação': 'disc_redacao',
         'Filosofia': 'disc_filosofia',
         'Sociologia': 'disc_sociologia',
-        'Espanhol': 'disc_espanhol',
-        'Musica': 'disc_musica',
-        'Frances': 'disc_frances',
+        'Música': 'disc_musica',
+        'Francês': 'disc_frances',
+        'Projeto de Vida': 'disc_projeto_vida',
     };
 
     const LEGACY_TO_GRADE_MAP: Record<string, string> = {
@@ -152,7 +149,10 @@ export const DatabaseCleanupTool = () => {
         '1ª Série': 'grade_1_ser',
         '2ª Série': 'grade_2_ser',
         '3ª Série': 'grade_3_ser',
-        // Common mistypings
+        // Legacy IDs to canonical (ensure we don't cross fundamental/medial)
+        'grade_1_ano_em': 'grade_1_ser',
+        'grade_2_ano_em': 'grade_2_ser',
+        'grade_3_ano_em': 'grade_3_ser',
         '1a Serie': 'grade_1_ser',
         '2a Serie': 'grade_2_ser',
         '3a Serie': 'grade_3_ser',
@@ -163,13 +163,27 @@ export const DatabaseCleanupTool = () => {
         'Vespertino': 'shift_afternoon',
         'Noturno': 'shift_night',
         'Morning': 'shift_morning',
-        'Afternoon': 'shift_afternoon'
+        'Afternoon': 'shift_afternoon',
+        'matutino': 'shift_morning',
+        'vespertino': 'shift_afternoon',
+        'noturno': 'shift_night',
+        'morning': 'shift_morning',
+        'afternoon': 'shift_afternoon',
+        'SHIFT_MORNING': 'shift_morning',
+        'SHIFT_AFTERNOON': 'shift_afternoon',
+        'SHIFT_NIGHT': 'shift_night',
     };
 
     const getSuggestedSubject = (subjectStr: string): string => {
         if (!subjectStr) return '';
+        const lower = subjectStr.toLowerCase().trim();
+        // Check map first (case-insensitive keys handled by also checking lower)
         if (LEGACY_TO_DISC_MAP[subjectStr]) return LEGACY_TO_DISC_MAP[subjectStr];
+        if (LEGACY_TO_DISC_MAP[lower]) return LEGACY_TO_DISC_MAP[lower];
+
+        // If it's already a canonical ID, return it unless it's in the map above
         if (subjectStr.startsWith('disc_')) return subjectStr;
+
         const sanitized = sanitizeSubjectId(subjectStr);
         if (sanitized && sanitized.startsWith('disc_')) return sanitized;
         return `ACIONE O SUPORTE (${subjectStr})`;
@@ -177,14 +191,20 @@ export const DatabaseCleanupTool = () => {
 
     const getSuggestedGrade = (gradeStr: string): string => {
         if (!gradeStr) return '';
+        const lower = gradeStr.toLowerCase().trim();
         if (LEGACY_TO_GRADE_MAP[gradeStr]) return LEGACY_TO_GRADE_MAP[gradeStr];
+        if (LEGACY_TO_GRADE_MAP[lower]) return LEGACY_TO_GRADE_MAP[lower];
+
         if (gradeStr.startsWith('grade_')) return gradeStr;
         return `ACIONE O SUPORTE (${gradeStr})`;
     };
 
     const getSuggestedShift = (shiftStr: string): string => {
         if (!shiftStr) return '';
+        const lower = shiftStr.toLowerCase().trim();
         if (LEGACY_TO_SHIFT_MAP[shiftStr]) return LEGACY_TO_SHIFT_MAP[shiftStr];
+        if (LEGACY_TO_SHIFT_MAP[lower]) return LEGACY_TO_SHIFT_MAP[lower];
+
         if (shiftStr.startsWith('shift_')) return shiftStr;
         return `ACIONE O SUPORTE (${shiftStr})`;
     };
@@ -194,7 +214,7 @@ export const DatabaseCleanupTool = () => {
     // --- LOGIC FUNCTIONS ---
 
     const runMatrixMigration = async () => {
-        if (!confirm("Deseja migrar as cargas horárias de academic_subjects para a nova coleção academic_matrices? Isso criará matrizes para todas as unidades e turnos.")) return;
+        if (!confirm("Deseja migrar as cargas horárias de academic_subjects para a nova coleção academic_matrices? Isso criará matrizes para todas as unidades e turnos?")) return;
         setLoading(true);
         try {
             // We will use sets because batch has limit of 500
@@ -501,6 +521,7 @@ export const DatabaseCleanupTool = () => {
                 { name: 'exam_guides', field: 'subject' },
                 { name: 'tickets_pedagogicos', field: 'subject' },
                 { name: 'academic_subjects', field: 'id' }, // Special handling for ID vs name
+                { name: 'academic_matrices', field: 'subjects' }, // Special handling for subjects array
                 { name: 'students', field: 'academicHistory' } // Special handling for array
             ];
 
@@ -519,19 +540,22 @@ export const DatabaseCleanupTool = () => {
                 const snap = await getDocs(collection(db, target.name));
                 totalDocCount += snap.size;
                 collectionStats[target.name] = snap.size;
-                collectionPreviews[target.name] = snap.docs.slice(0, 3).map(d => {
+                collectionPreviews[target.name] = snap.docs.slice(0, 5).map(d => {
                     const data = d.data();
-                    let val = target.name === 'academic_subjects' ? data.name : (target.name === 'students' ? (data.academicHistory ? `Hist(${data.academicHistory.length})` : 'No Hist') : data[target.field]);
+                    if (target.name === 'academic_matrices') {
+                        return `${d.id}: { grade: ${data.gradeId}, shift: ${data.shift} }`;
+                    }
+                    let val = target.name === 'academic_subjects' ? data.name : (target.name === 'students' ? (data.academicHistory ? `Hist(${data.academicHistory.length})` : 'No Hist') : (data as any)[target.field]);
                     return `${d.id}: ${JSON.stringify(val)}`;
                 });
 
-                snap.docs.forEach(doc => {
+                for (const doc of snap.docs) {
                     const data = doc.data();
                     let suggested = '';
                     if (target.name === 'academic_subjects') {
                         // For matrix, we compare ID vs suggestion from NAME
                         suggested = getSuggestedSubject(data.name);
-                        if (doc.id === suggested) return; // No discrepancy if ID matches suggested
+                        if (doc.id === suggested) continue; // No discrepancy if ID matches suggested
 
                         bad.push({
                             id: doc.id,
@@ -541,61 +565,95 @@ export const DatabaseCleanupTool = () => {
                             currentSubject: doc.id,
                             suggestedSubject: suggested
                         });
-                        return; // Done for this doc
+                        continue; // Done for this doc
                     } else if (target.name === 'students') {
-                        // Scan academicHistory for bad IDs
-                        (data.academicHistory || []).forEach((hist: any, hIdx: number) => {
-                            (hist.subjects || []).forEach((s: string, sIdx: number) => {
-                                if (!s.startsWith('disc_')) {
-                                    const suggestion = getSuggestedSubject(s);
-                                    bad.push({
-                                        id: `${doc.id}_hist_${hIdx}_sub_${sIdx}`,
-                                        collection: 'students_history',
-                                        studentName: data.name,
-                                        studentUnit: UNIT_LABELS[data.unit as SchoolUnit] || data.unit,
-                                        currentSubject: s,
-                                        suggestedSubject: suggestion
-                                    });
-                                }
+                        // Historically subjects in academicHistory are objects and external.
+                        // We skip them to avoid forcing internal IDs on external records.
+                        continue;
+                    } else if (target.name === 'academic_matrices') {
+                        // ONLY PROCESS 2026 AS PER USER REQUEST
+                        if (!doc.id.endsWith('_2026')) continue;
+
+                        const mData = data;
+                        // Check gradeId
+                        const suggestGrade = getSuggestedGrade(mData.gradeId);
+                        if (suggestGrade && suggestGrade !== mData.gradeId) {
+                            bad.push({
+                                id: `${doc.id}_matrix_grade`,
+                                collection: 'academic_matrices',
+                                studentName: `Matriz: ${doc.id}`,
+                                studentUnit: mData.unit || '?',
+                                currentSubject: mData.gradeId,
+                                suggestedSubject: suggestGrade
                             });
-                        });
-                        return; // Done for this doc
-                    } else if (target.name === 'teachers') {
-                        // Scan subjects and assignments
-                        (data.subjects || []).forEach((s: string, idx: number) => {
-                            if (!s.startsWith('disc_')) {
+                        }
+                        // Check shift
+                        const suggestShift = getSuggestedShift(mData.shift);
+                        if (suggestShift && suggestShift !== mData.shift) {
+                            bad.push({
+                                id: `${doc.id}_matrix_shift`,
+                                collection: 'academic_matrices',
+                                studentName: `Matriz: ${doc.id}`,
+                                studentUnit: mData.unit || '?',
+                                currentSubject: mData.shift,
+                                suggestedSubject: suggestShift
+                            });
+                        }
+                        // Check unit
+                        if (mData.unit && !['unit_bs', 'unit_zn', 'unit_ext', 'unit_qui', 'all'].includes(mData.unit)) {
+                            let sUnit = mData.unit;
+                            if (sUnit === 'BS') sUnit = 'unit_bs';
+                            if (sUnit === 'ZN') sUnit = 'unit_zn';
+                            if (sUnit === 'EXT') sUnit = 'unit_ext';
+                            if (sUnit === 'QUI') sUnit = 'unit_qui';
+                            if (sUnit !== mData.unit) {
                                 bad.push({
-                                    id: `${doc.id}_sub_${idx}`,
-                                    collection: 'teachers',
-                                    studentName: data.name,
-                                    studentUnit: 'TEACHER',
-                                    currentSubject: s,
-                                    suggestedSubject: getSuggestedSubject(s)
+                                    id: `${doc.id}_matrix_unit`,
+                                    collection: 'academic_matrices',
+                                    studentName: `Matriz: ${doc.id}`,
+                                    studentUnit: mData.unit,
+                                    currentSubject: mData.unit,
+                                    suggestedSubject: sUnit
+                                });
+                            }
+                        }
+                        // Check Subjects
+                        (mData.subjects || []).forEach((s: any, sIdx: number) => {
+                            const suggestS = getSuggestedSubject(s.id);
+                            if (suggestS && suggestS !== s.id) {
+                                bad.push({
+                                    id: `${doc.id}_matrix_sub_${sIdx}`,
+                                    collection: 'academic_matrices',
+                                    studentName: `Matriz: ${doc.id}`,
+                                    studentUnit: mData.unit || '?',
+                                    currentSubject: s.id,
+                                    suggestedSubject: suggestS
                                 });
                             }
                         });
-                        (data.assignments || []).forEach((a: any, aIdx: number) => {
-                            (a.subjects || []).forEach((s: string, sIdx: number) => {
-                                if (!s.startsWith('disc_')) {
-                                    bad.push({
-                                        id: `${doc.id}_assign_${aIdx}_sub_${sIdx}`,
-                                        collection: 'teachers_assignments',
-                                        studentName: data.name,
-                                        studentUnit: 'ASSIGNMENT',
-                                        currentSubject: s,
-                                        suggestedSubject: getSuggestedSubject(s)
-                                    });
-                                }
-                            });
+                        // Check Missing Mandatory Subjects
+                        const mandatory = ['disc_projeto_vida'];
+                        mandatory.forEach(subId => {
+                            const hasSub = (mData.subjects || []).some((s: any) => s.id === subId);
+                            if (!hasSub) {
+                                bad.push({
+                                    id: `${doc.id}_missing_${subId}`,
+                                    collection: 'academic_matrices',
+                                    studentName: `Matriz Incompleta: ${doc.id}`,
+                                    studentUnit: mData.unit || '?',
+                                    currentSubject: "(Matéria Faltante)",
+                                    suggestedSubject: subId
+                                });
+                            }
                         });
-                        return; // Done for this doc
+                        continue; // Done for this specific loop iteration doc
                     } else {
-                        const currentVal = data[target.field];
-                        if (!currentVal || currentVal.startsWith('disc_')) return; // No discrepancy if already canonical or empty
+                        const currentVal = (data as any)[target.field];
+                        if (!currentVal) continue; // No discrepancy if empty
                         suggested = getSuggestedSubject(currentVal);
                     }
 
-                    if (suggested && suggested !== data[target.field]) { // Only add if a suggestion was found and it's different
+                    if (suggested && suggested !== (data as any)[target.field]) { // Only add if a suggestion was found and it's different
                         let contextName = '?';
                         if (target.name === 'grades') {
                             const student = allStudents.find(s => s.id === data.studentId);
@@ -615,12 +673,12 @@ export const DatabaseCleanupTool = () => {
                             collection: target.name as any,
                             studentName: contextName,
                             studentUnit: data.unit || '?',
-                            currentSubject: data[target.field],
+                            currentSubject: (data as any)[target.field],
                             suggestedSubject: suggested,
                             date: data.date || data.examDate || (data.timestamp && typeof data.timestamp === 'string' ? data.timestamp.split('T')[0] : undefined)
                         });
                     }
-                });
+                }
             }
 
             // --- SCAN CLASS SCHEDULES ---
@@ -707,7 +765,7 @@ export const DatabaseCleanupTool = () => {
                             if (val !== suggested) {
                                 bad.push({
                                     id: `${doc.id}_target_${idx}`,
-                                    collection: 'calendar_events' as any,
+                                    collection: 'calendar_events',
                                     studentName: `Evento: ${data.title}`,
                                     studentUnit: data.units?.join(', ') || '?',
                                     currentSubject: val,
@@ -731,7 +789,7 @@ export const DatabaseCleanupTool = () => {
                     if (s !== suggested) {
                         bad.push({
                             id: doc.id,
-                            collection: 'teachers' as any,
+                            collection: 'teachers',
                             studentName: `Prof: ${data.name}`,
                             studentUnit: data.unit || '?',
                             currentSubject: s,
@@ -748,8 +806,8 @@ export const DatabaseCleanupTool = () => {
                         const suggested = getSuggestedSubject(s);
                         if (s !== suggested) {
                             bad.push({
-                                id: `${doc.id}_assign_${idx}_${s}`, // Unique ID for selection table
-                                collection: 'teachers_assignments' as any,
+                                id: `${doc.id}_assign_${idx}_${s}`,
+                                collection: 'teachers_assignments',
                                 studentName: `Prof: ${data.name} (${assign.gradeLevel})`,
                                 studentUnit: data.unit || '?',
                                 currentSubject: s,
@@ -768,6 +826,17 @@ export const DatabaseCleanupTool = () => {
 
             let statsText = `Escan. ${Object.keys(collectionStats).length} coleções (${totalDocCount} docs). Encontradas ${bad.length} disc.\n`;
             statsText += `Breakdown: ` + Object.entries(collectionStats).map(([k, v]) => `${k}:${v}`).join(', ') + `\n\n`;
+
+            statsText += `--- MAPA DE DISCIPLINAS POR MATRIZ ---\n`;
+            const matrixDocsFinal = await getDocs(collection(db, 'academic_matrices'));
+            matrixDocsFinal.forEach(d => {
+                if (!d.id.endsWith('_2026')) return;
+                const data = d.data();
+                const subjectsList = (data.subjects || []).map((s: any) => s.id).join(', ');
+                statsText += `[${data.unit}] ${data.gradeId} (${data.shift}): ${subjectsList}\n`;
+            });
+            statsText += `\n`;
+
             statsText += `--- PREVIEW DE DADOS (Primeiros 3 docs) ---\n`;
             Object.entries(collectionPreviews).forEach(([coll, previews]) => {
                 if (previews.length > 0) {
@@ -890,6 +959,46 @@ export const DatabaseCleanupTool = () => {
                             }
                         });
                         await setDoc(docRef, { academicHistory }, { merge: true });
+                    }
+                } else if (coll === 'academic_matrices') {
+                    const docRef = firebaseDoc(db, 'academic_matrices', realId);
+                    const snap = await getDoc(docRef);
+                    if (snap.exists()) {
+                        const data = snap.data();
+                        let updates: any = {};
+                        let matrixSubjects = [...(data.subjects || [])];
+                        let subjectsModified = false;
+
+                        discrepancies.forEach(d => {
+                            if (d.id.includes('_matrix_sub_')) {
+                                const subjectIdx = parseInt(d.id.split('_matrix_sub_')[1], 10);
+                                if (matrixSubjects[subjectIdx]) {
+                                    matrixSubjects[subjectIdx].id = d.suggestedSubject;
+                                    subjectsModified = true;
+                                }
+                            } else if (d.id.includes('_missing_')) {
+                                const subToAdd = d.suggestedSubject;
+                                if (!matrixSubjects.some((s: any) => s.id === subToAdd)) {
+                                    matrixSubjects.push({
+                                        id: subToAdd,
+                                        weeklyHours: 1,
+                                        order: 150
+                                    });
+                                    subjectsModified = true;
+                                }
+                            } else if (d.id.endsWith('_matrix_grade')) {
+                                updates.gradeId = d.suggestedSubject;
+                            } else if (d.id.endsWith('_matrix_unit')) {
+                                updates.unit = d.suggestedSubject;
+                            } else if (d.id.endsWith('_matrix_shift')) {
+                                updates.shift = d.suggestedSubject;
+                            }
+                        });
+
+                        if (subjectsModified) updates.subjects = matrixSubjects;
+                        if (Object.keys(updates).length > 0) {
+                            await setDoc(docRef, updates, { merge: true });
+                        }
                     }
                 } else if (coll === 'academic_subjects') {
                     const docRef = firebaseDoc(db, 'academic_subjects', realId);
@@ -1217,7 +1326,28 @@ export const DatabaseCleanupTool = () => {
                             <p className="text-xs font-bold text-red-500 uppercase tracking-widest flex items-center gap-1">
                                 <AlertTriangle className="w-3 h-3" /> Ações Destrutivas - Use com Cautela
                             </p>
-                            {debugStats && <p className="text-xs text-blue-600 mt-1 font-mono bg-blue-50 px-2 py-1 rounded inline-block border border-blue-100">{debugStats}</p>}
+                            {debugStats && (
+                                <div className="mb-4">
+                                    <button
+                                        onClick={() => setShowDebug(!showDebug)}
+                                        className="text-blue-500 hover:text-blue-700 text-sm font-medium flex items-center gap-1 mb-2"
+                                    >
+                                        {showDebug ? 'Ocultar Log de Depuração ↑' : 'Ver Detalhes do Escaneamento (Log) ↓'}
+                                    </button>
+                                    {showDebug && (
+                                        <pre className="bg-blue-50 p-4 rounded-lg text-xs font-mono text-blue-800 break-words whitespace-pre-wrap max-h-[400px] overflow-auto border border-blue-100 relative">
+                                            <button
+                                                onClick={() => setDebugStats('')}
+                                                className="absolute top-2 right-2 p-1 hover:bg-blue-200 rounded-full"
+                                                title="Limpar log"
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                            {debugStats}
+                                        </pre>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                     <button onClick={() => setIsOpen(false)} className="p-3 hover:bg-slate-200/50 rounded-xl transition-colors">
@@ -1484,7 +1614,6 @@ export const DatabaseCleanupTool = () => {
                                                                     {subjects.find((s: AcademicSubject) => s.id === d.suggestedSubject)?.name || SUBJECT_LABELS[d.suggestedSubject as Subject] || d.suggestedSubject}
                                                                 </span>
                                                             </td>
-                                                            ```
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -1849,7 +1978,7 @@ export const DatabaseCleanupTool = () => {
                                         </Button>
 
                                     </div>
-                                    {debugStats && (
+                                    {debugStats && showDebug && (
                                         <pre className="bg-slate-900 text-green-400 p-4 rounded-xl text-[10px] whitespace-pre-wrap font-mono overflow-auto max-h-64 border border-slate-800 shadow-inner">
                                             {debugStats}
                                         </pre>

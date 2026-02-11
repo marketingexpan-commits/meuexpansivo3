@@ -30,6 +30,17 @@ export const CURRICULUM_MATRIX: Record<string, Record<string, number>> = {
         [Subject.PHYSICAL_ED]: 1,
         [Subject.LIFE_PROJECT]: 1
     },
+    'grade_1_ser': {
+        [Subject.PORTUGUESE]: 5,
+        [Subject.MATH]: 5,
+        [Subject.HISTORY]: 2,
+        [Subject.GEOGRAPHY]: 2,
+        [Subject.SCIENCE]: 3,
+        [Subject.ENGLISH]: 2,
+        [Subject.PHYSICAL_ED]: 2,
+        [Subject.ARTS]: 1,
+        [Subject.LIFE_PROJECT]: 1,
+    },
     'Ensino Médio': {
         [Subject.PORTUGUESE]: 2,
         [Subject.MATH]: 4,
@@ -44,7 +55,7 @@ export const CURRICULUM_MATRIX: Record<string, Record<string, number>> = {
         [Subject.WRITING]: 2,
         [Subject.ENGLISH]: 1,
         [Subject.SPANISH]: 1,
-        [Subject.LIFE_PROJECT]: 0,
+        [Subject.LIFE_PROJECT]: 1,
         [Subject.ENTREPRENEURSHIP]: 0
     }
 };
@@ -176,7 +187,7 @@ export const SUBJECTS_DATA = {
     SPANISH: { id: 'sub_spanish', label: 'Espanhol' },
     PHILOSOPHY: { id: 'sub_philosophy', label: 'Filosofia' },
     SOCIOLOGY: { id: 'sub_sociology', label: 'Sociologia' },
-    LIFE_PROJECT: { id: 'sub_life_project', label: 'Projeto de Vida' },
+    LIFE_PROJECT: { id: 'disc_projeto_vida', label: 'Projeto de Vida' },
     ENTREPRENEURSHIP: { id: 'sub_entrepreneurship', label: 'Empreendedorismo' },
     MUSIC: { id: 'sub_music', label: 'Música' }
 };

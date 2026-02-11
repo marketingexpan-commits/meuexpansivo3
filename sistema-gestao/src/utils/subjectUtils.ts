@@ -28,7 +28,7 @@ export const sanitizeSubjectId = (subjectStr: string, academicSubjects?: Academi
     if (normalized === 'ing' || normalized.includes('ingl') || normalized.includes('engl')) return Subject.ENGLISH;
     if (normalized === 'art' || normalized.includes('art')) return Subject.ARTS;
     if (normalized === 'rel' || normalized.includes('relig')) return Subject.RELIGIOUS_ED;
-    if (normalized === 'fis' && !normalized.includes('ed')) return Subject.PHYSICS;
+    if ((normalized === 'fis' || normalized.includes('fisica')) && !normalized.includes('ed')) return Subject.PHYSICS;
     if (normalized.includes('ed') && (normalized.includes('fis') || normalized === 'ef')) return Subject.PHYSICAL_ED;
     if (normalized === 'bio' || normalized.includes('biol')) return Subject.BIOLOGY;
     if (normalized === 'qui' || normalized.includes('quim')) return Subject.CHEMISTRY;
