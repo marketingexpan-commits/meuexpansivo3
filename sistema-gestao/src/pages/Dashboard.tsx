@@ -225,12 +225,11 @@ export function Dashboard() {
             {/* Login Stats for Admin Geral */}
             {userUnitType === 'admin_geral' && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                    <div
-                        onClick={handleOpenLogModal}
-                        className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm hover:border-blue-950 transition-all cursor-pointer group scale-in"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-950 group-hover:text-white transition-colors">
+                    <div className="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between shadow-sm scale-in overflow-hidden">
+
+                        {/* Visitas Hoje - Informativo */}
+                        <div className="flex-1 flex items-center gap-3 p-2">
+                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
                                 <Eye className="w-4 h-4" />
                             </div>
                             <div>
@@ -238,8 +237,27 @@ export function Dashboard() {
                                 <p className="text-lg font-bold text-slate-700 leading-none">{loginStats.loginPageViewsToday}</p>
                             </div>
                         </div>
-                        <div className="h-8 w-px bg-slate-100"></div>
-                        <div className="flex items-center gap-3">
+
+                        <div className="h-8 w-px bg-slate-100 mx-2"></div>
+
+                        {/* Total Visitas - Informativo */}
+                        <div className="flex-1 flex items-center gap-3 p-2">
+                            <div className="p-2 bg-slate-50 text-slate-600 rounded-lg">
+                                <Activity className="w-4 h-4" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-1">Total Visitas</p>
+                                <p className="text-lg font-bold text-slate-700 leading-none">{loginStats.loginPageViews}</p>
+                            </div>
+                        </div>
+
+                        <div className="h-8 w-px bg-slate-100 mx-2"></div>
+
+                        {/* Acessos Hoje - Botão */}
+                        <div
+                            onClick={handleOpenLogModal}
+                            className="flex-1 flex items-center gap-3 cursor-pointer hover:bg-orange-50/50 p-2 rounded-lg transition-all border border-transparent hover:border-orange-100 group"
+                        >
                             <div className="p-2 bg-orange-50 text-orange-600 rounded-lg group-hover:bg-orange-600 group-hover:text-white transition-colors">
                                 <LogIn className="w-4 h-4" />
                             </div>
@@ -248,16 +266,7 @@ export function Dashboard() {
                                 <p className="text-lg font-bold text-blue-950 leading-none">{loginStats.totalLogins}</p>
                             </div>
                         </div>
-                        <div className="h-8 w-px bg-slate-100"></div>
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-slate-50 text-slate-600 rounded-lg group-hover:bg-slate-800 group-hover:text-white transition-colors">
-                                <Activity className="w-4 h-4" />
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-bold text-orange-400 uppercase tracking-wider leading-none mb-1">Total Visitas</p>
-                                <p className="text-lg font-bold text-slate-700 leading-none">{loginStats.loginPageViews}</p>
-                            </div>
-                        </div>
+
                     </div>
                 </div>
             )}
