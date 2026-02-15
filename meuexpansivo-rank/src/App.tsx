@@ -196,7 +196,7 @@ function App() {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#0f172a] p-10 text-center">
         <ShieldCheck size={120} className="text-slate-700 mb-8 animate-pulse" />
-        <h1 className="text-4xl font-black text-white mb-4 uppercase tracking-tighter">Sistema de Rank</h1>
+        <h1 className="text-4xl font-black text-white mb-4 uppercase tracking-tighter">Sistema de Ranking</h1>
         <p className="text-xl text-slate-400 max-w-lg">O sistema de classificação em tempo real está indisponível para esta unidade no momento.</p>
       </div>
     );
@@ -219,7 +219,7 @@ function App() {
           />
           <div className="w-px h-10 bg-slate-200" />
           <div>
-            <h1 translate="no" className="text-3xl font-black tracking-tighter uppercase leading-none text-blue-900">RANK EXPANSIVO</h1>
+            <h1 translate="no" className="text-3xl font-black tracking-tighter uppercase leading-none text-blue-900">RANKING EXPANSIVO</h1>
             <p translate="no" className="text-sm font-bold text-blue-600 tracking-[0.2em] uppercase mt-1">{unitName}</p>
           </div>
         </div>
