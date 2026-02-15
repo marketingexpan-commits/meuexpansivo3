@@ -4,16 +4,16 @@
     "workspaces": [
         "app-aluno",
         "sistema-gestao",
-        "meuexpansivo-rank"
+        "ranking"
     ],
     "scripts": {
         "dev": "npm run dev:app",
         "dev:app": "npm run dev --workspace=app-aluno",
         "dev:gestao": "npm run dev --workspace=sistema-gestao",
-        "dev:rank": "npm run dev --workspace=meuexpansivo-rank",
+        "dev:rank": "npm run dev --workspace=ranking",
         "build:app": "npm run build --workspace=app-aluno",
         "build:gestao": "npm run build --workspace=sistema-gestao",
-        "build:rank": "npm run build --workspace=meuexpansivo-rank",
+        "build:rank": "npm run build --workspace=ranking",
         "build:all": "npm run build --workspaces",
         "install:all": "npm install"
     }
