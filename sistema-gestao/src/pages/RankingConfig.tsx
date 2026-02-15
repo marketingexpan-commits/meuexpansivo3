@@ -194,7 +194,7 @@ export default function RankingConfig() {
         <div className="space-y-6 animate-fade-in">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-blue-950">Configuração do Sistema de Rank</h1>
+                    <h1 className="text-2xl font-bold text-blue-950">Configuração do Sistema de Ranking</h1>
                     <p className="text-slate-500 text-sm">Gerencie o Top 3, prêmios e patrocínios por série.</p>
                 </div>
 
