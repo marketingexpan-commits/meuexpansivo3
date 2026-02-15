@@ -22,7 +22,8 @@ import {
     UserCheck,
     Smartphone,
     Globe,
-    MessageSquareReply
+    MessageSquareReply,
+    Trophy
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -342,6 +343,7 @@ function SidebarContent({
                             <>
                                 <SidebarItem icon={UserCheck} label="Admin/Unidades" path="/config/admin-unidades" collapsed={collapsed} />
                                 <SidebarItem icon={Smartphone} label="Config. App" path="/config/escola" collapsed={collapsed} />
+                                <SidebarItem icon={Trophy} label="Ranking Escolar" path="/config/ranking" collapsed={collapsed} />
                             </>
                         )}
                     </div>

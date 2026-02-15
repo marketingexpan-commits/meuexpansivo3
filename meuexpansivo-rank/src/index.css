@@ -1,0 +1,26 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+@layer base {
+  body {
+    @apply bg-[#0f172a] text-white antialiased overflow-hidden;
+    /* Dark background for TV */
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+.glass-card {
+  @apply bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl;
+}
+
+.rank-gold {
+  @apply bg-gradient-to-br from-yellow-300 via-yellow-500 to-yellow-600 text-transparent bg-clip-text font-bold;
+}
+
+.rank-silver {
+  @apply bg-gradient-to-br from-slate-300 via-slate-400 to-slate-500 text-transparent bg-clip-text font-bold;
+}
+
+.rank-bronze {
+  @apply bg-gradient-to-br from-orange-300 via-orange-500 to-orange-600 text-transparent bg-clip-text font-bold;
+}

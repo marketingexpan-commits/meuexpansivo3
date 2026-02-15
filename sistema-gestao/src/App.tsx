@@ -17,6 +17,7 @@ import AdminUnidades from './pages/AdminUnidades';
 import { RematriculaPage } from './pages/RematriculaPage.tsx';
 import { DirectorMessages } from './pages/DirectorMessages';
 import { Porteiros } from './pages/Porteiros';
+import RankingConfig from './pages/RankingConfig';
 
 
 
@@ -47,6 +48,7 @@ function App() {
           <Route path="/config/escola" element={<SchoolConfig />} />
           <Route path="/config/admin-unidades" element={<AdminUnidades />} />
           <Route path="/config/porteiros" element={<Porteiros />} />
+          <Route path="/config/ranking" element={<RankingConfig />} />
 
         </Route>
 

@@ -3,14 +3,17 @@
     "private": true,
     "workspaces": [
         "app-aluno",
-        "sistema-gestao"
+        "sistema-gestao",
+        "meuexpansivo-rank"
     ],
     "scripts": {
         "dev": "npm run dev:app",
         "dev:app": "npm run dev --workspace=app-aluno",
         "dev:gestao": "npm run dev --workspace=sistema-gestao",
+        "dev:rank": "npm run dev --workspace=meuexpansivo-rank",
         "build:app": "npm run build --workspace=app-aluno",
         "build:gestao": "npm run build --workspace=sistema-gestao",
+        "build:rank": "npm run build --workspace=meuexpansivo-rank",
         "build:all": "npm run build --workspaces",
         "install:all": "npm install"
     }
