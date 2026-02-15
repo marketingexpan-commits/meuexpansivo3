@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import type { StudentRank, RankSettings, GradeConfig } from './services/rankService';
 import { rankService } from './services/rankService';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Medal, Star, ShieldCheck, User, Globe } from 'lucide-react';
+import { Trophy, Medal, User, Globe } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
 
 // Helper for medals
@@ -192,19 +192,64 @@ function App() {
     return () => clearInterval(interval);
   }, [grades.length]);
 
-  if (!settings || !settings.isEnabled) {
-    return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#0f172a] p-10 text-center">
-        <ShieldCheck size={120} className="text-slate-700 mb-8 animate-pulse" />
-        <h1 className="text-4xl font-black text-white mb-4 uppercase tracking-tighter">Sistema de Ranking</h1>
-        <p className="text-xl text-slate-400 max-w-lg">O sistema de classificação em tempo real está indisponível para esta unidade no momento.</p>
-      </div>
-    );
-  }
-
+  const isLoading = !settings || !settings.isEnabled || grades.length === 0;
 
   return (
     <div className="h-screen w-screen bg-[#f8fafc] text-slate-900 flex flex-col overflow-hidden relative">
+      <AnimatePresence mode="wait">
+        {isLoading ? (
+          <motion.div
+            key="loading-screen"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 1.05, filter: "blur(15px)" }}
+            transition={{ duration: 0.8, ease: "easeInOut" }}
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#f8fafc]"
+          >
+            {/* Background Glows */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/5 blur-[120px] rounded-full" />
+
+            <div className="relative flex flex-col items-center">
+              <motion.div
+                animate={{
+                  scale: [1, 1.02, 1],
+                }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                className="mb-10 relative"
+              >
+                <img
+                  src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"
+                  alt="Logo Expansivo"
+                  className="h-32 w-auto object-contain drop-shadow-xl"
+                />
+              </motion.div>
+
+              <div className="text-center">
+                <h1 className="text-2xl font-black text-blue-900 mb-4 uppercase tracking-tighter">
+                  Carregando Ranking
+                </h1>
+
+                {/* Linear Progress Bar below the logo/text */}
+                <div className="w-48 h-1 bg-slate-200 rounded-full overflow-hidden relative mx-auto">
+                  <motion.div
+                    className="absolute inset-y-0 left-0 bg-blue-600 rounded-full"
+                    initial={{ width: "0%", left: "-100%" }}
+                    animate={{ width: "100%", left: "100%" }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                  />
+                </div>
+
+                <p className="mt-4 text-slate-400 font-bold uppercase tracking-[0.3em] text-[9px] opacity-60">
+                  Sincronizando ambiente escolar
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
       {/* Decorative Background Elements */}
       <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-blue-600/5 blur-[120px] rounded-full -mr-40 -mt-40" />
       <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-sky-600/5 blur-[100px] rounded-full -ml-20 -mb-20" />
@@ -238,9 +283,22 @@ function App() {
       {/* Main Rank Area */}
       <main className="flex-1 flex items-center justify-center p-12 z-20 overflow-hidden">
         {!currentGrade ? (
-          <div className="flex flex-col items-center gap-4 animate-pulse">
-            <Star className="text-blue-500/30" size={80} />
-            <p className="text-slate-500 font-bold uppercase tracking-widest">Aguardando dados...</p>
+          <div className="flex flex-col items-center gap-6">
+            <div className="relative">
+              <motion.div
+                animate={{ scale: [1, 1.05, 1], rotate: [0, 5, -5, 0] }}
+                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+                className="relative z-10"
+              >
+                <img
+                  src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"
+                  alt="Logo Expansivo"
+                  className="h-24 opacity-20 grayscale"
+                />
+              </motion.div>
+              <div className="absolute inset-0 bg-blue-600/5 blur-xl rounded-full scale-150 animate-pulse" />
+            </div>
+            <p className="text-slate-300 font-bold uppercase tracking-[0.3em] text-[10px]">Aguardando sincronização...</p>
           </div>
         ) : (
           <div className="w-full h-full flex items-center justify-center max-w-[1600px]">

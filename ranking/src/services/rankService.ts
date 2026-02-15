@@ -151,7 +151,13 @@ export const rankService = {
 
             // Sort and take top 3
             Object.keys(groupedRanks).forEach(grade => {
-                groupedRanks[grade].sort((a, b) => b.totalScore - a.totalScore);
+                groupedRanks[grade].sort((a, b) => {
+                    if (Math.abs(b.totalScore - a.totalScore) > 0.001) {
+                        return b.totalScore - a.totalScore;
+                    }
+                    // Tie-breaker: Alphabetical Order
+                    return a.name.localeCompare(b.name);
+                });
                 groupedRanks[grade] = groupedRanks[grade].slice(0, 3).map((item, idx) => ({ ...item, rankPosition: idx + 1 }));
             });
 
