@@ -58,7 +58,7 @@ const RankCard = ({ student, index }: { student: StudentRank, index: number }) =
       )}
     >
       {/* Rank Icon */}
-      <div className="absolute top-4 right-4 z-20">
+      <div className="absolute top-6 right-6 z-20">
         <RankIcon position={student.rankPosition || 0} />
       </div>
 
