@@ -277,7 +277,7 @@ function App() {
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3 px-5 py-2.5 bg-blue-600/10 border border-blue-600/20 rounded-full">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-            <span className="text-xs font-black text-blue-700 uppercase tracking-widest italic">REAL-TIME UPDATE</span>
+            <span className="text-xs font-black text-blue-700 uppercase tracking-widest italic">ATUALIZAÇÃO EM TEMPO REAL</span>
           </div>
           <p className="text-xs text-slate-400 font-bold max-w-sm uppercase leading-relaxed italic">
             Participação exclusiva para alunos do Ensino Fundamental II e Médio.
