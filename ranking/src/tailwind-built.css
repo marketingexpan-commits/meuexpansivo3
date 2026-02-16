@@ -729,10 +729,6 @@ body {
   display: grid;
 }
 
-.aspect-\[3\/4\] {
-  aspect-ratio: 3/4;
-}
-
 .h-1 {
   height: 0.25rem;
 }
@@ -1213,6 +1209,10 @@ body {
 .py-8 {
   padding-top: 2rem;
   padding-bottom: 2rem;
+}
+
+.pb-\[133\.33\%\] {
+  padding-bottom: 133.33%;
 }
 
 .pl-10 {

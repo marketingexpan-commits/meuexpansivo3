@@ -68,24 +68,26 @@ const RankCard = ({ student, index }: { student: StudentRank, index: number }) =
         <RankIcon position={student.rankPosition || 0} />
       </div>
 
-      {/* Photo 3x4 */}
-      <div className="relative w-full aspect-[3/4] group">
-        <div className={twMerge(
-          "w-full h-full rounded-2xl overflow-hidden shadow-lg transition-transform duration-500 group-hover:scale-[1.02] border-4",
-          student.rankPosition === 1 ? "border-yellow-400" :
-            student.rankPosition === 2 ? "border-slate-300" :
-              "border-orange-500"
-        )}>
-          {student.photoUrl ? (
-            <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-300">
-              <User size={64} />
-            </div>
-          )}
+      {/* Photo 3x4 with Padding Hack for Legacy Support */}
+      <div className="relative w-full group">
+        <div className="w-full pb-[133.33%] relative">
+          <div className={twMerge(
+            "absolute inset-0 w-full h-full rounded-2xl overflow-hidden shadow-lg border-4 transition-transform duration-500 group-hover:scale-[1.02] bg-slate-100",
+            student.rankPosition === 1 ? "border-yellow-400" :
+              student.rankPosition === 2 ? "border-slate-300" :
+                "border-orange-500"
+          )}>
+            {student.photoUrl ? (
+              <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-slate-300">
+                <User size={64} />
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Rank Number Badge */}
+        {/* Rank Number Badge - Now outside overflow-hidden */}
         <div className={twMerge(
           "absolute -bottom-4 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full font-black text-xl border shadow-xl z-10 whitespace-nowrap",
           student.rankPosition === 1 ? "bg-yellow-400 text-yellow-950 border-yellow-200" :
@@ -98,7 +100,7 @@ const RankCard = ({ student, index }: { student: StudentRank, index: number }) =
 
       {/* Details */}
       <div className="text-center mt-8 space-y-1">
-        <h3 translate="no" className="text-xl font-black text-slate-900 leading-tight uppercase tracking-tighter">
+        <h3 translate="no" className="text-xl font-black text-slate-900 leading-tight uppercase tracking-tighter" style={{ fontSize: student.name.length > 15 ? '1.25rem' : '1.5rem' }}>
           {student.name.split(' ').slice(0, 2).join(' ')}
         </h3>
         <div className="flex flex-col items-center gap-0.5 text-slate-500 font-bold uppercase tracking-wider text-xs">
@@ -128,7 +130,18 @@ const RankCard = ({ student, index }: { student: StudentRank, index: number }) =
           <p className="text-xl font-black text-orange-600">{student.totalScore.toFixed(0)}</p>
         </div>
       </div>
-    </motion.div>
+
+      {/* Scoped CSS for Smart TV */}
+      <style>{`
+        body.is-smart-tv {
+          zoom: 0.95;
+          font-family: 'Inter', sans-serif !important;
+        }
+        body.is-smart-tv * {
+          font-family: 'Inter', sans-serif !important;
+        }
+      `}</style>
+    </motion.div >
   );
 };
 
@@ -274,6 +287,16 @@ const SponsorsShowcase = ({ settings, unitName }: { settings: RankSettings, unit
 };
 
 function App() {
+  useEffect(() => {
+    // Smart TV Detection Logic
+    const ua = navigator.userAgent.toLowerCase();
+    const isSmartTV = /webos|smarttv|tizen|viera|bravia/.test(ua);
+
+    if (isSmartTV) {
+      document.body.classList.add('is-smart-tv');
+    }
+  }, []);
+
   const [ranks, setRanks] = useState<Record<string, StudentRank[]>>({});
   const [settings, setSettings] = useState<RankSettings | null>(null);
   const [currentGradeIndex, setCurrentGradeIndex] = useState(0);
