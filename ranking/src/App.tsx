@@ -48,7 +48,7 @@ const RankCard = ({ student, index, isSmartTV }: { student: StudentRank, index: 
     <motion.div
       initial={{ opacity: 0, y: 50, scale: 0.9 }}
       animate={{
-        opacity: 1,
+        opacity: student.rankPosition === 1 ? 1 : 0.9,
         y: 0,
         scale: student.rankPosition === 1 ? 1.04 : 1.0
       }}
@@ -61,7 +61,6 @@ const RankCard = ({ student, index, isSmartTV }: { student: StudentRank, index: 
       }}
       style={{
         zIndex: student.rankPosition === 1 ? 30 : 10,
-        opacity: student.rankPosition === 1 ? 1 : 0.9,
         transformOrigin: 'center center'
       }}
       className={twMerge(
