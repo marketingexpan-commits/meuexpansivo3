@@ -65,7 +65,7 @@ const RankCard = ({ student, index, isSmartTV }: { student: StudentRank, index: 
         transformOrigin: 'center center'
       }}
       className={twMerge(
-        "bg-white p-4 flex flex-col items-center relative shadow-xl rounded-[2rem] border border-slate-100 w-full max-w-[240px]",
+        "bg-white p-4 flex flex-col items-center relative shadow-xl rounded-[2rem] border border-slate-100 w-full max-w-[240px] opacity-0",
         student.rankPosition === 1 ? "ring-4 ring-yellow-400" : ""
       )}
     >
