@@ -16,6 +16,8 @@ interface GradeConfig {
     sponsorName?: string;
     sponsorLogoUrl?: string;
     sponsorInfo?: string;
+    sponsorPhone?: string;
+    sponsorAddress?: string;
 }
 
 interface RankSettings {
@@ -23,6 +25,9 @@ interface RankSettings {
     sponsorName: string;
     sponsorLogoUrl: string;
     sponsorInfo: string;
+    sponsorPhone?: string;
+    sponsorAddress?: string;
+    showcaseEnabled?: boolean;
     gradeConfigs?: Record<string, GradeConfig>;
 }
 
@@ -119,7 +124,9 @@ export default function RankingConfig() {
         awards: { rank1: '', rank2: '', rank3: '' },
         sponsorName: '',
         sponsorLogoUrl: '',
-        sponsorInfo: ''
+        sponsorInfo: '',
+        sponsorPhone: '',
+        sponsorAddress: ''
     };
 
     const updateGradeConfig = (field: string, value: string) => {
@@ -161,14 +168,6 @@ export default function RankingConfig() {
         alert("Dados legados removidos localmente. Clique em 'Salvar Alterações' para confirmar no servidor.");
     };
 
-    const copyToAllGrades = () => {
-        if (!confirm("Deseja copiar as informações desta série para TODAS as outras?")) return;
-        const newConfigs: Record<string, GradeConfig> = {};
-        relevantGrades.forEach(g => {
-            newConfigs[g.id] = { ...currentGradeConfig };
-        });
-        setSettings({ ...settings, gradeConfigs: newConfigs });
-    };
 
     const handleSelectiveReplication = () => {
         if (selectedReplicationGrades.length === 0) return;
@@ -266,8 +265,27 @@ export default function RankingConfig() {
                             </button>
                         </div>
 
+                        {/* Showcase Toggle */}
+                        <div className="flex-1 flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                            <div className="flex items-center gap-4">
+                                <div className={`p-3 rounded-xl ${settings.showcaseEnabled ? 'bg-blue-100 text-blue-600' : 'bg-slate-200 text-slate-500'}`}>
+                                    <Megaphone className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-blue-950">Vitrine de Parceiros</h3>
+                                    <p className="text-xs text-slate-500">{settings.showcaseEnabled ? 'Tela azul ativa.' : 'Tela azul desativada.'}</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSettings({ ...settings, showcaseEnabled: !settings.showcaseEnabled })}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${settings.showcaseEnabled ? 'bg-blue-600' : 'bg-slate-300'}`}
+                            >
+                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.showcaseEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                            </button>
+                        </div>
+
                         {/* Replication Tools */}
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 min-w-[200px]">
                             <Button
                                 variant="outline"
                                 onClick={() => setShowReplicateModal(true)}
@@ -275,14 +293,6 @@ export default function RankingConfig() {
                             >
                                 <Copy className="w-4 h-4" />
                                 Replicar...
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={copyToAllGrades}
-                                className="hidden sm:flex gap-2 h-14 rounded-2xl border-slate-200 text-slate-500 font-bold px-4"
-                                title="Copiar para TODAS"
-                            >
-                                Replicar p/ Tudo
                             </Button>
                         </div>
                     </div>
@@ -366,6 +376,24 @@ export default function RankingConfig() {
                                         placeholder="Ex: Apoio Institucional"
                                     />
                                 </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Telefone / WhatsApp</label>
+                                        <Input
+                                            value={currentGradeConfig.sponsorPhone || ''}
+                                            onChange={e => updateGradeConfig('sponsorPhone', e.target.value)}
+                                            placeholder="(84) 99999-9999"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Endereço</label>
+                                        <Input
+                                            value={currentGradeConfig.sponsorAddress || ''}
+                                            onChange={e => updateGradeConfig('sponsorAddress', e.target.value)}
+                                            placeholder="Rua Exemplo, 123"
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </Card>
                     </div>
@@ -405,6 +433,25 @@ export default function RankingConfig() {
                                     value={settings.sponsorInfo || ''}
                                     onChange={e => setSettings({ ...settings, sponsorInfo: e.target.value })}
                                     placeholder="Mais informações..."
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Telefone Padrão</label>
+                                <Input
+                                    value={settings.sponsorPhone || ''}
+                                    onChange={e => setSettings({ ...settings, sponsorPhone: e.target.value })}
+                                    placeholder="(84) 99999-9999"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Endereço Padrão</label>
+                                <Input
+                                    value={settings.sponsorAddress || ''}
+                                    onChange={e => setSettings({ ...settings, sponsorAddress: e.target.value })}
+                                    placeholder="Rua Exemplo, 123"
                                 />
                             </div>
                         </div>
@@ -480,7 +527,7 @@ export default function RankingConfig() {
                                         }
                                     }}
                                     className={`p-3 rounded-xl border-2 text-sm font-bold transition-all text-left ${selectedReplicationGrades.includes(g.id)
-                                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                        ? 'border-blue-50 bg-blue-50 text-blue-700'
                                         : 'border-slate-100 text-slate-500 hover:border-slate-200'
                                         }`}
                                 >

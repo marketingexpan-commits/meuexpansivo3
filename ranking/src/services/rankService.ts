@@ -24,6 +24,8 @@ export interface GradeConfig {
     sponsorName?: string;
     sponsorLogoUrl?: string;
     sponsorInfo?: string;
+    sponsorPhone?: string;
+    sponsorAddress?: string;
 }
 
 export interface RankSettings {
@@ -31,6 +33,9 @@ export interface RankSettings {
     sponsorName?: string;
     sponsorLogoUrl?: string;
     sponsorInfo?: string;
+    sponsorPhone?: string;
+    sponsorAddress?: string;
+    showcaseEnabled?: boolean;
     gradeConfigs?: Record<string, GradeConfig>;
     lastUpdated?: string;
 }
