@@ -43,7 +43,7 @@ const AwardsLegend = ({ config }: { config?: GradeConfig }) => {
   );
 };
 
-const RankCard = ({ student, index }: { student: StudentRank, index: number }) => {
+const RankCard = ({ student, index, isSmartTV }: { student: StudentRank, index: number, isSmartTV: boolean }) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 50, scale: 0.9 }}
@@ -53,12 +53,16 @@ const RankCard = ({ student, index }: { student: StudentRank, index: number }) =
         scale: student.rankPosition === 1 ? 1.04 : 1.0
       }}
       exit={{ opacity: 0, scale: 0.9 }}
-      transition={{ delay: index * 0.2, duration: 0.5, type: "spring" }}
+      transition={{
+        delay: index * 0.4,
+        duration: 0.8,
+        type: isSmartTV ? "tween" : "spring",
+        ease: "easeOut"
+      }}
       style={{
         zIndex: student.rankPosition === 1 ? 30 : 10,
         opacity: student.rankPosition === 1 ? 1 : 0.9,
-        transform: `scale(min(1, (100vh - 220px) / 620))`,
-        transformOrigin: 'top center'
+        transformOrigin: 'center center'
       }}
       className={twMerge(
         "bg-white p-4 flex flex-col items-center relative shadow-xl rounded-[2rem] border border-slate-100 w-full max-w-[240px]",
@@ -136,11 +140,17 @@ const RankCard = ({ student, index }: { student: StudentRank, index: number }) =
       {/* Scoped CSS for Smart TV */}
       <style>{`
         body.is-smart-tv {
-          zoom: 0.95;
           font-family: 'Inter', sans-serif !important;
+          background-color: #001c3d !important;
         }
         body.is-smart-tv * {
           font-family: 'Inter', sans-serif !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+        }
+        body.is-smart-tv .blur-[150px], 
+        body.is-smart-tv .blur-[100px] {
+          display: none !important;
         }
         /* Fix for legacy WebOS space utilities */
         .flex.space-x-6 > * + * { margin-left: 1.5rem; }
@@ -148,7 +158,6 @@ const RankCard = ({ student, index }: { student: StudentRank, index: number }) =
         .flex.space-x-3 > * + * { margin-left: 0.75rem; }
         .flex.space-x-2 > * + * { margin-left: 0.5rem; }
         .flex.flex-col.space-y-8 > * + * { margin-top: 2rem; }
-        /* Removido o space-y-3 que causava conflito nos cartões */
         .flex.flex-col.space-y-1 > * + * { margin-top: 0.25rem; }
         .flex.flex-col.space-y-0.5 > * + * { margin-top: 0.125rem; }
       `}</style>
@@ -156,7 +165,7 @@ const RankCard = ({ student, index }: { student: StudentRank, index: number }) =
   );
 };
 
-const SponsorsShowcase = ({ settings, unitName }: { settings: RankSettings, unitName: string }) => {
+const SponsorsShowcase = ({ settings, unitName, scale }: { settings: RankSettings, unitName: string, scale: number }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   // Extract all unique sponsors (unit sponsor + grade sponsors)
@@ -232,6 +241,7 @@ const SponsorsShowcase = ({ settings, unitName }: { settings: RankSettings, unit
           src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"
           alt="Logo"
           className="h-12 brightness-0 invert"
+          crossOrigin="anonymous"
         />
         <div className="w-px h-10 bg-white/20" />
         <div>
@@ -240,23 +250,27 @@ const SponsorsShowcase = ({ settings, unitName }: { settings: RankSettings, unit
         </div>
       </div>
 
-      <AnimatePresence mode="wait">
+      <div className="flex flex-col items-center justify-center h-screen py-16 relative">
         <motion.div
           key={sponsor.name}
           initial={{ opacity: 0, y: 20, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -20, scale: 1.05 }}
           transition={{ duration: 1, ease: "easeInOut" }}
+          style={{
+            transform: `scale(${scale})`,
+            transformOrigin: 'center center'
+          }}
           className="relative z-10 flex flex-col items-center text-center max-w-4xl"
         >
-          <p className="text-blue-400 font-black tracking-[0.4em] uppercase mb-12 text-sm">Parceiro</p>
+          <p className="text-blue-400 font-black tracking-[0.4em] uppercase mb-8 text-sm">Parceiro</p>
 
-          <div className="bg-white p-12 rounded-[3rem] shadow-2xl mb-12 flex items-center justify-center min-w-[300px] min-h-[300px]">
+          <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl mb-8 flex items-center justify-center min-w-[280px] min-h-[280px]">
             {sponsor.logo ? (
               <img
                 src={sponsor.logo}
                 alt={sponsor.name}
-                className="h-40 object-contain"
+                className="h-32 object-contain"
                 crossOrigin="anonymous"
                 loading="eager"
                 onError={(e) => {
@@ -269,34 +283,34 @@ const SponsorsShowcase = ({ settings, unitName }: { settings: RankSettings, unit
                 }}
               />
             ) : (
-              <Globe className="text-slate-200 h-24 w-24 opacity-20" />
+              <Globe className="text-slate-200 h-20 w-20 opacity-20" />
             )}
           </div>
 
-          <h2 translate="no" className="text-7xl font-black tracking-tighter uppercase mb-6">{sponsor.name}</h2>
+          <h2 translate="no" className="text-6xl font-black tracking-tighter uppercase mb-4 leading-tight">{sponsor.name}</h2>
 
           {sponsor.info && (
-            <p translate="no" className="text-2xl text-blue-200 font-bold uppercase tracking-widest mb-10 opacity-80 italic">
+            <p translate="no" className="text-xl text-blue-200 font-bold uppercase tracking-widest mb-8 opacity-80 italic">
               "{sponsor.info}"
             </p>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 space-y-10 md:space-y-0 md:space-x-10 mt-10 w-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4 w-full">
             {sponsor.address && (
-              <div className="flex flex-col items-center space-y-3">
-                <Building2 className="text-blue-400 h-6 w-6" />
-                <p translate="no" className="text-lg font-bold opacity-70 uppercase tracking-tight">{sponsor.address}</p>
+              <div className="flex flex-col items-center space-y-2">
+                <Building2 className="text-blue-400 h-5 w-5" />
+                <p translate="no" className="text-base font-bold opacity-70 uppercase tracking-tight">{sponsor.address}</p>
               </div>
             )}
             {sponsor.phone && (
-              <div className="flex flex-col items-center space-y-3">
-                <Phone className="text-blue-400 h-6 w-6" />
-                <p translate="no" className="text-2xl font-black text-blue-400 tracking-wider italic">{sponsor.phone}</p>
+              <div className="flex flex-col items-center space-y-2">
+                <Phone className="text-blue-400 h-5 w-5" />
+                <p translate="no" className="text-3xl font-black text-blue-400 tracking-wider italic">{sponsor.phone}</p>
               </div>
             )}
           </div>
         </motion.div>
-      </AnimatePresence>
+      </div>
 
       {/* Showcase step indicators */}
       <div className="absolute bottom-12 flex gap-3">
@@ -312,13 +326,16 @@ const SponsorsShowcase = ({ settings, unitName }: { settings: RankSettings, unit
 };
 
 function App() {
+  const [isSmartTV, setIsSmartTV] = useState(false);
+
   useEffect(() => {
     // Smart TV Detection Logic
     const ua = navigator.userAgent.toLowerCase();
-    const isSmartTV = /webos|smarttv|tizen|viera|bravia/.test(ua);
+    const isSmartTVDetected = /webos|smarttv|tizen|viera|bravia/.test(ua);
 
-    if (isSmartTV) {
+    if (isSmartTVDetected) {
       document.body.classList.add('is-smart-tv');
+      setIsSmartTV(true);
     }
   }, []);
 
@@ -326,6 +343,33 @@ function App() {
   const [settings, setSettings] = useState<RankSettings | null>(null);
   const [currentGradeIndex, setCurrentGradeIndex] = useState(0);
   const [unitName, setUnitName] = useState("Unidade...");
+  const [scaleFactor, setScaleFactor] = useState(1);
+  const [showcaseScale, setShowcaseScale] = useState(1);
+
+  // Dynamic Scaling Hook for Zoom/Resize Protection
+  useEffect(() => {
+    const handleResize = () => {
+      const h = window.innerHeight;
+      // Cards Scale: Header(112) + Footer(112) + Buffer(120) = 344px reserved
+      // Base Height adjusted to ensure fit
+      const availableForCards = h - 260;
+      const computedCardScale = Math.min(1.1, Math.max(0.5, availableForCards / 550));
+      setScaleFactor(computedCardScale);
+
+      // Showcase Scale: Padding(128) + Buffer(80) = 208px reserved
+      const availableForShowcase = h - 220;
+      const computedShowcaseScale = Math.min(1, Math.max(0.5, availableForShowcase / 850));
+      setShowcaseScale(computedShowcaseScale);
+    };
+
+    // Run immediately and on resize
+    handleResize();
+    window.addEventListener('resize', handleResize);
+
+    // Optimization: Debounce not strictly needed for simple transform, 
+    // but ensures TV doesn't run this often (TVs don't resize)
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Get unit from URL (supports path like /zn or query ?u=zn)
   const path = window.location.pathname.replace('/', '').toLowerCase();
@@ -426,7 +470,17 @@ function App() {
   const isLoading = !settings || !settings.isEnabled || grades.length === 0;
 
   return (
-    <div className="h-screen w-screen bg-[#f8fafc] text-slate-900 flex flex-col overflow-hidden relative">
+    <div className={twMerge(
+      "h-screen w-full bg-slate-50 flex flex-col relative overflow-hidden",
+      isSmartTV && "bg-[#f8fafc]" // Slightly lighter background for TVs to compensate for lack of blurs
+    )}>
+      {!isSmartTV && (
+        <>
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-100/50 blur-[150px] rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-yellow-100/30 blur-[150px] rounded-full translate-y-1/2 -translate-x-1/2" />
+        </>
+      )}
+
       <AnimatePresence mode="wait">
         {isLoading ? (
           <motion.div
@@ -483,38 +537,40 @@ function App() {
       </AnimatePresence>
 
       <AnimatePresence mode="wait">
-        {isShowcaseStep && settings && (
-          <SponsorsShowcase settings={settings} unitName={unitName} />
+        {isShowcaseStep && (
+          <SponsorsShowcase
+            settings={settings}
+            unitName={unitName}
+            scale={showcaseScale}
+          />
         )}
       </AnimatePresence>
 
-      {/* Decorative Background Elements */}
-      <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-blue-600/5 blur-[120px] rounded-full -mr-40 -mt-40" />
-      <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-sky-600/5 blur-[100px] rounded-full -ml-20 -mb-20" />
-
       {/* Header */}
-      <header className="h-28 px-12 flex items-center justify-between bg-white border-b border-slate-100 shadow-sm z-20">
-        <div className="flex items-center space-x-6">
-          <img
-            src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"
-            alt="Logo"
-            className="h-12"
-          />
-          <div className="w-px h-10 bg-slate-100" />
-          <div>
-            <h1 translate="no" className="text-3xl font-black tracking-tighter uppercase leading-none text-[#001c3d]">RANKING EXPANSIVO</h1>
-            <p translate="no" className="text-sm font-bold text-blue-600 tracking-[0.2em] uppercase mt-1">{unitName}</p>
+      <header className="h-28 bg-white border-b border-slate-100 shadow-sm z-20 flex-shrink-0">
+        <div className="max-w-[1440px] mx-auto w-full h-full px-12 md:px-20 flex items-center justify-between">
+          <div className="flex items-center space-x-6">
+            <img
+              src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"
+              alt="Logo"
+              className="h-12"
+            />
+            <div className="w-px h-10 bg-slate-100" />
+            <div>
+              <h1 translate="no" className="text-3xl font-black tracking-tighter uppercase leading-none text-[#001c3d]">RANKING EXPANSIVO</h1>
+              <p translate="no" className="text-sm font-bold text-blue-600 tracking-[0.2em] uppercase mt-1">{unitName}</p>
+            </div>
           </div>
-        </div>
 
-        <div className="flex items-center space-x-6">
-          <div className="text-right">
-            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Série em destaque</p>
-            <div className="h-1.5 w-16 bg-blue-600 ml-auto mt-1 rounded-full" />
+          <div className="flex items-center space-x-6">
+            <div className="text-right">
+              <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none">Série em destaque</p>
+              <div className="h-1.5 w-16 bg-blue-600 ml-auto mt-1.5 rounded-full" />
+            </div>
+            <h2 translate="no" className="text-4xl font-black text-[#001c3d] uppercase tracking-tighter ml-2 whitespace-nowrap">
+              {currentGrade || 'Patrocinadores'}
+            </h2>
           </div>
-          <h2 translate="no" className="text-5xl font-black text-[#001c3d] uppercase tracking-tighter ml-2">
-            {currentGrade || 'Patrocinadores'}
-          </h2>
         </div>
       </header>
 
@@ -539,7 +595,7 @@ function App() {
             <p className="text-slate-300 font-bold uppercase tracking-[0.3em] text-[10px]">Aguardando sincronização...</p>
           </div>
         ) : (
-          <div className="w-full h-full flex items-center justify-center max-w-[1600px]">
+          <div className="w-full h-full flex items-center justify-center max-w-[1440px]">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentGrade}
@@ -549,15 +605,21 @@ function App() {
                 className="flex items-center justify-center gap-10 w-full"
               >
                 {/* Score Cards Container */}
-                <div className="flex items-end space-x-8">
+                <div
+                  className="flex items-end space-x-8"
+                  style={{
+                    transform: `scale(${scaleFactor})`,
+                    transformOrigin: 'center center'
+                  }}
+                >
                   {/* 2nd Place */}
-                  {ranks[currentGrade]?.[1] && <RankCard student={ranks[currentGrade][1]} index={1} />}
+                  {ranks[currentGrade]?.[1] && <RankCard student={ranks[currentGrade][1]} index={1} isSmartTV={isSmartTV} />}
 
                   {/* 1st Place */}
-                  {ranks[currentGrade]?.[0] && <RankCard student={ranks[currentGrade][0]} index={0} />}
+                  {ranks[currentGrade]?.[0] && <RankCard student={ranks[currentGrade][0]} index={0} isSmartTV={isSmartTV} />}
 
                   {/* 3rd Place */}
-                  {ranks[currentGrade]?.[2] && <RankCard student={ranks[currentGrade][2]} index={2} />}
+                  {ranks[currentGrade]?.[2] && <RankCard student={ranks[currentGrade][2]} index={2} isSmartTV={isSmartTV} />}
                 </div>
 
                 {/* Vertical Awards Legend */}
@@ -568,71 +630,73 @@ function App() {
         )}
       </main>
 
-      <footer className="h-36 px-16 flex items-center justify-between bg-[#001c3d] border-t border-white/5 z-20">
-        <div className="flex items-center space-x-6">
-          <div className="flex items-center space-x-3 px-5 py-2.5 bg-blue-600/20 border border-blue-500/30 rounded-full">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-            <span className="text-xs font-black text-blue-400 uppercase tracking-widest italic">ATUALIZAÇÃO EM TEMPO REAL</span>
+      <footer className="h-28 bg-[#001c3d] border-t border-white/5 z-20 flex-shrink-0">
+        <div className="max-w-[1440px] mx-auto w-full h-full px-12 md:px-20 flex items-center justify-between">
+          <div className="flex items-center space-x-6">
+            <div className="flex items-center space-x-3 px-5 py-2.5 bg-blue-600/20 border border-blue-500/30 rounded-full">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+              <span className="text-xs font-black text-blue-400 uppercase tracking-widest italic">ATUALIZAÇÃO EM TEMPO REAL</span>
+            </div>
+            <p className="text-xs text-white/50 font-bold max-w-sm uppercase leading-relaxed italic">
+              Participação exclusiva para alunos do Ensino Fundamental II e Médio.
+            </p>
           </div>
-          <p className="text-xs text-white/50 font-bold max-w-sm uppercase leading-relaxed italic">
-            Participação exclusiva para alunos do Ensino Fundamental II e Médio.
-          </p>
+
+          <motion.div
+            key={currentGradeConfig?.sponsorName || settings?.sponsorName || 'default'}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center space-x-8"
+          >
+            {(() => {
+              const isValid = (val?: string) => {
+                if (!val) return false;
+                const v = val.trim().toUpperCase();
+                return v !== '' && v !== 'GIZ' && v !== 'APOIO INSTITUCIONAL';
+              };
+
+              const partnerName = isValid(currentGradeConfig?.sponsorName) ? currentGradeConfig?.sponsorName : (isValid(settings?.sponsorName) ? settings?.sponsorName : null);
+              const partnerInfo = isValid(currentGradeConfig?.sponsorInfo) ? currentGradeConfig?.sponsorInfo : (isValid(settings?.sponsorInfo) ? settings?.sponsorInfo : null);
+              const partnerLogo = currentGradeConfig?.sponsorLogoUrl || settings?.sponsorLogoUrl;
+
+              return (
+                <>
+                  <div className="text-right">
+                    <p className="text-xs text-blue-400 font-black tracking-[0.2em] uppercase mb-2">PARCEIRO</p>
+                    {partnerName && (
+                      <p translate="no" className="text-2xl font-black text-white tracking-tighter leading-none uppercase">
+                        {partnerName}
+                      </p>
+                    )}
+                    {partnerInfo && (
+                      <p translate="no" className="text-[10px] text-white/40 font-black uppercase mt-1">
+                        {partnerInfo}
+                      </p>
+                    )}
+                  </div>
+                  <div className="px-8 py-4 bg-white rounded-[2rem] border border-white/10 shadow-xl flex items-center justify-center min-w-[180px] max-h-[90px]">
+                    {partnerLogo ? (
+                      <img
+                        src={partnerLogo}
+                        alt="Partner"
+                        className="h-12 object-contain"
+                        crossOrigin="anonymous"
+                        loading="eager"
+                        onError={(e) => {
+                          console.log("Failed to load footer partner logo");
+                          e.currentTarget.src = "https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"; // Fallback to school logo
+                          e.currentTarget.style.opacity = "0.2";
+                        }}
+                      />
+                    ) : (
+                      <Globe className="text-slate-200 h-8 w-8 opacity-20" />
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+          </motion.div>
         </div>
-
-        <motion.div
-          key={currentGradeConfig?.sponsorName || settings?.sponsorName || 'default'}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="flex items-center gap-8"
-        >
-          {(() => {
-            const isValid = (val?: string) => {
-              if (!val) return false;
-              const v = val.trim().toUpperCase();
-              return v !== '' && v !== 'GIZ' && v !== 'APOIO INSTITUCIONAL';
-            };
-
-            const partnerName = isValid(currentGradeConfig?.sponsorName) ? currentGradeConfig?.sponsorName : (isValid(settings?.sponsorName) ? settings?.sponsorName : null);
-            const partnerInfo = isValid(currentGradeConfig?.sponsorInfo) ? currentGradeConfig?.sponsorInfo : (isValid(settings?.sponsorInfo) ? settings?.sponsorInfo : null);
-            const partnerLogo = currentGradeConfig?.sponsorLogoUrl || settings?.sponsorLogoUrl;
-
-            return (
-              <>
-                <div className="text-right">
-                  <p className="text-xs text-blue-400 font-black tracking-[0.2em] uppercase mb-2">PARCEIRO</p>
-                  {partnerName && (
-                    <p translate="no" className="text-3xl font-black text-white tracking-tighter leading-none uppercase">
-                      {partnerName}
-                    </p>
-                  )}
-                  {partnerInfo && (
-                    <p translate="no" className="text-[10px] text-white/40 font-black uppercase mt-1">
-                      {partnerInfo}
-                    </p>
-                  )}
-                </div>
-                <div className="px-10 py-6 bg-white rounded-[2rem] border border-white/10 shadow-xl flex items-center justify-center min-w-[200px] max-h-[100px]">
-                  {partnerLogo ? (
-                    <img
-                      src={partnerLogo}
-                      alt="Partner"
-                      className="h-16 object-contain"
-                      crossOrigin="anonymous"
-                      loading="eager"
-                      onError={(e) => {
-                        console.log("Failed to load footer partner logo");
-                        e.currentTarget.src = "https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"; // Fallback to school logo
-                        e.currentTarget.style.opacity = "0.2";
-                      }}
-                    />
-                  ) : (
-                    <Globe className="text-slate-200 h-10 w-10 opacity-20" />
-                  )}
-                </div>
-              </>
-            );
-          })()}
-        </motion.div>
       </footer>
     </div>
   );
