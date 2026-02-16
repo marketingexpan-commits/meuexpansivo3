@@ -51,8 +51,9 @@ const RankCard = ({ student, index }: { student: StudentRank, index: number }) =
       exit={{ opacity: 0, scale: 0.9 }}
       transition={{ delay: index * 0.2, duration: 0.5, type: "spring" }}
       className={twMerge(
-        "bg-white p-5 flex flex-col items-center gap-3 relative shadow-xl rounded-[2rem] border border-slate-100 w-full max-w-[300px]",
-        student.rankPosition === 1 ? "ring-4 ring-yellow-400 scale-110 z-10" : ""
+        "bg-white p-5 flex flex-col items-center gap-3 relative shadow-xl rounded-[2rem] border border-slate-100 w-full max-w-[300px] transition-all duration-500",
+        student.rankPosition === 1 ? "transform scale-125 z-20 ring-4 ring-yellow-400" :
+          student.rankPosition === 2 ? "transform scale-100 z-10" : "transform scale-100 z-10"
       )}
     >
       {/* Rank Icon */}
