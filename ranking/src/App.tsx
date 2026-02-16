@@ -47,13 +47,20 @@ const RankCard = ({ student, index }: { student: StudentRank, index: number }) =
   return (
     <motion.div
       initial={{ opacity: 0, y: 50, scale: 0.9 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
+      animate={{
+        opacity: 1,
+        y: 0,
+        scale: student.rankPosition === 1 ? 1.04 : 1.0
+      }}
       exit={{ opacity: 0, scale: 0.9 }}
       transition={{ delay: index * 0.2, duration: 0.5, type: "spring" }}
+      style={{
+        zIndex: student.rankPosition === 1 ? 30 : 10,
+        opacity: student.rankPosition === 1 ? 1 : 0.9
+      }}
       className={twMerge(
-        "bg-white p-5 flex flex-col items-center gap-3 relative shadow-xl rounded-[2rem] border border-slate-100 w-full max-w-[300px] transition-all duration-500",
-        student.rankPosition === 1 ? "transform scale-125 z-20 ring-4 ring-yellow-400" :
-          student.rankPosition === 2 ? "transform scale-100 z-10" : "transform scale-100 z-10"
+        "bg-white p-5 flex flex-col items-center gap-3 relative shadow-xl rounded-[2rem] border border-slate-100 w-full max-w-[300px]",
+        student.rankPosition === 1 ? "ring-4 ring-yellow-400" : ""
       )}
     >
       {/* Rank Icon */}
@@ -488,13 +495,13 @@ function App() {
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentGrade}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex items-center justify-center gap-12 w-full"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="flex items-center justify-center gap-10 w-full"
               >
                 {/* Score Cards Container */}
-                <div className="flex items-end gap-12">
+                <div className="flex items-end gap-8">
                   {/* 2nd Place */}
                   {ranks[currentGrade]?.[1] && <RankCard student={ranks[currentGrade][1]} index={1} />}
 
