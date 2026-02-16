@@ -54,7 +54,7 @@ const RankCard = ({ student, index, isSmartTV }: { student: StudentRank, index: 
       }}
       exit={{ opacity: 0, scale: 0.9 }}
       transition={{
-        delay: index * 0.4,
+        delay: index * 0.3, // Standardized delay for both TV and Desktop
         duration: 0.8,
         type: isSmartTV ? "tween" : "spring",
         ease: "easeOut"
@@ -218,7 +218,7 @@ const SponsorsShowcase = ({ settings, unitName, scale }: { settings: RankSetting
     if (allSponsors.length <= 1) return;
     const interval = setInterval(() => {
       setCurrentIndex(prev => (prev + 1) % allSponsors.length);
-    }, 8000); // 8 seconds per sponsor in showcase
+    }, 5000); // 5 seconds per sponsor in showcase
     return () => clearInterval(interval);
   }, [allSponsors.length]);
 
@@ -353,7 +353,7 @@ function App() {
       // Cards Scale: Header(112) + Footer(112) + Buffer(120) = 344px reserved
       // Base Height adjusted to ensure fit
       const availableForCards = h - 260;
-      const computedCardScale = Math.min(1.1, Math.max(0.5, availableForCards / 550));
+      const computedCardScale = Math.min(1.15, Math.max(0.5, availableForCards / 525));
       setScaleFactor(computedCardScale);
 
       // Showcase Scale: Padding(128) + Buffer(80) = 208px reserved
@@ -412,6 +412,42 @@ function App() {
     return false;
   }, [settings]);
 
+  // Count sponsors to determine duration
+  const sponsorsCount = useMemo(() => {
+    if (!settings) return 0;
+
+    const isValidPartner = (name?: string, phone?: string, address?: string) => {
+      if (!name) return false;
+      const n = name.toUpperCase();
+      if (n === 'APOIO INSTITUCIONAL' || n === 'GIZ' || n === '') return !!(phone || address);
+      return true;
+    };
+
+    const seenNames = new Set<string>();
+    let count = 0;
+
+    // Unit sponsor
+    if (isValidPartner(settings.sponsorName, settings.sponsorPhone, settings.sponsorAddress)) {
+      const name = (settings.sponsorName || 'Parceiro Escola').toLowerCase();
+      seenNames.add(name);
+      count++;
+    }
+
+    // Grade sponsors
+    if (settings.gradeConfigs) {
+      Object.values(settings.gradeConfigs).forEach(config => {
+        if (isValidPartner(config.sponsorName, config.sponsorPhone, config.sponsorAddress)) {
+          const name = (config.sponsorName || 'Parceiro Escola').toLowerCase();
+          if (!seenNames.has(name)) {
+            seenNames.add(name);
+            count++;
+          }
+        }
+      });
+    }
+    return count;
+  }, [settings]);
+
   const totalSteps = grades.length + (settings?.isEnabled && settings.showcaseEnabled && hasSponsors ? 1 : 0);
   const isShowcaseStep = currentGradeIndex === grades.length && settings?.showcaseEnabled;
 
@@ -462,7 +498,7 @@ function App() {
 
     const interval = setInterval(() => {
       setCurrentGradeIndex((prev) => (prev + 1) % totalSteps);
-    }, isShowcaseStep ? 30000 : 15000); // More time for showcase
+    }, isShowcaseStep ? Math.max(5000, sponsorsCount * 5000) : 25000); // Dynamic: 5s per sponsor (min 5s), 25s per grade
 
     return () => clearInterval(interval);
   }, [totalSteps, isShowcaseStep]);
