@@ -54,7 +54,7 @@ const RankCard = ({ student, index, isSmartTV }: { student: StudentRank, index: 
       }}
       exit={{ opacity: 0, scale: 0.9 }}
       transition={{
-        delay: index * 0.3, // Standardized delay for both TV and Desktop
+        delay: index * (isSmartTV ? 0.5 : 0.3), // Compromise: 0.5s for TV (enough for old models, not too slow for new ones)
         duration: 0.8,
         type: isSmartTV ? "tween" : "spring",
         ease: "easeOut"
