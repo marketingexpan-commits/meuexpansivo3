@@ -25,7 +25,7 @@ const AwardsLegend = ({ config }: { config?: GradeConfig }) => {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
-      className="flex flex-col gap-8 ml-12 py-8 border-l-4 border-yellow-400/20 pl-10 max-w-[300px]"
+      className="flex flex-col space-y-8 ml-12 py-8 border-l-4 border-yellow-400/20 pl-10 max-w-[300px]"
     >
       <div className="space-y-1">
         <p className="text-[10px] font-black text-yellow-600 uppercase tracking-[0.2em]">1º Lugar - Prêmio</p>
@@ -56,10 +56,12 @@ const RankCard = ({ student, index }: { student: StudentRank, index: number }) =
       transition={{ delay: index * 0.2, duration: 0.5, type: "spring" }}
       style={{
         zIndex: student.rankPosition === 1 ? 30 : 10,
-        opacity: student.rankPosition === 1 ? 1 : 0.9
+        opacity: student.rankPosition === 1 ? 1 : 0.9,
+        transform: `scale(min(1, (100vh - 220px) / 620))`,
+        transformOrigin: 'top center'
       }}
       className={twMerge(
-        "bg-white p-5 flex flex-col items-center gap-3 relative shadow-xl rounded-[2rem] border border-slate-100 w-full max-w-[300px]",
+        "bg-white p-4 flex flex-col items-center relative shadow-xl rounded-[2rem] border border-slate-100 w-full max-w-[240px]",
         student.rankPosition === 1 ? "ring-4 ring-yellow-400" : ""
       )}
     >
@@ -99,22 +101,22 @@ const RankCard = ({ student, index }: { student: StudentRank, index: number }) =
       </div>
 
       {/* Details */}
-      <div className="text-center mt-8 space-y-1">
-        <h3 translate="no" className="text-xl font-black text-slate-900 leading-tight uppercase tracking-tighter" style={{ fontSize: student.name.length > 15 ? '1.25rem' : '1.5rem' }}>
+      <div className="text-center mt-6 space-y-1">
+        <h3 translate="no" className="text-lg font-black text-slate-900 leading-tight uppercase tracking-tighter" style={{ fontSize: student.name.length > 15 ? '1.1rem' : '1.25rem' }}>
           {student.name.split(' ').slice(0, 2).join(' ')}
         </h3>
-        <div className="flex flex-col items-center gap-0.5 text-slate-500 font-bold uppercase tracking-wider text-xs">
-          <span className="text-blue-600">{student.gradeLevel}</span>
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col items-center space-y-0 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+          <span className="text-blue-600 leading-none">{student.gradeLevel}</span>
+          <div className="flex items-center space-x-1 auto-cols-min leading-none mt-0.5">
             <span>TURMA {student.schoolClass}</span>
-            <span className="opacity-30">•</span>
+            <span className="opacity-30 mx-0.5">•</span>
             <span>{student.shift === 'shift_morning' ? 'MATUTINO' : 'VESPERTINO'}</span>
           </div>
         </div>
       </div>
 
       {/* Scores */}
-      <div className="flex items-center justify-center gap-5 w-full mt-6 pt-6 border-t border-slate-100">
+      <div className="flex items-center justify-center space-x-5 w-full mt-2 pt-3 border-t border-slate-100">
         <div className="text-center">
           <p className="text-[10px] text-slate-400 uppercase font-black tracking-tighter">Nota</p>
           <p className="text-xl font-black text-blue-600">{student.avgGrade.toFixed(1)}</p>
@@ -140,6 +142,15 @@ const RankCard = ({ student, index }: { student: StudentRank, index: number }) =
         body.is-smart-tv * {
           font-family: 'Inter', sans-serif !important;
         }
+        /* Fix for legacy WebOS space utilities */
+        .flex.space-x-6 > * + * { margin-left: 1.5rem; }
+        .flex.space-x-5 > * + * { margin-left: 1.25rem; }
+        .flex.space-x-3 > * + * { margin-left: 0.75rem; }
+        .flex.space-x-2 > * + * { margin-left: 0.5rem; }
+        .flex.flex-col.space-y-8 > * + * { margin-top: 2rem; }
+        /* Removido o space-y-3 que causava conflito nos cartões */
+        .flex.flex-col.space-y-1 > * + * { margin-top: 0.25rem; }
+        .flex.flex-col.space-y-0.5 > * + * { margin-top: 0.125rem; }
       `}</style>
     </motion.div >
   );
@@ -216,7 +227,7 @@ const SponsorsShowcase = ({ settings, unitName }: { settings: RankSettings, unit
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-blue-600/10 blur-[150px] rounded-full" />
 
       {/* Header Logo & Unit (Matching main design) */}
-      <div className="absolute top-12 left-12 z-20 flex items-center gap-6">
+      <div className="absolute top-12 left-12 z-20 flex items-center space-x-6">
         <img
           src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"
           alt="Logo"
@@ -242,7 +253,21 @@ const SponsorsShowcase = ({ settings, unitName }: { settings: RankSettings, unit
 
           <div className="bg-white p-12 rounded-[3rem] shadow-2xl mb-12 flex items-center justify-center min-w-[300px] min-h-[300px]">
             {sponsor.logo ? (
-              <img src={sponsor.logo} alt={sponsor.name} className="h-40 object-contain" />
+              <img
+                src={sponsor.logo}
+                alt={sponsor.name}
+                className="h-40 object-contain"
+                crossOrigin="anonymous"
+                loading="eager"
+                onError={(e) => {
+                  console.log(`Failed to load showcase logo for ${sponsor.name}`);
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.parentElement?.classList.add('flex-col');
+                  const fallback = document.createElement('div');
+                  fallback.innerHTML = `<span class="text-slate-400 font-bold">LOGOTIPO</span>`;
+                  e.currentTarget.parentElement?.appendChild(fallback);
+                }}
+              />
             ) : (
               <Globe className="text-slate-200 h-24 w-24 opacity-20" />
             )}
@@ -256,15 +281,15 @@ const SponsorsShowcase = ({ settings, unitName }: { settings: RankSettings, unit
             </p>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mt-10 w-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 space-y-10 md:space-y-0 md:space-x-10 mt-10 w-full">
             {sponsor.address && (
-              <div className="flex flex-col items-center gap-3">
+              <div className="flex flex-col items-center space-y-3">
                 <Building2 className="text-blue-400 h-6 w-6" />
                 <p translate="no" className="text-lg font-bold opacity-70 uppercase tracking-tight">{sponsor.address}</p>
               </div>
             )}
             {sponsor.phone && (
-              <div className="flex flex-col items-center gap-3">
+              <div className="flex flex-col items-center space-y-3">
                 <Phone className="text-blue-400 h-6 w-6" />
                 <p translate="no" className="text-2xl font-black text-blue-400 tracking-wider italic">{sponsor.phone}</p>
               </div>
@@ -469,7 +494,7 @@ function App() {
 
       {/* Header */}
       <header className="h-28 px-12 flex items-center justify-between bg-white border-b border-slate-100 shadow-sm z-20">
-        <div className="flex items-center gap-6">
+        <div className="flex items-center space-x-6">
           <img
             src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"
             alt="Logo"
@@ -482,7 +507,7 @@ function App() {
           </div>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center space-x-6">
           <div className="text-right">
             <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Série em destaque</p>
             <div className="h-1.5 w-16 bg-blue-600 ml-auto mt-1 rounded-full" />
@@ -524,7 +549,7 @@ function App() {
                 className="flex items-center justify-center gap-10 w-full"
               >
                 {/* Score Cards Container */}
-                <div className="flex items-end gap-8">
+                <div className="flex items-end space-x-8">
                   {/* 2nd Place */}
                   {ranks[currentGrade]?.[1] && <RankCard student={ranks[currentGrade][1]} index={1} />}
 
@@ -544,8 +569,8 @@ function App() {
       </main>
 
       <footer className="h-36 px-16 flex items-center justify-between bg-[#001c3d] border-t border-white/5 z-20">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3 px-5 py-2.5 bg-blue-600/20 border border-blue-500/30 rounded-full">
+        <div className="flex items-center space-x-6">
+          <div className="flex items-center space-x-3 px-5 py-2.5 bg-blue-600/20 border border-blue-500/30 rounded-full">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
             <span className="text-xs font-black text-blue-400 uppercase tracking-widest italic">ATUALIZAÇÃO EM TEMPO REAL</span>
           </div>
@@ -588,7 +613,18 @@ function App() {
                 </div>
                 <div className="px-10 py-6 bg-white rounded-[2rem] border border-white/10 shadow-xl flex items-center justify-center min-w-[200px] max-h-[100px]">
                   {partnerLogo ? (
-                    <img src={partnerLogo} alt="Partner" className="h-16 object-contain" />
+                    <img
+                      src={partnerLogo}
+                      alt="Partner"
+                      className="h-16 object-contain"
+                      crossOrigin="anonymous"
+                      loading="eager"
+                      onError={(e) => {
+                        console.log("Failed to load footer partner logo");
+                        e.currentTarget.src = "https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"; // Fallback to school logo
+                        e.currentTarget.style.opacity = "0.2";
+                      }}
+                    />
                   ) : (
                     <Globe className="text-slate-200 h-10 w-10 opacity-20" />
                   )}
