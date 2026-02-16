@@ -46,7 +46,7 @@ const AwardsLegend = ({ config }: { config?: GradeConfig }) => {
 const RankCard = ({ student, index, isSmartTV }: { student: StudentRank, index: number, isSmartTV: boolean }) => {
   const is1st = student.rankPosition === 1;
   const targetScale = is1st ? 1.04 : 1.0;
-  const tvDelay = index * 0.7; // Generous 0.7s delay for TV sequence
+  const tvDelay = 0.5 + index * 1.0; // Clearer "step" sequence for TV (0.5s start, 1.0s intervals)
 
   return (
     <motion.div
