@@ -44,28 +44,39 @@ const AwardsLegend = ({ config }: { config?: GradeConfig }) => {
 };
 
 const RankCard = ({ student, index, isSmartTV }: { student: StudentRank, index: number, isSmartTV: boolean }) => {
+  const is1st = student.rankPosition === 1;
+  const targetScale = is1st ? 1.04 : 1.0;
+  const tvDelay = index * 0.7; // Generous 0.7s delay for TV sequence
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 50, scale: 0.9 }}
-      animate={{
-        opacity: student.rankPosition === 1 ? 1 : 0.9,
-        y: 0,
-        scale: student.rankPosition === 1 ? 1.04 : 1.0
-      }}
+      {...(!isSmartTV ? {
+        initial: { opacity: 0, y: 50, scale: 0.9 },
+        animate: {
+          opacity: is1st ? 1 : 0.9,
+          y: 0,
+          scale: targetScale
+        },
+        transition: {
+          delay: index * 0.3,
+          duration: 0.8,
+          type: "spring",
+          ease: "easeOut"
+        }
+      } : {})}
       exit={{ opacity: 0, scale: 0.9 }}
-      transition={{
-        delay: index * (isSmartTV ? 0.5 : 0.3), // Compromise: 0.5s for TV (enough for old models, not too slow for new ones)
-        duration: 0.8,
-        type: isSmartTV ? "tween" : "spring",
-        ease: "easeOut"
-      }}
       style={{
-        zIndex: student.rankPosition === 1 ? 30 : 10,
-        transformOrigin: 'center center'
-      }}
+        zIndex: is1st ? 30 : 10,
+        transformOrigin: 'center center',
+        ...(isSmartTV ? {
+          opacity: 0,
+          animation: `tvCardEntrance 0.8s ease-out ${tvDelay}s forwards`,
+          '--target-scale': targetScale
+        } : {})
+      } as any}
       className={twMerge(
-        "bg-white p-4 flex flex-col items-center relative shadow-xl rounded-[2rem] border border-slate-100 w-full max-w-[240px] opacity-0",
-        student.rankPosition === 1 ? "ring-4 ring-yellow-400" : ""
+        "bg-white p-4 flex flex-col items-center relative shadow-xl rounded-[2rem] border border-slate-100 w-full max-w-[240px]",
+        is1st ? "ring-4 ring-yellow-400" : ""
       )}
     >
       {/* Rank Icon */}
@@ -136,31 +147,7 @@ const RankCard = ({ student, index, isSmartTV }: { student: StudentRank, index: 
         </div>
       </div>
 
-      {/* Scoped CSS for Smart TV */}
-      <style>{`
-        body.is-smart-tv {
-          font-family: 'Inter', sans-serif !important;
-          background-color: #001c3d !important;
-        }
-        body.is-smart-tv * {
-          font-family: 'Inter', sans-serif !important;
-          backdrop-filter: none !important;
-          -webkit-backdrop-filter: none !important;
-        }
-        body.is-smart-tv .blur-[150px], 
-        body.is-smart-tv .blur-[100px] {
-          display: none !important;
-        }
-        /* Fix for legacy WebOS space utilities */
-        .flex.space-x-6 > * + * { margin-left: 1.5rem; }
-        .flex.space-x-5 > * + * { margin-left: 1.25rem; }
-        .flex.space-x-3 > * + * { margin-left: 0.75rem; }
-        .flex.space-x-2 > * + * { margin-left: 0.5rem; }
-        .flex.flex-col.space-y-8 > * + * { margin-top: 2rem; }
-        .flex.flex-col.space-y-1 > * + * { margin-top: 0.25rem; }
-        .flex.flex-col.space-y-0.5 > * + * { margin-top: 0.125rem; }
-      `}</style>
-    </motion.div >
+    </motion.div>
   );
 };
 
@@ -509,6 +496,42 @@ function App() {
       "h-screen w-full bg-slate-50 flex flex-col relative overflow-hidden",
       isSmartTV && "bg-[#f8fafc]" // Slightly lighter background for TVs to compensate for lack of blurs
     )}>
+      {/* Global CSS Overrides for Smart TV and Animation Fixes */}
+      <style>{`
+        body.is-smart-tv {
+          font-family: 'Inter', sans-serif !important;
+          background-color: #001c3d !important;
+        }
+        body.is-smart-tv * {
+          font-family: 'Inter', sans-serif !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+        }
+        body.is-smart-tv .blur-[150px], 
+        body.is-smart-tv .blur-[100px] {
+          display: none !important;
+        }
+        /* Fix for legacy WebOS space utilities */
+        .flex.space-x-6 > * + * { margin-left: 1.5rem; }
+        .flex.space-x-5 > * + * { margin-left: 1.25rem; }
+        .flex.space-x-3 > * + * { margin-left: 0.75rem; }
+        .flex.space-x-2 > * + * { margin-left: 0.5rem; }
+        .flex.flex-col.space-y-8 > * + * { margin-top: 2rem; }
+        .flex.flex-col.space-y-1 > * + * { margin-top: 0.25rem; }
+        .flex.flex-col.space-y-0.5 > * + * { margin-top: 0.125rem; }
+
+        /* Hardware Accelerated Sequential Entrance for Old TVs */
+        @keyframes tvCardEntrance {
+          0% { 
+            opacity: 0; 
+            transform: translateY(50px) scale(0.9);
+          }
+          100% { 
+            opacity: 1; 
+            transform: translateY(0) scale(var(--target-scale, 1));
+          }
+        }
+      `}</style>
       {!isSmartTV && (
         <>
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-100/50 blur-[150px] rounded-full -translate-y-1/2 translate-x-1/2" />
