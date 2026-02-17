@@ -703,9 +703,9 @@ function App() {
       <footer className="h-28 bg-[#001c3d] border-t border-white/5 z-20 flex-shrink-0">
         <div className="max-w-[1440px] mx-auto w-full h-full px-12 md:px-20 flex items-center justify-between">
           <div className="flex items-center space-x-6">
-            <div className="flex items-center space-x-3 px-5 py-2.5 bg-blue-600/20 border border-blue-500/30 rounded-full">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-              <span className="text-xs font-black text-blue-400 uppercase tracking-widest italic">ATUALIZAÇÃO EM TEMPO REAL</span>
+            <div className="flex items-center space-x-2 px-3 py-1.5 bg-blue-600/20 border border-blue-500/30 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_rgba(16,185,129,0.5)]" />
+              <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest italic leading-none">ATUALIZAÇÃO EM TEMPO REAL</span>
             </div>
             <div className="flex flex-col ml-4">
               <p className="text-[10px] text-blue-400 font-black tracking-widest uppercase mb-1">
