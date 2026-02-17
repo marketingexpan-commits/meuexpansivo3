@@ -1542,6 +1542,11 @@ body {
   color: rgb(66 32 6 / var(--tw-text-opacity, 1));
 }
 
+.antialiased {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 .opacity-20 {
   opacity: 0.2;
 }

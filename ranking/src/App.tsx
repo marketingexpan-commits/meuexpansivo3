@@ -513,11 +513,18 @@ function App() {
         body.is-smart-tv {
           font-family: 'Inter', sans-serif !important;
           background-color: #001c3d !important;
+          text-rendering: optimizeLegibility !important;
+          -webkit-font-smoothing: antialiased !important;
+          -moz-osx-font-smoothing: grayscale !important;
         }
         body.is-smart-tv * {
           font-family: 'Inter', sans-serif !important;
           backdrop-filter: none !important;
           -webkit-backdrop-filter: none !important;
+        }
+        body.is-smart-tv img {
+          image-rendering: -webkit-optimize-contrast !important;
+          image-rendering: crisp-edges !important;
         }
         body.is-smart-tv .blur-[150px], 
         body.is-smart-tv .blur-[100px] {
