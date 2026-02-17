@@ -75,7 +75,7 @@ const RankCard = ({ student, index, isSmartTV }: { student: StudentRank, index: 
         } : {})
       } as any}
       className={twMerge(
-        "bg-white p-4 flex flex-col items-center relative shadow-xl rounded-[2rem] border border-slate-100 w-full max-w-[240px]",
+        "bg-white p-4 flex flex-col items-center relative shadow-xl rounded-[2rem] border border-slate-100 w-full max-w-[265px] min-h-fit",
         is1st ? "ring-4 ring-yellow-400" : ""
       )}
     >
@@ -129,21 +129,33 @@ const RankCard = ({ student, index, isSmartTV }: { student: StudentRank, index: 
         </div>
       </div>
 
-      {/* Scores */}
-      <div className="flex items-center justify-center space-x-5 w-full mt-2 pt-3 border-t border-slate-100">
-        <div className="text-center">
-          <p className="text-[10px] text-slate-400 uppercase font-black tracking-tighter">Nota</p>
-          <p className="text-xl font-black text-blue-600">{student.avgGrade.toFixed(1)}</p>
+      {/* Scores Grid (4 Columns) */}
+      <div className="grid grid-cols-7 gap-0 w-full mt-4 pt-3 border-t border-slate-100 px-1">
+        <div className="col-span-1 text-center flex flex-col justify-end">
+          <p className="text-[7px] text-slate-400 uppercase font-bold leading-none tracking-tighter">Nota</p>
+          <p className="text-[7px] text-slate-400 uppercase font-bold leading-none tracking-tighter mb-0.5">Média</p>
+          <p className="text-sm font-black text-blue-600 leading-tight">{student.avgGrade.toFixed(1)}</p>
         </div>
-        <div className="w-px h-10 bg-slate-100" />
-        <div className="text-center">
-          <p className="text-[10px] text-slate-400 uppercase font-black tracking-tighter">Freq</p>
-          <p className="text-xl font-black text-[#001c3d]">{student.attendanceRate}%</p>
+        <div className="col-span-1 flex justify-center py-1">
+          <div className="w-[1px] h-full bg-slate-200" />
         </div>
-        <div className="w-px h-10 bg-slate-100" />
-        <div className="text-center">
-          <p className="text-[10px] text-slate-400 uppercase font-black tracking-tighter">Perf</p>
-          <p className="text-xl font-black text-orange-600">{student.totalScore.toFixed(0)}</p>
+        <div className="col-span-1 text-center flex flex-col justify-end">
+          <p className="text-[8px] text-slate-400 uppercase font-black tracking-tighter mb-0.5">Freq</p>
+          <p className="text-sm font-black text-[#001c3d] leading-tight">{student.attendanceRate.toFixed(0)}%</p>
+        </div>
+        <div className="col-span-1 flex justify-center py-1">
+          <div className="w-[1px] h-full bg-slate-200" />
+        </div>
+        <div className="col-span-1 text-center flex flex-col justify-end">
+          <p className="text-[8px] text-slate-400 uppercase font-black tracking-tighter mb-0.5">Comp</p>
+          <p className="text-sm font-black text-orange-600 leading-tight">{student.behaviorScore}</p>
+        </div>
+        <div className="col-span-1 flex justify-center py-1">
+          <div className="w-[1px] h-full bg-slate-200" />
+        </div>
+        <div className="col-span-1 text-center flex flex-col justify-end">
+          <p className="text-[8px] text-blue-600 uppercase font-black tracking-tighter mb-0.5">Pontos</p>
+          <p className="text-sm font-black text-blue-800 leading-tight">{student.totalScore.toFixed(1)}</p>
         </div>
       </div>
 
@@ -695,9 +707,14 @@ function App() {
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
               <span className="text-xs font-black text-blue-400 uppercase tracking-widest italic">ATUALIZAÇÃO EM TEMPO REAL</span>
             </div>
-            <p className="text-xs text-white/50 font-bold max-w-sm uppercase leading-relaxed italic">
-              Participação exclusiva para alunos do Ensino Fundamental II e Médio.
-            </p>
+            <div className="flex flex-col ml-4">
+              <p className="text-[10px] text-blue-400 font-black tracking-widest uppercase mb-1">
+                Composição dos Pontos
+              </p>
+              <p className="text-[11px] text-white/70 font-bold uppercase leading-tight italic">
+                60% Nota Média • 30% Frequência • 10% Comportamento <span className="text-white/30 mx-2">|</span> <span className="text-blue-400/80 text-[9px] tracking-normal">Desempate: Maior Nota Média</span>
+              </p>
+            </div>
           </div>
 
           <motion.div

@@ -154,13 +154,17 @@ export const rankService = {
                 groupedRanks[student.gradeLevel].push(rankItem);
             });
 
-            // Sort and take top 3
             Object.keys(groupedRanks).forEach(grade => {
                 groupedRanks[grade].sort((a, b) => {
+                    // 1. Primary: Total Score
                     if (Math.abs(b.totalScore - a.totalScore) > 0.001) {
                         return b.totalScore - a.totalScore;
                     }
-                    // Tie-breaker: Alphabetical Order
+                    // 2. Secondary: Academic Average (Média Geral)
+                    if (Math.abs(b.avgGrade - a.avgGrade) > 0.001) {
+                        return b.avgGrade - a.avgGrade;
+                    }
+                    // 3. Final: Alphabetical Order
                     return a.name.localeCompare(b.name);
                 });
                 groupedRanks[grade] = groupedRanks[grade].slice(0, 3).map((item, idx) => ({ ...item, rankPosition: idx + 1 }));
