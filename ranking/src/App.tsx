@@ -711,9 +711,14 @@ function App() {
               <p className="text-[10px] text-blue-400 font-black tracking-widest uppercase mb-1">
                 Composição dos Pontos
               </p>
-              <p className="text-[11px] text-white/70 font-bold uppercase leading-tight italic">
-                60% Nota Média • 30% Frequência • 10% Comportamento <span className="text-white/30 mx-2">|</span> <span className="text-blue-400/80 text-[9px] tracking-normal">Desempate: Maior Nota Média</span>
-              </p>
+              <div className="flex flex-col">
+                <p className="text-[11px] text-white/70 font-bold uppercase leading-tight italic">
+                  60% Nota Média • 30% Frequência • 10% Comportamento
+                </p>
+                <p className="text-[9px] text-blue-400/80 font-bold uppercase tracking-tight italic mt-0.5">
+                  Desempate: Maior Nota Média
+                </p>
+              </div>
             </div>
           </div>
 
