@@ -25,7 +25,12 @@ export function Professores() {
     const isAdminGeral = userUnit === 'admin_geral';
 
     // Filters
-    const [filterUnit, setFilterUnit] = useState(isAdminGeral ? '' : userUnit || '');
+    const [filterUnit, setFilterUnit] = useState(() => {
+        if (isAdminGeral) {
+            return localStorage.getItem('adminSelectedUnitCode') || '';
+        }
+        return userUnit || '';
+    });
     const [filterSubject, setFilterSubject] = useState('');
     const [filterGrade, setFilterGrade] = useState('');
 
@@ -43,6 +48,17 @@ export function Professores() {
 
     useEffect(() => {
         loadTeachers();
+
+        // Listen for global unit changes (Admin Geral context switch)
+        const handleUnitChange = () => {
+            if (isAdminGeral) {
+                const newUnit = localStorage.getItem('adminSelectedUnitCode') || '';
+                setFilterUnit(newUnit);
+            }
+        };
+
+        window.addEventListener('adminUnitChange', handleUnitChange);
+        return () => window.removeEventListener('adminUnitChange', handleUnitChange);
     }, []);
 
     const handleEdit = (teacher: Teacher) => {

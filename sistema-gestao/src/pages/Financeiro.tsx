@@ -468,6 +468,17 @@ export function Financeiro() {
 
     useEffect(() => {
         loadData();
+
+        // Listen for global unit changes (Admin Geral context switch)
+        const handleUnitChange = () => {
+            const userUnit = localStorage.getItem('userUnit');
+            if (userUnit === 'admin_geral') {
+                loadData();
+            }
+        };
+
+        window.addEventListener('adminUnitChange', handleUnitChange);
+        return () => window.removeEventListener('adminUnitChange', handleUnitChange);
     }, [filterStatus, filterMonth, selectedStudentId, activeTab]);
 
     const handleMarkAsPaid = async (id: string) => {

@@ -22,7 +22,12 @@ export function Porteiros() {
     const isAdminGeral = userUnit === 'admin_geral';
 
     // Filters
-    const [filterUnit, setFilterUnit] = useState(isAdminGeral ? '' : userUnit || '');
+    const [filterUnit, setFilterUnit] = useState(() => {
+        if (isAdminGeral) {
+            return localStorage.getItem('adminSelectedUnitCode') || '';
+        }
+        return userUnit || '';
+    });
 
     const loadGatekeepers = async () => {
         try {
@@ -38,6 +43,17 @@ export function Porteiros() {
 
     useEffect(() => {
         loadGatekeepers();
+
+        // Listen for global unit changes (Admin Geral context switch)
+        const handleUnitChange = () => {
+            if (isAdminGeral) {
+                const newUnit = localStorage.getItem('adminSelectedUnitCode') || '';
+                setFilterUnit(newUnit);
+            }
+        };
+
+        window.addEventListener('adminUnitChange', handleUnitChange);
+        return () => window.removeEventListener('adminUnitChange', handleUnitChange);
     }, []);
 
     const handleEdit = (gatekeeper: Gatekeeper) => {

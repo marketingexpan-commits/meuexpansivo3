@@ -42,7 +42,12 @@ export default function RankingConfig() {
     const userUnit = localStorage.getItem('userUnit') || 'unit_zn';
     const isAdminGeral = userUnit === 'admin_geral';
 
-    const [currentUnitId, setCurrentUnitId] = useState<string>(isAdminGeral ? (localStorage.getItem('rankAdminUnit') || 'unit_zn') : userUnit);
+    const [currentUnitId, setCurrentUnitId] = useState<string>(() => {
+        if (isAdminGeral) {
+            return localStorage.getItem('adminSelectedUnitCode') || localStorage.getItem('rankAdminUnit') || 'unit_zn';
+        }
+        return userUnit;
+    });
     const [settings, setSettings] = useState<RankSettings>({
         isEnabled: false,
         sponsorName: '',
@@ -60,6 +65,24 @@ export default function RankingConfig() {
         g.segmentId === ACADEMIC_SEGMENTS.FUND_2.id ||
         g.segmentId === ACADEMIC_SEGMENTS.MEDIO.id
     ).sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    useEffect(() => {
+        // Listen for global unit changes (Admin Geral context switch)
+        const handleUnitChange = () => {
+            if (isAdminGeral) {
+                const newUnit = localStorage.getItem('adminSelectedUnitCode');
+                if (newUnit) {
+                    setCurrentUnitId(newUnit);
+                }
+            }
+        };
+
+        window.addEventListener('adminUnitChange', handleUnitChange);
+
+        return () => {
+            window.removeEventListener('adminUnitChange', handleUnitChange);
+        };
+    }, []);
 
     useEffect(() => {
         setLoading(true);
@@ -199,10 +222,11 @@ export default function RankingConfig() {
 
                 <div className="flex items-center gap-3">
                     {isAdminGeral && (
-                        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
+                        <div className={`flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm transition-opacity ${localStorage.getItem('adminSelectedUnitCode') ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
                             <Building2 className="w-4 h-4 text-slate-400" />
                             <select
                                 value={currentUnitId}
+                                disabled={!!localStorage.getItem('adminSelectedUnitCode')}
                                 onChange={(e) => {
                                     setCurrentUnitId(e.target.value);
                                     localStorage.setItem('rankAdminUnit', e.target.value);
