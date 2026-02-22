@@ -21,20 +21,11 @@ export function CoordinatorForm({ onClose, coordinator }: CoordinatorFormProps) 
     const userUnit = localStorage.getItem('userUnit');
     const isAdminGeral = userUnit === 'admin_geral';
 
-    const unitMapping: Record<string, string> = {
-        'unit_zn': 'Zona Norte',
-        'unit_ext': 'Extremoz',
-        'unit_qui': 'Quintas',
-        'unit_bs': 'Boa Sorte'
-    };
-
-    const mappedUnit = (userUnit && !isAdminGeral) ? unitMapping[userUnit] : userUnit;
-
     const [formData, setFormData] = useState<Partial<UnitContact>>({
         name: '',
         phoneNumber: '55',
         email: '',
-        unit: (isAdminGeral ? '' : mappedUnit) as any,
+        unit: (isAdminGeral ? '' : userUnit) as any,
         segment: CoordinationSegment.GERAL,
         password: ''
     });
@@ -154,7 +145,7 @@ export function CoordinatorForm({ onClose, coordinator }: CoordinatorFormProps) 
                             name="unit"
                             value={formData.unit}
                             onChange={handleChange}
-                            options={isAdminGeral ? units.map(u => ({ label: u.fullName, value: u.id })) : units.filter(u => u.id === mappedUnit || u.fullName === mappedUnit).map(u => ({ label: u.fullName, value: u.id }))}
+                            options={isAdminGeral ? units.map(u => ({ label: u.fullName, value: u.id })) : units.filter(u => u.id === userUnit).map(u => ({ label: u.fullName, value: u.id }))}
                             startIcon={<GraduationCap className="w-4 h-4" />}
                             required
                             disabled={!isAdminGeral}
