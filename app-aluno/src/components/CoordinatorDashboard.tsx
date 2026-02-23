@@ -704,9 +704,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 const bKey = `bimester${quickBimesterFilter}` as keyof typeof g.bimesters;
                 const b = g.bimesters[bKey];
                 return b && (
-                    (b.isApproved !== true) ||
-                    (b.isNotaApproved !== true) ||
-                    (b.isRecuperacaoApproved !== true)
+                    (b.nota !== null && b.isNotaApproved !== true) ||
+                    (b.recuperacao !== null && b.isRecuperacaoApproved !== true)
                 );
             });
 
@@ -859,11 +858,10 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 if (gradeYear && gradeYear !== searchYear) return;
 
                 const hasPending = Object.values(grade.bimesters).some((b: any) =>
-                    // Check if explicitely NOT true (covers false, undefined, null)
-                    (b.isApproved !== true) ||
-                    (b.isNotaApproved !== true) ||
-                    (b.isRecuperacaoApproved !== true)
-                ) || (grade.recuperacaoFinalApproved !== true);
+                    // Only pending if there's a numerical grade (nota or recuperacao) not yet approved
+                    (b.nota !== null && b.isNotaApproved !== true) ||
+                    (b.recuperacao !== null && b.isRecuperacaoApproved !== true)
+                ) || (grade.recuperacaoFinal !== null && grade.recuperacaoFinalApproved !== true);
 
                 if (hasPending) {
                     if (!pendingMap[grade.studentId]) pendingMap[grade.studentId] = [];
