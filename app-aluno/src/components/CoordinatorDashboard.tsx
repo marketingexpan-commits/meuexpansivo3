@@ -18,6 +18,7 @@ import {
     ChevronRight,
     ClipboardList,
     User,
+    Check,
     CheckCircle2,
     Trash2,
     Filter,
@@ -53,13 +54,50 @@ import { ScheduleTimeline } from './ScheduleTimeline';
 
 // --- SUB-COMPONENT: LOST AND FOUND (COORDINATOR) ---
 const CoordinatorLostFoundView: React.FC<{ unit: SchoolUnit }> = ({ unit }) => {
-    const { items, loading: hookLoading, addItem, deliverItem, deleteItem, uploadPhoto } = useLostAndFound(unit);
+    const { items, loading: hookLoading, addItem, deliverItem, denyClaim, deleteItem, uploadPhoto } = useLostAndFound(unit);
     const [showAddForm, setShowAddForm] = useState(false);
     const [description, setDescription] = useState('');
     const [location, setLocation] = useState('');
     const [photo, setPhoto] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
     const [uploading, setUploading] = useState(false);
+
+    // NEW: Student Profiles Cache for Claimants
+    const [studentProfiles, setStudentProfiles] = useState<Record<string, Student>>({});
+
+    // Effect to fetch student profiles for claimed items
+    useEffect(() => {
+        const fetchStudentProfiles = async () => {
+            const uniqueClaimantIds = Array.from(new Set(
+                items
+                    .filter(item => item.status === 'claimed' && item.claimedByStudentId)
+                    .map(item => item.claimedByStudentId!)
+            ));
+
+            const missingIds = uniqueClaimantIds.filter(id => !studentProfiles[id]);
+            if (missingIds.length === 0) return;
+
+            const newProfiles: Record<string, Student> = {};
+            await Promise.all(missingIds.map(async (id) => {
+                try {
+                    const doc = await db.collection('students').doc(id).get();
+                    if (doc.exists) {
+                        newProfiles[id] = { id: doc.id, ...doc.data() } as Student;
+                    }
+                } catch (err) {
+                    console.error(`Error fetching student profile ${id}:`, err);
+                }
+            }));
+
+            if (Object.keys(newProfiles).length > 0) {
+                setStudentProfiles(prev => ({ ...prev, ...newProfiles }));
+            }
+        };
+
+        if (items.length > 0) {
+            fetchStudentProfiles();
+        }
+    }, [items]);
 
     const [dialogConfig, setDialogConfig] = useState<{
         isOpen: boolean;
@@ -145,6 +183,29 @@ const CoordinatorLostFoundView: React.FC<{ unit: SchoolUnit }> = ({ unit }) => {
                         type: 'alert',
                         title: 'Erro',
                         message: 'Não foi possível marcar o item como entregue.',
+                        variant: 'danger'
+                    });
+                }
+            }
+        });
+    };
+
+    const handleDenyClaim = async (itemId: string, description: string, studentName: string, photoUrl?: string) => {
+        showDialog({
+            type: 'confirm',
+            title: 'Negar Reivindicação',
+            message: `Tem certeza que deseja NEGAR a reivindicação de "${description}" feita por ${studentName}? O item voltará a ficar disponível para outros alunos.`,
+            image: photoUrl,
+            variant: 'warning',
+            onConfirm: async () => {
+                try {
+                    await denyClaim(itemId);
+                } catch (error) {
+                    console.error("Erro ao negar reivindicação:", error);
+                    showDialog({
+                        type: 'alert',
+                        title: 'Erro',
+                        message: 'Não foi possível negar a reivindicação.',
                         variant: 'danger'
                     });
                 }
@@ -304,60 +365,90 @@ const CoordinatorLostFoundView: React.FC<{ unit: SchoolUnit }> = ({ unit }) => {
                                     </div>
 
                                     {(item.status === 'claimed' || item.status === 'delivered') && (
-                                        <div className={`p-2.5 rounded-xl border mb-2 transition-colors ${item.status === 'delivered'
+                                        <div className={`p-2.5 rounded-xl border mb-2 transition-colors flex gap-3 ${item.status === 'delivered'
                                             ? 'bg-gray-50 border-gray-100'
                                             : 'bg-orange-50 border-orange-100'
                                             }`}>
-                                            <div className={`flex items-center gap-2 mb-1 ${item.status === 'delivered' ? 'text-gray-500' : 'text-orange-600'
-                                                }`}>
-                                                <User className="w-3 h-3" />
-                                                <span className="text-[9px] font-black uppercase">
-                                                    {item.status === 'delivered' ? 'Entregue para:' : 'Reivindicado p/:'}
-                                                </span>
+                                            {/* Student Photo (3x4 Ratio) */}
+                                            <div className="flex-shrink-0">
+                                                <div className={`w-12 h-16 rounded-lg overflow-hidden border ${item.status === 'delivered' ? 'border-gray-200' : 'border-orange-200'
+                                                    } bg-white flex items-center justify-center shadow-sm`}>
+                                                    {item.claimedByStudentId && studentProfiles[item.claimedByStudentId]?.photoUrl ? (
+                                                        <img
+                                                            src={studentProfiles[item.claimedByStudentId].photoUrl}
+                                                            alt={item.claimedByStudentName}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <User className={`w-6 h-6 ${item.status === 'delivered' ? 'text-gray-300' : 'text-orange-300'}`} />
+                                                    )}
+                                                </div>
                                             </div>
-                                            <p className={`text-xs font-bold ${item.status === 'delivered' ? 'text-gray-600' : 'text-gray-700'
-                                                } break-words line-clamp-1`}>
-                                                {item.claimedByStudentName}
-                                            </p>
-                                            <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1.5 items-center">
-                                                {item.claimedByStudentGrade && (
-                                                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${item.status === 'delivered'
-                                                        ? 'text-gray-600 bg-gray-200/50'
-                                                        : 'text-orange-700 bg-orange-100/50'
-                                                        }`}>
-                                                        {item.claimedByStudentGrade}
+
+                                            <div className="flex-1 min-w-0">
+                                                <div className={`flex items-center gap-2 mb-0.5 ${item.status === 'delivered' ? 'text-gray-500' : 'text-orange-600'
+                                                    }`}>
+                                                    <span className="text-[9px] font-black uppercase tracking-wider">
+                                                        {item.status === 'delivered' ? 'Entregue para:' : 'Reivindicado p/:'}
                                                     </span>
-                                                )}
-                                                {(item.claimedByStudentClass || item.claimedByStudentShift) && (
-                                                    <span className={`text-[9px] font-bold sm:border-l sm:pl-2 uppercase whitespace-nowrap ${item.status === 'delivered'
-                                                        ? 'text-gray-400 border-gray-200'
-                                                        : 'text-orange-600/70 border-orange-200'
-                                                        }`}>
-                                                        {item.claimedByStudentClass && `Turma ${item.claimedByStudentClass}`}
-                                                        {item.claimedByStudentClass && item.claimedByStudentShift && ' | '}
-                                                        {item.claimedByStudentShift && (SHIFT_LABELS[item.claimedByStudentShift as SchoolShift] || item.claimedByStudentShift)}
-                                                    </span>
-                                                )}
+                                                </div>
+                                                <p className={`text-xs font-black ${item.status === 'delivered' ? 'text-gray-600' : 'text-gray-800'
+                                                    } break-words line-clamp-2 leading-tight`}>
+                                                    {item.claimedByStudentName}
+                                                </p>
+                                                <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 items-center">
+                                                    {item.claimedByStudentGrade && (
+                                                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${item.status === 'delivered'
+                                                            ? 'text-gray-600 bg-gray-200/50'
+                                                            : 'text-orange-700 bg-orange-100/50'
+                                                            }`}>
+                                                            {item.claimedByStudentGrade}
+                                                        </span>
+                                                    )}
+                                                    {(item.claimedByStudentClass || item.claimedByStudentShift) && (
+                                                        <span className={`text-[8px] font-bold uppercase whitespace-nowrap ${item.status === 'delivered'
+                                                            ? 'text-gray-400'
+                                                            : 'text-orange-600/70'
+                                                            }`}>
+                                                            {item.claimedByStudentClass && `Turma ${item.claimedByStudentClass}`}
+                                                            {item.claimedByStudentClass && item.claimedByStudentShift && ' | '}
+                                                            {item.claimedByStudentShift && (SHIFT_LABELS[item.claimedByStudentShift as SchoolShift] || item.claimedByStudentShift)}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     )}
                                     <div className="flex gap-2">
                                         {item.status !== 'delivered' && (
-                                            <button
-                                                disabled={item.status === 'active'}
-                                                onClick={() => handleDeliver(item.id, item.description, item.photoUrl)}
-                                                className={`flex-1 py-2.5 rounded-xl font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-2 group ${item.status === 'active'
-                                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none border border-gray-100'
-                                                    : 'bg-green-600 hover:bg-green-700 text-white shadow-green-100'
-                                                    }`}
-                                                title={item.status === 'active' ? "Aguardando reivindicação do aluno" : "Confirmar entrega"}
-                                            >
-                                                <div className={`w-5 h-5 rounded-lg flex items-center justify-center transition-transform ${item.status === 'active' ? 'bg-gray-200' : 'bg-white/20 group-hover:scale-110'
-                                                    }`}>
-                                                    <CheckCircle2 className="w-3.5 h-3.5" />
-                                                </div>
-                                                ENTREGUE
-                                            </button>
+                                            <div className="flex-1 flex gap-2">
+                                                <button
+                                                    disabled={item.status === 'active'}
+                                                    onClick={() => handleDeliver(item.id, item.description, item.photoUrl)}
+                                                    className={`flex-1 py-2.5 rounded-xl font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-2 group ${item.status === 'active'
+                                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none border border-gray-100'
+                                                        : 'bg-green-600 hover:bg-green-700 text-white shadow-green-100'
+                                                        }`}
+                                                    title={item.status === 'active' ? "Aguardando reivindicação do aluno" : "Confirmar entrega"}
+                                                >
+                                                    <div className={`w-5 h-5 rounded-lg flex items-center justify-center transition-transform ${item.status === 'active' ? 'bg-gray-200' : 'bg-white/20 group-hover:scale-110'
+                                                        }`}>
+                                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                                    </div>
+                                                    ENTREGUE
+                                                </button>
+
+                                                {item.status === 'claimed' && (
+                                                    <button
+                                                        onClick={() => handleDenyClaim(item.id, item.description, item.claimedByStudentName || 'Aluno', item.photoUrl)}
+                                                        className="px-3 py-2.5 bg-orange-50 text-orange-600 hover:bg-orange-100 rounded-xl font-bold text-[10px] transition-colors border border-orange-200/50 flex flex-col items-center justify-center line-tight"
+                                                        title="Negar Reivindicação"
+                                                    >
+                                                        <X className="w-3.5 h-3.5 mb-0.5" />
+                                                        NEGAR
+                                                    </button>
+                                                )}
+                                            </div>
                                         )}
                                         <button
                                             onClick={() => handleDelete(item.id, item.description, item.photoUrl)}
@@ -540,7 +631,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         type: 'Saída Antecipada' as 'Entrada Tardia' | 'Saída Antecipada',
         reason: '',
         authorizer: '',
-        authorizerRelation: 'Pai'
+        authorizerRelation: 'Pai',
+        hasProof: false
     });
     const [accessSelectedStudent, setAccessSelectedStudent] = useState<Student | null>(null);
     const [accessStudentSearch, setAccessStudentSearch] = useState('');
@@ -1593,7 +1685,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 type: 'Saída Antecipada',
                 reason: '',
                 authorizer: '',
-                authorizerRelation: 'Pai'
+                authorizerRelation: 'Pai',
+                hasProof: false
             });
             loadAccessRecords();
         } catch (error) {
@@ -3584,8 +3677,19 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                             <td className="px-6 py-4">
                                                                 <div className="text-sm text-gray-700 font-bold mb-0.5">{record.reason}</div>
                                                                 <div className="text-[10px] text-gray-500 font-medium italic">
-                                                                    Autorizado por: <span className="text-gray-700 not-italic font-bold">{record.authorizer}</span> ({record.authorizerRelation})
+                                                                    {record.type === 'Entrada Tardia' ? 'Informado por: ' : 'Autorizado por: '}<span className="text-gray-700 not-italic font-bold">{record.authorizer}</span> ({record.authorizerRelation})
                                                                 </div>
+                                                                {record.type === 'Entrada Tardia' && record.hasProof && (
+                                                                    <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-green-50 text-green-800 border border-green-200 rounded-full text-[9px] font-bold uppercase tracking-wide">
+                                                                        <Check className="w-2.5 h-2.5" />
+                                                                        Comprovante apresentado
+                                                                    </span>
+                                                                )}
+                                                                {record.type === 'Entrada Tardia' && !record.hasProof && (
+                                                                    <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-gray-50 text-gray-400 border border-gray-200 rounded-full text-[9px] font-bold uppercase tracking-wide">
+                                                                        Sem comprovante
+                                                                    </span>
+                                                                )}
                                                             </td>
                                                             <td className="px-6 py-4 text-right whitespace-nowrap">
                                                                 <button
@@ -3705,20 +3809,39 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                     {/* Reason and Authorizer */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Motivo</label>
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                                {accessForm.type === 'Entrada Tardia' ? 'Motivo do Atraso' : 'Motivo da Saída'}
+                                            </label>
                                             <input
                                                 type="text"
-                                                placeholder="Consulta médica, viagem..."
+                                                placeholder={accessForm.type === 'Entrada Tardia' ? "Trânsito, problema mecânico..." : "Consulta médica, viagem..."}
                                                 value={accessForm.reason}
                                                 onChange={(e) => setAccessForm({ ...accessForm, reason: e.target.value })}
                                                 className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-950 outline-none border-dashed transition-all font-medium"
                                             />
+
+                                            {/* Quick Reasons for Late Entry */}
+                                            {accessForm.type === 'Entrada Tardia' && (
+                                                <div className="flex flex-wrap gap-1 mt-2">
+                                                    {['Trânsito', 'Consulta Médica', 'Acordou Tarde', 'Transporte', 'Família'].map(r => (
+                                                        <button
+                                                            key={r}
+                                                            onClick={() => setAccessForm({ ...accessForm, reason: r })}
+                                                            className="px-2 py-1 bg-white border border-gray-100 rounded-full text-[9px] font-bold text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition-all shadow-sm"
+                                                        >
+                                                            {r}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Nome do Autorizador</label>
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                                {accessForm.type === 'Entrada Tardia' ? 'Informado por / Acompanhado por' : 'Nome do Autorizador'}
+                                            </label>
                                             <input
                                                 type="text"
-                                                placeholder="Quem autorizou?"
+                                                placeholder="Quem informou ou acompanhou?"
                                                 value={accessForm.authorizer}
                                                 onChange={(e) => setAccessForm({ ...accessForm, authorizer: e.target.value })}
                                                 className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-950 outline-none border-dashed transition-all font-medium"
@@ -3726,19 +3849,51 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                         </div>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Parentesco / Vínculo</label>
-                                        <select
-                                            value={accessForm.authorizerRelation}
-                                            onChange={(e) => setAccessForm({ ...accessForm, authorizerRelation: e.target.value })}
-                                            className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-950 outline-none transition-all font-bold text-blue-950"
-                                        >
-                                            <option value="Pai">Pai</option>
-                                            <option value="Mãe">Mãe</option>
-                                            <option value="Responsável Legal">Responsável Legal</option>
-                                            <option value="Próprio Aluno">Próprio Aluno (Maior de idade)</option>
-                                            <option value="Outro">Outro</option>
-                                        </select>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Parentesco / Vínculo</label>
+                                            <select
+                                                value={accessForm.authorizerRelation}
+                                                onChange={(e) => setAccessForm({ ...accessForm, authorizerRelation: e.target.value })}
+                                                className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-950 outline-none transition-all font-bold text-blue-950"
+                                            >
+                                                <option value="Pai">Pai</option>
+                                                <option value="Mãe">Mãe</option>
+                                                <option value="Responsável Legal">Responsável Legal</option>
+                                                <option value="Próprio Aluno">Próprio Aluno (Maior de idade)</option>
+                                                <option value="Outro">Outro</option>
+                                            </select>
+                                        </div>
+
+                                        {accessForm.type === 'Entrada Tardia' && (
+                                            <div className="space-y-2 flex flex-col justify-end">
+                                                <label className="flex items-center gap-3 p-3 bg-blue-50/50 border border-blue-100 rounded-2xl cursor-pointer hover:bg-blue-50 transition-all select-none group">
+                                                    <div className="relative">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={accessForm.hasProof}
+                                                            onChange={(e) => setAccessForm({ ...accessForm, hasProof: e.target.checked })}
+                                                            className="hidden"
+                                                        />
+                                                        {/* Switch Track */}
+                                                        <div className={`w-14 h-7 rounded-full transition-all duration-300 ease-in-out shadow-inner flex items-center relative px-1 ${accessForm.hasProof ? 'bg-blue-950' : 'bg-gray-300'}`}>
+                                                            {/* Icons behind the ball */}
+                                                            <div className="absolute inset-0 flex items-center justify-between px-2.5 pointer-events-none">
+                                                                <Check className={`w-3 h-3 text-white transition-opacity duration-300 ${accessForm.hasProof ? 'opacity-100' : 'opacity-0'}`} />
+                                                                <X className={`w-3 h-3 text-gray-500 transition-opacity duration-300 ${accessForm.hasProof ? 'opacity-0' : 'opacity-100'}`} />
+                                                            </div>
+
+                                                            {/* Large Sliding Ball */}
+                                                            <div
+                                                                className="w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ease-in-out"
+                                                                style={{ transform: accessForm.hasProof ? 'translateX(24px)' : 'translateX(0px)' }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <span className="text-xs font-bold text-blue-950 ml-1 uppercase">Apresentou Comprovante?</span>
+                                                </label>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 

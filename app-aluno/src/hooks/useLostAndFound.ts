@@ -130,6 +130,26 @@ export function useLostAndFound(unit?: SchoolUnit | string) {
     };
 
     /**
+     * Denies a claim, returning the item to 'active' status.
+     */
+    const denyClaim = async (itemId: string) => {
+        try {
+            await db.collection('lost_and_found').doc(itemId).update({
+                status: 'active' as LostAndFoundStatus,
+                claimedByStudentId: null,
+                claimedByStudentName: null,
+                claimedByStudentGrade: null,
+                claimedByStudentClass: null,
+                claimedByStudentShift: null,
+                claimedAt: null
+            });
+        } catch (error) {
+            console.error("Error denying claim:", error);
+            throw error;
+        }
+    };
+
+    /**
      * Officially delivers the item (handover by coordinator).
      */
     const deliverItem = async (itemId: string) => {
@@ -173,5 +193,5 @@ export function useLostAndFound(unit?: SchoolUnit | string) {
         }
     };
 
-    return { items, loading, addItem, claimItem, deliverItem, deleteItem, uploadPhoto };
+    return { items, loading, addItem, claimItem, denyClaim, deliverItem, deleteItem, uploadPhoto };
 }
