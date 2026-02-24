@@ -540,7 +540,9 @@ export interface Student {
 
 export interface TeacherAssignment {
   gradeLevel: string;
+  gradeId?: string; // NEW: Robust matching
   subjects: string[];
+  shift: SchoolShift; // NEW: Shift for the assignment
 }
 
 export interface Teacher {

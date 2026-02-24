@@ -727,26 +727,36 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
     const getTeacherPhone = (subjectId: string) => {
         const teacher = (teachers as Teacher[]).find(t => {
-            if (!t.subjects?.includes(subjectId as Subject) || t.unit !== student.unit) return false;
+            // Check if teacher has this subject
+            const hasSubject = t.subjects?.includes(subjectId as Subject);
+            if (!hasSubject || t.unit !== student.unit) return false;
 
-            // Strict ID Matching Only
-            if (student.gradeId && t.gradeIds?.length) {
-                return t.gradeIds.includes(student.gradeId);
-            }
-            return false;
+            // Strict ID Matching for Grade AND Shift
+            const hasMatchingAssignment = t.assignments?.some(a =>
+                (a.gradeId === student.gradeId || a.gradeLevel === student.gradeLevel) &&
+                a.subjects.includes(subjectId) &&
+                a.shift === student.shift
+            );
+
+            return hasMatchingAssignment;
         });
         return teacher?.phoneNumber;
     };
 
     const getTeacherName = (subjectId: string) => {
         const teacher = (teachers as Teacher[]).find(t => {
-            if (!t.subjects?.includes(subjectId as Subject) || t.unit !== student.unit) return false;
+            // Check if teacher has this subject
+            const hasSubject = t.subjects?.includes(subjectId as Subject);
+            if (!hasSubject || t.unit !== student.unit) return false;
 
-            // Strict ID Matching Only
-            if (student.gradeId && t.gradeIds?.length) {
-                return t.gradeIds.includes(student.gradeId);
-            }
-            return false;
+            // Strict ID Matching for Grade AND Shift
+            const hasMatchingAssignment = t.assignments?.some(a =>
+                (a.gradeId === student.gradeId || a.gradeLevel === student.gradeLevel) &&
+                a.subjects.includes(subjectId) &&
+                a.shift === student.shift
+            );
+
+            return hasMatchingAssignment;
         });
         return teacher ? teacher.name.split(' ')[0] : 'PROF.';
     };

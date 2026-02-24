@@ -432,7 +432,9 @@ export interface EnrollmentRecord {
 
 export interface TeacherAssignment {
   gradeLevel: string;
+  gradeId?: string;
   subjects: string[];
+  shift: SchoolShift;
 }
 
 export interface Teacher {

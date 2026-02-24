@@ -3,10 +3,10 @@ import { Input } from './Input';
 import { Select } from './Select';
 import { Checkbox } from './Checkbox';
 import { Button } from './Button';
-import { User, Phone, Mail, GraduationCap, X, Loader2, ShieldAlert, Key, BookOpen, Layers } from 'lucide-react';
+import { User, Phone, Mail, GraduationCap, X, Loader2, ShieldAlert, Key, BookOpen, Layers, ShieldCheck } from 'lucide-react';
 import { teacherService } from '../services/teacherService';
 import type { Teacher } from '../types';
-import { UNIT_LABELS, SchoolUnit, SUBJECT_LABELS, Subject } from '../types';
+import { UNIT_LABELS, SchoolUnit, SUBJECT_LABELS, Subject, SchoolShift, SHIFT_LABELS } from '../types';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { useSchoolUnits } from '../hooks/useSchoolUnits';
 import { maskCPF, sanitizePhone } from '../utils';
@@ -74,35 +74,7 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
         }
     }, [teacher, grades]);
 
-    const handleToggleAssignment = useCallback((gradeLevel: string, subject: string) => {
-        setFormData(prev => {
-            const currentAssignments = [...(prev.assignments || [])];
-            const assignmentIndex = currentAssignments.findIndex(a => a.gradeLevel === gradeLevel);
-
-            if (assignmentIndex >= 0) {
-                const updatedAssignment = { ...currentAssignments[assignmentIndex] };
-                const subjects = [...updatedAssignment.subjects];
-                const subjectIndex = subjects.indexOf(subject);
-
-                if (subjectIndex >= 0) {
-                    subjects.splice(subjectIndex, 1);
-                } else {
-                    subjects.push(subject);
-                }
-
-                if (subjects.length === 0) {
-                    currentAssignments.splice(assignmentIndex, 1);
-                } else {
-                    updatedAssignment.subjects = subjects;
-                    currentAssignments[assignmentIndex] = updatedAssignment;
-                }
-            } else {
-                currentAssignments.push({ gradeLevel, subjects: [subject] });
-            }
-
-            return { ...prev, assignments: currentAssignments };
-        });
-    }, []);
+    // assignments logic is now inline within the render for better reactiveness with multiple shifts
 
     const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
@@ -418,36 +390,106 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                                 </p>
 
                                 <div className="space-y-6">
-                                    {formData.gradeLevels.map(grade => (
-                                        <div key={grade} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                                            <div className="flex items-center gap-2 mb-3 border-b border-slate-50 pb-2">
-                                                <GraduationCap className="w-4 h-4 text-blue-950" />
-                                                <span className="text-xs font-black text-slate-700 uppercase">{grade}</span>
+                                    {formData.gradeLevels.map(grade => {
+                                        const gradeId = grades.find(g => g.name === grade)?.id;
+                                        return (
+                                            <div key={grade} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                                                <div className="flex items-center justify-between border-b border-slate-50 pb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <GraduationCap className="w-4 h-4 text-blue-950" />
+                                                        <span className="text-xs font-black text-slate-700 uppercase">{grade}</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Select Shift for this Grade */}
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {Object.values(SchoolShift).map(shift => {
+                                                        const isShiftActive = formData.assignments?.some(a => (a.gradeId === gradeId || a.gradeLevel === grade) && a.shift === shift);
+                                                        return (
+                                                            <button
+                                                                key={`${grade}-${shift}`}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setFormData(prev => {
+                                                                        const assignments = [...(prev.assignments || [])];
+                                                                        const existingIdx = assignments.findIndex(a => (a.gradeId === gradeId || a.gradeLevel === grade) && a.shift === shift);
+
+                                                                        if (existingIdx >= 0) {
+                                                                            assignments.splice(existingIdx, 1);
+                                                                        } else {
+                                                                            assignments.push({
+                                                                                gradeLevel: grade,
+                                                                                gradeId: gradeId,
+                                                                                subjects: [],
+                                                                                shift: shift
+                                                                            });
+                                                                        }
+                                                                        return { ...prev, assignments };
+                                                                    });
+                                                                }}
+                                                                className={`px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all border flex items-center justify-center gap-1.5 ${isShiftActive
+                                                                    ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm'
+                                                                    : 'bg-slate-50 text-slate-400 border-slate-100'
+                                                                    }`}
+                                                            >
+                                                                {isShiftActive ? <ShieldCheck className="w-3 h-3" /> : <Layers className="w-3 h-3" />}
+                                                                {(SHIFT_LABELS as any)[shift]}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+
+                                                {/* Subjects per Shift */}
+                                                <div className="space-y-3">
+                                                    {Object.values(SchoolShift).map(shift => {
+                                                        const assignment = formData.assignments?.find(a => (a.gradeId === gradeId || a.gradeLevel === grade) && a.shift === shift);
+                                                        if (!assignment) return null;
+
+                                                        return (
+                                                            <div key={`${grade}-${shift}-subjects`} className="pl-2 border-l-2 border-slate-100 space-y-2">
+                                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Matérias - {(SHIFT_LABELS as any)[shift]}</p>
+                                                                <div className="flex flex-wrap gap-1.5">
+                                                                    {formData.subjects?.map(subject => {
+                                                                        const isLinked = assignment.subjects.includes(subject);
+                                                                        return (
+                                                                            <button
+                                                                                key={`${grade}-${shift}-${subject}`}
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    setFormData(prev => {
+                                                                                        const assignments = [...(prev.assignments || [])];
+                                                                                        const idx = assignments.findIndex(a => (a.gradeId === gradeId || a.gradeLevel === grade) && a.shift === shift);
+                                                                                        if (idx >= 0) {
+                                                                                            const subjects = [...assignments[idx].subjects];
+                                                                                            const sIdx = subjects.indexOf(subject);
+                                                                                            if (sIdx >= 0) subjects.splice(sIdx, 1);
+                                                                                            else subjects.push(subject);
+                                                                                            assignments[idx] = { ...assignments[idx], subjects };
+                                                                                        }
+                                                                                        return { ...prev, assignments };
+                                                                                    });
+                                                                                }}
+                                                                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all border ${isLinked
+                                                                                    ? 'bg-blue-950 text-white border-blue-950 shadow-md'
+                                                                                    : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'
+                                                                                    }`}
+                                                                            >
+                                                                                {subjects.find(s => s.id === subject)?.name || SUBJECT_LABELS[subject as Subject] || subject}
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
                                             </div>
-                                            <div className="flex flex-wrap gap-2">
-                                                {formData.subjects?.map(subject => {
-                                                    const isLinked = formData.assignments?.find(a => a.gradeLevel === grade)?.subjects.includes(subject);
-                                                    return (
-                                                        <button
-                                                            key={`${grade}-${subject}`}
-                                                            type="button"
-                                                            onClick={() => handleToggleAssignment(grade, subject)}
-                                                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${isLinked
-                                                                ? 'bg-blue-950 text-white border-blue-950 shadow-md shadow-blue-950/20'
-                                                                : 'bg-slate-50 text-slate-400 border-slate-100 hover:border-slate-300'
-                                                                }`}
-                                                        >
-                                                            {subjects.find(s => s.id === subject)?.name || SUBJECT_LABELS[subject as Subject] || subject}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </section>
                         );
-                    }, [formData.gradeLevels, formData.subjects, formData.assignments, subjects, handleToggleAssignment])}
+                    }, [formData.gradeLevels, formData.subjects, formData.assignments, subjects])}
                 </form>
 
                 {/* Footer */}

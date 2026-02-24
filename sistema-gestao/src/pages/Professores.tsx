@@ -7,7 +7,7 @@ import { TeacherForm } from '../components/TeacherForm';
 import { Search, Loader2, UserPlus, Pencil, Trash2, MessagesSquare, ShieldAlert, ShieldCheck, GraduationCap, BookOpen, Layers } from 'lucide-react';
 import { teacherService } from '../services/teacherService';
 import type { Teacher, SchoolUnit } from '../types';
-import { UNIT_LABELS, SUBJECT_LABELS, Subject } from '../types';
+import { UNIT_LABELS, SUBJECT_LABELS, Subject, SHIFT_LABELS } from '../types';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { useSchoolUnits } from '../hooks/useSchoolUnits';
 
@@ -33,6 +33,7 @@ export function Professores() {
     });
     const [filterSubject, setFilterSubject] = useState('');
     const [filterGrade, setFilterGrade] = useState('');
+    const [filterShift, setFilterShift] = useState('');
 
     const loadTeachers = async () => {
         try {
@@ -97,8 +98,9 @@ export function Professores() {
         const matchesUnit = !filterUnit || t.unit === filterUnit;
         const matchesSubject = !filterSubject || t.subjects?.includes(filterSubject);
         const matchesGrade = !filterGrade || t.gradeLevels?.includes(filterGrade);
+        const matchesShift = !filterShift || t.assignments?.some(a => a.shift === filterShift);
 
-        return matchesSearch && matchesUnit && matchesSubject && matchesGrade;
+        return matchesSearch && matchesUnit && matchesSubject && matchesGrade && matchesShift;
     });
 
     return (
@@ -159,6 +161,16 @@ export function Professores() {
                                     // { label: `--- ${s.name} ---`, value: 'ignore', disabled: true },
                                     ...grades.filter(g => g.segmentId === s.id).map(g => ({ label: g.name, value: g.name }))
                                 ])
+                            ]}
+                            className="h-10"
+                        />
+                        <Select
+                            value={filterShift}
+                            onChange={(e) => setFilterShift(e.target.value)}
+                            options={[
+                                { label: 'Todos os Turnos', value: '' },
+                                { label: 'Matutino', value: 'shift_morning' },
+                                { label: 'Vespertino', value: 'shift_afternoon' }
                             ]}
                             className="h-10"
                         />
@@ -227,9 +239,9 @@ export function Professores() {
                                                             <BookOpen className="w-2.5 h-2.5" /> {subjects.find(sub => sub.id === s)?.name || SUBJECT_LABELS[s as Subject] || s}
                                                         </span>
                                                     ))}
-                                                    {t.gradeLevels?.slice(0, 2).map(g => (
-                                                        <span key={g} className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-bold border border-slate-200 flex items-center gap-1">
-                                                            <Layers className="w-2.5 h-2.5" /> {g}
+                                                    {t.assignments?.slice(0, 5).map((a, idx) => (
+                                                        <span key={`${a.gradeLevel}-${a.shift}-${idx}`} className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-bold border border-slate-200 flex items-center gap-1">
+                                                            <Layers className="w-2.5 h-2.5" /> {a.gradeLevel} - {(SHIFT_LABELS as any)[a.shift] || a.shift}
                                                         </span>
                                                     ))}
                                                     {(t.subjects?.length > 3 || t.gradeLevels?.length > 2) && (
