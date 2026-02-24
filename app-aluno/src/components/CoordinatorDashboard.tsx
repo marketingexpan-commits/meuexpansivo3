@@ -1327,8 +1327,11 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
             let studentsInClass = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Student[];
 
-            // Refine Filtering (Normalize Class & Strict Grade ID)
+            // Refine Filtering (Normalize Class & Strict Grade ID & Enrolled in 2026)
             studentsInClass = studentsInClass.filter(s => {
+                const matchesYear = s.enrolledYears?.includes('2026');
+                if (!matchesYear) return false;
+
                 const matchesGrade = s.gradeId ? s.gradeId === attGrade : parseGradeLevel(s.gradeLevel).grade === gradeName;
                 return normalizeClass(s.schoolClass) === normalizeClass(attClass) &&
                     matchesGrade &&
