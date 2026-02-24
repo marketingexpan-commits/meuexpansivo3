@@ -580,6 +580,13 @@ const AppContent: React.FC = () => {
           setLoginError('Acesso negado. Entre em contato com a secretaria.');
           return;
         }
+
+        // BLOQUEIO SEGURANCA: Apenas alunos com matricula 2026 podem logar
+        if (!student.enrolledYears?.includes('2026')) {
+          setLoginError('Acesso restrito. Sua matrícula não está ativa para o ano letivo de 2026. Procure a secretaria.');
+          return;
+        }
+
         setSession({ role: UserRole.STUDENT, user: student });
         setLoginError('');
         logAccess(student.id);

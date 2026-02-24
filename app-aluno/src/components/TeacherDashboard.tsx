@@ -489,7 +489,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             student.code.toLowerCase().includes(searchTerm.toLowerCase())
         ) : true;
-        return matchesUnit && isAssignedGrade && matchesGrade && matchesShift && matchesClass && matchesSearch;
+
+        const matchesYear = student.enrolledYears?.includes('2026');
+
+        return matchesUnit && isAssignedGrade && matchesGrade && matchesShift && matchesClass && matchesSearch && matchesYear;
     }), [students, activeUnit, teacher.gradeLevels, filterGrade, filterShift, filterClass, searchTerm]);
 
     const { absenceData, currentBimester } = useMemo(() => {
@@ -695,6 +698,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             })();
 
             if (!isAssignedGrade) return false;
+
+            // REGRAS DE ANO LETIVO: Apenas alunos matriculados em 2026
+            if (s.enrolledYears && !s.enrolledYears.includes('2026')) return false;
 
             return s.unit === activeUnit &&
                 sGrade === attendanceGrade &&

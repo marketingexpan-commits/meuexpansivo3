@@ -867,6 +867,12 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
             // Sync enrolledYears array for efficient filtering in studentService
             const enrolledYears = Array.from(new Set((formData.enrollmentHistory || []).map((h: any) => h.year.toString()))).sort();
 
+            // BLOQUEIO SEGURANCA: Proibir liberar acesso (senha) para alunos sem matricula 2026
+            if (formData.password && !enrolledYears.includes('2026')) {
+                setIsLoading(false);
+                return alert("Atenção: Para liberar o acesso ao aplicativo (gerar senha), o aluno deve estar matriculado no ano letivo de 2026. Atualize o ano letivo do aluno antes de salvar.");
+            }
+
             const finalData = cleanObject({
                 ...formData,
                 gradeLevel: latestEnrollment ? latestEnrollment.gradeLevel : finalGradeLevel,
