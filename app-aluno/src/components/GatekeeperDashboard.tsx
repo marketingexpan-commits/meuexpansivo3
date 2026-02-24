@@ -56,6 +56,42 @@ const LostFoundView: React.FC<{ unit: SchoolUnit }> = ({ unit }) => {
     const [photo, setPhoto] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
     const [uploading, setUploading] = useState(false);
+    const [studentProfiles, setStudentProfiles] = useState<Record<string, any>>({});
+
+    // Fetch student profiles for claimed/delivered items
+    useEffect(() => {
+        const fetchStudentProfiles = async () => {
+            const uniqueClaimantIds = Array.from(new Set(
+                items
+                    .filter(item => (item.status === 'claimed' || item.status === 'delivered') && item.claimedByStudentId)
+                    .map(item => item.claimedByStudentId!)
+            ));
+
+            const missingIds = uniqueClaimantIds.filter(id => !studentProfiles[id]);
+            if (missingIds.length === 0) return;
+
+            const newProfiles: Record<string, any> = {};
+            await Promise.all(missingIds.map(async (id) => {
+                try {
+                    const studentRef = doc(db, 'students', id);
+                    const studentSnap = await getDoc(studentRef);
+                    if (studentSnap.exists()) {
+                        newProfiles[id] = { id: studentSnap.id, ...studentSnap.data() };
+                    }
+                } catch (err) {
+                    console.error(`Error fetching student profile ${id}:`, err);
+                }
+            }));
+
+            if (Object.keys(newProfiles).length > 0) {
+                setStudentProfiles(prev => ({ ...prev, ...newProfiles }));
+            }
+        };
+
+        if (items.length > 0) {
+            fetchStudentProfiles();
+        }
+    }, [items]);
 
     const [dialogConfig, setDialogConfig] = useState<{
         isOpen: boolean;
@@ -272,40 +308,57 @@ const LostFoundView: React.FC<{ unit: SchoolUnit }> = ({ unit }) => {
                                         )}
                                     </div>
                                     {(item.status === 'claimed' || item.status === 'delivered') && (
-                                        <div className={`p-2.5 rounded-xl border mt-2 transition-colors ${item.status === 'delivered'
+                                        <div className={`p-2.5 rounded-xl border mt-2 transition-colors flex gap-3 ${item.status === 'delivered'
                                             ? 'bg-gray-50 border-gray-100'
                                             : 'bg-orange-50 border-orange-100'
                                             }`}>
-                                            <div className={`flex items-center gap-2 mb-1 ${item.status === 'delivered' ? 'text-gray-500' : 'text-orange-600'
-                                                }`}>
-                                                <User className="w-3 h-3" />
-                                                <span className="text-[9px] font-black uppercase">
-                                                    {item.status === 'delivered' ? 'Entregue para:' : 'Reivindicado p/:'}
-                                                </span>
+                                            {/* Student Photo (3x4 Ratio) */}
+                                            <div className="flex-shrink-0">
+                                                <div className={`w-12 h-16 rounded-lg overflow-hidden border ${item.status === 'delivered' ? 'border-gray-200' : 'border-orange-200'
+                                                    } bg-white flex items-center justify-center shadow-sm`}>
+                                                    {item.claimedByStudentId && studentProfiles[item.claimedByStudentId]?.photoUrl ? (
+                                                        <img
+                                                            src={studentProfiles[item.claimedByStudentId].photoUrl}
+                                                            alt={item.claimedByStudentName}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <User className={`w-6 h-6 ${item.status === 'delivered' ? 'text-gray-300' : 'text-orange-300'}`} />
+                                                    )}
+                                                </div>
                                             </div>
-                                            <p className={`text-xs font-bold ${item.status === 'delivered' ? 'text-gray-600' : 'text-gray-700'
-                                                } break-words line-clamp-1`}>
-                                                {item.claimedByStudentName}
-                                            </p>
-                                            <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1.5 items-center">
-                                                {item.claimedByStudentGrade && (
-                                                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${item.status === 'delivered'
-                                                        ? 'text-gray-600 bg-gray-200/50'
-                                                        : 'text-orange-700 bg-orange-100/50'
-                                                        }`}>
-                                                        {item.claimedByStudentGrade}
+
+                                            <div className="flex-1 min-w-0">
+                                                <div className={`flex items-center gap-2 mb-0.5 ${item.status === 'delivered' ? 'text-gray-500' : 'text-orange-600'
+                                                    }`}>
+                                                    <span className="text-[9px] font-black uppercase tracking-wider">
+                                                        {item.status === 'delivered' ? 'Entregue para:' : 'Reivindicado p/:'}
                                                     </span>
-                                                )}
-                                                {(item.claimedByStudentClass || item.claimedByStudentShift) && (
-                                                    <span className={`text-[9px] font-bold sm:border-l sm:pl-2 uppercase whitespace-nowrap ${item.status === 'delivered'
-                                                        ? 'text-gray-400 border-gray-200'
-                                                        : 'text-orange-600/70 border-orange-200'
-                                                        }`}>
-                                                        {item.claimedByStudentClass && `Turma ${item.claimedByStudentClass}`}
-                                                        {item.claimedByStudentClass && item.claimedByStudentShift && ' | '}
-                                                        {item.claimedByStudentShift && (SHIFT_LABELS[item.claimedByStudentShift as SchoolShift] || item.claimedByStudentShift)}
-                                                    </span>
-                                                )}
+                                                </div>
+                                                <p className={`text-xs font-black ${item.status === 'delivered' ? 'text-gray-600' : 'text-gray-800'
+                                                    } break-words line-clamp-2 leading-tight`}>
+                                                    {item.claimedByStudentName}
+                                                </p>
+                                                <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 items-center">
+                                                    {item.claimedByStudentGrade && (
+                                                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${item.status === 'delivered'
+                                                            ? 'text-gray-600 bg-gray-200/50'
+                                                            : 'text-orange-700 bg-orange-100/50'
+                                                            }`}>
+                                                            {item.claimedByStudentGrade}
+                                                        </span>
+                                                    )}
+                                                    {(item.claimedByStudentClass || item.claimedByStudentShift) && (
+                                                        <span className={`text-[8px] font-bold uppercase whitespace-nowrap ${item.status === 'delivered'
+                                                            ? 'text-gray-400'
+                                                            : 'text-orange-600/70'
+                                                            }`}>
+                                                            {item.claimedByStudentClass && `Turma ${item.claimedByStudentClass}`}
+                                                            {item.claimedByStudentClass && item.claimedByStudentShift && ' | '}
+                                                            {item.claimedByStudentShift && (SHIFT_LABELS[item.claimedByStudentShift as SchoolShift] || item.claimedByStudentShift)}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     )}
@@ -340,7 +393,7 @@ const LostFoundView: React.FC<{ unit: SchoolUnit }> = ({ unit }) => {
 
 export const GatekeeperDashboard: React.FC = () => {
     // --- STATE ---
-    const [activeTab, setActiveTab] = useState<'menu' | 'scanner' | 'manual' | 'list' | 'calendar' | 'lost_found'>('menu');
+    const [activeTab, setActiveTab] = useState<'menu' | 'scanner' | 'manual' | 'calendar' | 'lost_found'>('menu');
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
     const [academicSubjects, setAcademicSubjects] = useState<AcademicSubject[]>([]);
     const [releases, setReleases] = useState<AuthorizedRelease[]>([]);
@@ -763,13 +816,11 @@ export const GatekeeperDashboard: React.FC = () => {
                                         ? "Aponte a câmera para o QR Code do aluno para verificar a autorização."
                                         : activeTab === 'manual'
                                             ? "Busque o aluno pelo nome para verificar autorizações manualmente."
-                                            : activeTab === 'list'
-                                                ? "Visualize as saídas autorizadas pela coordenação que aguardam liberação."
-                                                : activeTab === 'calendar'
-                                                    ? "Acompanhe o calendário escolar, feriados e eventos da unidade."
-                                                    : activeTab === 'lost_found'
-                                                        ? "Gerencie os itens achados e perdidos na unidade escolar."
-                                                        : ""
+                                            : activeTab === 'calendar'
+                                                ? "Acompanhe o calendário escolar, feriados e eventos da unidade."
+                                                : activeTab === 'lost_found'
+                                                    ? "Gerencie os itens achados e perdidos na unidade escolar."
+                                                    : ""
                                 }
                             </p>
                         </div>
@@ -796,21 +847,6 @@ export const GatekeeperDashboard: React.FC = () => {
                                     <Search className="w-6 h-6 text-blue-950" />
                                 </div>
                                 <h3 className="font-bold text-gray-800 text-base text-center">Busca Manual</h3>
-                            </button>
-
-                            <button
-                                onClick={() => setActiveTab('list')}
-                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square relative"
-                            >
-                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                                    <Clock className="w-6 h-6 text-blue-950" />
-                                </div>
-                                <h3 className="font-bold text-gray-800 text-base text-center">Fila de Saída</h3>
-                                {releases.length > 0 && (
-                                    <span className="absolute top-4 right-4 bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg animate-pulse">
-                                        {releases.length}
-                                    </span>
-                                )}
                             </button>
 
                             <button
@@ -911,73 +947,6 @@ export const GatekeeperDashboard: React.FC = () => {
                                     </div>
                                 )}
                             </div>
-                        </div>
-                    )}
-
-                    {/* LIST VIEW (Queue) */}
-                    {activeTab === 'list' && (
-                        <div className="animate-in slide-in-from-right-4 fade-in duration-300">
-                            {releases.length === 0 ? (
-                                <div className="text-center py-20 opacity-50 select-none flex flex-col items-center">
-                                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-gray-300">
-                                        <Clock className="w-8 h-8" />
-                                    </div>
-                                    <p className="font-bold text-gray-400 uppercase tracking-wide text-sm">Fila vazia</p>
-                                    <p className="text-xs text-gray-300 mt-1">Nenhuma autorização pendente</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {releases.map(r => (
-                                        <div key={r.id} className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm border-l-4 border-l-blue-950 relative overflow-hidden">
-                                            <div className="flex justify-between items-start mb-4 relative z-10">
-                                                <div>
-                                                    <h4 className="text-base font-bold text-gray-900 leading-tight">{r.studentName}</h4>
-                                                    <p className="text-[10px] font-bold text-blue-950/70 uppercase mt-1 flex items-center gap-1">
-                                                        <UserCheck className="w-3 h-3" />
-                                                        Autorizado por {r.coordinatorName}
-                                                        {(r.gradeLevel || r.schoolClass || r.shift) && (
-                                                            <span className="ml-1 text-orange-600">
-                                                                • {r.gradeLevel} {r.schoolClass} {r.shift === 'shift_morning' ? '(MAT)' : r.shift === 'shift_afternoon' ? '(VESP)' : ''}
-                                                            </span>
-                                                        )}
-                                                    </p>
-                                                </div>
-                                                <span className="text-[10px] font-mono font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">
-                                                    {new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                            </div>
-                                            <Button
-                                                onClick={async () => {
-                                                    let photoToDisplay = r.studentPhoto;
-
-                                                    // If missing (older record), try a quick fetch
-                                                    if (!photoToDisplay) {
-                                                        try {
-                                                            const studentDoc = await getDoc(doc(db, 'students', r.studentId));
-                                                            if (studentDoc.exists()) {
-                                                                photoToDisplay = studentDoc.data().photoUrl;
-                                                            }
-                                                        } catch (e) {
-                                                            console.error("Erro ao buscar foto:", e);
-                                                        }
-                                                    }
-
-                                                    showDialog({
-                                                        type: 'confirm',
-                                                        title: 'Confirmar Liberação',
-                                                        message: `Deseja confirmar a saída de ${r.studentName}?`,
-                                                        image: photoToDisplay,
-                                                        onConfirm: () => handleRelease(r.id)
-                                                    });
-                                                }}
-                                                className="w-full bg-blue-950 hover:bg-black text-white font-bold uppercase text-xs tracking-wider py-3.5 rounded-xl shadow-lg shadow-blue-950/10 active:scale-95 transition-all"
-                                            >
-                                                Confirmar Saída
-                                            </Button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
                         </div>
                     )}
 
