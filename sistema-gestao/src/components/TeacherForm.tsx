@@ -110,6 +110,24 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
         setShowPassword(true);
     };
 
+    const isInfantilTeacher = useMemo(() => {
+        return formData.gradeLevels?.some(gl => {
+            const grade = grades.find(g => g.name === gl);
+            const segment = segments.find(s => s.id === grade?.segmentId);
+            return segment?.name === 'Educação Infantil';
+        });
+    }, [formData.gradeLevels, grades, segments]);
+
+    const hasNonInfantilGrade = useMemo(() => {
+        return formData.gradeLevels?.some(gl => {
+            const grade = grades.find(g => g.name === gl);
+            const segment = segments.find(s => s.id === grade?.segmentId);
+            return segment && segment.name !== 'Educação Infantil';
+        });
+    }, [formData.gradeLevels, grades, segments]);
+
+    const isOnlyInfantil = isInfantilTeacher && !hasNonInfantilGrade;
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         // --- BLINDAGEM: VALIDAÇÃO RIGOROSA ---
@@ -128,20 +146,6 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
         if (!teacher && !formData.password) {
             return alert("Por favor, defina uma senha para o novo professor.");
         }
-
-        const isInfantilTeacher = formData.gradeLevels?.some(gl => {
-            const grade = grades.find(g => g.name === gl);
-            const segment = segments.find(s => s.id === grade?.segmentId);
-            return segment?.name === 'Educação Infantil';
-        });
-
-        const hasNonInfantilGrade = formData.gradeLevels?.some(gl => {
-            const grade = grades.find(g => g.name === gl);
-            const segment = segments.find(s => s.id === grade?.segmentId);
-            return segment && segment.name !== 'Educação Infantil';
-        });
-
-        const isOnlyInfantil = isInfantilTeacher && !hasNonInfantilGrade;
 
         if (!isOnlyInfantil) {
             if (!formData.subjects || formData.subjects.length === 0) {
@@ -377,7 +381,11 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
 
                     {/* NEW: Linked Assignments Section (Memoized to fix INP) */}
                     {useMemo(() => {
-                        if (!formData.gradeLevels || formData.gradeLevels.length === 0 || !formData.subjects || formData.subjects.length === 0) return null;
+                        const hasGrades = formData.gradeLevels && formData.gradeLevels.length > 0;
+                        const hasSubjectsForNonInfantil = formData.subjects && formData.subjects.length > 0;
+
+                        // Show if we have grades AND (either it's an infant teacher OR has subjects)
+                        if (!hasGrades || (!isInfantilTeacher && !hasSubjectsForNonInfantil)) return null;
 
                         return (
                             <section className="bg-slate-50 rounded-xl p-6 border border-slate-100 space-y-4">
@@ -390,7 +398,7 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
                                 </p>
 
                                 <div className="space-y-6">
-                                    {formData.gradeLevels.map(grade => {
+                                    {formData.gradeLevels?.map(grade => {
                                         const gradeId = grades.find(g => g.name === grade)?.id;
                                         return (
                                             <div key={grade} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">

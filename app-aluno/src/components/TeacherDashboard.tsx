@@ -394,11 +394,34 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         }
     }, [teacherSubjects, teacher.gradeLevels, teacher.shift]);
 
+    const isEarlyChildhoodTeacher = useMemo(() => {
+        if (!teacher.gradeLevels || teacher.gradeLevels.length === 0) return false;
+        return teacher.gradeLevels.some(grade => parseGradeLevel(grade).segmentId === 'seg_infantil');
+    }, [teacher.gradeLevels]);
+
+    const availableShifts = useMemo(() => {
+        const shifts = new Set<SchoolShift>();
+        if (teacher.assignments && teacher.assignments.length > 0) {
+            teacher.assignments.forEach(a => {
+                if (a.shift) shifts.add(a.shift as SchoolShift);
+            });
+        } else if (teacher.shift) {
+            // Use normalizing function if needed, but here we assume it's correct from DB
+            shifts.add(teacher.shift as SchoolShift);
+        }
+
+        if (shifts.size === 0) return Object.values(SchoolShift);
+        return Array.from(shifts);
+    }, [teacher.assignments, teacher.shift]);
+
     const getFilteredSubjects = useCallback((gradeLevel: string) => {
+        if (isEarlyChildhoodTeacher && parseGradeLevel(gradeLevel).segmentId === 'seg_infantil') {
+            return ['general_early_childhood'];
+        }
         if (!teacher.assignments || teacher.assignments.length === 0) return teacher.subjects;
         const assignment = teacher.assignments.find(a => a.gradeLevel === gradeLevel);
         return assignment ? assignment.subjects : teacher.subjects;
-    }, [teacher.assignments, teacher.subjects]);
+    }, [teacher.assignments, teacher.subjects, isEarlyChildhoodTeacher]);
 
     const filteredSubjectsForGrades = useMemo(() => {
         const grade = selectedStudent?.gradeLevel || filterGrade;
@@ -424,14 +447,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
         return !scheduled;
     }, [attendanceDate, attendanceGrade, attendanceClass, attendanceSubject, classSchedules, activeUnit, calendarEvents]);
+
     const filteredSubjectsForAgenda = useMemo(() => getFilteredSubjects(agendaGrade), [agendaGrade, getFilteredSubjects]);
     const filteredSubjectsForMaterials = useMemo(() => getFilteredSubjects(materialGrade), [materialGrade, getFilteredSubjects]);
     const filteredSubjectsForExams = useMemo(() => getFilteredSubjects(examGrade), [examGrade, getFilteredSubjects]);
-
-    const isEarlyChildhoodTeacher = useMemo(() => {
-        if (!teacher.gradeLevels || teacher.gradeLevels.length === 0) return false;
-        return teacher.gradeLevels.some(grade => parseGradeLevel(grade).segmentId === 'seg_infantil');
-    }, [teacher.gradeLevels]);
 
     const isEarlyChildhoodStudent = useMemo(() => {
         if (!selectedStudent) return false;
@@ -468,12 +487,23 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         // Normalize gradeLevel for comparison (e.g., "2ª Série - Ensino Médio" -> "2ª Série")
         const { grade: studentGrade } = parseGradeLevel(student.gradeLevel);
 
-        // Always restrict to teacher's assigned grades
-        const isAssignedGrade = (() => {
-            // Strict ID Match
-            if (student.gradeId && teacher.gradeIds?.length) {
+        // Always restrict to teacher's assigned grades AND shifts
+        const isAuthorized = (() => {
+            if (!student.gradeId) return false;
+
+            // 1. Check Assignments (New and most robust way)
+            if (teacher.assignments && teacher.assignments.length > 0) {
+                return teacher.assignments.some(a =>
+                    a.gradeId === student.gradeId &&
+                    a.shift === student.shift
+                );
+            }
+
+            // 2. Fallback to Simple Grade IDs (Legacy)
+            if (teacher.gradeIds?.length) {
                 return teacher.gradeIds.includes(student.gradeId);
             }
+
             return false;
         })();
 
@@ -492,8 +522,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
         const matchesYear = student.enrolledYears?.includes('2026');
 
-        return matchesUnit && isAssignedGrade && matchesGrade && matchesShift && matchesClass && matchesSearch && matchesYear;
-    }), [students, activeUnit, teacher.gradeLevels, filterGrade, filterShift, filterClass, searchTerm]);
+        return matchesUnit && isAuthorized && matchesGrade && matchesShift && matchesClass && matchesSearch && matchesYear;
+    }), [students, activeUnit, teacher.gradeLevels, teacher.assignments, filterGrade, filterShift, filterClass, searchTerm]);
 
     const { absenceData, currentBimester } = useMemo(() => {
         if (attendanceStudents.length === 0) return { absenceData: {} as Record<string, StudentAbsenceSummary>, currentBimester: 1 };
@@ -688,16 +718,27 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             const { grade: sGrade } = parseGradeLevel(s.gradeLevel);
             const sClass = normalizeClass(s.schoolClass);
 
-            // Security check: restrict to teacher's assigned grades
-            const isAssignedGrade = (() => {
-                // Strict ID Match
-                if (s.gradeId && teacher.gradeIds?.length) {
+            // Security check: restrict to teacher's assigned grades AND shifts
+            const isAuthorized = (() => {
+                if (!s.gradeId) return false;
+
+                // 1. Check Assignments (New and most robust way)
+                if (teacher.assignments && teacher.assignments.length > 0) {
+                    return teacher.assignments.some(a =>
+                        a.gradeId === s.gradeId &&
+                        a.shift === s.shift
+                    );
+                }
+
+                // 2. Fallback to Simple Grade IDs (Legacy)
+                if (teacher.gradeIds?.length) {
                     return teacher.gradeIds.includes(s.gradeId);
                 }
+
                 return false;
             })();
 
-            if (!isAssignedGrade) return false;
+            if (!isAuthorized) return false;
 
             // REGRAS DE ANO LETIVO: Apenas alunos matriculados em 2026
             if (s.enrolledYears && !s.enrolledYears.includes('2026')) return false;
@@ -1483,7 +1524,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                             className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
                                         >
                                             <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                                                <svg className="w-7 h-7 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                                                <svg className="w-7 h-7 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
                                             </div>
                                             <h3 className="font-bold text-gray-800 text-sm text-center">Chamada Diária</h3>
                                         </button>
@@ -1610,8 +1651,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                             <label className="block text-sm font-bold text-gray-700 mb-1">Turno</label>
                                             <select value={materialShift} onChange={(e) => setMaterialShift(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
                                                 <option value="">Selecione...</option>
-                                                {Object.entries(SHIFT_LABELS).map(([value, label]) => (
-                                                    <option key={value} value={value}>{label}</option>
+                                                {availableShifts.map(value => (
+                                                    <option key={value} value={value}>{SHIFT_LABELS[value]}</option>
                                                 ))}
                                             </select>
                                         </div>
@@ -1740,8 +1781,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                             <label className="block text-sm font-bold text-gray-700 mb-1">Turno</label>
                                             <select value={agendaShift} onChange={e => setAgendaShift(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
                                                 <option value="">Selecione...</option>
-                                                {Object.entries(SHIFT_LABELS).map(([value, label]) => (
-                                                    <option key={value} value={value}>{label}</option>
+                                                {availableShifts.map(value => (
+                                                    <option key={value} value={value}>{SHIFT_LABELS[value]}</option>
                                                 ))}
                                             </select>
                                         </div>
@@ -1869,8 +1910,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                             <label className="block text-sm font-bold text-gray-700 mb-1">Turno</label>
                                             <select value={examShift} onChange={e => setExamShift(e.target.value)} className="w-full p-2 border border-gray-300 rounded bg-white" required>
                                                 <option value="">Selecione...</option>
-                                                {Object.entries(SHIFT_LABELS).map(([value, label]) => (
-                                                    <option key={value} value={value}>{label}</option>
+                                                {availableShifts.map(value => (
+                                                    <option key={value} value={value}>{SHIFT_LABELS[value]}</option>
                                                 ))}
                                             </select>
                                         </div>
@@ -2052,8 +2093,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                     </select>
                                     <select value={filterShift} onChange={e => setFilterShift(e.target.value)} className="w-full text-sm p-2 border border-gray-300 rounded focus:ring-blue-950 focus:border-blue-950">
                                         <option value="">Todos os Turnos</option>
-                                        {Object.entries(SHIFT_LABELS).map(([value, label]) => (
-                                            <option key={value} value={value}>{label}</option>
+                                        {availableShifts.map(value => (
+                                            <option key={value} value={value}>{SHIFT_LABELS[value]}</option>
                                         ))}
                                     </select>
                                     <select value={filterClass} onChange={e => setFilterClass(e.target.value)} className="w-full text-sm p-2 border border-gray-300 rounded focus:ring-blue-950 focus:border-blue-950">
@@ -2795,8 +2836,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                         <label className="text-sm font-bold text-gray-700 mb-1 block">Turno</label>
                                         <select value={attendanceShift} onChange={e => setAttendanceShift(e.target.value)} className="w-full p-2 border rounded">
                                             <option value="">Todos</option>
-                                            {Object.entries(SHIFT_LABELS).map(([value, label]) => (
-                                                <option key={value} value={value}>{label}</option>
+                                            {availableShifts.map(value => (
+                                                <option key={value} value={value}>{SHIFT_LABELS[value]}</option>
                                             ))}
                                         </select>
                                     </div>
