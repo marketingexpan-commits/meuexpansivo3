@@ -693,6 +693,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         );
     }, [isEarlyChildhood, earlyChildhoodReports, student.id, currentYear, selectedReportSemester]);
 
+    // NEW: Encontra os professores regentes da turma (Educação Infantil) baseados estritamente em IDs técnicos canônicos
+    const mainTeachers = useMemo(() => {
+        if (!isEarlyChildhood || !teachers || teachers.length === 0) return [];
+        return (teachers as Teacher[]).filter(t => {
+            if (t.unit !== student.unit) return false;
+            return t.assignments?.some(a =>
+                a.gradeId === student.gradeId &&
+                a.shift === student.shift
+            );
+        }).map(t => t.name);
+    }, [isEarlyChildhood, teachers, student.unit, student.gradeId, student.shift]);
+
     const studentAttendance = useMemo(() => {
         const records = (attendanceRecords || [])
             .filter(record => record?.studentStatus && record.studentStatus[student.id]);
@@ -1999,6 +2011,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             <span className="font-bold text-gray-600 uppercase text-xs block">Turma/Turno</span>
                                             <span className="text-gray-900">{student.schoolClass} - {SHIFT_LABELS[student.shift as SchoolShift] || student.shift}</span>
                                         </div>
+                                        {isEarlyChildhood && mainTeachers.length > 0 && (
+                                            <div className="md:col-span-2">
+                                                <span className="font-bold text-gray-600 uppercase text-xs block">Professor(a)</span>
+                                                <span className="text-gray-900 font-bold uppercase">{mainTeachers.join(', ')}</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
