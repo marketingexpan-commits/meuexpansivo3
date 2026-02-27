@@ -28,6 +28,8 @@ interface RankSettings {
     sponsorPhone?: string;
     sponsorAddress?: string;
     showcaseEnabled?: boolean;
+    regulationUrl?: string;
+    regulationText?: string;
     gradeConfigs?: Record<string, GradeConfig>;
 }
 
@@ -269,7 +271,7 @@ export default function RankingConfig() {
 
                 <div className="md:col-span-3 space-y-6">
                     {/* Status & Replication Actions */}
-                    <div className="flex flex-col lg:flex-row gap-4">
+                    <div className="flex flex-col lg:flex-row items-start gap-4">
                         {/* Status Toggle */}
                         <div className="flex-1 flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
                             <div className="flex items-center gap-4">
@@ -306,6 +308,33 @@ export default function RankingConfig() {
                             >
                                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.showcaseEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
                             </button>
+                        </div>
+
+                        {/* Regulation Config */}
+                        <div className="flex-[2] flex flex-col p-4 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-slate-100 rounded-lg text-slate-600">
+                                    <Trophy className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-blue-950 text-sm">Regulamento</h3>
+                                    <p className="text-[10px] text-slate-500">QR Code e Página de Regras</p>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Input
+                                    value={settings.regulationUrl || ''}
+                                    onChange={e => setSettings({ ...settings, regulationUrl: e.target.value })}
+                                    placeholder="Link Externo (opcional)"
+                                    className="h-9 text-xs"
+                                />
+                                <textarea
+                                    value={settings.regulationText || ''}
+                                    onChange={e => setSettings({ ...settings, regulationText: e.target.value })}
+                                    placeholder="Texto do Regulamento Interno (visto ao escanear)..."
+                                    className="w-full h-20 p-3 text-xs border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-blue-500 transition-all resize-none"
+                                />
+                            </div>
                         </div>
 
                         {/* Replication Tools */}

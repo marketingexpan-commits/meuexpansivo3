@@ -36,6 +36,8 @@ export interface RankSettings {
     sponsorPhone?: string;
     sponsorAddress?: string;
     showcaseEnabled?: boolean;
+    regulationUrl?: string;
+    regulationText?: string;
     gradeConfigs?: Record<string, GradeConfig>;
     lastUpdated?: string;
 }

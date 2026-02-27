@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import type { StudentRank, RankSettings, GradeConfig } from './services/rankService';
 import { rankService } from './services/rankService';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Medal, User, Globe, Building2, Phone } from 'lucide-react';
+import { Trophy, Medal, User, Globe, Building2, Phone, Info, CheckCircle2 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { twMerge } from 'tailwind-merge';
 
 // Helper for medals
@@ -322,6 +323,116 @@ const SponsorsShowcase = ({ settings, unitName, scale }: { settings: RankSetting
     </motion.div>
   );
 };
+const RegulationView = ({ settings, unitName }: { settings: RankSettings, unitName: string }) => {
+  const grades = ['6º Ano', '7º Ano', '8º Ano', '9º Ano', '1ª Série', '2ª Série', '3ª Série'];
+  const gradeIds = ['grade_6_ano', 'grade_7_ano', 'grade_8_ano', 'grade_9_ano', 'grade_1_ser', 'grade_2_ser', 'grade_3_ser'];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="min-h-screen bg-slate-50 text-slate-900 pb-20"
+    >
+      {/* Header Mobile */}
+      <div className="bg-[#001c3d] text-white p-8 rounded-b-[3rem] shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/20 blur-[80px] rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="relative z-10">
+          <img src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png" alt="Logo" className="h-10 brightness-0 invert mb-6" />
+          <h1 className="text-3xl font-black tracking-tighter uppercase mb-1">Regulamento</h1>
+          <p className="text-blue-400 font-bold text-sm tracking-widest uppercase">{unitName}</p>
+        </div>
+      </div>
+
+      <div className="max-w-md mx-auto px-6 -mt-8 relative z-20 space-y-6">
+        {/* Como funciona */}
+        <div className="bg-white p-6 rounded-[2rem] shadow-xl border border-slate-100">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-blue-50 rounded-xl text-blue-600">
+              <Info className="w-5 h-5" />
+            </div>
+            <h2 className="font-black text-blue-950 uppercase tracking-tight">Como funciona o Ranking?</h2>
+          </div>
+
+          <p className="text-slate-600 text-sm leading-relaxed mb-6">
+            O Ranking Expansivo premia o desempenho global dos alunos, incentivando a excelência acadêmica, a pontualidade e o comportamento exemplar.
+          </p>
+
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: 'Notas', val: '60%', color: 'text-blue-600', bg: 'bg-blue-50' },
+              { label: 'Freq.', val: '30%', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+              { label: 'Comp.', val: '10%', color: 'text-orange-600', bg: 'bg-orange-50' }
+            ].map(item => (
+              <div key={item.label} className={twMerge("p-3 rounded-2xl text-center", item.bg)}>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{item.label}</p>
+                <p className={twMerge("text-xl font-black", item.color)}>{item.val}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 pt-6 border-t border-slate-50 space-y-3">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5" />
+              <p className="text-xs text-slate-500 font-medium">Desempate: Aluno com a maior nota média.</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5" />
+              <p className="text-xs text-slate-500 font-medium">Atualização: Os dados são sincronizados em tempo real.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Premiações */}
+        <div className="space-y-4">
+          <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Premiações por Série</h3>
+          {gradeIds.map((id, index) => {
+            const config = settings.gradeConfigs?.[id];
+            if (!config || (!config.awards.rank1 && !config.awards.rank2 && !config.awards.rank3)) return null;
+
+            return (
+              <div key={id} className="bg-white p-6 rounded-[2rem] shadow-lg border border-slate-100 overflow-hidden relative group">
+                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                  <Trophy size={60} />
+                </div>
+                <h4 className="text-lg font-black text-blue-950 uppercase mb-4">{grades[index]}</h4>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 h-6 rounded-full bg-yellow-400 flex items-center justify-center text-[10px] font-black">1</span>
+                    <p className="text-sm font-bold text-slate-700">{config.awards.rank1 || '---'}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-black">2</span>
+                    <p className="text-sm font-bold text-slate-700">{config.awards.rank2 || '---'}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center text-[10px] font-black text-orange-700">3</span>
+                    <p className="text-sm font-bold text-slate-700">{config.awards.rank3 || '---'}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Texto Adicional */}
+        {settings.regulationText && (
+          <div className="bg-blue-950 text-white p-8 rounded-[2.5rem] shadow-xl">
+            <h3 className="text-xs font-black text-blue-300 uppercase tracking-widest mb-4">Informações Importantes</h3>
+            <div className="text-sm leading-relaxed font-medium opacity-90 whitespace-pre-wrap">
+              {settings.regulationText}
+            </div>
+          </div>
+        )}
+
+        {/* Footer Mobile */}
+        <div className="text-center pt-8 space-y-4">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Expansivo Rede de Ensino</p>
+          <div className="w-12 h-1 bg-slate-200 mx-auto rounded-full" />
+        </div>
+      </div>
+    </motion.div>
+  );
+};
 
 function App() {
   const [isSmartTV, setIsSmartTV] = useState(false);
@@ -343,6 +454,7 @@ function App() {
   const [unitName, setUnitName] = useState("Unidade...");
   const [scaleFactor, setScaleFactor] = useState(1);
   const [showcaseScale, setShowcaseScale] = useState(1);
+  const isRegulationRoute = window.location.pathname.includes('/regulamento');
 
   // Dynamic Scaling Hook for Zoom/Resize Protection
   useEffect(() => {
@@ -613,178 +725,209 @@ function App() {
         ) : null}
       </AnimatePresence>
 
-      <AnimatePresence mode="wait">
-        {isShowcaseStep && (
-          <SponsorsShowcase
-            settings={settings}
-            unitName={unitName}
-            scale={showcaseScale}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Header */}
-      <header className="h-28 bg-white border-b border-slate-100 shadow-sm z-20 flex-shrink-0">
-        <div className="max-w-[1440px] mx-auto w-full h-full px-12 md:px-20 flex items-center justify-between">
-          <div className="flex items-center space-x-6">
-            <img
-              src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"
-              alt="Logo"
-              className="h-12"
-            />
-            <div className="w-px h-10 bg-slate-100" />
-            <div>
-              <h1 translate="no" className="text-3xl font-black tracking-tighter uppercase leading-none text-[#001c3d]">RANKING EXPANSIVO</h1>
-              <p translate="no" className="text-sm font-bold text-blue-600 tracking-[0.2em] uppercase mt-1">{unitName}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-6">
-            <div className="text-right">
-              <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none">Série em destaque</p>
-              <div className="h-1.5 w-16 bg-blue-600 ml-auto mt-1.5 rounded-full" />
-            </div>
-            <h2 translate="no" className="text-4xl font-black text-[#001c3d] uppercase tracking-tighter ml-2 whitespace-nowrap">
-              {currentGrade || 'Patrocinadores'}
-            </h2>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Rank Area */}
-      <main className="flex-1 flex items-center justify-center p-12 z-20 overflow-hidden">
-        {!currentGrade ? (
-          <div className="flex flex-col items-center gap-6">
-            <div className="relative">
-              <motion.div
-                animate={{ scale: [1, 1.05, 1], rotate: [0, 5, -5, 0] }}
-                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-                className="relative z-10"
-              >
-                <img
-                  src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"
-                  alt="Logo Expansivo"
-                  className="h-24 opacity-20 grayscale"
-                />
-              </motion.div>
-              <div className="absolute inset-0 bg-blue-600/5 blur-xl rounded-full scale-150 animate-pulse" />
-            </div>
-            <p className="text-slate-300 font-bold uppercase tracking-[0.3em] text-[10px]">Aguardando sincronização...</p>
-          </div>
-        ) : (
-          <div className="w-full h-full flex items-center justify-center max-w-[1440px]">
+      {isRegulationRoute && settings ? (
+        <RegulationView settings={settings} unitName={unitName} />
+      ) : (
+        !isLoading && settings && (
+          <>
             <AnimatePresence mode="wait">
-              <motion.div
-                key={currentGrade}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="flex items-center justify-center gap-10 w-full"
-              >
-                {/* Score Cards Container */}
-                <div
-                  className="flex items-end space-x-8"
-                  style={{
-                    transform: `scale(${scaleFactor})`,
-                    transformOrigin: 'center center'
-                  }}
-                >
-                  {/* 2nd Place */}
-                  {ranks[currentGrade]?.[1] && <RankCard student={ranks[currentGrade][1]} index={1} isSmartTV={isSmartTV} />}
+              {isShowcaseStep && (
+                <SponsorsShowcase
+                  settings={settings}
+                  unitName={unitName}
+                  scale={showcaseScale}
+                />
+              )}
+            </AnimatePresence>
 
-                  {/* 1st Place */}
-                  {ranks[currentGrade]?.[0] && <RankCard student={ranks[currentGrade][0]} index={0} isSmartTV={isSmartTV} />}
-
-                  {/* 3rd Place */}
-                  {ranks[currentGrade]?.[2] && <RankCard student={ranks[currentGrade][2]} index={2} isSmartTV={isSmartTV} />}
+            {/* Header */}
+            <header className="h-28 bg-white border-b border-slate-100 shadow-sm z-20 flex-shrink-0">
+              <div className="max-w-[1440px] mx-auto w-full h-full px-12 md:px-20 flex items-center justify-between">
+                <div className="flex items-center space-x-6">
+                  <img
+                    src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"
+                    alt="Logo"
+                    className="h-12"
+                  />
+                  <div className="w-px h-10 bg-slate-100" />
+                  <div>
+                    <h1 translate="no" className="text-3xl font-black tracking-tighter uppercase leading-none text-[#001c3d]">RANKING EXPANSIVO</h1>
+                    <p translate="no" className="text-sm font-bold text-blue-600 tracking-[0.2em] uppercase mt-1">{unitName}</p>
+                  </div>
                 </div>
 
-                {/* Vertical Awards Legend */}
-                <AwardsLegend config={currentGradeConfig || undefined} />
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        )}
-      </main>
-
-      <footer className="h-28 bg-[#001c3d] border-t border-white/5 z-20 flex-shrink-0">
-        <div className="max-w-[1440px] mx-auto w-full h-full px-12 md:px-20 flex items-center justify-between">
-          <div className="flex items-center space-x-6">
-            <div className="flex items-center space-x-2 px-3 py-1.5 bg-blue-600/20 border border-blue-500/30 rounded-full">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_rgba(16,185,129,0.5)]" />
-              <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest italic leading-none">ATUALIZAÇÃO EM TEMPO REAL</span>
-            </div>
-            <div className="flex flex-col ml-4">
-              <p className="text-[10px] text-blue-400 font-black tracking-widest uppercase mb-1">
-                Composição dos Pontos
-              </p>
-              <div className="flex flex-col">
-                <p className="text-[11px] text-white/70 font-bold uppercase leading-tight italic">
-                  60% Nota Média • 30% Frequência • 10% Comportamento
-                </p>
-                <p className="text-[9px] text-blue-400/80 font-bold uppercase tracking-tight italic mt-0.5">
-                  Desempate: Maior Nota Média
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <motion.div
-            key={currentGradeConfig?.sponsorName || settings?.sponsorName || 'default'}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center space-x-8"
-          >
-            {(() => {
-              const isValid = (val?: string) => {
-                if (!val) return false;
-                const v = val.trim().toUpperCase();
-                return v !== '' && v !== 'GIZ' && v !== 'APOIO INSTITUCIONAL';
-              };
-
-              const partnerName = isValid(currentGradeConfig?.sponsorName) ? currentGradeConfig?.sponsorName : (isValid(settings?.sponsorName) ? settings?.sponsorName : null);
-              const partnerInfo = isValid(currentGradeConfig?.sponsorInfo) ? currentGradeConfig?.sponsorInfo : (isValid(settings?.sponsorInfo) ? settings?.sponsorInfo : null);
-              const partnerLogo = currentGradeConfig?.sponsorLogoUrl || settings?.sponsorLogoUrl;
-
-              return (
-                <>
+                <div className="flex items-center space-x-6">
                   <div className="text-right">
-                    <p className="text-xs text-blue-400 font-black tracking-[0.2em] uppercase mb-2">PARCEIRO</p>
-                    {partnerName && (
-                      <p translate="no" className="text-2xl font-black text-white tracking-tighter leading-none uppercase">
-                        {partnerName}
-                      </p>
-                    )}
-                    {partnerInfo && (
-                      <p translate="no" className="text-[10px] text-white/40 font-black uppercase mt-1">
-                        {partnerInfo}
-                      </p>
-                    )}
+                    <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none">Série em destaque</p>
+                    <div className="h-1.5 w-16 bg-blue-600 ml-auto mt-1.5 rounded-full" />
                   </div>
-                  <div className="px-8 py-4 bg-white rounded-[2rem] border border-white/10 shadow-xl flex items-center justify-center min-w-[180px] max-h-[90px]">
-                    {partnerLogo ? (
+                  <h2 translate="no" className="text-4xl font-black text-[#001c3d] uppercase tracking-tighter ml-2 whitespace-nowrap">
+                    {currentGrade || 'Patrocinadores'}
+                  </h2>
+                </div>
+              </div>
+            </header>
+
+            {/* Main Rank Area */}
+            <main className="flex-1 flex items-center justify-center p-12 z-20 overflow-hidden">
+              {!currentGrade ? (
+                <div className="flex flex-col items-center gap-6">
+                  <div className="relative">
+                    <motion.div
+                      animate={{ scale: [1, 1.05, 1], rotate: [0, 5, -5, 0] }}
+                      transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+                      className="relative z-10"
+                    >
                       <img
-                        src={partnerLogo}
-                        alt="Partner"
-                        className="h-12 object-contain"
-                        crossOrigin="anonymous"
-                        loading="eager"
-                        onError={(e) => {
-                          console.log("Failed to load footer partner logo");
-                          e.currentTarget.src = "https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"; // Fallback to school logo
-                          e.currentTarget.style.opacity = "0.2";
-                        }}
+                        src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"
+                        alt="Logo Expansivo"
+                        className="h-24 opacity-20 grayscale"
                       />
-                    ) : (
-                      <Globe className="text-slate-200 h-8 w-8 opacity-20" />
-                    )}
+                    </motion.div>
+                    <div className="absolute inset-0 bg-blue-600/5 blur-xl rounded-full scale-150 animate-pulse" />
                   </div>
-                </>
-              );
-            })()}
-          </motion.div>
-        </div>
-      </footer>
+                  <p className="text-slate-300 font-bold uppercase tracking-[0.3em] text-[10px]">Aguardando sincronização...</p>
+                </div>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center max-w-[1440px]">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={currentGrade}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="flex items-center justify-center gap-10 w-full"
+                    >
+                      {/* Score Cards Container */}
+                      <div
+                        className="flex items-end space-x-8"
+                        style={{
+                          transform: `scale(${scaleFactor})`,
+                          transformOrigin: 'center center'
+                        }}
+                      >
+                        {/* 2nd Place */}
+                        {ranks[currentGrade]?.[1] && <RankCard student={ranks[currentGrade][1]} index={1} isSmartTV={isSmartTV} />}
+
+                        {/* 1st Place */}
+                        {ranks[currentGrade]?.[0] && <RankCard student={ranks[currentGrade][0]} index={0} isSmartTV={isSmartTV} />}
+
+                        {/* 3rd Place */}
+                        {ranks[currentGrade]?.[2] && <RankCard student={ranks[currentGrade][2]} index={2} isSmartTV={isSmartTV} />}
+                      </div>
+
+                      {/* Vertical Awards Legend */}
+                      <AwardsLegend config={currentGradeConfig || undefined} />
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              )}
+            </main>
+
+            <footer className="h-28 bg-[#001c3d] border-t border-white/5 z-20 flex-shrink-0">
+              <div className="max-w-[1440px] mx-auto w-full h-full px-12 md:px-20 flex items-center justify-between relative">
+                {/* Floating Badge on Border - Anchored to parent container's padding point */}
+                <div className="absolute top-0 left-12 md:left-20 -translate-y-1/2 z-30">
+                  <div className="bg-[#001c3d] rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.15)] flex items-center justify-center">
+                    <div className="flex items-center space-x-2 px-3 py-1.5 bg-blue-600/20 border border-blue-500/30 rounded-full">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_rgba(16,185,129,0.5)]" />
+                      <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest italic leading-none">ATUALIZAÇÃO EM TEMPO REAL</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 1. Left Section: Scoring Info */}
+                <div className="flex flex-col min-w-0 flex-1 pr-6 pt-6">
+                  <p className="text-[9px] lg:text-[10px] text-blue-400 font-black tracking-widest uppercase mb-1 truncate">
+                    Composição dos Pontos
+                  </p>
+                  <p className="text-[10px] lg:text-[11px] text-white/70 font-bold uppercase leading-tight italic line-clamp-2">
+                    60% Nota Média • 30% Frequência • 10% Comportamento
+                  </p>
+                  <p className="text-[8px] lg:text-[9px] text-blue-400/80 font-bold uppercase tracking-tight italic mt-0.5 truncate">
+                    Desempate: Maior Nota Média
+                  </p>
+                </div>
+
+                {/* 2. Center Section: QR Code & Regulation */}
+                <div className="flex justify-center shrink-0">
+                  <div className="flex items-center gap-6">
+                    <div className="text-right shrink-0">
+                      <p className="text-[9px] text-blue-400 font-extrabold uppercase tracking-widest leading-none mb-1">Regulamento</p>
+                      <p className="text-[10px] text-white font-bold opacity-60 uppercase leading-tight italic">Escanear para ver<br />regras e prêmios</p>
+                    </div>
+                    <div className="shrink-0 p-1.5 bg-white rounded-lg shadow-xl transition-transform hover:scale-105">
+                      <QRCodeSVG
+                        value={settings?.regulationUrl || (window.location.origin + '/regulamento')}
+                        size={84}
+                        level="M"
+                        includeMargin={false}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Right Section: Partner */}
+                <div className="flex justify-end min-w-0 flex-1 pl-6">
+                  <motion.div
+                    key={currentGradeConfig?.sponsorName || settings?.sponsorName || 'default'}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="flex items-center space-x-6"
+                  >
+                    {(() => {
+                      const isValid = (val?: string) => {
+                        if (!val) return false;
+                        const v = val.trim().toUpperCase();
+                        return v !== '' && v !== 'GIZ' && v !== 'APOIO INSTITUCIONAL';
+                      };
+
+                      const partnerName = isValid(currentGradeConfig?.sponsorName) ? currentGradeConfig?.sponsorName : (isValid(settings?.sponsorName) ? settings?.sponsorName : null);
+                      const partnerInfo = isValid(currentGradeConfig?.sponsorInfo) ? currentGradeConfig?.sponsorInfo : (isValid(settings?.sponsorInfo) ? settings?.sponsorInfo : null);
+                      const partnerLogo = currentGradeConfig?.sponsorLogoUrl || settings?.sponsorLogoUrl;
+
+                      return (
+                        <>
+                          <div className="text-right">
+                            <p className="text-xs text-blue-400 font-black tracking-[0.2em] uppercase mb-1">PARCEIRO</p>
+                            {partnerName && (
+                              <p translate="no" className="text-xl font-black text-white tracking-tighter leading-none uppercase">
+                                {partnerName}
+                              </p>
+                            )}
+                            {partnerInfo && (
+                              <p translate="no" className="text-[9px] text-white/40 font-black uppercase mt-0.5">
+                                {partnerInfo}
+                              </p>
+                            )}
+                          </div>
+                          <div className="px-10 py-5 bg-white rounded-3xl border border-white/10 shadow-xl flex items-center justify-center min-w-[360px] h-28 overflow-hidden">
+                            {partnerLogo ? (
+                              <img
+                                src={partnerLogo}
+                                alt="Partner"
+                                className="max-h-20 w-auto object-contain p-2"
+                                crossOrigin="anonymous"
+                                loading="eager"
+                                onError={(e) => {
+                                  e.currentTarget.src = "https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png";
+                                  e.currentTarget.style.opacity = "0.2";
+                                }}
+                              />
+                            ) : (
+                              <Globe className="text-slate-200 h-10 w-10 opacity-20" />
+                            )}
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </motion.div>
+                </div>
+              </div>
+            </footer>
+          </>
+        )
+      )}
     </div>
   );
 }
