@@ -10,7 +10,13 @@ export const statsService = {
             // 1. Total de Alunos
             // O unitFilter já deve ser o ID (ex: unit_bs) ou nulo/admin_geral
             const allStudents = await studentService.getStudents(unitFilter);
-            const totalStudents = allStudents.length;
+
+            // Total de Alunos considera apenas ATIVOS (Nao bloqueados e Status ATIVO/CURSANDO)
+            const activeStudents = allStudents.filter(s => {
+                const status = s.status || 'CURSANDO';
+                return !s.isBlocked && status !== 'CONCLUÍDO' && status !== 'EVADIDO' && status !== 'TRANSFERIDO';
+            });
+            const totalStudents = activeStudents.length;
 
             // 2. Novos Alunos (últimos 30 dias)
             const thirtyDaysAgo = new Date();

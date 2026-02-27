@@ -99,11 +99,11 @@ function SidebarFooter({ collapsed, handleLogout, setCollapsed }: { collapsed: b
 
             <div className="flex items-center p-2.5 rounded-xl bg-white border border-slate-200 shadow-sm">
                 <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-xs border border-slate-200 shrink-0">
-                    H
+                    A
                 </div>
                 {!collapsed && (
                     <div className="ml-3 overflow-hidden">
-                        <p className="text-sm font-medium text-slate-700 truncate">Hemenson</p>
+                        <p className="text-sm font-medium text-slate-700 truncate">Administração</p>
                         <button
                             onClick={handleLogout}
                             className="text-xs text-red-500 flex items-center hover:text-red-600 hover:underline mt-0.5 transition-colors cursor-pointer"

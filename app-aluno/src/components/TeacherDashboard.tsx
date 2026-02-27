@@ -1,7 +1,7 @@
 // src/components/TeacherDashboard.tsx
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
-import { MessageCircle, HelpCircle } from 'lucide-react';
+import { MessageCircle, HelpCircle, ClipboardCheck, Calendar } from 'lucide-react';
 import {
     Teacher, Student, GradeEntry, BimesterData, SchoolUnit, Subject, SchoolClass, AttendanceRecord, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, Ticket,
     TicketStatus,
@@ -1524,7 +1524,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                             className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
                                         >
                                             <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                                                <svg className="w-7 h-7 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                                                <ClipboardCheck className="w-7 h-7 text-blue-950" />
                                             </div>
                                             <h3 className="font-bold text-gray-800 text-sm text-center">Chamada Diária</h3>
                                         </button>
@@ -1577,7 +1577,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                         className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
                                     >
                                         <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                                            <svg className="w-7 h-7 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                            <Calendar className="w-7 h-7 text-blue-950" />
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm text-center">Calendário Escolar</h3>
                                     </button>

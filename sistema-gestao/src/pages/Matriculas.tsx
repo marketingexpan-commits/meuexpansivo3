@@ -32,7 +32,7 @@ export function Matriculas() {
     const [filterGrade, setFilterGrade] = useState('');
     const [filterClass, setFilterClass] = useState('');
     const [filterShift, setFilterShift] = useState('');
-    const [filterStatus, setFilterStatus] = useState('');
+    const [filterStatus, setFilterStatus] = useState('active');
 
     const hasActiveFilters = filterGrade || filterClass || filterShift || (filterStatus && filterStatus !== 'active') || searchTerm;
 
@@ -167,7 +167,7 @@ export function Matriculas() {
         setFilterGrade('');
         setFilterClass('');
         setFilterShift('');
-        setFilterStatus('');
+        setFilterStatus('active');
         setSearchTerm('');
     };
 
@@ -582,6 +582,7 @@ export function Matriculas() {
                                 value={filterStatus}
                                 onChange={(e) => setFilterStatus(e.target.value)}
                                 options={[
+                                    { label: 'SOMENTE ATIVOS', value: 'active' },
                                     { label: 'CURSANDO', value: 'CURSANDO' },
                                     { label: 'TRANSFERIDO', value: 'TRANSFERIDO' },
                                     { label: 'EVADIDO', value: 'EVADIDO' },
