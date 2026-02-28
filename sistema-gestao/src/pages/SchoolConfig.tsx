@@ -3,6 +3,7 @@ import { Smartphone, Save, AlertCircle, CheckCircle, Plus } from 'lucide-react';
 import { db } from '../firebaseConfig';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { MuralDigital } from './MuralDigital'; // Assuming a named export or default fallback
+import { LegalTermsManager } from '../components/LegalTermsManager';
 
 interface UnitContact {
     name: string;
@@ -86,7 +87,7 @@ export const SchoolConfig = () => {
     const [saving, setSaving] = useState(false);
     const [config, setConfig] = useState<SchoolConfigData>(DEFAULT_CONFIG);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-    const [activeTab, setActiveTab] = useState<'general' | 'admin' | 'mural'>('general');
+    const [activeTab, setActiveTab] = useState<'general' | 'admin' | 'mural' | 'terms'>('general');
 
     useEffect(() => {
         fetchConfig();
@@ -189,6 +190,15 @@ export const SchoolConfig = () => {
                         }`}
                 >
                     Mural Digital
+                </button>
+                <button
+                    onClick={() => setActiveTab('terms')}
+                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'terms'
+                        ? 'bg-white text-blue-950 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                >
+                    Termos de Aceite
                 </button>
             </div>
 
@@ -682,6 +692,14 @@ export const SchoolConfig = () => {
                 activeTab === 'mural' && (
                     <div className="animate-fade-in">
                         <MuralDigital />
+                    </div>
+                )
+            }
+
+            {
+                activeTab === 'terms' && (
+                    <div className="animate-fade-in">
+                        <LegalTermsManager />
                     </div>
                 )
             }

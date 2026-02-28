@@ -735,3 +735,23 @@ export interface LostAndFoundItem {
   claimedAt?: string; // ISO format
   deliveredAt?: string; // ISO format
 }
+
+export interface LegalTerm {
+  id: string;
+  title: string;
+  content: string; // HTML rich text
+  units: string[]; // array of unit IDs or ['all']
+  targetSegments: string[]; // array of segment IDs (e.g. 'seg_infantil', 'seg_fund_1')
+  isActive: boolean;
+  createdAt: string; // ISO String
+}
+
+export interface TermSignature {
+  id: string; // Signature document ID
+  termId: string; // Reference to LegalTerm.id
+  studentId: string;
+  studentName: string;
+  unit: string;
+  signatureBase64: string; // Base64 encoded image
+  signedAt: string; // ISO String
+}

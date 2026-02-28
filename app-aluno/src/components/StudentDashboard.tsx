@@ -20,6 +20,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { ErrorState } from './ErrorState';
 import { useFinancialSettings } from '../hooks/useFinancialSettings';
 import { ScheduleTimeline } from './ScheduleTimeline';
+import { TermsSigner } from './TermsSigner';
 
 import {
     Bot,
@@ -41,7 +42,8 @@ import {
     LogOut,
     QrCode,
     Package,
-    X
+    X,
+    PenTool
 } from 'lucide-react';
 import { db } from '../firebaseConfig';
 import { useLostAndFound } from '../hooks/useLostAndFound';
@@ -357,7 +359,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState({ title: '', tip: '' });
     const [isLoadingAI, setIsLoadingAI] = useState(false);
-    const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro' | 'tickets' | 'materials' | 'occurrences' | 'calendar' | 'schedule' | 'lost_found'>('menu');
+    const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro' | 'tickets' | 'materials' | 'occurrences' | 'calendar' | 'schedule' | 'lost_found' | 'authorizations'>('menu');
     const [showIdCard, setShowIdCard] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
 
@@ -1520,12 +1522,23 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Financeiro</h3>
                                     </button>
+
+                                    <button
+                                        onClick={() => setCurrentView('authorizations')}
+                                        className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square relative"
+                                    >
+                                        <div className="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-orange-100 transition-colors">
+                                            <PenTool className="w-6 h-6 text-orange-600" />
+                                        </div>
+                                        <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Autorizações e Termos</h3>
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     )}
 
                     {currentView === 'financeiro' && <FinanceiroScreen student={student} mensalidades={mensalidades} eventos={eventos} unitContacts={unitContacts} contactSettings={contactSettings} />}
+                    {currentView === 'authorizations' && <TermsSigner student={student} />}
 
 
                     {currentView === 'attendance' && (
