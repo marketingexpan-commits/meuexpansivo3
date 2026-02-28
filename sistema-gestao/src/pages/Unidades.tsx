@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { db } from '../firebaseConfig';
 import { collection, query, getDocs, addDoc, updateDoc, doc, writeBatch, orderBy } from 'firebase/firestore';
 import type { SchoolUnitDetail } from '../types';
@@ -13,6 +14,14 @@ export default function Unidades() {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUnit, setEditingUnit] = useState<SchoolUnitDetail | null>(null);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const userUnit = localStorage.getItem('userUnit');
+        if (userUnit !== 'admin_geral') {
+            navigate('/dashboard');
+        }
+    }, [navigate]);
 
     // Form State
     const [formData, setFormData] = useState({
