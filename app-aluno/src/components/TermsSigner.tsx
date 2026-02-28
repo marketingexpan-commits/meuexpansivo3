@@ -22,6 +22,42 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const sigCanvas = useRef<SignatureCanvas>(null);
 
+    // Canvas scaling fix for responsive/mobile layouts
+    useEffect(() => {
+        const handleResize = () => {
+            if (sigCanvas.current && isSigningMode) {
+                const canvas = sigCanvas.current.getCanvas();
+                const ratio = Math.max(window.devicePixelRatio || 1, 1);
+
+                // Only resize if the container actually has a width
+                if (canvas.offsetWidth === 0) return;
+
+                // Save current drawing if any
+                const data = sigCanvas.current.toData();
+
+                canvas.width = canvas.offsetWidth * ratio;
+                canvas.height = canvas.offsetHeight * ratio;
+                canvas.getContext('2d')?.scale(ratio, ratio);
+
+                sigCanvas.current.clear();
+                if (data && data.length > 0) {
+                    sigCanvas.current.fromData(data);
+                }
+            }
+        };
+
+        if (isSigningMode) {
+            // Slight delay ensures the modal DOM is fully painted and sized
+            const timer = setTimeout(handleResize, 100);
+            window.addEventListener('resize', handleResize);
+
+            return () => {
+                clearTimeout(timer);
+                window.removeEventListener('resize', handleResize);
+            };
+        }
+    }, [isSigningMode]);
+
     useEffect(() => {
         const fetchTermsAndSignatures = async () => {
             setLoading(true);
