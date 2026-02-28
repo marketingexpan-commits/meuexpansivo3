@@ -196,7 +196,7 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
                                                 <h4 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
                                                     {term.title}
                                                 </h4>
-                                                <p className="text-xs text-slate-500 mt-1 line-clamp-1">{term.content}</p>
+                                                <p className="text-[10px] text-slate-400 mt-1 italic font-medium">Toque para ler os termos completos</p>
                                             </div>
                                         </div>
                                         <Button size="sm" className="shrink-0 bg-blue-950 text-white hover:bg-blue-900 shadow-sm transition-colors border-0">
@@ -272,9 +272,10 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
                         {/* SCROLLABLE BODY */}
                         <div className="flex-1 overflow-y-auto flex flex-col">
                             {/* CONTENT */}
-                            <div className="p-5 flex-1 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap font-serif">
-                                {selectedTerm.content}
-                            </div>
+                            <div
+                                className="p-5 flex-1 text-sm text-gray-700 leading-relaxed font-serif prose prose-slate max-w-none"
+                                dangerouslySetInnerHTML={{ __html: selectedTerm.content }}
+                            />
 
                             {/* FOOTER / SIGNATURE AREA */}
                             <div className="p-5 border-t border-gray-100 bg-gray-50 shrink-0">
@@ -342,6 +343,26 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
                     </div>
                 </div>
             )}
+            {/* CSS fix for list visibility in terms */}
+            <style>{`
+                .prose ul {
+                    list-style-type: disc !important;
+                    padding-left: 1.5rem !important;
+                    margin: 1rem 0 !important;
+                }
+                .prose ol {
+                    list-style-type: decimal !important;
+                    padding-left: 1.5rem !important;
+                    margin: 1rem 0 !important;
+                }
+                .prose li {
+                    display: list-item !important;
+                    margin-bottom: 0.25rem !important;
+                }
+                .prose p {
+                    margin: 0.5rem 0 !important;
+                }
+            `}</style>
         </div>
     );
 };

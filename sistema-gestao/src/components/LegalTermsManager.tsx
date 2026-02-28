@@ -1,9 +1,150 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebaseConfig';
 import { collection, query, getDocs, addDoc, updateDoc, doc, deleteDoc, where, onSnapshot } from 'firebase/firestore';
-import { Plus, Edit2, Trash2, Loader2, FileText, CheckCircle, XCircle, Users, Eye, PenTool } from 'lucide-react';
-import type { LegalTerm, AcademicSegment, TermSignature } from '../types';
-import { UNIT_LABELS, SchoolUnit } from '../types';
+import { Plus, Edit2, Trash2, Loader2, FileText, CheckCircle, XCircle, Users, Eye, PenTool, Bold, Italic, List, ListOrdered, Smile, Undo, Redo } from 'lucide-react';
+import type { LegalTerm, AcademicSegment, TermSignature, Student } from '../types';
+import { UNIT_LABELS, SchoolUnit, SchoolShift, SHIFT_LABELS, SchoolClass } from '../types';
+import { useAcademicData } from '../hooks/useAcademicData';
+
+// Tiptap Imports
+import { useEditor, EditorContent } from '@tiptap/react';
+import { StarterKit } from '@tiptap/starter-kit';
+import { Underline } from '@tiptap/extension-underline';
+import { Link } from '@tiptap/extension-link';
+import { TextStyle } from '@tiptap/extension-text-style';
+import { Color } from '@tiptap/extension-color';
+import { ListItem } from '@tiptap/extension-list-item';
+import { BulletList } from '@tiptap/extension-bullet-list';
+import { OrderedList } from '@tiptap/extension-ordered-list';
+
+const MenuBar = ({ editor }: { editor: any }) => {
+    if (!editor) {
+        return null;
+    }
+
+    const insertEmoji = (type: 'smile' | 'dot', color: 'orange' | 'navy') => {
+        const hex = color === 'orange' ? '#ea580c' : '#172554';
+        const content = type === 'smile' ? '☺ ' : '● ';
+        editor.chain()
+            .focus()
+            .insertContent(`<span style="color: ${hex}">${content}</span>`)
+            .run();
+    };
+
+    return (
+        <div className="flex flex-wrap gap-1 p-2 bg-slate-50 border-b border-slate-200 sticky top-0 z-10 rounded-t-xl">
+            <button
+                type="button"
+                onClick={() => editor.chain().focus().toggleBold().run()}
+                disabled={!editor.can().chain().focus().toggleBold().run()}
+                className={`p-2 rounded hover:bg-slate-200 transition-colors ${editor.isActive('bold') ? 'bg-slate-200 text-blue-900 shadow-inner' : 'text-slate-600'}`}
+                title="Negrito"
+            >
+                <Bold className="w-4 h-4" />
+            </button>
+            <button
+                type="button"
+                onClick={() => editor.chain().focus().toggleItalic().run()}
+                disabled={!editor.can().chain().focus().toggleItalic().run()}
+                className={`p-2 rounded hover:bg-slate-200 transition-colors ${editor.isActive('italic') ? 'bg-slate-200 text-blue-900 shadow-inner' : 'text-slate-600'}`}
+                title="Itálico"
+            >
+                <Italic className="w-4 h-4" />
+            </button>
+            <button
+                type="button"
+                onClick={() => editor.chain().focus().toggleUnderline().run()}
+                className={`p-2 rounded hover:bg-slate-200 transition-colors ${editor.isActive('underline') ? 'bg-slate-200 text-blue-900 shadow-inner' : 'text-slate-600'}`}
+                title="Sublinhado"
+            >
+                <span className="font-bold underline text-xs">U</span>
+            </button>
+
+            <div className="w-px h-6 bg-slate-200 mx-1 align-self-center my-auto"></div>
+
+            <button
+                type="button"
+                onClick={() => editor.chain().focus().toggleBulletList().run()}
+                className={`p-2 rounded hover:bg-slate-200 transition-colors ${editor.isActive('bulletList') ? 'bg-slate-200 text-blue-900 shadow-inner' : 'text-slate-600'}`}
+                title="Lista com marcadores"
+            >
+                <List className="w-4 h-4" />
+            </button>
+            <button
+                type="button"
+                onClick={() => editor.chain().focus().toggleOrderedList().run()}
+                className={`p-2 rounded hover:bg-slate-200 transition-colors ${editor.isActive('orderedList') ? 'bg-slate-200 text-blue-900 shadow-inner' : 'text-slate-600'}`}
+                title="Lista numerada"
+            >
+                <ListOrdered className="w-4 h-4" />
+            </button>
+
+            <div className="w-px h-6 bg-slate-200 mx-1 align-self-center my-auto"></div>
+
+            {/* GRUPO AZUL MARINHO */}
+            <button
+                type="button"
+                onClick={() => insertEmoji('smile', 'navy')}
+                className="p-1.5 rounded hover:bg-slate-200 transition-colors text-[#172554]"
+                title="Rostinho Azul Marinho"
+            >
+                <Smile className="w-5 h-5" />
+            </button>
+            <button
+                type="button"
+                onClick={() => insertEmoji('dot', 'navy')}
+                className="p-1.5 rounded hover:bg-slate-200 transition-colors"
+                title="Ponto Azul Marinho"
+            >
+                <span className="w-4 h-4 rounded-full bg-[#172554] block"></span>
+            </button>
+
+            <div className="w-2"></div>
+
+            {/* GRUPO LARANJA */}
+            <button
+                type="button"
+                onClick={() => insertEmoji('smile', 'orange')}
+                className="p-1.5 rounded hover:bg-slate-200 transition-colors text-[#ea580c]"
+                title="Rostinho Laranja"
+            >
+                <Smile className="w-5 h-5" />
+            </button>
+            <button
+                type="button"
+                onClick={() => insertEmoji('dot', 'orange')}
+                className="p-1.5 rounded hover:bg-slate-200 transition-colors"
+                title="Ponto Laranja"
+            >
+                <span className="w-4 h-4 rounded-full bg-[#ea580c] block"></span>
+            </button>
+
+            <div className="flex-1"></div>
+
+            <button
+                type="button"
+                onClick={() => editor.chain().focus().undo().run()}
+                className="p-2 rounded hover:bg-slate-200 text-slate-500"
+                title="Desfazer"
+            >
+                <Undo className="w-4 h-4" />
+            </button>
+            <button
+                type="button"
+                onClick={() => editor.chain().focus().redo().run()}
+                className="p-2 rounded hover:bg-slate-200 text-slate-500"
+                title="Refazer"
+            >
+                <Redo className="w-4 h-4" />
+            </button>
+        </div>
+    );
+};
+
+interface EnrichedSignature extends TermSignature {
+    studentData?: Student;
+}
+
 import { Button } from './Button';
 import { Input } from './Input';
 import { Card, CardContent, CardHeader, CardTitle } from './Card';
@@ -24,11 +165,21 @@ export const LegalTermsManager = () => {
     const [selectedUnits, setSelectedUnits] = useState<string[]>(['all']);
     const [selectedSegments, setSelectedSegments] = useState<string[]>([]);
 
+    const { grades } = useAcademicData();
+
     // Signatures State
     const [isSignaturesModalOpen, setIsSignaturesModalOpen] = useState(false);
     const [selectedTermForSignatures, setSelectedTermForSignatures] = useState<LegalTerm | null>(null);
-    const [signatures, setSignatures] = useState<TermSignature[]>([]);
+    const [viewingTermContent, setViewingTermContent] = useState<LegalTerm | null>(null);
+    const [signatures, setSignatures] = useState<EnrichedSignature[]>([]);
     const [loadingSignatures, setLoadingSignatures] = useState(false);
+    const [expandedSignatureId, setExpandedSignatureId] = useState<string | null>(null);
+
+    // Filters for Signatures
+    const [filterLevel, setFilterLevel] = useState<string>('');
+    const [filterGrade, setFilterGrade] = useState<string>('');
+    const [filterClass, setFilterClass] = useState<string>('');
+    const [filterShift, setFilterShift] = useState<string>('');
 
     useEffect(() => {
         fetchSegments();
@@ -81,6 +232,11 @@ export const LegalTermsManager = () => {
             setIsActive(term.isActive);
             setSelectedUnits(term.units || []);
             setSelectedSegments(term.targetSegments || []);
+
+            // Sync editor content only when opening
+            if (editor) {
+                editor.commands.setContent(term.content || '');
+            }
         } else {
             setEditingId(null);
             setTitle('');
@@ -88,6 +244,10 @@ export const LegalTermsManager = () => {
             setIsActive(true);
             setSelectedUnits(['all']);
             setSelectedSegments(segments.map(s => s.id)); // Default todos
+
+            if (editor) {
+                editor.commands.setContent('');
+            }
         }
         setIsModalOpen(true);
     };
@@ -96,6 +256,36 @@ export const LegalTermsManager = () => {
         setIsModalOpen(false);
         setEditingId(null);
     };
+
+    const editor = useEditor({
+        extensions: [
+            StarterKit,
+            Underline,
+            TextStyle,
+            Color,
+            ListItem,
+            BulletList.configure({
+                HTMLAttributes: {
+                    class: 'list-disc ml-4',
+                },
+            }),
+            OrderedList.configure({
+                HTMLAttributes: {
+                    class: 'list-decimal ml-4',
+                },
+            }),
+            Link.configure({
+                openOnClick: false,
+            }),
+        ],
+        content: '',
+        onUpdate: ({ editor }) => {
+            setContent(editor.getHTML());
+        },
+    });
+
+    // Remove the problematic useEffect that was syncing content back to editor
+    // We now sync explicitly in handleOpenModal
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -112,7 +302,7 @@ export const LegalTermsManager = () => {
         try {
             const termData: Partial<LegalTerm> = {
                 title,
-                content,
+                content: editor?.getHTML() || content,
                 units: selectedUnits,
                 targetSegments: selectedSegments,
                 isActive,
@@ -157,8 +347,31 @@ export const LegalTermsManager = () => {
             const snap = await getDocs(q);
             const sigs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as TermSignature));
 
-            sigs.sort((a, b) => new Date(b.signedAt).getTime() - new Date(a.signedAt).getTime());
-            setSignatures(sigs);
+            if (sigs.length > 0) {
+                // Fetch student data to allow filtering by current academic position
+                const studentIds = Array.from(new Set(sigs.map(s => s.studentId)));
+                const studentsMap: Record<string, Student> = {};
+
+                for (let i = 0; i < studentIds.length; i += 30) {
+                    const chunk = studentIds.slice(i, i + 30);
+                    const sq = query(collection(db, 'students'), where('__name__', 'in', chunk));
+                    const sSnap = await getDocs(sq);
+                    sSnap.docs.forEach(doc => {
+                        studentsMap[doc.id] = { id: doc.id, ...doc.data() } as Student;
+                    });
+                }
+
+                const enrichedSigs: EnrichedSignature[] = sigs.map(sig => ({
+                    ...sig,
+                    studentData: studentsMap[sig.studentId]
+                }));
+
+                enrichedSigs.sort((a, b) => new Date(b.signedAt).getTime() - new Date(a.signedAt).getTime());
+                setSignatures(enrichedSigs);
+            } else {
+                setSignatures([]);
+            }
+
         } catch (error) {
             console.error("Erro ao buscar assinaturas:", error);
             alert("Erro ao buscar as assinaturas.");
@@ -210,6 +423,19 @@ export const LegalTermsManager = () => {
         }).join(', ');
     };
 
+    // Apply filters to signatures
+    const filteredSignatures = signatures.filter(sig => {
+        if (!sig.studentData) return true; // If somehow student data failed to load, don't hide them outright, but they might lack filter fields
+
+        const sData = sig.studentData;
+        const matchesLevel = !filterLevel || sData.gradeId?.startsWith(filterLevel) || sData.gradeLevel?.includes(segments.find(sg => sg.id === filterLevel)?.name || '');
+        const matchesGrade = !filterGrade || sData.gradeLevel === filterGrade;
+        const matchesClass = !filterClass || sData.schoolClass === filterClass;
+        const matchesShift = !filterShift || sData.shift === filterShift;
+
+        return matchesLevel && matchesGrade && matchesClass && matchesShift;
+    });
+
     return (
         <div className="animate-fade-in-up">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b border-slate-200 pb-4">
@@ -254,8 +480,8 @@ export const LegalTermsManager = () => {
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3 text-sm">
-                                            <div className="flex items-start gap-2 text-slate-600">
-                                                <div className="p-1 bg-blue-100 text-blue-700 rounded mt-0.5">
+                                            <div className="flex items-start gap-2 text-blue-950">
+                                                <div className="p-1 bg-blue-100 text-blue-900 rounded mt-0.5">
                                                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
                                                 </div>
                                                 <div>
@@ -264,7 +490,7 @@ export const LegalTermsManager = () => {
                                                 </div>
                                             </div>
                                             <div className="flex items-start gap-2 text-slate-600">
-                                                <div className="p-1 bg-orange-100 text-orange-700 rounded mt-0.5">
+                                                <div className="p-1 bg-orange-100 text-orange-600 rounded mt-0.5">
                                                     <Users className="w-3 h-3" />
                                                 </div>
                                                 <div>
@@ -273,7 +499,18 @@ export const LegalTermsManager = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="text-xs text-slate-400 mt-3 pt-3 border-t border-slate-100 italic">
+                                        <div className="mt-3">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-blue-950 font-bold hover:bg-blue-50 gap-2 p-0 h-auto hover:underline"
+                                                onClick={() => setViewingTermContent(term)}
+                                            >
+                                                <FileText className="w-3 h-3" />
+                                                Ver Termo
+                                            </Button>
+                                        </div>
+                                        <div className="text-[10px] text-slate-400 mt-3 pt-3 border-t border-slate-100 italic">
                                             Criado em: {new Date(term.createdAt).toLocaleDateString('pt-BR')} às {new Date(term.createdAt).toLocaleTimeString('pt-BR')}
                                         </div>
                                     </div>
@@ -283,7 +520,7 @@ export const LegalTermsManager = () => {
                                             variant="outline"
                                             size="sm"
                                             onClick={() => handleViewSignatures(term)}
-                                            className="h-9 px-3 text-purple-600 border-purple-200 hover:bg-purple-50 flex-1 sm:flex-none"
+                                            className="h-9 px-3 text-orange-600 border-orange-200 hover:bg-orange-50 flex-1 sm:flex-none"
                                         >
                                             <Eye className="w-4 h-4 sm:mr-0 md:mr-2" />
                                             <span className="inline sm:hidden md:inline">Assinaturas</span>
@@ -292,7 +529,7 @@ export const LegalTermsManager = () => {
                                             variant="outline"
                                             size="sm"
                                             onClick={() => handleOpenModal(term)}
-                                            className="h-9 px-3 text-blue-600 border-blue-200 hover:bg-blue-50 flex-1 sm:flex-none"
+                                            className="h-9 px-3 text-blue-950 border-blue-200 hover:bg-blue-50 flex-1 sm:flex-none"
                                         >
                                             <Edit2 className="w-4 h-4 sm:mr-0 md:mr-2" />
                                             <span className="inline sm:hidden md:inline">Editar</span>
@@ -340,18 +577,19 @@ export const LegalTermsManager = () => {
                                     />
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-1 flex justify-between items-center">
-                                        Conteúdo (Texto do Termo)
+                                <div className="col-span-1 md:col-span-2">
+                                    <label className="block text-sm font-bold text-slate-700 mb-2 flex justify-between items-center">
+                                        Conteúdo do Termo
                                         <span className="text-xs font-normal text-slate-400">O pai lerá este texto antes de assinar.</span>
                                     </label>
-                                    <textarea
-                                        required
-                                        value={content}
-                                        onChange={(e) => setContent(e.target.value)}
-                                        className="w-full h-48 p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none text-sm text-slate-700"
-                                        placeholder="Cole aqui o texto jurídico ou explicativo completo..."
-                                    />
+                                    <div className="border border-slate-300 rounded-xl focus-within:ring-2 focus-within:ring-blue-950/20 focus-within:border-blue-950 transition-all overflow-hidden bg-white min-h-[300px] flex flex-col">
+                                        <MenuBar editor={editor} />
+                                        <EditorContent
+                                            editor={editor}
+                                            className="prose prose-sm max-w-none p-4 focus:outline-none flex-1 overflow-y-auto min-h-[250px] tiptap-editor !border-none"
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 mt-2 font-medium italic">O texto formatado será exibido exatamente assim para o aluno.</p>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
@@ -445,7 +683,7 @@ export const LegalTermsManager = () => {
                         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                             <div>
                                 <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                                    <PenTool className="w-5 h-5 text-purple-600" />
+                                    <PenTool className="w-5 h-5 text-orange-600" />
                                     Assinaturas Recebidas
                                 </h2>
                                 <p className="text-sm text-slate-500 mt-1">Termo: <span className="font-semibold text-slate-700">{selectedTermForSignatures.title}</span></p>
@@ -455,42 +693,141 @@ export const LegalTermsManager = () => {
                             </button>
                         </div>
 
+                        {/* FILTERS SECTION */}
+                        <div className="bg-white border-b border-slate-200 p-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Nível / Segmento</label>
+                                    <select
+                                        value={filterLevel}
+                                        onChange={e => setFilterLevel(e.target.value)}
+                                        className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                                    >
+                                        <option value="">Todos os Níveis</option>
+                                        {segments.map(seg => (
+                                            <option key={seg.id} value={seg.id}>{seg.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Série / Ano</label>
+                                    <select
+                                        value={filterGrade}
+                                        onChange={e => setFilterGrade(e.target.value)}
+                                        className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-sm focus:ring-1 focus:ring-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400"
+                                        disabled={!filterLevel}
+                                    >
+                                        <option value="">{filterLevel ? 'Todas as Séries' : 'Selecione o Nível 1º'}</option>
+                                        {grades
+                                            .filter(g => g.segmentId === filterLevel)
+                                            .map(g => (
+                                                <option key={g.id} value={`${g.name} - ${segments.find(s => s.id === g.segmentId)?.name}`}>
+                                                    {g.name}
+                                                </option>
+                                            ))
+                                        }
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Turma</label>
+                                    <select
+                                        value={filterClass}
+                                        onChange={e => setFilterClass(e.target.value)}
+                                        className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                                    >
+                                        <option value="">Todas</option>
+                                        {Object.values(SchoolClass).map(c => (
+                                            <option key={c} value={c}>Turma {c}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Turno</label>
+                                    <select
+                                        value={filterShift}
+                                        onChange={e => setFilterShift(e.target.value)}
+                                        className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                                    >
+                                        <option value="">Todos</option>
+                                        {Object.values(SchoolShift).map(shift => (
+                                            <option key={shift} value={shift}>{SHIFT_LABELS[shift]}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="p-6 overflow-y-auto flex-1 bg-slate-50/50">
                             {loadingSignatures ? (
                                 <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-                                    <Loader2 className="w-8 h-8 animate-spin text-purple-600 mb-4" />
+                                    <Loader2 className="w-8 h-8 animate-spin text-orange-600 mb-4" />
                                     Buscando assinaturas...
                                 </div>
-                            ) : signatures.length === 0 ? (
+                            ) : filteredSignatures.length === 0 ? (
                                 <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-200">
                                     <PenTool className="w-12 h-12 text-slate-300 mx-auto mb-3 opacity-50" />
-                                    <p className="text-slate-500 font-medium">Nenhum responsável assinou este termo ainda.</p>
+                                    <p className="text-slate-500 font-medium">Nenhum responsável com este filtro assinou este termo ainda.</p>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {signatures.map(sig => (
-                                        <div key={sig.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col">
-                                            <div className="flex items-start justify-between mb-3 border-b border-slate-100 pb-3">
-                                                <div>
-                                                    <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Aluno</span>
-                                                    <h4 className="font-bold text-slate-800 text-sm">{sig.studentName}</h4>
-                                                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded mt-1 inline-block">
-                                                        {UNIT_LABELS[sig.unit as SchoolUnit] || sig.unit}
-                                                    </span>
+                                <div className="space-y-3">
+                                    {filteredSignatures.map(sig => (
+                                        <div key={sig.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <h4 className="font-bold text-slate-800 text-sm uppercase">{sig.studentData?.name || sig.studentName}</h4>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-2 text-[10px] font-bold mt-2">
+                                                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                                                            <div className="flex items-center bg-blue-50 text-blue-800 px-3 py-1 rounded-lg border border-blue-100 shadow-sm">
+                                                                <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
+                                                                    CÓD: <span className="text-blue-600">{sig.studentData?.code || '---'}</span>
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center bg-slate-100 text-slate-600 px-3 py-1 rounded-lg border border-slate-200">
+                                                                <span className="text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">{sig.unit}</span>
+                                                            </div>
+                                                            <div className="flex items-center bg-orange-50 text-orange-700 px-3 py-1 rounded-lg border border-orange-100">
+                                                                <span className="text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">{sig.studentData?.gradeLevel}</span>
+                                                            </div>
+                                                            <div className="flex items-center bg-emerald-50 text-emerald-700 px-3 py-1 rounded-lg border border-emerald-100">
+                                                                <span className="text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">{sig.studentData?.schoolClass}</span>
+                                                            </div>
+                                                            <div className="flex items-center bg-amber-50 text-amber-700 px-3 py-1 rounded-lg border border-amber-100">
+                                                                <span className="text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">{SHIFT_LABELS[sig.studentData?.shift as SchoolShift] || sig.studentData?.shift}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex flex-col sm:items-end gap-2 shrink-0 border-t sm:border-t-0 border-slate-100 pt-3 sm:pt-0">
+                                                    <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
+                                                        <CheckCircle className="w-3 h-3 text-green-500" />
+                                                        {new Date(sig.signedAt).toLocaleDateString('pt-BR')} às {new Date(sig.signedAt).toLocaleTimeString('pt-BR')}
+                                                    </div>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-8 text-xs py-0 w-full sm:w-auto text-blue-950 hover:text-blue-900 border-blue-950/20 hover:bg-slate-50"
+                                                        onClick={() => setExpandedSignatureId(expandedSignatureId === sig.id ? null : sig.id)}
+                                                    >
+                                                        {expandedSignatureId === sig.id ? 'Ocultar Assinatura' : 'Ver Assinatura'}
+                                                    </Button>
                                                 </div>
                                             </div>
 
-                                            <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 rounded-lg border border-slate-100 p-2 mb-3 min-h-[100px]">
-                                                {sig.signatureBase64 ? (
-                                                    <img src={sig.signatureBase64} alt="Assinatura" className="max-h-20 object-contain mix-blend-multiply" />
-                                                ) : (
-                                                    <span className="text-xs text-slate-300 italic">Assinatura corrompida</span>
-                                                )}
-                                            </div>
-
-                                            <div className="text-[10px] text-slate-400 text-center font-mono">
-                                                Assinado em: {new Date(sig.signedAt).toLocaleDateString('pt-BR')} às {new Date(sig.signedAt).toLocaleTimeString('pt-BR')}
-                                            </div>
+                                            {/* EXPANDABLE SIGNATURE VIEWER */}
+                                            {expandedSignatureId === sig.id && (
+                                                <div className="mt-4 pt-4 border-t border-slate-100 animate-in slide-in-from-top-2 duration-200">
+                                                    <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 flex justify-center">
+                                                        {sig.signatureBase64 ? (
+                                                            <img src={sig.signatureBase64} alt="Assinatura Digital" className="max-h-32 object-contain mix-blend-multiply" />
+                                                        ) : (
+                                                            <span className="text-sm text-slate-400 italic">Assinatura corrompida ou não disponível.</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
@@ -499,6 +836,78 @@ export const LegalTermsManager = () => {
                     </div>
                 </div>
             )}
+
+            {/* MODAL PARA VISUALIZAR TEXTO DO TERMO */}
+            {viewingTermContent && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-800">Texto do Termo</h2>
+                                <p className="text-sm text-slate-500 mt-0.5">{viewingTermContent.title}</p>
+                            </div>
+                            <button onClick={() => setViewingTermContent(null)} className="text-slate-400 hover:text-slate-600 p-1">
+                                <XCircle className="w-6 h-6" />
+                            </button>
+                        </div>
+                        <div className="p-8 overflow-y-auto flex-1">
+                            <div className="prose prose-slate max-w-none">
+                                <div
+                                    className="text-slate-700 leading-relaxed text-base prose prose-slate"
+                                    dangerouslySetInnerHTML={{ __html: viewingTermContent.content }}
+                                />
+                            </div>
+                        </div>
+                        <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+                            <Button onClick={() => setViewingTermContent(null)} className="px-8">
+                                Fechar
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* CSS fix for list visibility and editor appearance */}
+            <style>{`
+                .tiptap-editor {
+                    min-height: 250px;
+                    outline: none;
+                }
+                .tiptap-editor .ProseMirror {
+                    outline: none !important;
+                    border: none !important;
+                    min-height: 250px;
+                }
+                .tiptap-editor .ProseMirror:focus {
+                    outline: none !important;
+                    border: none !important;
+                }
+                .tiptap-editor ul {
+                    list-style-type: disc !important;
+                    padding-left: 1.5rem !important;
+                    margin: 1rem 0 !important;
+                    display: block !important;
+                }
+                .tiptap-editor ol {
+                    list-style-type: decimal !important;
+                    padding-left: 1.5rem !important;
+                    margin: 1rem 0 !important;
+                    display: block !important;
+                }
+                .tiptap-editor li {
+                    display: list-item !important;
+                    margin-bottom: 0.25rem !important;
+                }
+                .tiptap-editor p {
+                    margin: 0.5rem 0 !important;
+                }
+                .prose ul, .prose ol {
+                    list-style-position: inside;
+                }
+                .prose li p {
+                    display: inline;
+                }
+            `}</style>
         </div>
     );
 };
