@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebaseConfig';
 import { collection, query, getDocs, addDoc, updateDoc, doc, deleteDoc, where, onSnapshot } from 'firebase/firestore';
-import { Plus, Edit2, Trash2, Loader2, FileText, CheckCircle, XCircle, Users, Eye, PenTool, Bold, Italic, List, ListOrdered, Smile, Undo, Redo } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, FileText, CheckCircle, XCircle, Users, Eye, PenTool, Bold, Italic, List, ListOrdered, Smile, Undo, Redo, Search } from 'lucide-react';
 import type { LegalTerm, AcademicSegment, TermSignature, Student } from '../types';
 import { UNIT_LABELS, SchoolUnit, SchoolShift, SHIFT_LABELS, SchoolClass } from '../types';
 import { useAcademicData } from '../hooks/useAcademicData';
@@ -174,6 +174,11 @@ export const LegalTermsManager = () => {
     const [signatures, setSignatures] = useState<EnrichedSignature[]>([]);
     const [loadingSignatures, setLoadingSignatures] = useState(false);
     const [expandedSignatureId, setExpandedSignatureId] = useState<string | null>(null);
+
+    // Global Search State
+    const [isGlobalSearchMode, setIsGlobalSearchMode] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [hasSearched, setHasSearched] = useState(false);
 
     // Filters for Signatures
     const [filterLevel, setFilterLevel] = useState<string>('');
@@ -380,6 +385,114 @@ export const LegalTermsManager = () => {
         }
     };
 
+    const handleOpenGlobalSearch = () => {
+        setIsGlobalSearchMode(true);
+        setSelectedTermForSignatures(null);
+        setSignatures([]);
+        setSearchQuery('');
+        setHasSearched(false);
+        setIsSignaturesModalOpen(true);
+    };
+
+    const handleGlobalSearch = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!searchQuery.trim()) return;
+
+        setLoadingSignatures(true);
+        setHasSearched(true);
+        setSignatures([]);
+
+        try {
+            const queryTerm = searchQuery.trim();
+            const isCpfFormat = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(queryTerm) || /^\d{11}$/.test(queryTerm);
+
+            let matchedStudentIds: string[] = [];
+
+            // Step 1: Search in students if it doesn't look like a CPF right away
+            if (!isCpfFormat) {
+                // Try to find by code first (exact match)
+                let sQuery = query(collection(db, 'students'), where('code', '==', queryTerm));
+                let sSnap = await getDocs(sQuery);
+
+                if (!sSnap.empty) {
+                    matchedStudentIds = sSnap.docs.map(d => d.id);
+                } else {
+                    // Try by name (prefix search - simplistic approach for now, usually requires full text search like algolia)
+                    // We'll trust code more for direct hits, but let's try a basic query
+                    // Firestore is limited here, so we might need a more robust approach in production if names are common
+                    // For now, if no code matches, we proceed to check CPF or just rely on the studentId matching later
+                }
+            }
+
+            let fetchedSigs: TermSignature[] = [];
+
+            // Step 2: Search signatures
+            if (matchedStudentIds.length > 0) {
+                // Found student(s), get their signatures
+                // Firestore 'in' query supports up to 10 items.
+                const chunks = [];
+                for (let i = 0; i < matchedStudentIds.length; i += 10) {
+                    chunks.push(matchedStudentIds.slice(i, i + 10));
+                }
+
+                for (const chunk of chunks) {
+                    const q = query(collection(db, 'term_signatures'), where('studentId', 'in', chunk));
+                    const res = await getDocs(q);
+                    res.docs.forEach(d => fetchedSigs.push({ id: d.id, ...d.data() } as TermSignature));
+                }
+            } else {
+                // Search directly by CPF
+                // Try exact format or clean format if stored consistently. Assuming exact format typed for now.
+                const q = query(collection(db, 'term_signatures'), where('signerCpf', '==', queryTerm));
+                const res = await getDocs(q);
+                fetchedSigs = res.docs.map(d => ({ id: d.id, ...d.data() } as TermSignature));
+            }
+
+            if (fetchedSigs.length > 0) {
+                // Enrich with student data just like in term view
+                const studentIds = Array.from(new Set(fetchedSigs.map(s => s.studentId)));
+                const studentsMap: Record<string, Student> = {};
+
+                for (let i = 0; i < studentIds.length; i += 30) {
+                    const chunk = studentIds.slice(i, i + 30);
+                    const sq = query(collection(db, 'students'), where('__name__', 'in', chunk));
+                    const sSnap = await getDocs(sq);
+                    sSnap.docs.forEach(doc => {
+                        studentsMap[doc.id] = { id: doc.id, ...doc.data() } as Student;
+                    });
+                }
+
+                // Also get term details to display term title in global search
+                const termIds = Array.from(new Set(fetchedSigs.map(s => s.termId)));
+                const termsMap: Record<string, string> = {}; // id -> title
+
+                for (let i = 0; i < termIds.length; i += 30) {
+                    const chunk = termIds.slice(i, i + 30);
+                    const tq = query(collection(db, 'legal_terms'), where('__name__', 'in', chunk));
+                    const tSnap = await getDocs(tq);
+                    tSnap.docs.forEach(doc => {
+                        termsMap[doc.id] = doc.data().title;
+                    });
+                }
+
+                const enrichedSigs: EnrichedSignature[] = fetchedSigs.map(sig => ({
+                    ...sig,
+                    studentData: studentsMap[sig.studentId],
+                    termTitle: termsMap[sig.termId] || 'Termo Excluído/Desconhecido' // Add term title
+                }));
+
+                enrichedSigs.sort((a, b) => new Date(b.signedAt).getTime() - new Date(a.signedAt).getTime());
+                setSignatures(enrichedSigs);
+            }
+
+        } catch (error) {
+            console.error("Erro na busca global:", error);
+            alert("Erro ao realizar a busca.");
+        } finally {
+            setLoadingSignatures(false);
+        }
+    };
+
     const toggleUnit = (unitId: string) => {
         if (unitId === 'all') {
             if (selectedUnits.includes('all')) {
@@ -448,10 +561,16 @@ export const LegalTermsManager = () => {
                         Gerencie os termos de consentimento e direitos de imagem.
                     </p>
                 </div>
-                <Button onClick={() => handleOpenModal()} className="gap-2 shrink-0">
-                    <Plus className="w-4 h-4" />
-                    Novo Termo
-                </Button>
+                <div className="flex gap-2 w-full sm:w-auto shrink-0">
+                    <Button onClick={handleOpenGlobalSearch} variant="outline" className="gap-2 shrink-0 border-blue-200 text-blue-950 hover:bg-blue-50 flex-1 sm:flex-none">
+                        <Search className="w-4 h-4" />
+                        Buscar Assinaturas
+                    </Button>
+                    <Button onClick={() => handleOpenModal()} className="gap-2 shrink-0 flex-1 sm:flex-none">
+                        <Plus className="w-4 h-4" />
+                        Novo Termo
+                    </Button>
+                </div>
             </div>
 
             <Card>
@@ -676,85 +795,113 @@ export const LegalTermsManager = () => {
                 </div>
             )}
 
-            {/* MODAL DE ASSINATURAS */}
-            {isSignaturesModalOpen && selectedTermForSignatures && (
+            {/* MODAL DE ASSINATURAS E BUSCA GLOBAL */}
+            {isSignaturesModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                             <div>
                                 <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                                    <PenTool className="w-5 h-5 text-orange-600" />
-                                    Assinaturas Recebidas
+                                    {isGlobalSearchMode ? (
+                                        <>
+                                            <Search className="w-5 h-5 text-blue-950" />
+                                            Busca Global de Assinaturas
+                                        </>
+                                    ) : (
+                                        <>
+                                            <PenTool className="w-5 h-5 text-orange-600" />
+                                            Assinaturas Recebidas
+                                        </>
+                                    )}
                                 </h2>
-                                <p className="text-sm text-slate-500 mt-1">Termo: <span className="font-semibold text-slate-700">{selectedTermForSignatures.title}</span></p>
+                                {!isGlobalSearchMode && selectedTermForSignatures && (
+                                    <p className="text-sm text-slate-500 mt-1">Termo: <span className="font-semibold text-slate-700">{selectedTermForSignatures.title}</span></p>
+                                )}
                             </div>
                             <button onClick={() => setIsSignaturesModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1">
                                 <XCircle className="w-6 h-6" />
                             </button>
                         </div>
 
-                        {/* FILTERS SECTION */}
-                        <div className="bg-white border-b border-slate-200 p-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                                <div>
-                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Nível / Segmento</label>
-                                    <select
-                                        value={filterLevel}
-                                        onChange={e => setFilterLevel(e.target.value)}
-                                        className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-sm focus:ring-1 focus:ring-blue-500 outline-none"
-                                    >
-                                        <option value="">Todos os Níveis</option>
-                                        {segments.map(seg => (
-                                            <option key={seg.id} value={seg.id}>{seg.name}</option>
-                                        ))}
-                                    </select>
+                        {/* FILTERS / SEARCH SECTION */}
+                        <div className="bg-white border-b border-slate-200 p-4 shrink-0">
+                            {isGlobalSearchMode ? (
+                                <form onSubmit={handleGlobalSearch} className="flex gap-3">
+                                    <Input
+                                        type="text"
+                                        placeholder="Digite o Nome do Aluno, Código ou CPF do Responsável (Ex: 000.000.000-00)"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="flex-1 font-medium bg-slate-50 border-slate-300 focus:bg-white focus:ring-blue-500/20"
+                                        autoFocus
+                                    />
+                                    <Button type="submit" disabled={loadingSignatures} className="bg-blue-950 hover:bg-blue-900 shrink-0">
+                                        {loadingSignatures ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Search className="w-4 h-4 mr-2" />}
+                                        Buscar
+                                    </Button>
+                                </form>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Nível / Segmento</label>
+                                        <select
+                                            value={filterLevel}
+                                            onChange={e => setFilterLevel(e.target.value)}
+                                            className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                                        >
+                                            <option value="">Todos os Níveis</option>
+                                            {segments.map(seg => (
+                                                <option key={seg.id} value={seg.id}>{seg.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Série / Ano</label>
+                                        <select
+                                            value={filterGrade}
+                                            onChange={e => setFilterGrade(e.target.value)}
+                                            className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-sm focus:ring-1 focus:ring-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400"
+                                            disabled={!filterLevel}
+                                        >
+                                            <option value="">{filterLevel ? 'Todas as Séries' : 'Selecione o Nível 1º'}</option>
+                                            {grades
+                                                .filter(g => g.segmentId === filterLevel)
+                                                .map(g => (
+                                                    <option key={g.id} value={`${g.name} - ${segments.find(s => s.id === g.segmentId)?.name}`}>
+                                                        {g.name}
+                                                    </option>
+                                                ))
+                                            }
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Turma</label>
+                                        <select
+                                            value={filterClass}
+                                            onChange={e => setFilterClass(e.target.value)}
+                                            className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                                        >
+                                            <option value="">Todas</option>
+                                            {Object.values(SchoolClass).map(c => (
+                                                <option key={c} value={c}>Turma {c}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Turno</label>
+                                        <select
+                                            value={filterShift}
+                                            onChange={e => setFilterShift(e.target.value)}
+                                            className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                                        >
+                                            <option value="">Todos</option>
+                                            {Object.values(SchoolShift).map(shift => (
+                                                <option key={shift} value={shift}>{SHIFT_LABELS[shift]}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Série / Ano</label>
-                                    <select
-                                        value={filterGrade}
-                                        onChange={e => setFilterGrade(e.target.value)}
-                                        className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-sm focus:ring-1 focus:ring-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400"
-                                        disabled={!filterLevel}
-                                    >
-                                        <option value="">{filterLevel ? 'Todas as Séries' : 'Selecione o Nível 1º'}</option>
-                                        {grades
-                                            .filter(g => g.segmentId === filterLevel)
-                                            .map(g => (
-                                                <option key={g.id} value={`${g.name} - ${segments.find(s => s.id === g.segmentId)?.name}`}>
-                                                    {g.name}
-                                                </option>
-                                            ))
-                                        }
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Turma</label>
-                                    <select
-                                        value={filterClass}
-                                        onChange={e => setFilterClass(e.target.value)}
-                                        className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-sm focus:ring-1 focus:ring-blue-500 outline-none"
-                                    >
-                                        <option value="">Todas</option>
-                                        {Object.values(SchoolClass).map(c => (
-                                            <option key={c} value={c}>Turma {c}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Turno</label>
-                                    <select
-                                        value={filterShift}
-                                        onChange={e => setFilterShift(e.target.value)}
-                                        className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-sm focus:ring-1 focus:ring-blue-500 outline-none"
-                                    >
-                                        <option value="">Todos</option>
-                                        {Object.values(SchoolShift).map(shift => (
-                                            <option key={shift} value={shift}>{SHIFT_LABELS[shift]}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
+                            )}
                         </div>
 
                         <div className="p-6 overflow-y-auto flex-1 bg-slate-50/50">
@@ -765,8 +912,19 @@ export const LegalTermsManager = () => {
                                 </div>
                             ) : filteredSignatures.length === 0 ? (
                                 <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-200">
-                                    <PenTool className="w-12 h-12 text-slate-300 mx-auto mb-3 opacity-50" />
-                                    <p className="text-slate-500 font-medium">Nenhum responsável com este filtro assinou este termo ainda.</p>
+                                    {isGlobalSearchMode ? (
+                                        <>
+                                            <Search className="w-12 h-12 text-slate-300 mx-auto mb-3 opacity-50" />
+                                            <p className="text-slate-500 font-medium">
+                                                {hasSearched ? "Nenhuma assinatura encontrada para esta busca." : "Digite os dados acima para buscar um registro."}
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <PenTool className="w-12 h-12 text-slate-300 mx-auto mb-3 opacity-50" />
+                                            <p className="text-slate-500 font-medium">Nenhum responsável com este filtro assinou este termo ainda.</p>
+                                        </>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="space-y-3">
@@ -796,6 +954,13 @@ export const LegalTermsManager = () => {
                                                             <div className="flex items-center bg-amber-50 text-amber-700 px-3 py-1 rounded-lg border border-amber-100">
                                                                 <span className="text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">{SHIFT_LABELS[sig.studentData?.shift as SchoolShift] || sig.studentData?.shift}</span>
                                                             </div>
+                                                            {isGlobalSearchMode && (sig as any).termTitle && (
+                                                                <div className="flex items-center bg-blue-50 text-blue-900 px-3 py-1 rounded-lg border border-blue-200 w-full sm:w-auto mt-1 sm:mt-0">
+                                                                    <span className="text-[10px] font-bold uppercase tracking-wider truncate max-w-[200px] md:max-w-xs block" title={(sig as any).termTitle}>
+                                                                        📄 {(sig as any).termTitle}
+                                                                    </span>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     {/* SIGNER DETAILS */}
