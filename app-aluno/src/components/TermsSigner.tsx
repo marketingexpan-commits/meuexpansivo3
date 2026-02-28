@@ -269,72 +269,75 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
                             </button>
                         </div>
 
-                        {/* CONTENT */}
-                        <div className="p-5 overflow-y-auto flex-1 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap font-serif">
-                            {selectedTerm.content}
-                        </div>
+                        {/* SCROLLABLE BODY */}
+                        <div className="flex-1 overflow-y-auto flex flex-col">
+                            {/* CONTENT */}
+                            <div className="p-5 flex-1 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap font-serif">
+                                {selectedTerm.content}
+                            </div>
 
-                        {/* FOOTER / SIGNATURE AREA */}
-                        <div className="p-5 border-t border-gray-100 bg-gray-50 flex-shrink-0">
-                            {isSigningMode ? (
-                                <div className="space-y-4">
-                                    <div className="text-center">
-                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
-                                            Assine no quadro abaixo
-                                        </p>
-                                        <div className="border-2 border-dashed border-gray-300 rounded-xl bg-white overflow-hidden relative touch-none">
-                                            <SignatureCanvas
-                                                ref={sigCanvas}
-                                                canvasProps={{
-                                                    className: 'signature-canvas w-full h-40 cursor-crosshair'
-                                                }}
-                                                backgroundColor="white"
-                                            />
-                                            <button
-                                                onClick={handleClearSignature}
-                                                className="absolute top-2 right-2 text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-600 py-1 px-2 rounded-lg transition-colors border border-gray-200 shadow-sm"
-                                            >
-                                                Limpar
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <Button
-                                        className="w-full text-base font-bold h-12 bg-blue-950 hover:bg-blue-900 shadow-lg shadow-blue-900/20"
-                                        onClick={handleSaveSignature}
-                                        isLoading={isSubmitting}
-                                    >
-                                        EU CONCORDO E ASSINO ESTE TERMO
-                                    </Button>
-                                    <p className="text-[10px] text-gray-400 text-center leading-tight">
-                                        Ao clicar neste botão, o responsável/pai do aluno ({student.name}) concorda integralmente com as disposições legais listadas no termo acima, possuindo este clique o mesmo valor legal de uma assinatura física.
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="text-center">
-                                    {getSignatureForTerm(selectedTerm.id) ? (
-                                        <div className="flex flex-col items-center">
-                                            <p className="font-bold text-green-600 mb-2 flex items-center gap-1">
-                                                <CheckCircle className="w-5 h-5" />
-                                                Assinatura Registrada
+                            {/* FOOTER / SIGNATURE AREA */}
+                            <div className="p-5 border-t border-gray-100 bg-gray-50 shrink-0">
+                                {isSigningMode ? (
+                                    <div className="space-y-4">
+                                        <div className="text-center">
+                                            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
+                                                Assine no quadro abaixo
                                             </p>
-                                            <div className="border border-gray-200 bg-white p-2 rounded-lg mb-2">
-                                                <img
-                                                    src={getSignatureForTerm(selectedTerm.id)?.signatureBase64}
-                                                    alt="Assinatura"
-                                                    className="max-h-24 mix-blend-multiply"
+                                            <div className="border-2 border-dashed border-gray-300 rounded-xl bg-white overflow-hidden relative touch-none">
+                                                <SignatureCanvas
+                                                    ref={sigCanvas}
+                                                    canvasProps={{
+                                                        className: 'signature-canvas w-full h-40 cursor-crosshair'
+                                                    }}
+                                                    backgroundColor="white"
                                                 />
+                                                <button
+                                                    onClick={handleClearSignature}
+                                                    className="absolute top-2 right-2 text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-600 py-1 px-2 rounded-lg transition-colors border border-gray-200 shadow-sm"
+                                                >
+                                                    Limpar
+                                                </button>
                                             </div>
-                                            <p className="text-xs text-gray-500 font-mono">
-                                                Data: {new Date(getSignatureForTerm(selectedTerm.id)!.signedAt).toLocaleString('pt-BR')}
-                                            </p>
                                         </div>
-                                    ) : (
-                                        <Button variant="outline" className="w-full" onClick={() => setSelectedTerm(null)}>
-                                            Fechar Módulo
+                                        <Button
+                                            className="w-full text-base font-bold h-12 bg-blue-950 hover:bg-blue-900 shadow-lg shadow-blue-900/20"
+                                            onClick={handleSaveSignature}
+                                            isLoading={isSubmitting}
+                                        >
+                                            EU CONCORDO E ASSINO ESTE TERMO
                                         </Button>
-                                    )}
-                                </div>
-                            )}
+                                        <p className="text-[10px] text-gray-400 text-center leading-tight">
+                                            Ao clicar neste botão, o responsável/pai do aluno ({student.name}) concorda integralmente com as disposições legais listadas no termo acima, possuindo este clique o mesmo valor legal de uma assinatura física.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="text-center">
+                                        {getSignatureForTerm(selectedTerm.id) ? (
+                                            <div className="flex flex-col items-center">
+                                                <p className="font-bold text-green-600 mb-2 flex items-center gap-1">
+                                                    <CheckCircle className="w-5 h-5" />
+                                                    Assinatura Registrada
+                                                </p>
+                                                <div className="border border-gray-200 bg-white p-2 rounded-lg mb-2">
+                                                    <img
+                                                        src={getSignatureForTerm(selectedTerm.id)?.signatureBase64}
+                                                        alt="Assinatura"
+                                                        className="max-h-24 mix-blend-multiply"
+                                                    />
+                                                </div>
+                                                <p className="text-xs text-gray-500 font-mono">
+                                                    Data: {new Date(getSignatureForTerm(selectedTerm.id)!.signedAt).toLocaleString('pt-BR')}
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <Button variant="outline" className="w-full" onClick={() => setSelectedTerm(null)}>
+                                                Fechar Módulo
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
