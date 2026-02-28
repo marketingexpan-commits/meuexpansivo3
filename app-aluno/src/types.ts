@@ -752,6 +752,9 @@ export interface TermSignature {
   studentId: string;
   studentName: string;
   unit: string;
+  signerRole: 'Pai' | 'Mãe' | 'Responsável';
+  signerName: string;
+  signerCpf: string;
   signatureBase64: string; // Base64 encoded image
   signedAt: string; // ISO String
 }

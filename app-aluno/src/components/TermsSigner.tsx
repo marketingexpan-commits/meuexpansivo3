@@ -6,6 +6,7 @@ import { parseGradeLevel } from '../utils/academicUtils';
 import { Loader2, FileText, CheckCircle, PenTool, AlertCircle, XCircle } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
 import { Button } from './Button';
+import { SchoolLogo } from './SchoolLogo';
 
 interface TermsSignerProps {
     student: Student;
@@ -21,6 +22,12 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
     const [isSigningMode, setIsSigningMode] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const sigCanvas = useRef<SignatureCanvas>(null);
+
+    // Signer Identification State
+    const [signerRole, setSignerRole] = useState<'Pai' | 'Mãe' | 'Responsável'>('Pai');
+    const [signerName, setSignerName] = useState('');
+    const [signerCpf, setSignerCpf] = useState('');
+    const [isEditingSigner, setIsEditingSigner] = useState(false);
 
     // Canvas scaling fix for responsive/mobile layouts
     useEffect(() => {
@@ -123,6 +130,9 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
                 studentId: student.id,
                 studentName: student.name,
                 unit: student.unit,
+                signerRole,
+                signerName,
+                signerCpf,
                 signatureBase64: signatureData,
                 signedAt: new Date().toISOString()
             };
@@ -146,7 +156,27 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
 
     const openTermDetails = (term: LegalTerm) => {
         setSelectedTerm(term);
-        setIsSigningMode(!getSignatureForTerm(term.id)); // Only signing mode if not signed
+        const signed = getSignatureForTerm(term.id);
+        setIsSigningMode(!signed);
+
+        if (!signed) {
+            // Pre-fill based on initial role (Pai)
+            setSignerRole('Pai');
+            setSignerName(student.nome_pai || '');
+            setSignerCpf(student.cpf_responsavel || ''); // Often shared, but we can default it
+            setIsEditingSigner(false);
+        }
+    };
+
+    const handleRoleChange = (role: 'Pai' | 'Mãe' | 'Responsável') => {
+        setSignerRole(role);
+        if (role === 'Pai') {
+            setSignerName(student.nome_pai || '');
+        } else if (role === 'Mãe') {
+            setSignerName(student.nome_mae || '');
+        } else {
+            setSignerName(student.nome_responsavel || '');
+        }
     };
 
     return (
@@ -168,7 +198,7 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
                 </div>
             ) : terms.length === 0 ? (
                 <div className="bg-white p-12 text-center rounded-2xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
-                    <CheckCircle className="w-12 h-12 text-green-400 mb-4 opacity-70" />
+                    <CheckCircle className="w-12 h-12 text-orange-400 mb-4 opacity-70" />
                     <h3 className="font-bold text-gray-800 text-lg mb-1">Tudo certo por aqui!</h3>
                     <p className="text-gray-500 text-sm">Nenhum termo pendente ou direcionado para a sua turma no momento.</p>
                 </div>
@@ -212,7 +242,7 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
                     {signedTerms.length > 0 && (
                         <div>
                             <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                <CheckCircle className="w-4 h-4 text-green-500" />
+                                <CheckCircle className="w-4 h-4 text-orange-500" />
                                 Assinados ({signedTerms.length})
                             </h3>
                             <div className="grid grid-cols-1 gap-3">
@@ -225,7 +255,7 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
                                             className="bg-white p-4 border border-gray-100 rounded-xl shadow-sm hover:shadow-md cursor-pointer transition-all flex items-center justify-between group opacity-75 hover:opacity-100"
                                         >
                                             <div className="flex items-start gap-3">
-                                                <div className="mt-1 bg-green-50 p-1.5 rounded-lg text-green-600">
+                                                <div className="mt-1 bg-orange-50 p-1.5 rounded-lg text-orange-600">
                                                     <CheckCircle className="w-5 h-5" />
                                                 </div>
                                                 <div>
@@ -253,13 +283,18 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
                     <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 sm:zoom-in-95 duration-300">
                         {/* HEADER */}
                         <div className="p-4 sm:p-5 border-b border-gray-100 bg-slate-50 flex justify-between items-center shrink-0">
-                            <div>
-                                <h3 className="font-bold text-gray-900 text-lg leading-tight">{selectedTerm.title}</h3>
-                                {getSignatureForTerm(selectedTerm.id) && (
-                                    <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full uppercase tracking-wider mt-1 inline-block">
-                                        Assinado Eletronicamente
-                                    </span>
-                                )}
+                            <div className="flex items-center gap-4 min-w-0">
+                                <div className="w-12 h-12 shrink-0 bg-white rounded-xl border border-slate-200 p-1 flex items-center justify-center overflow-hidden shadow-sm">
+                                    <SchoolLogo className="max-h-full max-w-full object-contain" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="font-bold text-gray-900 text-lg leading-tight break-words">{selectedTerm.title}</h3>
+                                    {getSignatureForTerm(selectedTerm.id) && (
+                                        <span className="text-xs font-bold text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full uppercase tracking-wider mt-1 inline-block">
+                                            Assinado Eletronicamente
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                             <button
                                 onClick={() => setSelectedTerm(null)}
@@ -280,7 +315,69 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
                             {/* FOOTER / SIGNATURE AREA */}
                             <div className="p-5 border-t border-gray-100 bg-gray-50 shrink-0">
                                 {isSigningMode ? (
-                                    <div className="space-y-4">
+                                    <div className="space-y-6">
+                                        {/* SIGNER IDENTIFICATION */}
+                                        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <PenTool className="w-4 h-4 text-orange-600" />
+                                                <span className="text-sm font-bold text-slate-800 uppercase tracking-wider">Identificação do Assinante</span>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 gap-3">
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Quem está assinando? (Vínculo)</label>
+                                                    <select
+                                                        value={signerRole}
+                                                        onChange={(e) => handleRoleChange(e.target.value as any)}
+                                                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all"
+                                                    >
+                                                        <option value="Pai">Pai</option>
+                                                        <option value="Mãe">Mãe</option>
+                                                        <option value="Responsável">Outro Responsável</option>
+                                                    </select>
+                                                </div>
+
+                                                <div className="pt-2 border-t border-slate-100 flex justify-between items-center">
+                                                    <div className="flex-1 min-w-0 pr-4">
+                                                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Nome do Responsável</p>
+                                                        {isEditingSigner ? (
+                                                            <input
+                                                                type="text"
+                                                                value={signerName}
+                                                                onChange={(e) => setSignerName(e.target.value)}
+                                                                className="w-full bg-white border border-orange-200 rounded-md px-2 py-1 text-sm font-bold focus:ring-2 focus:ring-orange-500/20 outline-none"
+                                                                placeholder="Nome completo"
+                                                            />
+                                                        ) : (
+                                                            <p className="text-sm font-bold text-slate-800 truncate">{signerName || 'Não informado'}</p>
+                                                        )}
+                                                    </div>
+                                                    <div className="w-32 shrink-0">
+                                                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">CPF</p>
+                                                        {isEditingSigner ? (
+                                                            <input
+                                                                type="text"
+                                                                value={signerCpf}
+                                                                onChange={(e) => setSignerCpf(e.target.value)}
+                                                                className="w-full bg-white border border-orange-200 rounded-md px-2 py-1 text-sm font-bold focus:ring-2 focus:ring-orange-500/20 outline-none"
+                                                                placeholder="000.000.000-00"
+                                                            />
+                                                        ) : (
+                                                            <p className="text-sm font-bold text-slate-800">{signerCpf || 'Não informado'}</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsEditingSigner(!isEditingSigner)}
+                                                    className="text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-widest text-right mt-1"
+                                                >
+                                                    {isEditingSigner ? 'CONCLUIR EDIÇÃO' : 'OS DADOS ESTÃO ERRADOS? CLIQUE AQUI PARA EDITAR'}
+                                                </button>
+                                            </div>
+                                        </div>
+
                                         <div className="text-center">
                                             <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
                                                 Assine no quadro abaixo
@@ -316,9 +413,12 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
                                     <div className="text-center">
                                         {getSignatureForTerm(selectedTerm.id) ? (
                                             <div className="flex flex-col items-center">
-                                                <p className="font-bold text-green-600 mb-2 flex items-center gap-1">
+                                                <p className="font-bold text-orange-600 mb-1 flex items-center gap-1">
                                                     <CheckCircle className="w-5 h-5" />
                                                     Assinatura Registrada
+                                                </p>
+                                                <p className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-tighter">
+                                                    Assinado por: {getSignatureForTerm(selectedTerm.id)?.signerName} ({getSignatureForTerm(selectedTerm.id)?.signerRole}) • CPF: {getSignatureForTerm(selectedTerm.id)?.signerCpf}
                                                 </p>
                                                 <div className="border border-gray-200 bg-white p-2 rounded-lg mb-2">
                                                     <img

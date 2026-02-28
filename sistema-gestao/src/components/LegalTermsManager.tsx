@@ -798,6 +798,20 @@ export const LegalTermsManager = () => {
                                                             </div>
                                                         </div>
                                                     </div>
+                                                    {/* SIGNER DETAILS */}
+                                                    {(sig as any).signerName && (
+                                                        <div className="mt-3 p-2 bg-slate-50 border border-slate-100 rounded-lg">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <PenTool className="w-3 h-3 text-orange-600" />
+                                                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Assinado por</span>
+                                                            </div>
+                                                            <div className="flex flex-wrap items-baseline gap-2">
+                                                                <span className="text-sm font-bold text-slate-800">{(sig as any).signerName}</span>
+                                                                <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">{(sig as any).signerRole}</span>
+                                                                <span className="text-[10px] text-slate-500 font-mono">CPF: {(sig as any).signerCpf}</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 <div className="flex flex-col sm:items-end gap-2 shrink-0 border-t sm:border-t-0 border-slate-100 pt-3 sm:pt-0">
