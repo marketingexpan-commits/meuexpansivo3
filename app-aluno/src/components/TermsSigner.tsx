@@ -182,8 +182,8 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
     return (
         <div className="animate-fade-in-up pb-20">
             <div className="flex items-center gap-3 mb-6">
-                <div className="bg-orange-100 p-2 rounded-xl">
-                    <PenTool className="w-6 h-6 text-orange-700" />
+                <div className="bg-blue-50 p-2 rounded-xl">
+                    <PenTool className="w-6 h-6 text-blue-950" />
                 </div>
                 <div>
                     <h2 className="text-2xl font-black text-gray-800">Autorizações e Termos</h2>

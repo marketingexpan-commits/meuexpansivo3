@@ -1527,8 +1527,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         onClick={() => setCurrentView('authorizations')}
                                         className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square relative"
                                     >
-                                        <div className="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-orange-100 transition-colors">
-                                            <PenTool className="w-6 h-6 text-orange-600" />
+                                        <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
+                                            <PenTool className="w-6 h-6 text-blue-950" />
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Autorizações e Termos</h3>
                                     </button>
