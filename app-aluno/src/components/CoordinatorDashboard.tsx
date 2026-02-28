@@ -4,7 +4,7 @@ import { db } from '../firebaseConfig';
 import { UnitContact, SchoolUnit, UNIT_LABELS, SHIFT_LABELS, CoordinationSegment, Subject, SUBJECT_LABELS, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket, SchoolMessage, MessageRecipient, CalendarEvent, ClassSchedule, PedagogicalAttendance, BimesterData } from '../types';
 import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, CURRICULUM_MATRIX, getCurriculumSubjects, calculateBimesterMedia, calculateFinalData, SCHOOL_CLASSES_OPTIONS, ACADEMIC_GRADES } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency, calculateTaughtClasses, calculateBimesterGeneralFrequency } from '../utils/frequency';
-import { getDynamicBimester, isClassScheduled, normalizeClass, parseGradeLevel, safeParseDate, calculateSchoolDays, getSubjectDurationForDay } from '../utils/academicUtils';
+import { getDynamicBimester, isClassScheduled, normalizeClass, parseGradeLevel, safeParseDate, calculateSchoolDays, getSubjectDurationForDay, normalizeUnit, resolveGradeId } from '../utils/academicUtils';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 import { SchoolCalendar } from './SchoolCalendar';
@@ -488,21 +488,6 @@ const CoordinatorLostFoundView: React.FC<{ unit: SchoolUnit }> = ({ unit }) => {
 };
 
 // Types for Grade coordination (copied/adapted from AdminDashboard)
-// Helper to ensure we always save the Canonical Unit ID (e.g., 'unit_ext')
-// even if the coordinator profile has the friendly name (e.g., 'Extremoz')
-const getCanonicalUnit = (unit: string): string => {
-    // 1. Check if it's already a canonical ID (value of enum)
-    const isCanonical = Object.values(SchoolUnit).includes(unit as SchoolUnit);
-    if (isCanonical) return unit;
-
-    // 2. Check if it's a friendly name (value in UNIT_LABELS)
-    // UNIT_LABELS is { unit_ext: 'Extremoz', ... }
-    const entry = Object.entries(UNIT_LABELS).find(([key, label]) => label === unit);
-    if (entry) return entry[0];
-
-    // 3. Fallback
-    return unit;
-};
 
 interface CoordinationGradeEntry {
     id: string; // Document ID
@@ -694,7 +679,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     const [allStudentGradesMap, setAllStudentGradesMap] = useState<Record<string, CoordinationGradeEntry[]>>({}); // NEW: Holds ALL grades for frequency calc
 
     // --- LOST AND FOUND REAL-TIME BADGE ---
-    const { items: lostFoundItems } = useLostAndFound(getCanonicalUnit(coordinator.unit) as SchoolUnit);
+    const { items: lostFoundItems } = useLostAndFound(coordinator.unit as SchoolUnit);
     const claimedCount = useMemo(() => lostFoundItems.filter(item => item.status === 'claimed').length, [lostFoundItems]);
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]); // Added for frequency calc
 
@@ -856,10 +841,13 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         return `${rounded.toString().replace('.', ',')} h`;
     };
 
+    const [diagnostics, setDiagnostics] = useState<string>('');
+
     // --- FETCH DATA ---
     const handleFetchPendingGrades = async () => {
         if (!coordinator.unit) return;
         setLoading(true);
+        setDiagnostics('Iniciando busca...');
         try {
             // 0. Fetch Teachers for this unit (to ensure names are available)
             const teachersSnap = await db.collection('teachers').where('unit', '==', coordinator.unit).get();
@@ -869,13 +857,17 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 tMap[doc.id] = t.name;
             });
             setTeachersMap(tMap);
+            // Use academicSettings.year or fallback to current system year
+            const searchYear = academicSettings?.year || new Date().getFullYear();
 
-            // 1. Fetch Students for Unit
             let studentsQuery = db.collection('students')
-                .where('unit', '==', coordinator.unit);
+                .where('unit', '==', coordinator.unit)
+                .where('enrolledYears', 'array-contains', String(searchYear));
 
-            const studentsSnap = await studentsQuery.limit(1000).get();
+            const studentsSnap = await studentsQuery.get();
             const studentsData = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+            setDiagnostics(`Alunos encontrados na unidade ${coordinator.unit}: ${studentsData.length}`);
 
             if (studentsData.length === 0) {
                 setPendingGradesStudents([]);
@@ -888,22 +880,18 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             const filteredStudents = studentsData.filter((student: any) => {
                 if (!coordinator.segment || coordinator.segment === 'geral') return true; // View all
 
-                // Strict ID Resolution
-                if (student.gradeId) {
-                    const gradeDef = academicGrades.find(g => g.id === student.gradeId);
-                    if (gradeDef) {
-                        const { segmentId } = gradeDef;
-                        if (coordinator.segment === 'infantil_fund1') {
-                            return segmentId === 'seg_infantil' || segmentId === 'seg_fund_1';
-                        }
-                        if (coordinator.segment === 'fund2_medio') {
-                            return segmentId === 'seg_fund_2' || segmentId === 'seg_medio';
-                        }
-                        return segmentId === coordinator.segment;
-                    }
-                }
+                // Robust Segment Resolution (Handles both gradeId and legacy gradeLevel strings)
+                const parsed = parseGradeLevel(student.gradeId || student.gradeLevel);
+                const segmentId = parsed.segmentId;
 
-                return false;
+                if (coordinator.segment === 'infantil_fund1') {
+                    return segmentId === 'seg_infantil' || segmentId === 'seg_fund_1';
+                }
+                if (coordinator.segment === 'fund2_medio') {
+                    return segmentId === 'seg_fund_2' || segmentId === 'seg_medio';
+                }
+                // Fallback for other specific segments
+                return segmentId === coordinator.segment;
             });
 
             // 2. Fetch Grades for RELEVANT students only
@@ -915,8 +903,6 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             }
 
             const allGrades: CoordinationGradeEntry[] = [];
-            // Use academicSettings.year or fallback to current system year
-            const searchYear = academicSettings?.year || new Date().getFullYear();
 
             // Optimized: Parallel Fetching
             await Promise.all(chunks.map(async (chunk) => {
@@ -947,13 +933,18 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 // Use type assertion to avoid TS error if interface is outdated, but rely on lastUpdated
                 const gradeYear = (grade as any).year || (grade.lastUpdated ? new Date(grade.lastUpdated).getFullYear() : null);
                 // If we have a year and it doesn't match, skip. (If unknown, we might include or exclude. Excluding to be safe for "current year" req)
-                if (gradeYear && gradeYear !== searchYear) return;
+                if (gradeYear && gradeYear !== searchYear) {
+                    console.log(`[PendingGrades] Grade ${grade.id} for student ${grade.studentId} excluded: gradeYear (${gradeYear}) !== searchYear (${searchYear})`);
+                    return;
+                }
 
                 const hasPending = Object.values(grade.bimesters).some((b: any) =>
                     // Only pending if there's a numerical grade (nota or recuperacao) not yet approved
-                    (b.nota !== null && b.isNotaApproved !== true) ||
-                    (b.recuperacao !== null && b.isRecuperacaoApproved !== true)
-                ) || (grade.recuperacaoFinal !== null && grade.recuperacaoFinalApproved !== true);
+                    (b.nota !== null && b.nota !== undefined && b.isNotaApproved !== true) ||
+                    (b.recuperacao !== null && b.recuperacao !== undefined && b.isRecuperacaoApproved !== true)
+                ) || (grade.recuperacaoFinal !== null && grade.recuperacaoFinal !== undefined && grade.recuperacaoFinalApproved !== true);
+
+                console.log(`[PendingGrades] Grade ${grade.id} for student ${grade.studentId} check - hasPending: ${hasPending}`, grade.bimesters);
 
                 if (hasPending) {
                     if (!pendingMap[grade.studentId]) pendingMap[grade.studentId] = [];
@@ -962,31 +953,26 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 }
             });
 
+            console.log(`[PendingGrades] Finished processing. Found pending grades for ${studentsWithPending.size} students.`);
+
             // 4. Fetch Attendance for these students for frequency calculation
             const allAttendance: AttendanceRecord[] = [];
-            for (const chunk of chunks) {
-                const q = db.collection('attendance').where('studentId', 'in', chunk); // Note: check collection name
-                // Actually attendance records are stored by date/class?
-                // Looking at other components, they use a general query or similar.
-                // Let's check how attendance is fetched in TeacherDashboard.
-            }
-            // Wait, I should verify the attendance collection name and structure.
-            // In App.tsx it might be passed as prop.
-
-            // For now, let's just fetch all records for the unit if it's not too many, 
-            // or filter by year.
             const attSnap = await db.collection('attendance')
                 .where('unit', '==', coordinator.unit)
                 .get();
             attSnap.docs.forEach(d => allAttendance.push({ id: d.id, ...d.data() } as AttendanceRecord));
             setAttendanceRecords(allAttendance);
 
-            setPendingGradesStudents(studentsData.filter((s: any) => studentsWithPending.has(s.id)));
+            const pendingFound = studentsData.filter((s: any) => studentsWithPending.has(s.id));
+            setPendingGradesStudents(pendingFound);
             setPendingGradesMap(pendingMap);
             setAllStudentGradesMap(fullMap);
 
+            setDiagnostics(prev => `${prev} -> Filtro segmento: ${filteredStudents.length} -> Com Notas: ${allGrades.length} -> Pendentes: ${pendingFound.length}`);
+
         } catch (error) {
             console.error("Error fetching data:", error);
+            setDiagnostics(prev => `${prev} -> ERRO: ${error}`);
             alert("Erro ao buscar dados.");
         } finally {
             setLoading(false);
@@ -1095,9 +1081,10 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
         setLoading(true);
         try {
-            // Buscar alunos filtrando apenas por UNIDADE inicialmente para ser mais robusto contra divergências no banco
+            const searchYear = academicSettings?.year || new Date().getFullYear();
             const snap = await db.collection('students')
                 .where('unit', '==', coordinator.unit)
+                .where('enrolledYears', 'array-contains', String(searchYear))
                 .get();
 
             let students = snap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
@@ -1110,12 +1097,16 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 // Verificar Turma (Normalized) - Resolve problema de "A" vs "01"
                 if (normalizeClass(s.schoolClass) !== normalizeClass(occFilters.class)) return false;
 
-                // Verificar Série (Grade) - Strict ID Match
-                const filterGradeId = occFilters.grade; // This is now an ID
+                // Robust Grade Selection - Handles both gradeId and legacy gradeLevel strings
+                const parsed = parseGradeLevel(s.gradeId || s.gradeLevel);
+                const studentGradeId = parsed.grade === s.gradeLevel ? s.gradeId : resolveGradeId(s.gradeLevel) || s.gradeId;
 
-                if (s.gradeId && filterGradeId) {
-                    return s.gradeId === filterGradeId;
-                }
+                // If the filter is an ID, compare against resolved ID
+                const currentResolvedId = resolveGradeId(s.gradeId || s.gradeLevel);
+                if (currentResolvedId === occFilters.grade) return true;
+
+                // Simple fallback for strict equality if IDs match exactly
+                if (s.gradeId === occFilters.grade) return true;
 
                 return false;
             });
@@ -1643,7 +1634,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 studentGrade: accessSelectedStudent.gradeLevel,
                 studentClass: accessSelectedStudent.schoolClass,
                 studentShift: accessSelectedStudent.shift,
-                unit: getCanonicalUnit(coordinator.unit),
+                unit: coordinator.unit,
                 coordinatorId: coordinator.id,
                 coordinatorName: coordinator.name,
                 timestamp: new Date().toISOString()
@@ -1659,7 +1650,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                     studentCode: accessSelectedStudent.code,
                     gradeLevel: accessSelectedStudent.gradeLevel,
                     schoolClass: accessSelectedStudent.schoolClass,
-                    unit: getCanonicalUnit(coordinator.unit),
+                    unit: coordinator.unit,
                     timestamp: new Date().toISOString(),
                     coordinatorId: coordinator.id,
                     coordinatorName: coordinator.name,
@@ -1729,7 +1720,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 studentGrade: student.gradeLevel,
                 studentClass: student.schoolClass,
                 studentShift: student.shift,
-                unit: getCanonicalUnit(coordinator.unit),
+                unit: coordinator.unit,
                 coordinatorId: coordinator.id,
                 coordinatorName: coordinator.name,
                 timestamp: new Date().toISOString()
@@ -1743,7 +1734,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 studentCode: student.code,
                 gradeLevel: student.gradeLevel,
                 schoolClass: student.schoolClass,
-                unit: getCanonicalUnit(coordinator.unit),
+                unit: coordinator.unit,
                 timestamp: new Date().toISOString(),
                 coordinatorId: coordinator.id,
                 coordinatorName: coordinator.name,
@@ -2106,6 +2097,13 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                             </div>
                             <h3 className="text-lg font-medium text-gray-900">Tudo em dia!</h3>
                             <p className="text-gray-500 mt-1 max-w-sm mx-auto">Nenhuma pendência encontrada para os filtros selecionados.</p>
+                            {/* DIAGNOSTIC UI BLOCK */}
+                            {diagnostics && (
+                                <div className="mt-6 p-4 bg-gray-50 rounded-lg text-left inline-block border border-gray-200">
+                                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Diagnóstico Técnico (Visível Temporariamente):</h4>
+                                    <p className="text-xs font-mono text-gray-700 break-words max-w-2xl">{diagnostics}</p>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -2706,7 +2704,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                                     <input
                                                         type="text"
-                                                        placeholder="Buscar por nome ou RM..."
+                                                        placeholder="Buscar por nome ou Código..."
                                                         className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-red-500 outline-none transition-all"
                                                         value={studentSearchTerm}
                                                         onChange={(e) => setStudentSearchTerm(e.target.value)}
@@ -2732,7 +2730,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                                 </div>
                                                                 <div>
                                                                     <p className="font-bold text-gray-900 leading-tight">{student.name}</p>
-                                                                    <p className="text-[10px] text-gray-500 font-medium uppercase tracking-tighter mt-0.5">RM: {student.code}</p>
+                                                                    <p className="text-[10px] text-gray-500 font-medium uppercase tracking-tighter mt-0.5">Código: {student.code}</p>
                                                                 </div>
                                                             </div>
                                                             <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-red-500 transition-colors" />
@@ -3288,12 +3286,23 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                             </div>
 
                             {filteredMessages.length === 0 ? (
-                                <div className="text-center py-16 bg-white rounded-2xl border border-gray-200 border-dashed">
-                                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-50 text-slate-300 mb-4">
-                                        <MessageSquare className="w-8 h-8" />
+                                <div className="text-center bg-white p-8 rounded-2xl shadow-sm border border-gray-200 mt-6 animate-fade-in-up">
+                                    <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                                        <CheckCircle2 className="w-8 h-8 text-green-600" />
                                     </div>
-                                    <h3 className="text-lg font-medium text-gray-900">Nenhuma mensagem</h3>
-                                    <p className="text-gray-500 mt-1">Não há mensagens para exibir com este filtro.</p>
+                                    <h3 className="text-lg font-medium text-gray-900">Tudo em dia!</h3>
+                                    <p className="mt-1 text-sm text-gray-500">
+                                        {pendingGradesStudents.length === 0 && !quickClassFilter && !quickGradeFilter && !quickShiftFilter && !quickSubjectFilter && !quickBimesterFilter
+                                            ? "Não há notas, médias ou recuperações pendentes no momento."
+                                            : "Nenhuma pendência encontrada para os filtros selecionados."}
+                                    </p>
+                                    {/* DIAGNOSTIC UI BLOCK */}
+                                    {diagnostics && (
+                                        <div className="mt-6 p-4 bg-gray-50 rounded-lg text-left inline-block border border-gray-200">
+                                            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Diagnóstico Técnico (Visível Temporariamente):</h4>
+                                            <p className="text-xs font-mono text-gray-700 break-words max-w-2xl">{diagnostics}</p>
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 gap-6">
@@ -4003,7 +4012,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
                     {/* LOST AND FOUND VIEW */}
                     {activeTab === 'lost_found' && (
-                        <CoordinatorLostFoundView unit={getCanonicalUnit(coordinator.unit) as SchoolUnit} />
+                        <CoordinatorLostFoundView unit={coordinator.unit as SchoolUnit} />
                     )}
 
                     {/* GLOBAL DIALOG */}

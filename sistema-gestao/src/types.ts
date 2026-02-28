@@ -701,6 +701,20 @@ export const OCCURRENCE_TEMPLATES: Record<string, string[]> = {
     'Destaque acadêmico / Olimpíadas',
     'Conversa excessiva durante explicações',
     'Saída antecipada sem justificativa'
+  ],
+  geral: [
+    'Dificuldade de acompanhamento pedagógico',
+    'Conflito interpessoal em sala',
+    'Falta de material escolar',
+    'Excelente participação em aula',
+    'Mal estar súbito',
+    'Atraso recorrente',
+    'Uso inadequado de celular/eletrônico',
+    'Indisciplina em sala de aula',
+    'Falta de entrega de atividades',
+    'Destaque acadêmico / Olimpíadas',
+    'Conversa excessiva durante explicações',
+    'Saída antecipada sem justificativa'
   ]
 };
 // --- SISTEMA DE GRADE HORÁRIA ---
