@@ -121,14 +121,19 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!editingEvent?.title || !editingEvent?.startDate || !editingEvent?.type || !editingEvent?.units || editingEvent.units.length === 0) {
+
+        // Ensure units are set correctly before validation
+        const targetUnits = isAdmin ? editingEvent?.units : [unit as SchoolUnit];
+        const eventToSave = { ...editingEvent, units: targetUnits };
+
+        if (!eventToSave.title || !eventToSave.startDate || !eventToSave.type || !eventToSave.units || eventToSave.units.length === 0) {
             alert("Por favor, preencha todos os campos obrigatórios (título, data, tipo e ao menos uma unidade).");
             return;
         }
 
         // VALIDATION: Require subjects for Substitution/Reposition events
-        if ((editingEvent.type === 'school_day' || editingEvent.type === 'substitution') && editingEvent.substituteDayOfWeek) {
-            if (!editingEvent.targetSubjectIds || editingEvent.targetSubjectIds.length === 0) {
+        if ((eventToSave.type === 'school_day' || eventToSave.type === 'substitution') && eventToSave.substituteDayOfWeek) {
+            if (!eventToSave.targetSubjectIds || eventToSave.targetSubjectIds.length === 0) {
                 alert("Para eventos de Reposição/Substituição, é OBRIGATÓRIO selecionar as disciplinas repostas.");
                 return;
             }
@@ -137,13 +142,31 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
         setIsSaving(true);
         try {
             const data = {
-                ...editingEvent,
+                ...eventToSave,
                 updatedAt: new Date().toISOString()
             };
 
-            if (editingEvent.id) {
-                const docRef = doc(db, 'calendar_events', editingEvent.id);
-                await updateDoc(docRef, data);
+            if (eventToSave.id) {
+                const originalEvent = events.find(ev => ev.id === eventToSave.id);
+                const isGlobalOrShared = originalEvent?.units?.includes('all') || (originalEvent?.units && originalEvent.units.length > 1 && originalEvent.units.includes(unit as any));
+
+                if (!isAdmin && isGlobalOrShared) {
+                    // Non-admin editing a shared/global event: Split it for this unit
+                    const newUnitsForOriginal = originalEvent?.units?.includes('all')
+                        ? SCHOOL_UNITS_LIST.filter(u => u !== unit)
+                        : (originalEvent?.units || []).filter(u => u !== unit);
+
+                    await updateDoc(doc(db, 'calendar_events', eventToSave.id as string), { units: newUnitsForOriginal });
+
+                    const { id, ...dataWithoutId } = data;
+                    await addDoc(collection(db, 'calendar_events'), {
+                        ...dataWithoutId,
+                        createdAt: new Date().toISOString()
+                    });
+                } else {
+                    const docRef = doc(db, 'calendar_events', eventToSave.id as string);
+                    await updateDoc(docRef, data);
+                }
             } else {
                 await addDoc(collection(db, 'calendar_events'), {
                     ...data,
@@ -152,8 +175,8 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
             }
             // NEW: Sync bimester dates if this is a key event
             if (data.title && data.startDate) {
-                const targetUnits = data.units || [];
-                for (const u of targetUnits) {
+                const syncUnits = data.units || [];
+                for (const u of syncUnits) {
                     syncBimesterFromEvent(data.title as string, data.startDate as string, u as SchoolUnit | 'all', 2026, data.endDate as string);
                 }
             }
@@ -194,10 +217,23 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
         }
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = async (event: CalendarEvent) => {
         if (!window.confirm("Tem certeza que deseja excluir este evento?")) return;
         try {
-            await deleteDoc(doc(db, 'calendar_events', id));
+            const isGlobalOrShared = event.units?.includes('all') || (event.units && event.units.length > 1);
+            if (!isAdmin && isGlobalOrShared) {
+                const newUnits = event.units?.includes('all')
+                    ? SCHOOL_UNITS_LIST.filter(u => u !== unit)
+                    : (event.units || []).filter(u => u !== unit);
+
+                if (event.id) {
+                    await updateDoc(doc(db, 'calendar_events', event.id), { units: newUnits });
+                }
+            } else {
+                if (event.id) {
+                    await deleteDoc(doc(db, 'calendar_events', event.id));
+                }
+            }
         } catch (error) {
             console.error("Error deleting event:", error);
             alert("Erro ao excluir evento.");
@@ -395,7 +431,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                                         Editar
                                                     </button>
                                                     <button
-                                                        onClick={() => handleDelete(event.id)}
+                                                        onClick={() => handleDelete(event)}
                                                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                                                     >
                                                         <Trash2 className="w-4 h-4" />
