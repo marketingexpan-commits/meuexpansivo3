@@ -50,9 +50,17 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
   const unitTeachers = teachers.filter(t => {
     if (t.unit !== student.unit) return false;
 
-    // Strict ID Matching Only
-    if (student.gradeId && t.gradeIds?.length) {
-      return t.gradeIds.includes(student.gradeId);
+    // Match by grade and shift
+    if (student.gradeId) {
+      if (t.assignments && t.assignments.length > 0) {
+        // Find if teacher has an assignment for the student's grade AND shift
+        return t.assignments.some(a => a.gradeId === student.gradeId && a.shift === student.shift);
+      }
+
+      // Legacy fallback
+      if (t.gradeIds?.length && t.gradeIds.includes(student.gradeId)) {
+        return !t.shift || t.shift === student.shift;
+      }
     }
     return false;
   });
