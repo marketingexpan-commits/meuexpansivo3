@@ -771,3 +771,21 @@ export interface Photographer {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface PhotographerDemand {
+  id: string;
+  unit: SchoolUnit;
+  coordinatorId: string;
+  coordinatorName: string;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm
+  reason: string;
+  status: 'pending' | 'read' | 'confirmed' | 'cancelled' | 'suggested';
+  createdAt: string; // ISO string
+  readAt?: string;
+  confirmedAt?: string;
+  suggestedDate?: string; // NEW
+  suggestedTime?: string; // NEW
+  suggestedAt?: string;   // NEW
+  photographerNotes?: string;
+}

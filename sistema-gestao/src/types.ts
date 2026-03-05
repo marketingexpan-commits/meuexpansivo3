@@ -841,3 +841,16 @@ export interface TermSignature {
   signedAt: string; // ISO String
   isAuthorized?: boolean; // True se autorizou, False se não autorizou
 }
+
+export interface PhotographerDemand {
+  id: string;
+  unit: string;
+  coordinatorId: string;
+  coordinatorName: string;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:MM
+  reason: string;
+  status: 'pending' | 'read' | 'confirmed' | 'cancelled';
+  createdAt: string;
+  photographerNotes?: string;
+}

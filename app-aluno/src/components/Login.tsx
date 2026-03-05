@@ -316,7 +316,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
   return (
     <>
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#E8E8E8] p-4 md:p-6">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white p-4 md:p-6">
 
         {/* --- HEADER HORIZONTAL (ESTILO REFERÊNCIA) --- */}
         <div className="flex items-center gap-4 mb-8 animate-fade-in-down">
@@ -427,7 +427,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
             <div className="flex w-full relative">
               <button
                 className={`flex-1 py-4 text-sm font-semibold text-center transition-all ${activeTab === 'student'
-                  ? 'bg-gray-300 text-blue-950 hover:bg-gray-400'
+                  ? 'bg-gray-300 text-blue-950'
                   : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                   }`}
                 style={{ WebkitTapHighlightColor: 'transparent' }}
@@ -439,7 +439,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
               </button>
               <button
                 className={`flex-1 py-4 text-sm font-semibold text-center transition-all ${activeTab === 'teacher'
-                  ? 'bg-gray-300 text-blue-950 hover:bg-gray-400'
+                  ? 'bg-gray-300 text-blue-950'
                   : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                   }`}
                 style={{ WebkitTapHighlightColor: 'transparent' }}
@@ -454,7 +454,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                 <>
                   <button
                     className={`flex-1 py-4 text-sm font-semibold text-center transition-all ${activeTab === 'coordinator'
-                      ? 'bg-gray-300 text-blue-950 hover:bg-gray-400'
+                      ? 'bg-gray-300 text-blue-950'
                       : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                       }`}
                     style={{ WebkitTapHighlightColor: 'transparent' }}
@@ -466,7 +466,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                   </button>
                   <button
                     className={`flex-1 py-4 text-sm font-semibold text-center transition-all ${activeTab === 'gatekeeper'
-                      ? 'bg-gray-300 text-blue-950 hover:bg-gray-400'
+                      ? 'bg-gray-300 text-blue-950'
                       : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                       }`}
                     style={{ WebkitTapHighlightColor: 'transparent' }}
@@ -478,7 +478,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                   </button>
                   <button
                     className={`flex-1 py-4 text-sm font-semibold text-center transition-all ${activeTab === 'photographer'
-                      ? 'bg-gray-300 text-blue-950 hover:bg-gray-400'
+                      ? 'bg-gray-300 text-blue-950'
                       : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                       }`}
                     style={{ WebkitTapHighlightColor: 'transparent' }}

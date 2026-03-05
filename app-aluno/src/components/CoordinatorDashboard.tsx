@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { db } from '../firebaseConfig';
-import { UnitContact, SchoolUnit, UNIT_LABELS, SHIFT_LABELS, CoordinationSegment, Subject, SUBJECT_LABELS, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket, SchoolMessage, MessageRecipient, CalendarEvent, ClassSchedule, PedagogicalAttendance, BimesterData } from '../types';
+import { UnitContact, SchoolUnit, UNIT_LABELS, SHIFT_LABELS, CoordinationSegment, Subject, SUBJECT_LABELS, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket, SchoolMessage, MessageRecipient, CalendarEvent, ClassSchedule, PedagogicalAttendance, BimesterData, PhotographerDemand } from '../types';
 import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, CURRICULUM_MATRIX, getCurriculumSubjects, calculateBimesterMedia, calculateFinalData, SCHOOL_CLASSES_OPTIONS, ACADEMIC_GRADES } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency, calculateTaughtClasses, calculateBimesterGeneralFrequency } from '../utils/frequency';
 import { getDynamicBimester, isClassScheduled, normalizeClass, parseGradeLevel, safeParseDate, calculateSchoolDays, getSubjectDurationForDay, normalizeUnit, resolveGradeId } from '../utils/academicUtils';
@@ -38,6 +38,7 @@ import {
     LogOut,
     Package,
     Camera,
+    AlertTriangle,
     ArrowLeft
 } from 'lucide-react';
 
@@ -522,6 +523,270 @@ interface CoordinatorDashboardProps {
     classSchedules?: ClassSchedule[];
 }
 
+// --- SUB-COMPONENT: PHOTOGRAPHER DEMANDS (COORDINATOR) ---
+const CoordinatorPhotographerDemands: React.FC<{ unit: SchoolUnit, coordinator: { id: string, name: string } }> = ({ unit, coordinator }) => {
+    const [demands, setDemands] = useState<PhotographerDemand[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [showForm, setShowForm] = useState(false);
+
+    const [date, setDate] = useState('');
+    const [time, setTime] = useState('');
+    const [reason, setReason] = useState('');
+
+    useEffect(() => {
+        const fetchDemands = async () => {
+            try {
+                const snap = await db.collection('photographer_demands')
+                    .where('unit', '==', unit)
+                    .get();
+
+                const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as PhotographerDemand));
+                setDemands(data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+            } catch (err) {
+                console.error("Erro buscar demandas:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchDemands();
+    }, [unit]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!date || !time || !reason) return;
+
+        try {
+            const newDemand: Omit<PhotographerDemand, 'id'> = {
+                unit,
+                coordinatorId: coordinator.id,
+                coordinatorName: coordinator.name,
+                date,
+                time,
+                reason,
+                status: 'pending',
+                createdAt: new Date().toISOString()
+            };
+
+            const docRef = await db.collection('photographer_demands').add(newDemand);
+            setDemands(prev => [{ id: docRef.id, ...newDemand }, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+
+            setDate('');
+            setTime('');
+            setReason('');
+            setShowForm(false);
+            alert("Solicitação enviada com sucesso ao fotógrafo da unidade.");
+        } catch (error) {
+            console.error("Erro salvar demanda:", error);
+            alert("Erro ao salvar solicitação.");
+        }
+    };
+
+    const handleAcceptSuggestion = async (demand: PhotographerDemand) => {
+        try {
+            const now = new Date().toISOString();
+            await db.collection('photographer_demands').doc(demand.id).update({
+                date: demand.suggestedDate,
+                time: demand.suggestedTime,
+                status: 'confirmed',
+                confirmedAt: now,
+                // Clear suggestions after acceptance
+                suggestedDate: null,
+                suggestedTime: null,
+                suggestedAt: null
+            });
+            setDemands(prev => prev.map(d => d.id === demand.id ? { ...d, date: demand.suggestedDate!, time: demand.suggestedTime!, status: 'confirmed', confirmedAt: now, suggestedDate: null, suggestedTime: null, suggestedAt: null } : d));
+            alert("Sugestão aceita e agendamento confirmado!");
+        } catch (error) {
+            console.error("Erro ao aceitar sugestão:", error);
+            alert("Erro ao aceitar sugestão.");
+        }
+    };
+
+    const handleDelete = async (demandId: string) => {
+        if (!window.confirm("Você tem certeza que deseja cancelar e excluir esta solicitação?")) return;
+        try {
+            await db.collection('photographer_demands').doc(demandId).delete();
+            setDemands(prev => prev.filter(d => d.id !== demandId));
+        } catch (error) {
+            console.error("Erro delete:", error);
+        }
+    }
+
+    return (
+        <div className="space-y-6 animate-fade-in-up">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                <div>
+                    <h2 className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+                        <Camera className="text-orange-600 w-6 h-6" />
+                        Agendar Fotógrafo
+                    </h2>
+                    <p className="text-sm text-slate-500 font-medium">Solicite a presença do fotógrafo na unidade</p>
+                </div>
+                {!showForm && (
+                    <button
+                        onClick={() => setShowForm(true)}
+                        className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-md shadow-orange-600/20 text-sm w-full sm:w-auto justify-center shrink-0"
+                    >
+                        <Plus className="w-4 h-4" /> Nova Solicitação
+                    </button>
+                )}
+            </div>
+
+            {showForm && (
+                <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 animate-in slide-in-from-top-4">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="font-bold text-slate-700">Nova Solicitação de Presença</h3>
+                        <button onClick={() => setShowForm(false)} className="text-slate-400 hover:bg-slate-100 p-2 rounded-full">
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Data da Visita</label>
+                                <Input required type="date" value={date} onChange={e => setDate(e.target.value)} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Horário Previsto</label>
+                                <Input required type="time" value={time} onChange={e => setTime(e.target.value)} />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Motivo / Evento</label>
+                            <textarea
+                                required
+                                value={reason}
+                                onChange={e => setReason(e.target.value)}
+                                className="w-full p-4 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-medium text-slate-700 resize-none h-32"
+                                placeholder="Ex: Fotos das turmas do 3º Ano, Feira de Ciências..."
+                            ></textarea>
+                        </div>
+
+                        <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                            <button type="button" onClick={() => setShowForm(false)} className="px-6 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors">Cancelar</button>
+                            <button type="submit" className="px-6 py-2.5 rounded-xl font-bold text-white bg-orange-600 hover:bg-orange-700 transition-colors shadow-md shadow-orange-600/20 flex items-center gap-2">
+                                <Check className="w-4 h-4" /> Enviar Solicitação
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider mb-6 flex items-center gap-2">
+                    <CalendarIcon className="w-4 h-4 text-slate-400" />
+                    Histórico de Solicitações
+                </h3>
+
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                        <Loader2 className="w-8 h-8 animate-spin text-orange-400 mb-4" />
+                        <span className="text-sm font-medium">Buscando histórico...</span>
+                    </div>
+                ) : demands.length === 0 ? (
+                    <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                        <Camera className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                        <p className="text-slate-500 font-medium">Nenhuma solicitação de fotógrafo registrada.</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {demands.map(demand => (
+                            <div key={demand.id} className="border border-slate-200 rounded-2xl p-4 bg-slate-50 relative group">
+                                <button
+                                    onClick={() => handleDelete(demand.id)}
+                                    className="absolute top-4 right-4 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all bg-white p-1.5 rounded-full shadow-sm"
+                                    title="Excluir solicitação"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+
+                                <div className="bg-slate-50 rounded-2xl p-4 mb-3">
+                                    <div className="flex items-start gap-3 mb-4">
+                                        <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center shrink-0">
+                                            <CalendarIcon className="w-5 h-5 text-orange-600" />
+                                        </div>
+                                        <div>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5 tracking-tight">Data Solicitada</span>
+                                            <span className="text-sm font-black text-slate-800">
+                                                {demand.date.split('-').reverse().join('/')} às {demand.time}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white rounded-xl p-3 border border-slate-100 mb-4">
+                                        <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed">{demand.reason}</p>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 gap-2 border-t border-slate-200/50 pt-3">
+                                        <div className="flex items-center justify-between text-[10px] font-bold">
+                                            <span className="text-slate-400 uppercase">Postado em:</span>
+                                            <span className="text-slate-800 font-black">{new Date(demand.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                        </div>
+                                        {demand.readAt && (
+                                            <div className="flex items-center justify-between text-[10px] font-bold">
+                                                <span className="text-blue-500 uppercase">Lido em:</span>
+                                                <span className="text-slate-800 font-black">{new Date(demand.readAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                            </div>
+                                        )}
+                                        {demand.confirmedAt && (
+                                            <div className="flex items-center justify-between text-[10px] font-bold">
+                                                <span className="text-blue-950/60 uppercase">Confirmado em:</span>
+                                                <span className="text-slate-800 font-black">{new Date(demand.confirmedAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {demand.status === 'suggested' && (
+                                        <div className="mt-4 p-3 bg-orange-50 rounded-xl border border-orange-200">
+                                            <p className="text-[10px] font-bold text-orange-600 uppercase mb-2 flex items-center gap-1">
+                                                <AlertTriangle className="w-3 h-3" />
+                                                Fotógrafo sugeriu novo horário:
+                                            </p>
+                                            <p className="text-sm font-black text-blue-950 mb-3">
+                                                {demand.suggestedDate?.split('-').reverse().join('/')} às {demand.suggestedTime}
+                                            </p>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => handleAcceptSuggestion(demand)}
+                                                    className="flex-1 py-2 bg-blue-950 text-white text-[10px] font-black uppercase rounded-lg shadow-sm hover:bg-blue-900 transition-colors"
+                                                >
+                                                    Aceitar Sugestão
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(demand.id)}
+                                                    className="flex-1 py-2 bg-white border border-blue-200 text-blue-950 text-[10px] font-black uppercase rounded-lg hover:bg-blue-50 transition-colors"
+                                                >
+                                                    Recusar / Excluir
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="mt-3 flex justify-end">
+                                        <div className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${demand.status === 'confirmed' ? 'bg-blue-950 text-white border border-blue-900' :
+                                            demand.status === 'read' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
+                                                demand.status === 'cancelled' ? 'bg-gray-100 text-gray-500 border border-gray-200' :
+                                                    demand.status === 'suggested' ? 'bg-orange-100 text-orange-700 border border-orange-200' :
+                                                        'bg-orange-50 text-orange-600 border border-orange-100'
+                                            }`}>
+                                            {demand.status === 'confirmed' && 'Confirmado'}
+                                            {demand.status === 'read' && 'O Fotógrafo Leu'}
+                                            {demand.status === 'cancelled' && 'Cancelado'}
+                                            {demand.status === 'suggested' && 'Sugestão Enviada'}
+                                            {demand.status === 'pending' && 'Pendente'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
 export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     coordinator,
     onLogout,
@@ -564,7 +829,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     }, [academicSettings]);
 
     // NEW: Navigation State
-    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages' | 'attendance' | 'crm' | 'schedule' | 'access_control' | 'lost_found'>('menu');
+    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages' | 'attendance' | 'crm' | 'schedule' | 'access_control' | 'lost_found' | 'photographer_demands'>('menu');
+    const TabTypes = ['classes', 'students', 'occurrences', 'attendance', 'lost_found', 'messages', 'releases', 'crm', 'calendar', 'photographer_demands'] as const;
     // --- SCHEDULE STATE ---
     const [scheduleGrade, setScheduleGrade] = useState('');
     const [scheduleClass, setScheduleClass] = useState('');
@@ -2069,6 +2335,17 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                     </span>
                                 )}
                             </button>
+
+                            {/* PHOTOGRAPHER DEMANDS CARD */}
+                            <button
+                                onClick={() => setActiveTab('photographer_demands')}
+                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                            >
+                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                    <Camera className="w-6 h-6 text-blue-950" />
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-sm text-center">Solicitar Fotógrafo</h3>
+                            </button>
                         </div>
                     )}
 
@@ -3460,6 +3737,9 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                     )}
 
                     {/* CRM MODAL */}
+                    {activeTab === 'photographer_demands' && (
+                        <CoordinatorPhotographerDemands unit={coordinator.unit as SchoolUnit} coordinator={coordinator} />
+                    )}
                     {isCrmModalOpen && (
                         <div className="fixed inset-0 bg-blue-950/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
                             <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">

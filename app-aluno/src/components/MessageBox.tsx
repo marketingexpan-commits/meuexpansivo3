@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { parseGradeLevel } from '../utils/academicUtils'; // Added for robust matching
-import { Student, SchoolMessage, MessageRecipient, MessageType, UnitContact, ContactRole, Teacher, TicketStatus } from '../types';
+import { Student, SchoolMessage, MessageRecipient, MessageType, UnitContact, ContactRole, Teacher, TicketStatus, CoordinationSegment } from '../types';
 import { Button } from './Button';
 
 import { UNITS_DATA, DEFAULT_UNIT_DATA } from '../constants';
@@ -21,30 +21,26 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
   // Determine relevant segment for the student
   const { segments, grades: academicGrades, loading: loadingAcademic } = useAcademicData();
 
-  // Determine relevant segment for the student
+  // Determine relevant segment for the student using technical IDs
   const studentSegment = useMemo(() => {
-    // 1. Try dynamic lookup
-    const grade = academicGrades.find(g => g.name === student.gradeLevel);
-    if (grade) {
-      const segment = segments.find(s => s.id === grade.segmentId);
-      if (segment) {
-        const name = segment.name.toLowerCase();
-        if (name.includes('infantil') || name.includes('fundamental i')) return 'infantil_fund1';
-        if (name.includes('fundamental ii') || name.includes('médio')) return 'fund2_medio';
-      }
-    }
+    const { segmentId } = parseGradeLevel(student.gradeLevel);
 
-    // 2. Fallback to string matching
-    const gl = student.gradeLevel.toLowerCase();
-    if (gl.includes('infantil') || gl.includes('fundamental i') || gl.includes('nível')) return 'infantil_fund1';
-    if (gl.includes('fundamental ii') || gl.includes('médio') || gl.includes('medio')) return 'fund2_medio';
-    return 'geral';
-  }, [student.gradeLevel, academicGrades, segments]);
+    // Strict mapping of technical segmentId to CoordinationSegment enum
+    const segmentMapping: Record<string, CoordinationSegment> = {
+      'seg_infantil': CoordinationSegment.INFANTIL_FUND1,
+      'seg_fund_1': CoordinationSegment.INFANTIL_FUND1,
+      'seg_fund_2': CoordinationSegment.FUND2_MEDIO,
+      'seg_medio': CoordinationSegment.FUND2_MEDIO
+    };
 
+    return segmentMapping[segmentId];
+  }, [student.gradeLevel]);
+
+  // Strict coordinator filtering based on unit and technical segment
   const coordinators = unitContacts.filter(c =>
     c.unit === student.unit &&
     (c.role === ContactRole.COORDINATOR || c.role?.toString().toUpperCase() === 'COORDENADOR') &&
-    (!c.segment || c.segment === 'geral' || c.segment === studentSegment)
+    c.segment === studentSegment
   );
 
   const unitTeachers = teachers.filter(t => {

@@ -182,6 +182,7 @@ export const LegalTermsManager = () => {
 
     // Filters for Signatures
     const [filterLevel, setFilterLevel] = useState<string>('');
+    const [filterUnit, setFilterUnit] = useState<string>('');
     const [filterGrade, setFilterGrade] = useState<string>('');
     const [filterClass, setFilterClass] = useState<string>('');
     const [filterShift, setFilterShift] = useState<string>('');
@@ -564,11 +565,12 @@ export const LegalTermsManager = () => {
 
         const sData = sig.studentData;
         const matchesLevel = !filterLevel || sData.gradeId?.startsWith(filterLevel) || sData.gradeLevel?.includes(segments.find(sg => sg.id === filterLevel)?.name || '');
+        const matchesUnit = !filterUnit || sig.unit === filterUnit;
         const matchesGrade = !filterGrade || sData.gradeLevel === filterGrade;
         const matchesClass = !filterClass || sData.schoolClass === filterClass;
         const matchesShift = !filterShift || sData.shift === filterShift;
 
-        return matchesLevel && matchesGrade && matchesClass && matchesShift;
+        return matchesLevel && matchesUnit && matchesGrade && matchesClass && matchesShift;
     });
 
     return (
@@ -863,7 +865,20 @@ export const LegalTermsManager = () => {
                                     </Button>
                                 </form>
                             ) : (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Unidade</label>
+                                        <select
+                                            value={filterUnit}
+                                            onChange={e => setFilterUnit(e.target.value)}
+                                            className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                                        >
+                                            <option value="">Todas as Unidades</option>
+                                            {Object.entries(UNIT_LABELS).map(([unitKey, unitLabel]) => (
+                                                <option key={unitKey} value={unitKey}>{unitLabel}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                     <div>
                                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Nível / Segmento</label>
                                         <select
