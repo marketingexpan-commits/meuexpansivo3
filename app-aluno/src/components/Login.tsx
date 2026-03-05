@@ -449,7 +449,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                 onMouseEnter={() => setHoveredTab('teacher')}
                 onMouseLeave={() => setHoveredTab(null)}
               >
-                Professor
+                {showHiddenTabs ? 'Prof.' : 'Professor'}
                 {!showHiddenTabs && <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[1px] h-6 bg-gray-400/30 shrink-0 opacity-0" />}
                 {showHiddenTabs && <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[1px] h-6 bg-gray-400/30 shrink-0" />}
               </button>
