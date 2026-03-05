@@ -406,14 +406,14 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
               background: showHiddenTabs
                 ? `linear-gradient(90deg, 
                         ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 0%, 
-                        ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 25%, 
-                        ${activeTab === 'teacher' || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} 25%, 
-                        ${activeTab === 'teacher' || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} 50%, 
-                        ${activeTab === 'coordinator' || hoveredTab === 'coordinator' ? '#D1D5DB' : '#E5E7EB'} 50%, 
-                        ${activeTab === 'coordinator' || hoveredTab === 'coordinator' ? '#D1D5DB' : '#E5E7EB'} 75%, 
-                        ${activeTab === 'gatekeeper' || hoveredTab === 'gatekeeper' ? '#D1D5DB' : '#E5E7EB'} 75%, 
-                        ${activeTab === 'gatekeeper' || hoveredTab === 'gatekeeper' ? '#D1D5DB' : '#E5E7EB'} 87.5%, 
-                        ${activeTab === 'photographer' || hoveredTab === 'photographer' ? '#D1D5DB' : '#E5E7EB'} 87.5%, 
+                        ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 20%, 
+                        ${activeTab === 'teacher' || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} 20%, 
+                        ${activeTab === 'teacher' || hoveredTab === 'teacher' ? '#D1D5DB' : '#E5E7EB'} 40%, 
+                        ${activeTab === 'coordinator' || hoveredTab === 'coordinator' ? '#D1D5DB' : '#E5E7EB'} 40%, 
+                        ${activeTab === 'coordinator' || hoveredTab === 'coordinator' ? '#D1D5DB' : '#E5E7EB'} 60%, 
+                        ${activeTab === 'gatekeeper' || hoveredTab === 'gatekeeper' ? '#D1D5DB' : '#E5E7EB'} 60%, 
+                        ${activeTab === 'gatekeeper' || hoveredTab === 'gatekeeper' ? '#D1D5DB' : '#E5E7EB'} 80%, 
+                        ${activeTab === 'photographer' || hoveredTab === 'photographer' ? '#D1D5DB' : '#E5E7EB'} 80%, 
                         ${activeTab === 'photographer' || hoveredTab === 'photographer' ? '#D1D5DB' : '#E5E7EB'} 100%)`
                 : `linear-gradient(90deg, 
                         ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 0%, 
@@ -426,7 +426,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
             {/* ABAS INTEGRADAS NO CARD CINZA (SEM PADDING PARA SER TOTALMENTE FLUSH) */}
             <div className="flex w-full relative">
               <button
-                className={`flex-1 py-4 text-sm font-semibold text-center transition-all ${activeTab === 'student'
+                className={`flex-1 py-4 text-sm font-semibold text-center transition-all relative ${activeTab === 'student'
                   ? 'bg-gray-300 text-blue-950'
                   : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                   }`}
@@ -436,9 +436,11 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                 onMouseLeave={() => setHoveredTab(null)}
               >
                 Aluno / Família
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[1px] h-6 bg-gray-400/30 shrink-0" />
               </button>
+
               <button
-                className={`flex-1 py-4 text-sm font-semibold text-center transition-all ${activeTab === 'teacher'
+                className={`flex-1 py-4 text-sm font-semibold text-center transition-all relative ${activeTab === 'teacher'
                   ? 'bg-gray-300 text-blue-950'
                   : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                   }`}
@@ -448,12 +450,14 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                 onMouseLeave={() => setHoveredTab(null)}
               >
                 Professor
+                {!showHiddenTabs && <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[1px] h-6 bg-gray-400/30 shrink-0 opacity-0" />}
+                {showHiddenTabs && <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[1px] h-6 bg-gray-400/30 shrink-0" />}
               </button>
 
               {showHiddenTabs && (
                 <>
                   <button
-                    className={`flex-1 py-4 text-sm font-semibold text-center transition-all ${activeTab === 'coordinator'
+                    className={`flex-1 py-4 text-sm font-semibold text-center transition-all relative ${activeTab === 'coordinator'
                       ? 'bg-gray-300 text-blue-950'
                       : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                       }`}
@@ -463,9 +467,10 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                     onMouseLeave={() => setHoveredTab(null)}
                   >
                     Coord.
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[1px] h-6 bg-gray-400/30 shrink-0" />
                   </button>
                   <button
-                    className={`flex-1 py-4 text-sm font-semibold text-center transition-all ${activeTab === 'gatekeeper'
+                    className={`flex-1 py-4 text-sm font-semibold text-center transition-all relative ${activeTab === 'gatekeeper'
                       ? 'bg-gray-300 text-blue-950'
                       : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                       }`}
@@ -475,9 +480,10 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                     onMouseLeave={() => setHoveredTab(null)}
                   >
                     Portaria
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[1px] h-6 bg-gray-400/30 shrink-0" />
                   </button>
                   <button
-                    className={`flex-1 py-4 text-sm font-semibold text-center transition-all ${activeTab === 'photographer'
+                    className={`flex-1 py-4 text-sm font-semibold text-center transition-all relative ${activeTab === 'photographer'
                       ? 'bg-gray-300 text-blue-950'
                       : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                       }`}

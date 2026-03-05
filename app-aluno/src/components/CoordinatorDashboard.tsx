@@ -741,7 +741,7 @@ const CoordinatorPhotographerDemands: React.FC<{ unit: SchoolUnit, coordinator: 
                                         <div className="mt-4 p-3 bg-orange-50 rounded-xl border border-orange-200">
                                             <p className="text-[10px] font-bold text-orange-600 uppercase mb-2 flex items-center gap-1">
                                                 <AlertTriangle className="w-3 h-3" />
-                                                Fotógrafo sugeriu novo horário:
+                                                {demand.photographerName || 'Fotógrafo'} sugeriu novo horário:
                                             </p>
                                             <p className="text-sm font-black text-blue-950 mb-3">
                                                 {demand.suggestedDate?.split('-').reverse().join('/')} às {demand.suggestedTime}

@@ -788,4 +788,6 @@ export interface PhotographerDemand {
   suggestedTime?: string; // NEW
   suggestedAt?: string;   // NEW
   photographerNotes?: string;
+  photographerId?: string;   // NEW
+  photographerName?: string; // NEW
 }

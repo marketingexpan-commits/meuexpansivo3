@@ -131,18 +131,25 @@ export const PhotographerDashboard: React.FC = () => {
     const handleSuggestDateTime = async (demandId: string, suggestedDate: string, suggestedTime: string) => {
         try {
             const now = new Date().toISOString();
+            const pId = localStorage.getItem('photographerId') || '';
+            const pName = localStorage.getItem('photographerName') || '';
+
             await db.collection('photographer_demands').doc(demandId).update({
                 status: 'suggested',
                 suggestedDate,
                 suggestedTime,
-                suggestedAt: now
+                suggestedAt: now,
+                photographerId: pId,
+                photographerName: pName
             });
             setDemands(prev => prev.map(d => d.id === demandId ? {
                 ...d,
                 status: 'suggested',
                 suggestedDate,
                 suggestedTime,
-                suggestedAt: now
+                suggestedAt: now,
+                photographerId: pId,
+                photographerName: pName
             } : d));
             setSuggestionForm(null);
         } catch (error) {
