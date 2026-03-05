@@ -516,6 +516,28 @@ export const LegalTermsManager = () => {
         }
     };
 
+    const handleResetSignature = async (signatureId: string, studentName: string) => {
+        if (!window.confirm(`Tem certeza que deseja apagar a assinatura de ${studentName}? O termo ficará pendente novamente para o responsável assinar.`)) {
+            return;
+        }
+
+        try {
+            await deleteDoc(doc(db, 'term_signatures', signatureId));
+
+            // Remove from local state
+            setSignatures(prev => prev.filter(sig => sig.id !== signatureId));
+
+            alert('Assinatura apagada com sucesso. O termo está disponível para nova assinatura.');
+
+            if (expandedSignatureId === signatureId) {
+                setExpandedSignatureId(null);
+            }
+        } catch (error) {
+            console.error("Erro ao apagar assinatura:", error);
+            alert("Erro ao tentar apagar a assinatura.");
+        }
+    };
+
     const toggleUnit = (unitId: string) => {
         if (unitId === 'all') {
             if (selectedUnits.includes('all')) {
@@ -965,6 +987,22 @@ export const LegalTermsManager = () => {
                                 </div>
                             ) : (
                                 <div className="space-y-3">
+                                    <div className="flex gap-4 mb-4 text-sm">
+                                        <div className="flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1.5 rounded-lg border border-green-200">
+                                            <CheckCircle className="w-4 h-4" />
+                                            <span className="font-bold mb-0.5">Autorizados:</span>
+                                            <span className="font-bold bg-green-200 text-green-800 px-2 py-0.5 rounded-full text-xs">
+                                                {filteredSignatures.filter(s => s.isAuthorized !== false).length}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2 bg-red-50 text-red-700 px-3 py-1.5 rounded-lg border border-red-200">
+                                            <XCircle className="w-4 h-4" />
+                                            <span className="font-bold mb-0.5">Não Autorizados:</span>
+                                            <span className="font-bold bg-red-200 text-red-800 px-2 py-0.5 rounded-full text-xs">
+                                                {filteredSignatures.filter(s => s.isAuthorized === false).length}
+                                            </span>
+                                        </div>
+                                    </div>
                                     {filteredSignatures.map(sig => (
                                         <div key={sig.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
                                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1042,6 +1080,16 @@ export const LegalTermsManager = () => {
                                                                 Tornar 'Não Autorizado'
                                                             </Button>
                                                         )}
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="h-8 text-xs py-0 flex-1 sm:flex-none text-orange-600 border-orange-200 hover:bg-orange-50"
+                                                            onClick={() => handleResetSignature(sig.id, sig.studentData?.name || sig.studentName)}
+                                                            title="Apagar assinatura para que o responsável assine novamente"
+                                                        >
+                                                            <Undo className="w-3 h-3 mr-1" />
+                                                            Liberar p/ Assinar
+                                                        </Button>
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
