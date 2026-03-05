@@ -182,15 +182,19 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
                     </div>
                 ) : (
                     <div className="space-y-0 pl-4 relative">
-                        {/* Vertical line connector */}
-                        <div className="absolute left-[23px] top-6 bottom-6 w-0.5 bg-gradient-to-b from-blue-950/20 via-blue-950/5 to-transparent"></div>
-
                         {schedule.items.map((item, index) => (
-                            <div key={index} className="relative flex gap-6 pb-8 last:pb-0 group">
-                                {/* Bullet Point */}
-                                <div className="relative z-10 mt-1.5 transition-transform group-hover:scale-125 duration-300">
-                                    <div className="w-4 h-4 rounded-full bg-blue-950 border-[3px] border-white shadow-sm"></div>
-                                    <div className="absolute inset-0 rounded-full bg-blue-950 animate-ping opacity-20 group-hover:opacity-40"></div>
+                            <div key={index} className="relative flex gap-6 pb-10 group">
+                                {/* Bullet & Line Container */}
+                                <div className="relative z-10 flex flex-col items-center">
+                                    {/* Vertical segment */}
+                                    <div className="absolute top-5 bottom-[-10px] w-[2px] bg-blue-950/20 rounded-full">
+                                        {/* Small end marker */}
+                                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-blue-950 rounded-full shadow-sm"></div>
+                                    </div>
+
+                                    {/* Hollow Marker */}
+                                    <div className="relative mt-1.5 w-[11px] h-[11px] rounded-full border-[2px] border-blue-950 bg-white shadow-sm flex items-center justify-center transition-transform group-hover:scale-110 duration-300">
+                                    </div>
                                 </div>
 
                                 {/* Content */}
