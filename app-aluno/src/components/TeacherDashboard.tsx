@@ -414,23 +414,39 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         return Array.from(shifts);
     }, [teacher.assignments, teacher.shift]);
 
-    const getFilteredSubjects = useCallback((gradeLevel: string) => {
+    const getFilteredSubjects = useCallback((gradeLevel: string, shift?: string) => {
         if (isEarlyChildhoodTeacher && parseGradeLevel(gradeLevel).segmentId === 'seg_infantil') {
             return ['general_early_childhood'];
         }
         if (!teacher.assignments || teacher.assignments.length === 0) return teacher.subjects;
-        const assignment = teacher.assignments.find(a => a.gradeLevel === gradeLevel);
-        return assignment ? assignment.subjects : teacher.subjects;
+
+        if (shift) {
+            const assignment = teacher.assignments.find(a => a.gradeLevel === gradeLevel && a.shift === shift);
+            if (assignment) return assignment.subjects;
+        }
+
+        const gradeAssignments = teacher.assignments.filter(a => a.gradeLevel === gradeLevel);
+        if (gradeAssignments.length === 0) return teacher.subjects;
+
+        const allSubjects = new Set<string>();
+        gradeAssignments.forEach(a => {
+            if (a.subjects) {
+                a.subjects.forEach(sub => allSubjects.add(sub as string));
+            }
+        });
+
+        return Array.from(allSubjects);
     }, [teacher.assignments, teacher.subjects, isEarlyChildhoodTeacher]);
 
     const filteredSubjectsForGrades = useMemo(() => {
         const grade = selectedStudent?.gradeLevel || filterGrade;
-        return getFilteredSubjects(grade);
-    }, [selectedStudent, filterGrade, getFilteredSubjects]);
+        const shift = selectedStudent ? selectedStudent.shift : filterShift;
+        return getFilteredSubjects(grade, shift);
+    }, [selectedStudent, filterGrade, filterShift, getFilteredSubjects]);
 
     const filteredSubjectsForAttendance = useMemo(() => {
-        return getFilteredSubjects(attendanceGrade);
-    }, [attendanceGrade, getFilteredSubjects]);
+        return getFilteredSubjects(attendanceGrade, attendanceShift);
+    }, [attendanceGrade, attendanceShift, getFilteredSubjects]);
 
     const scheduleConflict = useMemo(() => {
         if (!attendanceDate || !attendanceGrade || !attendanceClass || !attendanceSubject || !classSchedules || classSchedules.length === 0) return false;
@@ -448,9 +464,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         return !scheduled;
     }, [attendanceDate, attendanceGrade, attendanceClass, attendanceSubject, classSchedules, activeUnit, calendarEvents]);
 
-    const filteredSubjectsForAgenda = useMemo(() => getFilteredSubjects(agendaGrade), [agendaGrade, getFilteredSubjects]);
-    const filteredSubjectsForMaterials = useMemo(() => getFilteredSubjects(materialGrade), [materialGrade, getFilteredSubjects]);
-    const filteredSubjectsForExams = useMemo(() => getFilteredSubjects(examGrade), [examGrade, getFilteredSubjects]);
+    const filteredSubjectsForAgenda = useMemo(() => getFilteredSubjects(agendaGrade, agendaShift), [agendaGrade, agendaShift, getFilteredSubjects]);
+    const filteredSubjectsForMaterials = useMemo(() => getFilteredSubjects(materialGrade, materialShift), [materialGrade, materialShift, getFilteredSubjects]);
+    const filteredSubjectsForExams = useMemo(() => getFilteredSubjects(examGrade, examShift), [examGrade, examShift, getFilteredSubjects]);
 
     const isEarlyChildhoodStudent = useMemo(() => {
         if (!selectedStudent) return false;
