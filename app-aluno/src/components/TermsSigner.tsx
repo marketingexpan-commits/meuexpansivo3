@@ -115,7 +115,7 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
         }
     };
 
-    const handleSaveSignature = async () => {
+    const handleSaveSignature = async (isAuthorized: boolean) => {
         if (!selectedTerm || !sigCanvas.current || sigCanvas.current.isEmpty()) {
             alert("Por favor, assine no campo indicado antes de salvar.");
             return;
@@ -134,7 +134,8 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
                 signerName,
                 signerCpf,
                 signatureBase64: signatureData,
-                signedAt: new Date().toISOString()
+                signedAt: new Date().toISOString(),
+                isAuthorized: isAuthorized
             };
 
             const docRef = await addDoc(collection(db, 'term_signatures'), sigPayload);
@@ -145,7 +146,7 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
             setSelectedTerm(null);
             setIsSigningMode(false);
 
-            alert("Termo assinado com sucesso!");
+            alert(isAuthorized ? "Termo assinado e autorizado com sucesso!" : "Sua recusa (não autorização) foi registrada com sucesso.");
         } catch (error) {
             console.error("Erro ao salvar assinatura", error);
             alert("Erro ao validar assinatura. Tente novamente.");
@@ -255,16 +256,21 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
                                             className="bg-white p-4 border border-gray-100 rounded-xl shadow-sm hover:shadow-md cursor-pointer transition-all flex items-center justify-between group opacity-75 hover:opacity-100"
                                         >
                                             <div className="flex items-start gap-3">
-                                                <div className="mt-1 bg-orange-50 p-1.5 rounded-lg text-orange-600">
-                                                    <CheckCircle className="w-5 h-5" />
+                                                <div className={`mt-1 p-1.5 rounded-lg ${sig?.isAuthorized === false ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+                                                    {sig?.isAuthorized === false ? <XCircle className="w-5 h-5" /> : <CheckCircle className="w-5 h-5" />}
                                                 </div>
                                                 <div>
-                                                    <h4 className="font-bold text-gray-900 line-through decoration-gray-300">
+                                                    <h4 className="font-bold text-gray-900 decoration-gray-300">
                                                         {term.title}
                                                     </h4>
-                                                    <p className="text-xs text-slate-400 mt-0.5 font-mono">
-                                                        Assinado em: {sig ? new Date(sig.signedAt).toLocaleDateString('pt-BR') : ''}
-                                                    </p>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${sig?.isAuthorized === false ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                                                            {sig?.isAuthorized === false ? 'NÃO AUTORIZADO' : 'AUTORIZADO'}
+                                                        </span>
+                                                        <span className="text-xs text-slate-400 font-mono">
+                                                            {sig ? new Date(sig.signedAt).toLocaleDateString('pt-BR') : ''}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <span className="text-xs text-blue-500 font-bold group-hover:underline">Ver Termo</span>
@@ -290,9 +296,15 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
                                 <div className="flex-1 min-w-0">
                                     <h3 className="font-bold text-gray-900 text-lg leading-tight break-words">{selectedTerm.title}</h3>
                                     {getSignatureForTerm(selectedTerm.id) && (
-                                        <span className="text-xs font-bold text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full uppercase tracking-wider mt-1 inline-block">
-                                            Assinado Eletronicamente
-                                        </span>
+                                        getSignatureForTerm(selectedTerm.id)?.isAuthorized === false ? (
+                                            <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full uppercase tracking-wider mt-1 inline-block">
+                                                Recusado Eletronicamente
+                                            </span>
+                                        ) : (
+                                            <span className="text-xs font-bold text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full uppercase tracking-wider mt-1 inline-block">
+                                                Assinado Eletronicamente
+                                            </span>
+                                        )
                                     )}
                                 </div>
                             </div>
@@ -308,7 +320,7 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
                         <div className="flex-1 overflow-y-auto flex flex-col">
                             {/* CONTENT */}
                             <div
-                                className="p-5 flex-1 text-sm text-gray-700 leading-relaxed font-serif prose prose-slate max-w-none"
+                                className="p-5 flex-1 text-sm text-gray-700 leading-relaxed font-sans prose prose-slate max-w-none"
                                 dangerouslySetInnerHTML={{ __html: selectedTerm.content }}
                             />
 
@@ -398,29 +410,49 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
                                                 </button>
                                             </div>
                                         </div>
-                                        <Button
-                                            className="w-full text-base font-bold h-12 bg-blue-950 hover:bg-blue-900 shadow-lg shadow-blue-900/20"
-                                            onClick={handleSaveSignature}
-                                            isLoading={isSubmitting}
-                                        >
-                                            EU CONCORDO E ASSINO ESTE TERMO
-                                        </Button>
+                                        <div className="flex flex-col gap-3">
+                                            <Button
+                                                className="w-full text-sm sm:text-base font-bold h-12 bg-blue-950 hover:bg-blue-900 shadow-lg shadow-blue-900/20"
+                                                onClick={() => handleSaveSignature(true)}
+                                                isLoading={isSubmitting}
+                                            >
+                                                EU CONCORDO E AUTORIZO O USO
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                className="w-full text-sm sm:text-base font-bold h-12 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                                                onClick={() => handleSaveSignature(false)}
+                                                isLoading={isSubmitting}
+                                            >
+                                                NÃO AUTORIZO O USO (RECUSAR TERMO)
+                                            </Button>
+                                        </div>
                                         <p className="text-[10px] text-gray-400 text-center leading-tight">
-                                            Ao clicar neste botão, o responsável/pai do aluno ({student.name}) concorda integralmente com as disposições legais listadas no termo acima, possuindo este clique o mesmo valor legal de uma assinatura física.
+                                            Ao clicar em um dos botões acima, o responsável/pai do aluno ({student.name}) concorda ou recusa integralmente as disposições legais listadas no termo acima, possuindo este clique o mesmo valor legal de uma assinatura física.
                                         </p>
                                     </div>
                                 ) : (
                                     <div className="text-center">
                                         {getSignatureForTerm(selectedTerm.id) ? (
                                             <div className="flex flex-col items-center">
-                                                <p className="font-bold text-orange-600 mb-1 flex items-center gap-1">
-                                                    <CheckCircle className="w-5 h-5" />
-                                                    Assinatura Registrada
-                                                </p>
-                                                <p className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-tighter">
+                                                {getSignatureForTerm(selectedTerm.id)?.isAuthorized === false ? (
+                                                    <div className="bg-red-50 border border-red-100 rounded-xl p-4 w-full mb-4">
+                                                        <p className="font-bold text-red-600 mb-1 flex items-center justify-center gap-1">
+                                                            <XCircle className="w-5 h-5" />
+                                                            TERMO NÃO AUTORIZADO (RECUSADO)
+                                                        </p>
+                                                        <p className="text-xs text-red-500">O responsável optou por não autorizar os termos acima.</p>
+                                                    </div>
+                                                ) : (
+                                                    <p className="font-bold text-green-600 mb-1 flex items-center gap-1">
+                                                        <CheckCircle className="w-5 h-5" />
+                                                        Assinatura Registrada (Autorizado)
+                                                    </p>
+                                                )}
+                                                <p className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-tighter mt-2">
                                                     Assinado por: {getSignatureForTerm(selectedTerm.id)?.signerName} ({getSignatureForTerm(selectedTerm.id)?.signerRole}) • CPF: {getSignatureForTerm(selectedTerm.id)?.signerCpf}
                                                 </p>
-                                                <div className="border border-gray-200 bg-white p-2 rounded-lg mb-2">
+                                                <div className="border border-gray-200 bg-white p-2 rounded-lg mb-2 inline-block">
                                                     <img
                                                         src={getSignatureForTerm(selectedTerm.id)?.signatureBase64}
                                                         alt="Assinatura"

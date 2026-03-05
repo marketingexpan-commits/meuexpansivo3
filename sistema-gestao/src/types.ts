@@ -6,6 +6,7 @@ export enum UserRole {
   TEACHER = 'TEACHER',
   ADMIN = 'ADMIN',
   COORDINATOR = 'COORDINATOR',
+  PHOTOGRAPHER = 'PHOTOGRAPHER',
   NONE = 'NONE'
 }
 
@@ -806,6 +807,17 @@ export interface Gatekeeper {
   updatedAt: string;
 }
 
+export interface Photographer {
+  id: string;
+  cpf: string;
+  password: string;
+  name: string;
+  unit: string; // unit ID or 'all' for network-wide access
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface LegalTerm {
   id: string;
   title: string;
@@ -822,6 +834,10 @@ export interface TermSignature {
   studentId: string;
   studentName: string;
   unit: string;
+  signerRole: 'Pai' | 'Mãe' | 'Responsável';
+  signerName: string;
+  signerCpf: string;
   signatureBase64: string; // Base64 encoded image
   signedAt: string; // ISO String
+  isAuthorized?: boolean; // True se autorizou, False se não autorizou
 }

@@ -6,6 +6,7 @@ export enum UserRole {
   TEACHER = 'TEACHER',
   ADMIN = 'ADMIN',
   COORDINATOR = 'COORDINATOR',
+  PHOTOGRAPHER = 'PHOTOGRAPHER',
   NONE = 'NONE'
 }
 
@@ -757,4 +758,16 @@ export interface TermSignature {
   signerCpf: string;
   signatureBase64: string; // Base64 encoded image
   signedAt: string; // ISO String
+  isAuthorized?: boolean; // True se autorizou, False se não autorizou
+}
+
+export interface Photographer {
+  id: string;
+  cpf: string;
+  password: string;
+  name: string;
+  unit: string; // SchoolUnit ID or 'all'
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }

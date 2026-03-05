@@ -12,6 +12,7 @@ import { TeacherDashboard } from './components/TeacherDashboard';
 import { CoordinatorDashboard } from './components/CoordinatorDashboard';
 import { db, auth } from './firebaseConfig';
 import { GatekeeperDashboard } from './components/GatekeeperDashboard';
+import { PhotographerDashboard } from './components/PhotographerDashboard.tsx';
 import { BackToTopButton } from './components/BackToTopButton';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { SchoolLogo } from './components/SchoolLogo';
@@ -1384,6 +1385,7 @@ const App: React.FC = () => {
       <Routes>
         <Route path="/validar-recibo/:id" element={<ValidateReceipt />} />
         <Route path="/porteiro" element={<GatekeeperDashboard />} />
+        <Route path="/fotografo" element={<PhotographerDashboard />} />
         <Route path="/*" element={<AppContent />} />
       </Routes>
     </Router>

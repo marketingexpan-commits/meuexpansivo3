@@ -80,7 +80,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
     };
   }, []);
 
-  const [activeTab, setActiveTab] = useState<'student' | 'teacher' | 'coordinator' | 'gatekeeper'>('student');
+  const [activeTab, setActiveTab] = useState<'student' | 'teacher' | 'coordinator' | 'gatekeeper' | 'photographer'>('student');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
 
@@ -250,10 +250,45 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
         console.error("Login error:", err);
         alert('Erro ao realizar login. Tente novamente.');
       }
+    } else if (activeTab === 'photographer') {
+      try {
+        const snapshot = await db.collection('photographers')
+          .where('cpf', '==', identifier.replace(/\D/g, ''))
+          .get();
+
+        if (snapshot.empty) {
+          alert('Fotógrafo não encontrado ou CPF incorreto.');
+          return;
+        }
+
+        const photographerDoc = snapshot.docs[0];
+        const photographerData = photographerDoc.data();
+
+        if (!photographerData.isActive) {
+          alert('Acesso negado. Usuário inativo.');
+          return;
+        }
+
+        if (photographerData.password !== password) {
+          alert('Senha incorreta.');
+          return;
+        }
+
+        // Login success
+        localStorage.setItem('userUnit', 'all');
+        localStorage.setItem('photographerName', photographerData.name);
+        localStorage.setItem('photographerId', photographerDoc.id);
+
+        window.location.href = '/fotografo';
+
+      } catch (err) {
+        console.error("Login error:", err);
+        alert('Erro ao realizar login. Tente novamente.');
+      }
     }
   };
 
-  const switchTab = (tab: 'student' | 'teacher' | 'coordinator' | 'gatekeeper') => {
+  const switchTab = (tab: 'student' | 'teacher' | 'coordinator' | 'gatekeeper' | 'photographer') => {
     setActiveTab(tab);
     setIdentifier('');
     setPassword('');
@@ -269,7 +304,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
       if (/^\d{0,5}$/.test(val)) {
         setIdentifier(val);
       }
-    } else if (activeTab === 'teacher') {
+    } else if (activeTab === 'teacher' || activeTab === 'photographer') {
       // CPF: Apply mask
       setIdentifier(maskCPF(val));
     } else {
@@ -377,7 +412,9 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                         ${activeTab === 'coordinator' || hoveredTab === 'coordinator' ? '#D1D5DB' : '#E5E7EB'} 50%, 
                         ${activeTab === 'coordinator' || hoveredTab === 'coordinator' ? '#D1D5DB' : '#E5E7EB'} 75%, 
                         ${activeTab === 'gatekeeper' || hoveredTab === 'gatekeeper' ? '#D1D5DB' : '#E5E7EB'} 75%, 
-                        ${activeTab === 'gatekeeper' || hoveredTab === 'gatekeeper' ? '#D1D5DB' : '#E5E7EB'} 100%)`
+                        ${activeTab === 'gatekeeper' || hoveredTab === 'gatekeeper' ? '#D1D5DB' : '#E5E7EB'} 87.5%, 
+                        ${activeTab === 'photographer' || hoveredTab === 'photographer' ? '#D1D5DB' : '#E5E7EB'} 87.5%, 
+                        ${activeTab === 'photographer' || hoveredTab === 'photographer' ? '#D1D5DB' : '#E5E7EB'} 100%)`
                 : `linear-gradient(90deg, 
                         ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 0%, 
                         ${activeTab === 'student' || hoveredTab === 'student' ? '#D1D5DB' : '#E5E7EB'} 50%, 
@@ -439,6 +476,18 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                   >
                     Portaria
                   </button>
+                  <button
+                    className={`flex-1 py-4 text-sm font-semibold text-center transition-all ${activeTab === 'photographer'
+                      ? 'bg-gray-300 text-blue-950 hover:bg-gray-400'
+                      : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+                      }`}
+                    style={{ WebkitTapHighlightColor: 'transparent' }}
+                    onClick={() => switchTab('photographer')}
+                    onMouseEnter={() => setHoveredTab('photographer')}
+                    onMouseLeave={() => setHoveredTab(null)}
+                  >
+                    Fotógrafo
+                  </button>
                 </>
               )}
             </div>
@@ -496,22 +545,24 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                   </div>
                 )}
 
+
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">
                     {activeTab === 'student' ? 'Código do Aluno' :
                       activeTab === 'teacher' ? 'CPF do Professor' :
                         activeTab === 'coordinator' ? 'Nome do Coordenador' :
-                          activeTab === 'gatekeeper' ? 'Usuário Portaria' : 'Usuário'}
+                          activeTab === 'gatekeeper' ? 'Usuário Portaria' :
+                            activeTab === 'photographer' ? 'CPF do Fotógrafo' : 'Usuário'}
                   </label>
                   <input
                     type="text"
-                    inputMode={activeTab === 'student' || activeTab === 'teacher' ? 'numeric' : 'text'}
-                    maxLength={activeTab === 'student' ? 5 : activeTab === 'teacher' ? 14 : undefined}
+                    inputMode={activeTab === 'student' || activeTab === 'teacher' || activeTab === 'photographer' ? 'numeric' : 'text'}
+                    maxLength={activeTab === 'student' ? 5 : (activeTab === 'teacher' || activeTab === 'photographer') ? 14 : undefined}
                     value={identifier}
                     onChange={handleIdentifierChange}
                     placeholder={
                       activeTab === 'student' ? 'Ex.: 12345 (Consulte o Código)' :
-                        activeTab === 'teacher' ? '000.000.000-00' :
+                        (activeTab === 'teacher' || activeTab === 'photographer') ? '000.000.000-00' :
                           activeTab === 'coordinator' ? 'Ex: Maria Silva' :
                             activeTab === 'gatekeeper' ? 'Ex: João da Silva' :
                               'Usuário'

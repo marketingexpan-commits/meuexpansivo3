@@ -493,6 +493,28 @@ export const LegalTermsManager = () => {
         }
     };
 
+    const handleOverrideRejection = async (signatureId: string, studentName: string) => {
+        if (!window.confirm(`Tem certeza que deseja marcar a assinatura de ${studentName} como NÃO AUTORIZADA? Essa ação não pode ser desfeita e refletirá imediatamente no painel do fotógrafo.`)) {
+            return;
+        }
+
+        try {
+            await updateDoc(doc(db, 'term_signatures', signatureId), {
+                isAuthorized: false
+            });
+
+            // Update local state
+            setSignatures(prev => prev.map(sig =>
+                sig.id === signatureId ? { ...sig, isAuthorized: false } : sig
+            ));
+
+            alert('Assinatura marcada como NÃO AUTORIZADA com sucesso.');
+        } catch (error) {
+            console.error("Erro ao atualizar assinatura:", error);
+            alert("Erro ao tentar atualizar o status da assinatura.");
+        }
+    };
+
     const toggleUnit = (unitId: string) => {
         if (unitId === 'all') {
             if (selectedUnits.includes('all')) {
@@ -981,17 +1003,39 @@ export const LegalTermsManager = () => {
 
                                                 <div className="flex flex-col sm:items-end gap-2 shrink-0 border-t sm:border-t-0 border-slate-100 pt-3 sm:pt-0">
                                                     <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
-                                                        <CheckCircle className="w-3 h-3 text-green-500" />
+                                                        {sig.isAuthorized === false ? (
+                                                            <>
+                                                                <XCircle className="w-3 h-3 text-red-500" />
+                                                                <span className="text-red-500 font-bold uppercase">Não Autorizado em:</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <CheckCircle className="w-3 h-3 text-green-500" />
+                                                                <span className="text-green-500 font-bold uppercase">Autorizado em:</span>
+                                                            </>
+                                                        )}
                                                         {new Date(sig.signedAt).toLocaleDateString('pt-BR')} às {new Date(sig.signedAt).toLocaleTimeString('pt-BR')}
                                                     </div>
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="h-8 text-xs py-0 w-full sm:w-auto text-blue-950 hover:text-blue-900 border-blue-950/20 hover:bg-slate-50"
-                                                        onClick={() => setExpandedSignatureId(expandedSignatureId === sig.id ? null : sig.id)}
-                                                    >
-                                                        {expandedSignatureId === sig.id ? 'Ocultar Assinatura' : 'Ver Assinatura'}
-                                                    </Button>
+                                                    <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                                                        {sig.isAuthorized !== false && (
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="h-8 text-xs py-0 flex-1 sm:flex-none text-red-600 border-red-200 hover:bg-red-50"
+                                                                onClick={() => handleOverrideRejection(sig.id, sig.studentData?.name || sig.studentName)}
+                                                            >
+                                                                Tornar 'Não Autorizado'
+                                                            </Button>
+                                                        )}
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="h-8 text-xs py-0 flex-1 sm:flex-none text-blue-950 hover:text-blue-900 border-blue-950/20 hover:bg-slate-50"
+                                                            onClick={() => setExpandedSignatureId(expandedSignatureId === sig.id ? null : sig.id)}
+                                                        >
+                                                            {expandedSignatureId === sig.id ? 'Ocultar Assinatura' : 'Ver Assinatura'}
+                                                        </Button>
+                                                    </div>
                                                 </div>
                                             </div>
 

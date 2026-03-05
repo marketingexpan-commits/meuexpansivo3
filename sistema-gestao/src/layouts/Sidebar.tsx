@@ -23,7 +23,8 @@ import {
     Smartphone,
     Globe,
     MessageSquareReply,
-    Trophy
+    Trophy,
+    Camera
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -340,6 +341,7 @@ function SidebarContent({
 
                         {isAdmin && (
                             <>
+                                <SidebarItem icon={Camera} label="Fotógrafos" path="/config/fotografos" collapsed={collapsed} />
                                 <SidebarItem icon={Building2} label="Unidades" path="/config/unidades" collapsed={collapsed} />
                                 <SidebarItem icon={UserCheck} label="Admin/Unidades" path="/config/admin-unidades" collapsed={collapsed} />
                                 <SidebarItem icon={Smartphone} label="Config. App" path="/config/escola" collapsed={collapsed} />
