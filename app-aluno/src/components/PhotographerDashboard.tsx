@@ -415,37 +415,39 @@ export const PhotographerDashboard: React.FC = () => {
                                                                         </div>
 
                                                                         <div className="flex-1 min-w-0">
-                                                                            <h3 className="font-bold text-blue-950 uppercase text-sm truncate">{student.name}</h3>
-                                                                            <div className="flex flex-wrap items-center gap-x-2 mt-1">
-                                                                                <span className="text-[9px] font-bold text-gray-400 uppercase">
-                                                                                    {gradeLabel || 'S/G'} {student.schoolClass ? `- TURMA ${student.schoolClass}` : ''}
-                                                                                </span>
-                                                                                <span className="w-1 h-1 bg-gray-200 rounded-full"></span>
-                                                                                <span className="text-[9px] font-bold text-orange-600 uppercase">
-                                                                                    {getUnitLabel(student.unit)}
-                                                                                </span>
-                                                                            </div>
-                                                                        </div>
-
-                                                                        <div className="shrink-0 ml-auto">
-                                                                            {hasAuth ? (
-                                                                                hasAuth.isAuthorized === false ? (
-                                                                                    <div className="flex items-center gap-1.5 bg-red-50 text-red-600 px-3 py-1.5 rounded-full border border-red-100 shadow-sm shadow-red-500/5">
-                                                                                        <XCircle className="w-4 h-4 animate-pulse" />
-                                                                                        <span className="text-[9px] font-black uppercase tracking-tight">Não Autorizado</span>
-                                                                                    </div>
-                                                                                ) : (
-                                                                                    <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-full border border-emerald-100 shadow-sm shadow-emerald-500/5">
-                                                                                        <CheckCircle2 className="w-4 h-4" />
-                                                                                        <span className="text-[9px] font-black uppercase tracking-tight">Autorizado</span>
-                                                                                    </div>
-                                                                                )
-                                                                            ) : (
-                                                                                <div className="flex items-center gap-1.5 bg-orange-50 text-orange-600 px-3 py-1.5 rounded-full border border-orange-100 shadow-sm shadow-orange-500/5">
-                                                                                    <AlertTriangle className="w-4 h-4 animate-pulse" />
-                                                                                    <span className="text-[9px] font-black uppercase tracking-tight">Pendente</span>
+                                                                            <h3 className="font-bold text-blue-950 uppercase text-sm truncate w-full">{student.name}</h3>
+                                                                            <div className="flex items-center justify-between gap-1 mt-1">
+                                                                                <div className="flex flex-wrap items-center gap-x-1.5">
+                                                                                    <span className="text-[9px] font-bold text-gray-400 uppercase">
+                                                                                        {gradeLabel || 'S/G'} {student.schoolClass ? `- TURMA ${student.schoolClass}` : ''}
+                                                                                    </span>
+                                                                                    <span className="w-1 h-1 bg-gray-200 rounded-full hidden xs:block"></span>
+                                                                                    <span className="text-[9px] font-bold text-orange-600 uppercase">
+                                                                                        {getUnitLabel(student.unit)}
+                                                                                    </span>
                                                                                 </div>
-                                                                            )}
+
+                                                                                <div className="shrink-0 scale-[0.85] origin-right">
+                                                                                    {hasAuth ? (
+                                                                                        hasAuth.isAuthorized === false ? (
+                                                                                            <div className="flex items-center gap-1.5 bg-red-50 text-red-600 px-3 py-1.5 rounded-full border border-red-100 shadow-sm shadow-red-500/5">
+                                                                                                <XCircle className="w-4 h-4 animate-pulse" />
+                                                                                                <span className="text-[9px] font-black uppercase tracking-tight">Não Autorizado</span>
+                                                                                            </div>
+                                                                                        ) : (
+                                                                                            <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-full border border-emerald-100 shadow-sm shadow-emerald-500/5">
+                                                                                                <CheckCircle2 className="w-4 h-4" />
+                                                                                                <span className="text-[9px] font-black uppercase tracking-tight">Autorizado</span>
+                                                                                            </div>
+                                                                                        )
+                                                                                    ) : (
+                                                                                        <div className="flex items-center gap-1.5 bg-orange-50 text-orange-600 px-3 py-1.5 rounded-full border border-orange-100 shadow-sm shadow-orange-500/5">
+                                                                                            <AlertTriangle className="w-4 h-4 animate-pulse" />
+                                                                                            <span className="text-[9px] font-black uppercase tracking-tight">Pendente</span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
                                                                         </div>
                                                                     </div>
                                                                 );
