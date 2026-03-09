@@ -40,7 +40,7 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
   const coordinators = unitContacts.filter(c =>
     c.unit === student.unit &&
     (c.role === ContactRole.COORDINATOR || c.role?.toString().toUpperCase() === 'COORDENADOR') &&
-    c.segment === studentSegment
+    (c.segment === studentSegment || c.segment === CoordinationSegment.GERAL)
   );
 
   const unitTeachers = teachers.filter(t => {
@@ -226,7 +226,7 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
                       <option value="">-- Selecione --</option>
                       {coordinators.map(c => (
                         <option key={c.id} value={c.id}>
-                          {c.name} {c.segment && c.segment !== 'geral' ? `(${c.segment === 'infantil_fund1' ? 'Inf./Fund. I' : 'Fund. II/Médio'})` : ''}
+                          {c.name} {c.segment ? `(${c.segment === 'geral' ? 'Ambos' : c.segment === 'infantil_fund1' ? 'Inf./Fund. I' : 'Fund. II/Médio'})` : ''}
                         </option>
                       ))}
                     </select>
