@@ -755,7 +755,7 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handleSaveGrade = async (grade: GradeEntry) => {
+  const handleSaveGrade = async (grade: GradeEntry, skipNotification?: boolean) => {
     try {
       // Add teacherId if it's a teacher saving the grade
       const gradeToSave = {
@@ -764,13 +764,16 @@ const AppContent: React.FC = () => {
       };
 
       await db.collection('grades').doc(grade.id).set(gradeToSave);
+
       // Let display side (StudentDashboard) handle ID-to-Name mapping for notifications
       // as App.tsx doesn't always have the full academicSubjects list loaded yet.
-      await createNotification(
-        'Boletim Atualizado',
-        `Sua nota de ${grade.subject} foi atualizada pelo professor.`,
-        grade.studentId
-      );
+      if (!skipNotification) {
+        await createNotification(
+          'Boletim Atualizado',
+          `Sua nota de ${grade.subject} foi atualizada pelo professor.`,
+          grade.studentId
+        );
+      }
     }
     catch (error) {
       if (ALLOW_MOCK_LOGIN) {

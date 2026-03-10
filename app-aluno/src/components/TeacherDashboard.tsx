@@ -38,7 +38,7 @@ interface TeacherDashboardProps {
     grades: GradeEntry[];
     attendanceRecords: AttendanceRecord[];
     earlyChildhoodReports: EarlyChildhoodReport[];
-    onSaveGrade: (grade: GradeEntry) => Promise<void>;
+    onSaveGrade: (grade: GradeEntry, skipNotification?: boolean) => Promise<void>;
     onSaveAttendance: (record: AttendanceRecord) => Promise<void>;
     onDeleteAttendance?: (recordId: string) => Promise<void>;
     onSaveEarlyChildhoodReport: (report: EarlyChildhoodReport) => Promise<void>;
@@ -672,7 +672,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             ...finalData,
             lastUpdated: new Date().toISOString()
         };
-        await onSaveGrade(gradeToSave); setIsSaving(false); alert(`Dados de ${getStageDisplay(selectedStage)} salvos com sucesso!`);
+        await onSaveGrade(gradeToSave, false); setIsSaving(false); alert(`Dados de ${getStageDisplay(selectedStage)} salvos com sucesso!`);
     };
 
     const handleCompetencyChange = (fieldId: string, competencyId: string, status: CompetencyStatus) => {
@@ -895,7 +895,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                         lastUpdated: new Date().toISOString()
                     };
 
-                    updates.push(onSaveGrade(gradeToSave));
+                    updates.push(onSaveGrade(gradeToSave, true)); // skipNotification = true para chamadas
                 }
 
                 if (updates.length > 0) {
@@ -981,7 +981,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                             lastUpdated: new Date().toISOString()
                         };
 
-                        updates.push(onSaveGrade(gradeToSave));
+                        updates.push(onSaveGrade(gradeToSave, true)); // skipNotification = true para exclusão de chamada
                     }
 
                     if (updates.length > 0) {
