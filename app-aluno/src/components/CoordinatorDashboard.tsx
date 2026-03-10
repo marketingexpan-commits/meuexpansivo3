@@ -720,6 +720,10 @@ const CoordinatorPhotographerDemands: React.FC<{ unit: SchoolUnit, coordinator: 
 
                                     <div className="grid grid-cols-1 gap-2 border-t border-slate-200/50 pt-3">
                                         <div className="flex items-center justify-between text-[10px] font-bold">
+                                            <span className="text-slate-400 uppercase">Solicitante:</span>
+                                            <span className="text-slate-800 font-black">{demand.coordinatorName || 'Coordenação'}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-[10px] font-bold">
                                             <span className="text-slate-400 uppercase">Postado em:</span>
                                             <span className="text-slate-800 font-black">{new Date(demand.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                                         </div>
