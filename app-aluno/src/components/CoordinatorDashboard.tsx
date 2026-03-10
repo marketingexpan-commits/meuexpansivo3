@@ -39,11 +39,13 @@ import {
     Package,
     Camera,
     AlertTriangle,
-    ArrowLeft
+    ArrowLeft,
+    BookCheck
 } from 'lucide-react';
 
 import { Input } from './Input';
 import { useLostAndFound } from '../hooks/useLostAndFound';
+import { CoordinatorAgendaReport } from './CoordinatorAgendaReport';
 
 import { Dialog } from './Dialog';
 
@@ -833,8 +835,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     }, [academicSettings]);
 
     // NEW: Navigation State
-    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages' | 'attendance' | 'crm' | 'schedule' | 'access_control' | 'lost_found' | 'photographer_demands'>('menu');
-    const TabTypes = ['classes', 'students', 'occurrences', 'attendance', 'lost_found', 'messages', 'releases', 'crm', 'calendar', 'photographer_demands'] as const;
+    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages' | 'attendance' | 'crm' | 'schedule' | 'access_control' | 'lost_found' | 'photographer_demands' | 'agenda_report'>('menu');
+    const TabTypes = ['classes', 'students', 'occurrences', 'attendance', 'lost_found', 'messages', 'releases', 'crm', 'calendar', 'photographer_demands', 'agenda_report'] as const;
     // --- SCHEDULE STATE ---
     const [scheduleGrade, setScheduleGrade] = useState('');
     const [scheduleClass, setScheduleClass] = useState('');
@@ -2350,6 +2352,17 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                 </div>
                                 <h3 className="font-bold text-gray-800 text-sm text-center">Solicitar Fotógrafo</h3>
                             </button>
+
+                            {/* AGENDA REPORT CARD */}
+                            <button
+                                onClick={() => setActiveTab('agenda_report')}
+                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square relative"
+                            >
+                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                    <BookCheck className="w-6 h-6 text-blue-950" />
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-sm text-center">Relatório de Agendas</h3>
+                            </button>
                         </div>
                     )}
 
@@ -3740,7 +3753,12 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                         </div>
                     )}
 
-                    {/* CRM MODAL */}
+                    {/* AGENDA REPORT VIEW */}
+                    {activeTab === 'agenda_report' && (
+                        <CoordinatorAgendaReport unit={coordinator.unit as SchoolUnit} />
+                    )}
+
+                    {/* PHOTOGRAPHER DEMANDS VIEW */}
                     {activeTab === 'photographer_demands' && (
                         <CoordinatorPhotographerDemands unit={coordinator.unit as SchoolUnit} coordinator={coordinator} />
                     )}
@@ -4315,3 +4333,5 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         </div >
     );
 };
+
+export default CoordinatorDashboard;
