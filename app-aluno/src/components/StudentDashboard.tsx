@@ -43,9 +43,11 @@ import {
     QrCode,
     Package,
     X,
-    PenTool
+    PenTool,
+    Music
 } from 'lucide-react';
 import { db } from '../firebaseConfig';
+import StudentMediaGallery from './StudentMediaGallery';
 import { useLostAndFound } from '../hooks/useLostAndFound';
 import { Dialog } from './Dialog';
 
@@ -178,6 +180,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     classSchedules = [],
     schoolMessages = []
 }) => {
+    const hasMusicTeacher = useMemo(() => {
+        return (teachers || []).some(t => t.subjects?.includes('disc_musica' as any));
+    }, [teachers]);
+
     const StudentLostFoundView: React.FC<{ unit: SchoolUnit }> = ({ unit }) => {
         const { items, loading, claimItem } = useLostAndFound(unit);
         const [claimingId, setClaimingId] = useState<string | null>(null);
@@ -359,7 +365,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState({ title: '', tip: '' });
     const [isLoadingAI, setIsLoadingAI] = useState(false);
-    const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro' | 'tickets' | 'materials' | 'occurrences' | 'calendar' | 'schedule' | 'lost_found' | 'authorizations'>('menu');
+    const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro' | 'tickets' | 'materials' | 'occurrences' | 'calendar' | 'schedule' | 'lost_found' | 'authorizations' | 'music_gallery'>('menu');
     const [showIdCard, setShowIdCard] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
 
@@ -1461,15 +1467,17 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Fale com a Escola</h3>
                                     </button>
 
-                                    <button
-                                        onClick={() => setCurrentView('tickets')}
-                                        className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
-                                    >
-                                        <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
-                                            <CircleHelp className="w-6 h-6 text-blue-950" />
-                                        </div>
-                                        <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Minhas Dúvidas</h3>
-                                    </button>
+                                    {!isEarlyChildhood && (
+                                        <button
+                                            onClick={() => setCurrentView('tickets')}
+                                            className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                                        >
+                                            <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
+                                                <CircleHelp className="w-6 h-6 text-blue-950" />
+                                            </div>
+                                            <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Minhas Dúvidas</h3>
+                                        </button>
+                                    )}
 
                                     <button
                                         onClick={() => setCurrentView('materials')}
@@ -1532,6 +1540,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Autorizações e Termos</h3>
                                     </button>
+
+                                    {hasMusicTeacher && (
+                                        <button
+                                            onClick={() => setCurrentView('music_gallery')}
+                                            className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square relative"
+                                        >
+                                            <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
+                                                <svg className="w-6 h-6 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                            </div>
+                                            <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Galeria de Mídia</h3>
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -1539,6 +1559,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                     {currentView === 'financeiro' && <FinanceiroScreen student={student} mensalidades={mensalidades} eventos={eventos} unitContacts={unitContacts} contactSettings={contactSettings} />}
                     {currentView === 'authorizations' && <TermsSigner student={student} />}
+                    {currentView === 'music_gallery' && (
+                        <StudentMediaGallery 
+                            student={student}
+                        />
+                    )}
 
 
                     {currentView === 'attendance' && (

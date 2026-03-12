@@ -1,5 +1,7 @@
 // src/components/TeacherDashboard.tsx
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { db, storage } from '../firebaseConfig';
+import { TeacherMediaGallery } from './TeacherMediaGallery';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { MessageCircle, HelpCircle, ClipboardCheck, Calendar } from 'lucide-react';
 import {
@@ -19,7 +21,6 @@ import {
     SHIFT_LABELS,
     SchoolShift
 } from '../types';
-import { db, storage } from '../firebaseConfig';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 import { getAttendanceBreakdown, AttendanceBreakdown } from '../utils/attendanceUtils';
@@ -91,7 +92,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 }) => {
     const { grades: academicGrades, subjects: academicSubjects, matrices, loading: loadingAcademic } = useAcademicData();
 
-    const [activeTab, setActiveTab] = useState<'menu' | 'grades' | 'attendance' | 'tickets' | 'materials' | 'messages' | 'calendar' | 'exam_guides' | 'agenda'>('menu');
+    const [activeTab, setActiveTab] = useState<'menu' | 'grades' | 'attendance' | 'tickets' | 'materials' | 'messages' | 'calendar' | 'exam_guides' | 'agenda' | 'media_gallery'>('menu');
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const activeUnit = normalizeUnit(teacher.unit) as SchoolUnit;
@@ -398,6 +399,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         if (!teacher.gradeLevels || teacher.gradeLevels.length === 0) return false;
         return teacher.gradeLevels.some(grade => parseGradeLevel(grade).segmentId === 'seg_infantil');
     }, [teacher.gradeLevels]);
+
+    const isMusicTeacher = useMemo(() => {
+        // IDs: disc_musica (from types.ts)
+        return teacher.subjects.includes('disc_musica' as any);
+    }, [teacher.subjects]);
 
     const availableShifts = useMemo(() => {
         const shifts = new Set<SchoolShift>();
@@ -1522,19 +1528,21 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                     <p className="text-gray-500 text-sm">Selecione uma opção para gerenciar suas atividades.</p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <button
-                                        onClick={() => setActiveTab('grades')}
-                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
-                                    >
-                                        <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                                            <svg className="w-7 h-7 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
-                                        </div>
-                                        <h3 className="font-bold text-gray-800 text-sm text-center">
-                                            {isEarlyChildhoodTeacher ? 'Relatório de Desenvolvimento' : 'Lançar Notas'}
-                                        </h3>
-                                    </button>
+                                    {!isMusicTeacher && (
+                                        <button
+                                            onClick={() => setActiveTab('grades')}
+                                            className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                                        >
+                                            <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                                <svg className="w-7 h-7 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                                            </div>
+                                            <h3 className="font-bold text-gray-800 text-sm text-center">
+                                                {isEarlyChildhoodTeacher ? 'Relatório de Desenvolvimento' : 'Lançar Notas'}
+                                            </h3>
+                                        </button>
+                                    )}
 
-                                    {!isEarlyChildhoodTeacher && (
+                                    {!isEarlyChildhoodTeacher && !isMusicTeacher && (
                                         <button
                                             onClick={() => setActiveTab('attendance')}
                                             className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
@@ -1543,6 +1551,18 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                 <ClipboardCheck className="w-7 h-7 text-blue-950" />
                                             </div>
                                             <h3 className="font-bold text-gray-800 text-sm text-center">Chamada Diária</h3>
+                                        </button>
+                                    )}
+
+                                    {isMusicTeacher && (
+                                        <button
+                                            onClick={() => setActiveTab('media_gallery')}
+                                            className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                                        >
+                                            <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                                <svg className="w-7 h-7 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                            </div>
+                                            <h3 className="font-bold text-gray-800 text-sm text-center">Galeria de Mídia</h3>
                                         </button>
                                     )}
 
@@ -1598,7 +1618,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                         <h3 className="font-bold text-gray-800 text-sm text-center">Calendário Escolar</h3>
                                     </button>
 
-                                    {!isEarlyChildhoodTeacher && (
+                                    {!isEarlyChildhoodTeacher && !isMusicTeacher && (
                                         <button
                                             onClick={() => setActiveTab('exam_guides')}
                                             className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
@@ -1612,6 +1632,16 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                 </div>
                             </div>
                         </div>
+                    )}
+
+                    {/* CONTEÚDO TAB: GALERIA DE MÍDIA */}
+                    {activeTab === 'media_gallery' && (
+                        <TeacherMediaGallery 
+                            teacher={teacher}
+                            academicGrades={academicGrades}
+                            loadingAcademic={loadingAcademic}
+                            activeUnit={activeUnit}
+                        />
                     )}
 
                     {/* CONTEÚDO TAB: MATERIAIS */}

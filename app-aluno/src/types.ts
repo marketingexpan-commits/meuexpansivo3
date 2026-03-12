@@ -306,9 +306,26 @@ export interface ClassMaterial {
   subject: string;
   unit: SchoolUnit;
   gradeLevel: string;
-  schoolClass: string;
+  schoolClass: SchoolClass;
   shift: string; // Novo: Turno do material
   timestamp: string;
+}
+
+export interface TeacherMedia {
+  id: string;
+  teacherId: string;
+  teacherName: string;
+  unit: SchoolUnit;
+  gradeLevel: string;
+  schoolClass: SchoolClass;
+  shift: SchoolShift;
+  type: 'image' | 'video';
+  url: string;
+  filename?: string;
+  timestamp: string;
+  date: string; // YYYY-MM-DD for daily limits
+  subjectId: string; // Novo: ID canônico (disc_musica)
+  expiresAt: string; // ISO String for cleanup logic
 }
 
 // --- NOVOS TIPOS PARA CONTATOS DE LIDERANÇA ---
