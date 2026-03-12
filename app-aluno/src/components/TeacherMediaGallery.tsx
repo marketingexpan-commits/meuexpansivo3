@@ -24,6 +24,7 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
     const [filterGrade, setFilterGrade] = useState('');
     const [filterClass, setFilterClass] = useState<SchoolClass>(SchoolClass.A);
     const [filterShift, setFilterShift] = useState<SchoolShift | ''>('');
+    const [dateFilter, setDateFilter] = useState(new Date().toLocaleDateString('en-CA'));
     const [albumTitle, setAlbumTitle] = useState('');
     const [albumSubjectId, setAlbumSubjectId] = useState('');
     
@@ -100,28 +101,6 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
         return list;
     }, [teacher, filterGrade, filterShift]);
 
-    const fetchMedia = async () => {
-        if (!filterGrade || !filterShift) return;
-        setIsLoading(true);
-        try {
-            await cleanupExpiredMedia(); // Clean up before fetching
-            const snapshot = await db.collection('teacher_media')
-                .where('unit', '==', activeUnit)
-                .where('gradeLevel', '==', filterGrade)
-                .where('schoolClass', '==', filterClass)
-                .where('shift', '==', filterShift)
-                .orderBy('timestamp', 'desc')
-                .get();
-            
-            const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TeacherMedia));
-            setMediaList(docs);
-        } catch (error) {
-            console.error("Error fetching media:", error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
     const cleanupExpiredMedia = async () => {
         try {
             const now = new Date().toISOString();
@@ -135,9 +114,7 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
             const batch = db.batch();
             for (const doc of expiredSnapshot.docs) {
                 const data = doc.data() as TeacherMedia;
-                // Delete from Firestore
                 batch.delete(doc.ref);
-                // Attempt Storage Delete
                 try {
                     const storageRef = ref(storage, data.url);
                     await deleteObject(storageRef);
@@ -152,9 +129,50 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
         }
     };
 
+    const fetchMedia = async () => {
+        if (!filterGrade || !filterShift) return;
+        setIsLoading(true);
+        try {
+            await cleanupExpiredMedia(); // Clean up before fetching
+            
+            let query = db.collection('teacher_media')
+                .where('unit', '==', activeUnit)
+                .where('gradeLevel', '==', filterGrade)
+                .where('schoolClass', '==', filterClass)
+                .where('shift', '==', filterShift);
+
+            if (dateFilter) {
+                // Filtro por data específica
+                const startOfDay = new Date(dateFilter + 'T00:00:00').toISOString();
+                const endOfDay = new Date(dateFilter + 'T23:59:59').toISOString();
+                query = query.where('timestamp', '>=', startOfDay).where('timestamp', '<=', endOfDay);
+            }
+
+            const snapshot = await query.orderBy('timestamp', 'desc').get();
+            
+            const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TeacherMedia));
+            setMediaList(docs);
+        } catch (error) {
+            console.error("Error fetching media:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const groupedMedia = useMemo(() => {
+        const groups: { [key: string]: TeacherMedia[] } = {};
+        mediaList.forEach(item => {
+            const album = item.albumTitle || 'Geral';
+            if (!groups[album]) groups[album] = [];
+            groups[album].push(item);
+        });
+        return groups;
+    }, [mediaList]);
+
+
     useEffect(() => {
         fetchMedia();
-    }, [filterGrade, filterClass, filterShift, activeUnit]);
+    }, [filterGrade, filterClass, filterShift, activeUnit, dateFilter]);
 
     const checkLimits = async (type: 'image' | 'video') => {
         const today = new Date().toLocaleDateString('en-CA');
@@ -440,7 +458,7 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
                     <CheckCircle className="w-5 h-5 text-green-500" />
                     Configurações de Postagem
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
                         <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Série</label>
                         <select 
@@ -470,8 +488,31 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
                             className="w-full p-3 bg-gray-50 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-900 transition-all font-bold text-gray-700"
                         >
                             <option value="">Selecione o Turno</option>
-                            {availableShifts.map(s => <option key={s} value={s}>{SHIFT_LABELS[s]}</option>)}
+                            {availableShifts.map(s => (
+                                <option key={s} value={s}>{SHIFT_LABELS[s]}</option>
+                            ))}
                         </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Filtrar por Data</label>
+                        <div className="relative">
+                            <input 
+                                type="date" 
+                                value={dateFilter}
+                                onChange={(e) => setDateFilter(e.target.value)}
+                                className="w-full p-3 bg-gray-50 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-900 transition-all font-bold text-gray-700 cursor-pointer"
+                            />
+                            {dateFilter && (
+                                <button 
+                                    onClick={() => setDateFilter('')}
+                                    className="absolute right-10 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-900 transition-colors"
+                                    title="Limpar Data"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -585,47 +626,65 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
                         <p className="text-xs text-gray-400">Para esta turma e filtros selecionados.</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {mediaList.map(item => (
-                            <div key={item.id} className="group relative bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all">
-                                <div className="aspect-video relative overflow-hidden bg-black">
-                                    {item.type === 'image' ? (
-                                        <img src={item.url} alt={item.filename} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                    ) : (
-                                        <video src={item.url} className="w-full h-full object-cover" />
-                                    )}
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                        <button 
-                                            onClick={() => openViewer(item, mediaList)}
-                                            className="p-3 bg-white rounded-full text-blue-900 hover:scale-110 transition-transform shadow-lg"
-                                            title="Visualizar"
-                                        >
-                                            <ImageIcon className="w-6 h-6" />
-                                        </button>
-                                        <button 
-                                            onClick={() => handleEditAlbum(item)}
-                                            className="p-3 bg-white rounded-full text-blue-900 hover:scale-110 transition-transform shadow-lg"
-                                            title="Editar Álbum (Adicionar mais fotos)"
-                                        >
-                                            <Pencil className="w-6 h-6" />
-                                        </button>
-                                        <button onClick={() => handleDelete(item)} className="p-3 bg-white rounded-full text-red-600 hover:scale-110 transition-transform shadow-lg">
-                                            <Trash2 className="w-6 h-6" />
-                                        </button>
+                    <div className="space-y-12">
+                        {(Object.entries(groupedMedia) as [string, TeacherMedia[]][]).map(([albumTitle, items]) => (
+                            <div key={albumTitle} className="space-y-6">
+                                <div className="flex justify-between items-center bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-blue-900 rounded-xl flex items-center justify-center text-white shadow-sm">
+                                            <ImageIcon className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-xl font-black text-blue-950 tracking-tight">{albumTitle}</h4>
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{items.length} {items.length === 1 ? 'Mídia' : 'Mídias'}</p>
+                                        </div>
                                     </div>
-                                    <div className="absolute top-2 left-2 px-2 py-1 bg-black/60 backdrop-blur-md rounded text-[10px] font-bold text-white uppercase tracking-wider">
-                                        {item.type === 'image' ? 'Imagem' : 'Vídeo'}
-                                    </div>
+                                    <Button 
+                                        variant="outline" 
+                                        onClick={() => handleEditAlbum(items[0])}
+                                        className="gap-2 border-blue-200 text-blue-900 hover:bg-blue-50 font-black text-xs uppercase tracking-widest px-6"
+                                    >
+                                        <Pencil className="w-4 h-4" />
+                                        Editar Álbum
+                                    </Button>
                                 </div>
-                                <div className="p-4 flex flex-col gap-1">
-                                    <h5 className="font-bold text-blue-900 text-sm truncate" title={item.albumTitle || 'Álbum Geral'}>
-                                        {item.albumTitle || 'Álbum Geral'}
-                                    </h5>
-                                    <div className="flex justify-between items-start">
-                                        <span className="text-[10px] font-black text-gray-400 tracking-wider uppercase">{item.schoolClass} • {SHIFT_LABELS[item.shift as SchoolShift]}</span>
-                                        <span className="text-[9px] text-red-500 font-bold bg-red-50 px-1.5 py-0.5 rounded">Expira em {new Date(item.expiresAt).toLocaleDateString()}</span>
-                                    </div>
-                                    <span className="text-[10px] text-gray-400">Postado em {new Date(item.timestamp).toLocaleDateString()} às {new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {items.map(item => (
+                                        <div key={item.id} className="group relative bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all">
+                                            <div className="aspect-video relative overflow-hidden bg-black">
+                                                {item.type === 'image' ? (
+                                                    <img src={item.url} alt={item.filename} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                                ) : (
+                                                    <video src={item.url} className="w-full h-full object-cover" />
+                                                )}
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                                                    <button 
+                                                        onClick={() => openViewer(item, items)}
+                                                        className="p-4 bg-white rounded-full text-blue-900 hover:scale-110 transition-transform shadow-lg"
+                                                        title="Visualizar"
+                                                    >
+                                                        <ImageIcon className="w-6 h-6" />
+                                                    </button>
+                                                    <button onClick={() => handleDelete(item)} className="p-4 bg-white rounded-full text-red-600 hover:scale-110 transition-transform shadow-lg">
+                                                        <Trash2 className="w-6 h-6" />
+                                                    </button>
+                                                </div>
+                                                <div className="absolute top-2 left-2 px-2 py-1 bg-black/60 backdrop-blur-md rounded text-[10px] font-bold text-white uppercase tracking-wider">
+                                                    {item.type === 'image' ? 'Imagem' : 'Vídeo'}
+                                                </div>
+                                            </div>
+                                            <div className="p-4 flex flex-col gap-2">
+                                                <div className="space-y-1.5">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-[10px] font-black text-gray-400 tracking-wider uppercase">{item.schoolClass} • {SHIFT_LABELS[item.shift as SchoolShift]}</span>
+                                                        <span className="text-[9px] text-red-500 font-bold bg-red-50 px-1.5 py-0.5 rounded">Expira em {new Date(item.expiresAt).toLocaleDateString()}</span>
+                                                    </div>
+                                                    <span className="text-[10px] text-gray-400 block">Postado em {new Date(item.timestamp).toLocaleDateString()} às {new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         ))}
@@ -635,8 +694,8 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
 
             {/* Media Viewer Modal */}
             {viewingMedia && (
-                <div className="fixed inset-0 z-[110] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="relative max-w-5xl w-full max-h-full flex flex-col items-center gap-4">
+                <div className="fixed inset-0 z-[110] bg-black/95 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200">
+                    <div className="relative max-w-5xl w-full max-h-full flex flex-col items-center gap-2 sm:gap-4">
                         <div 
                             className="relative w-full bg-black rounded-3xl overflow-hidden shadow-2xl border border-white/10 flex items-center justify-center group/viewer"
                             onTouchStart={handleTouchStart}
@@ -682,54 +741,54 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
 
                             {/* Pagination Dots */}
                             {viewingItems.length > 1 && (
-                                <div className="absolute bottom-6 flex gap-2">
+                                <div className="absolute bottom-4 sm:bottom-6 flex gap-1.5 sm:gap-2">
                                     {viewingItems.map((_, i) => (
                                         <div 
                                             key={i} 
-                                            className={`h-1.5 rounded-full transition-all duration-300 ${i === viewingIndex ? 'w-8 bg-white' : 'w-2 bg-white/20'}`}
+                                            className={`h-1 sm:h-1.5 rounded-full transition-all duration-300 ${i === viewingIndex ? 'w-6 sm:w-8 bg-white' : 'w-1.5 sm:w-2 bg-white/20'}`}
                                         />
                                     ))}
                                 </div>
                             )}
                         </div>
 
-                        <div className="w-full flex justify-between items-center bg-white p-6 rounded-3xl shadow-2xl">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-900 border border-blue-100">
+                        <div className="w-full bg-white p-4 sm:p-6 rounded-3xl shadow-2xl flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
+                                <div className="hidden sm:flex w-12 h-12 bg-blue-50 rounded-2xl items-center justify-center text-blue-900 border border-blue-100 shrink-0">
                                     {viewingMedia.type === 'image' ? <ImageIcon className="w-6 h-6" /> : <Video className="w-6 h-6" />}
                                 </div>
-                                <div>
-                                    <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest leading-none mb-1">Álbum: {viewingMedia.albumTitle || 'Geral'}</p>
-                                    <p className="text-gray-950 font-bold text-sm leading-tight">Mídia {viewingIndex + 1} de {viewingItems.length}</p>
+                                <div className="text-center sm:text-left flex-1">
+                                    <p className="text-gray-500 text-[9px] sm:text-[10px] font-black uppercase tracking-widest leading-none mb-1 opacity-70">Álbum: {viewingMedia.albumTitle || 'Geral'}</p>
+                                    <p className="text-gray-950 font-black text-sm sm:text-base leading-tight">Mídia {viewingIndex + 1} de {viewingItems.length}</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 w-full sm:w-auto">
                                 <Button 
                                     onClick={() => handleDelete(viewingMedia)}
-                                    className="p-4 bg-red-600 text-white rounded-2xl hover:bg-red-700 transition-colors shadow-lg border-none"
+                                    className="flex-1 sm:flex-none p-4 bg-red-600 text-white rounded-2xl hover:bg-red-700 transition-all shadow-sm border-none active:scale-95"
                                     title="Excluir Mídia"
                                 >
                                     <Trash2 className="w-6 h-6" />
                                 </Button>
                                 <Button 
                                     onClick={() => handleEditAlbum(viewingMedia)}
-                                    className="p-4 bg-blue-50 text-blue-900 rounded-2xl hover:bg-blue-100 transition-colors border-2 border-blue-200"
-                                    title="Editar Álbum (Selecionar para novos uploads)"
+                                    className="flex-1 sm:flex-none p-4 bg-blue-50 text-blue-900 rounded-2xl hover:bg-blue-100 transition-all border-2 border-blue-200 active:scale-95"
+                                    title="Editar Álbum"
                                 >
                                     <Pencil className="w-6 h-6" />
                                 </Button>
                                 <Button 
                                     onClick={() => handleDownload(viewingMedia.url, viewingMedia.filename)}
-                                    className="p-4 bg-blue-100 text-blue-900 rounded-2xl hover:bg-blue-200 transition-colors border-2 border-blue-200"
+                                    className="flex-1 sm:flex-none p-4 bg-blue-100 text-blue-900 rounded-2xl hover:bg-blue-200 transition-all border-2 border-blue-200 active:scale-95"
                                     title="Baixar Mídia"
                                 >
                                     <Download className="w-6 h-6" />
                                 </Button>
                                 <Button 
                                     onClick={() => setViewingMedia(null)}
-                                    className="bg-blue-950 px-8 py-4 rounded-2xl font-black tracking-widest text-white"
+                                    className="flex-1 sm:flex-none p-4 bg-gray-100 text-gray-900 rounded-2xl hover:bg-gray-200 transition-all border-2 border-gray-200 active:scale-95 sm:hidden"
                                 >
-                                    FECHAR
+                                    <X className="w-6 h-6" />
                                 </Button>
                             </div>
                         </div>

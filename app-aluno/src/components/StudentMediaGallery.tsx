@@ -18,6 +18,7 @@ const StudentMediaGallery: React.FC<StudentMediaGalleryProps> = ({ student }) =>
     const [viewingIndex, setViewingIndex] = useState(0);
     const [viewingItems, setViewingItems] = useState<TeacherMedia[]>([]);
     const [subjectFilter, setSubjectFilter] = useState('');
+    const [dateFilter, setDateFilter] = useState(new Date().toLocaleDateString('en-CA'));
     const [touchStart, setTouchStart] = useState<number | null>(null);
     const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
@@ -27,14 +28,23 @@ const StudentMediaGallery: React.FC<StudentMediaGalleryProps> = ({ student }) =>
             const now = new Date().toISOString();
             const resolvedGradeId = student.gradeId || resolveGradeId(student.gradeLevel) || student.gradeLevel;
 
-            const snapshot = await db.collection('teacher_media')
+            let query = db.collection('teacher_media')
                 .where('unit', '==', student.unit)
                 .where('gradeLevel', '==', resolvedGradeId)
                 .where('schoolClass', '==', student.schoolClass)
-                .where('shift', '==', student.shift)
-                .where('expiresAt', '>', now)
-                .orderBy('expiresAt', 'asc')
-                .get();
+                .where('shift', '==', student.shift);
+
+            if (dateFilter) {
+                // Filtro por data específica (Início e Fim do dia)
+                const startOfDay = new Date(dateFilter + 'T00:00:00').toISOString();
+                const endOfDay = new Date(dateFilter + 'T23:59:59').toISOString();
+                query = query.where('timestamp', '>=', startOfDay).where('timestamp', '<=', endOfDay);
+            } else {
+                // Comportamento padrão: Apenas mídias que ainda não expiraram
+                query = query.where('expiresAt', '>', now);
+            }
+
+            const snapshot = await query.get();
             
             const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TeacherMedia));
             setMediaList(docs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
@@ -118,7 +128,7 @@ const StudentMediaGallery: React.FC<StudentMediaGalleryProps> = ({ student }) =>
 
     useEffect(() => {
         fetchMedia();
-    }, [student]);
+    }, [student, dateFilter]);
 
     const availableSubjects = React.useMemo(() => {
         const subjects = new Set<string>();
@@ -163,19 +173,41 @@ const StudentMediaGallery: React.FC<StudentMediaGalleryProps> = ({ student }) =>
                 </div>
             </div>
 
-            {availableSubjects.length > 0 && (
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-2">
-                    <label className="block text-xs font-black text-blue-900 uppercase tracking-widest mb-2">Filtrar por Disciplina</label>
-                    <select 
-                        value={subjectFilter} 
-                        onChange={(e) => setSubjectFilter(e.target.value)}
-                        className="w-full md:max-w-md p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-900 transition-all font-bold text-gray-700 cursor-pointer"
-                    >
-                        <option value="">Todas as Disciplinas</option>
-                        {availableSubjects.map(sub => (
-                            <option key={sub} value={sub}>{getFullSubjectLabel(sub)}</option>
-                        ))}
-                    </select>
+            {(availableSubjects.length > 0 || true) && (
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-2 flex flex-col md:flex-row gap-4">
+                    <div className="flex-1">
+                        <label className="block text-xs font-black text-blue-900 uppercase tracking-widest mb-2">Filtrar por Disciplina</label>
+                        <select 
+                            value={subjectFilter} 
+                            onChange={(e) => setSubjectFilter(e.target.value)}
+                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-900 transition-all font-bold text-gray-700 cursor-pointer"
+                        >
+                            <option value="">Todas as Disciplinas</option>
+                            {availableSubjects.map(sub => (
+                                <option key={sub} value={sub}>{getFullSubjectLabel(sub)}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="flex-1">
+                        <label className="block text-xs font-black text-blue-900 uppercase tracking-widest mb-2">Filtrar por Data</label>
+                        <div className="relative">
+                            <input 
+                                type="date" 
+                                value={dateFilter}
+                                onChange={(e) => setDateFilter(e.target.value)}
+                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-900 transition-all font-bold text-gray-700 cursor-pointer"
+                            />
+                            {dateFilter && (
+                                <button 
+                                    onClick={() => setDateFilter('')}
+                                    className="absolute right-10 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-900 transition-colors"
+                                    title="Limpar Data"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -255,8 +287,8 @@ const StudentMediaGallery: React.FC<StudentMediaGalleryProps> = ({ student }) =>
             
             {/* Media Viewer Modal */}
             {viewingMedia && (
-                <div className="fixed inset-0 z-[110] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="relative max-w-5xl w-full max-h-full flex flex-col items-center gap-4">
+                <div className="fixed inset-0 z-[110] bg-black/95 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200">
+                    <div className="relative max-w-5xl w-full max-h-full flex flex-col items-center gap-2 sm:gap-4">
                         <div 
                             className="relative w-full bg-black rounded-3xl overflow-hidden shadow-2xl border border-white/10 flex items-center justify-center group/viewer"
                             onTouchStart={handleTouchStart}
@@ -302,40 +334,40 @@ const StudentMediaGallery: React.FC<StudentMediaGalleryProps> = ({ student }) =>
 
                             {/* Pagination Dots */}
                             {viewingItems.length > 1 && (
-                                <div className="absolute bottom-6 flex gap-2">
+                                <div className="absolute bottom-4 sm:bottom-6 flex gap-1.5 sm:gap-2">
                                     {viewingItems.map((_, i) => (
                                         <div 
                                             key={i} 
-                                            className={`h-1.5 rounded-full transition-all duration-300 ${i === viewingIndex ? 'w-8 bg-white' : 'w-2 bg-white/20'}`}
+                                            className={`h-1 sm:h-1.5 rounded-full transition-all duration-300 ${i === viewingIndex ? 'w-6 sm:w-8 bg-white' : 'w-1.5 sm:w-2 bg-white/20'}`}
                                         />
                                     ))}
                                 </div>
                             )}
                         </div>
-
-                        <div className="w-full flex justify-between items-center bg-white p-6 rounded-3xl shadow-2xl">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
+                                          <div className="w-full bg-white p-4 sm:p-6 rounded-3xl shadow-2xl flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
+                                <div className="hidden sm:flex w-12 h-12 bg-blue-50 rounded-2xl items-center justify-center shrink-0">
                                     <svg className="w-6 h-6 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                 </div>
-                                <div>
-                                    <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest leading-none mb-1">Álbum: {viewingMedia.albumTitle || 'Geral'}</p>
-                                    <p className="text-gray-950 font-bold text-sm leading-tight">Mídia {viewingIndex + 1} de {viewingItems.length}</p>
+                                <div className="text-center sm:text-left flex-1">
+                                    <p className="text-gray-500 text-[9px] sm:text-[10px] font-black uppercase tracking-widest leading-none mb-1 opacity-70">Álbum: {viewingMedia.albumTitle || 'Geral'}</p>
+                                    <p className="text-gray-950 font-black text-sm sm:text-base leading-tight">Mídia {viewingIndex + 1} de {viewingItems.length}</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center justify-center gap-3 w-full sm:w-auto">
                                 <Button 
                                     onClick={() => handleDownload(viewingMedia.url, viewingMedia.filename)}
-                                    className="p-4 bg-blue-100 text-blue-900 rounded-2xl hover:bg-blue-200 transition-colors shadow-sm border-2 border-blue-200"
+                                    className="flex-1 sm:flex-none p-4 bg-blue-100 text-blue-900 rounded-2xl hover:bg-blue-200 transition-all border-2 border-blue-200 shadow-sm active:scale-95"
                                     title="Baixar Mídia"
                                 >
-                                    <Download className="w-6 h-6" />
+                                    <Download className="w-6 h-6 mx-auto" />
                                 </Button>
                                 <Button 
                                     onClick={() => setViewingMedia(null)}
-                                    className="bg-blue-950 px-8 py-4 rounded-2xl font-black tracking-widest"
+                                    className="flex-1 sm:flex-none p-4 bg-gray-100 text-gray-900 rounded-2xl hover:bg-gray-200 transition-all border-2 border-gray-200 shadow-sm active:scale-95"
+                                    title="Fechar"
                                 >
-                                    FECHAR
+                                    <X className="w-6 h-6 mx-auto" />
                                 </Button>
                             </div>
                         </div>
