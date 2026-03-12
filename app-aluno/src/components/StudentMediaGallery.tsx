@@ -3,7 +3,7 @@ import { db } from '../firebaseConfig';
 import { AlertCircle, Download, ExternalLink, ImageIcon, Play, X, Clock, Info } from 'lucide-react';
 import { Student, TeacherMedia } from '../types';
 import { Button } from './Button';
-import { resolveGradeId } from '../utils/academicUtils';
+import { resolveGradeId, normalizeShift, normalizeClass, normalizeUnit, parseGradeLevel } from '../utils/academicUtils';
 import { getFullSubjectLabel } from '../utils/subjectUtils';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -18,7 +18,7 @@ const StudentMediaGallery: React.FC<StudentMediaGalleryProps> = ({ student }) =>
     const [viewingIndex, setViewingIndex] = useState(0);
     const [viewingItems, setViewingItems] = useState<TeacherMedia[]>([]);
     const [subjectFilter, setSubjectFilter] = useState('');
-    const [dateFilter, setDateFilter] = useState(new Date().toLocaleDateString('en-CA'));
+    const [dateFilter, setDateFilter] = useState(new Date().toLocaleDateString('en-CA')); // Volta ao padrão de hoje
     const [touchStart, setTouchStart] = useState<number | null>(null);
     const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
@@ -29,25 +29,23 @@ const StudentMediaGallery: React.FC<StudentMediaGalleryProps> = ({ student }) =>
             const resolvedGradeId = student.gradeId || resolveGradeId(student.gradeLevel) || student.gradeLevel;
 
             let query = db.collection('teacher_media')
-                .where('unit', '==', student.unit)
+                .where('unit', '==', normalizeUnit(student.unit))
                 .where('gradeLevel', '==', resolvedGradeId)
-                .where('schoolClass', '==', student.schoolClass)
-                .where('shift', '==', student.shift);
+                .where('schoolClass', '==', normalizeClass(student.schoolClass))
+                .where('shift', '==', normalizeShift(student.shift));
 
             if (dateFilter) {
-                // Filtro por data específica (Início e Fim do dia)
-                const startOfDay = new Date(dateFilter + 'T00:00:00').toISOString();
-                const endOfDay = new Date(dateFilter + 'T23:59:59').toISOString();
-                query = query.where('timestamp', '>=', startOfDay).where('timestamp', '<=', endOfDay);
+                // Filtro por data específica (Campo 'date' facilitado)
+                query = query.where('date', '==', dateFilter);
             } else {
                 // Comportamento padrão: Apenas mídias que ainda não expiraram
                 query = query.where('expiresAt', '>', now);
             }
 
-            const snapshot = await query.get();
+            const snapshot = await query.orderBy('timestamp', 'desc').get();
             
             const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TeacherMedia));
-            setMediaList(docs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+            setMediaList(docs);
         } catch (error) {
             console.error("Error fetching student media:", error);
         } finally {
@@ -265,6 +263,11 @@ const StudentMediaGallery: React.FC<StudentMediaGalleryProps> = ({ student }) =>
                                             </div>
                                         </div>
                                         <div className="p-6 flex flex-col gap-3">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="text-[10px] font-black text-blue-900 bg-blue-50 px-2 py-0.5 rounded-md uppercase tracking-widest whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]">
+                                                    {parseGradeLevel(item.gradeLevel).grade} - {getFullSubjectLabel(item.subjectId)}
+                                                </span>
+                                            </div>
 
                                             <div className="flex justify-between items-center pt-3 border-t border-gray-50 mt-auto">
                                                 <div className="flex flex-col">

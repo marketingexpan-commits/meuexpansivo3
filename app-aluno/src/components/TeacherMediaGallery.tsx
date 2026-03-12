@@ -3,7 +3,7 @@ import { db, storage } from '../firebaseConfig';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 import { Camera, Image as ImageIcon, Video, Trash2, AlertCircle, Info, ChevronLeft, ChevronRight, CheckCircle, X, Download, Pencil } from 'lucide-react';
 import { Teacher, SchoolUnit, SchoolShift, SchoolClass, TeacherMedia, SHIFT_LABELS } from '../types';
-import { normalizeShift, normalizeClass, parseGradeLevel, resolveGradeId } from '../utils/academicUtils';
+import { normalizeShift, normalizeClass, normalizeUnit, parseGradeLevel, resolveGradeId } from '../utils/academicUtils';
 import { getFullSubjectLabel } from '../utils/subjectUtils';
 import { SCHOOL_CLASSES_LIST } from '../constants';
 import { Button } from './Button';
@@ -136,16 +136,14 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
             await cleanupExpiredMedia(); // Clean up before fetching
             
             let query = db.collection('teacher_media')
-                .where('unit', '==', activeUnit)
+                .where('unit', '==', normalizeUnit(activeUnit))
                 .where('gradeLevel', '==', filterGrade)
-                .where('schoolClass', '==', filterClass)
-                .where('shift', '==', filterShift);
+                .where('schoolClass', '==', normalizeClass(filterClass))
+                .where('shift', '==', normalizeShift(filterShift));
 
             if (dateFilter) {
-                // Filtro por data específica
-                const startOfDay = new Date(dateFilter + 'T00:00:00').toISOString();
-                const endOfDay = new Date(dateFilter + 'T23:59:59').toISOString();
-                query = query.where('timestamp', '>=', startOfDay).where('timestamp', '<=', endOfDay);
+                // Filtro por data específica usando o campo simplificado 'date'
+                query = query.where('date', '==', dateFilter);
             }
 
             const snapshot = await query.orderBy('timestamp', 'desc').get();
@@ -306,10 +304,10 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
                         const newMedia: Omit<TeacherMedia, 'id'> = {
                             teacherId: teacher.id,
                             teacherName: teacher.name,
-                            unit: activeUnit,
-                            gradeLevel: filterGrade,
-                            schoolClass: filterClass,
-                            shift: filterShift,
+                            unit: normalizeUnit(activeUnit) as SchoolUnit,
+                            gradeLevel: filterGrade, // Already resolved in state
+                            schoolClass: normalizeClass(filterClass) as SchoolClass,
+                            shift: normalizeShift(filterShift) as SchoolShift,
                             type,
                             url,
                             filename: `${timestamp}.${extension}`,
