@@ -1541,7 +1541,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Autorizações e Termos</h3>
                                     </button>
 
-                                    {hasMusicTeacher && (
+                                    {(hasMusicTeacher || isEarlyChildhood) && (
                                         <button
                                             onClick={() => setCurrentView('music_gallery')}
                                             className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square relative"

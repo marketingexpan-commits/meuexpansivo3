@@ -1554,7 +1554,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                         </button>
                                     )}
 
-                                    {isMusicTeacher && (
+                                    {(isMusicTeacher || isEarlyChildhoodTeacher) && (
                                         <button
                                             onClick={() => setActiveTab('media_gallery')}
                                             className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"

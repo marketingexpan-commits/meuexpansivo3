@@ -26,6 +26,29 @@ export const getSubjectLabel = (subjectId: string, academicSubjects?: AcademicSu
 };
 
 /**
+ * [DISPLAY LAYER]
+ * Retorna o nome amigável completo da disciplina (ex: "Música" em vez de "Mús").
+ * Arquitetura Estrita: Assume ID canônico.
+ */
+export const getFullSubjectLabel = (subjectId: string, academicSubjects?: AcademicSubject[]): string => {
+    if (!subjectId) return '-';
+
+    // 1. Busca na lista vinda do banco (Fonte da Verdade)
+    const academicSubject = academicSubjects?.find(s => s.id === subjectId);
+    if (academicSubject) {
+        // STRICT PRIORITY for full name: label > name > shortLabel
+        return academicSubject.label || academicSubject.name || academicSubject.shortLabel || subjectId;
+    }
+
+    // 2. Fallback para constantes locais
+    if (SUBJECT_LABELS[subjectId]) return SUBJECT_LABELS[subjectId];
+    if (SUBJECT_SHORT_LABELS[subjectId]) return SUBJECT_SHORT_LABELS[subjectId];
+
+    // 3. Erro Visível: Retorna o ID bruto
+    return subjectId;
+};
+
+/**
  * Retorna a sigla da disciplina.
  * Arquitetura Estrita: Assume ID canônico.
  */

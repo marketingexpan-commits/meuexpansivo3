@@ -101,8 +101,9 @@ export const SUBJECT_LABELS: Record<string, string> = {
   'disc_redacao': 'Redação',
   'disc_filosofia': 'Filosofia',
   'disc_sociologia': 'Sociologia',
-  'disc_musica': 'Musicalização',
-  'disc_frances': 'Francês'
+  'disc_musica': 'Música',
+  'disc_frances': 'Francês',
+  'general_early_childhood': 'Educação Infantil'
 };
 
 export const SUBJECT_SHORT_LABELS: Record<string, string> = {
@@ -126,7 +127,8 @@ export const SUBJECT_SHORT_LABELS: Record<string, string> = {
   'disc_filosofia': 'Fil',
   'disc_sociologia': 'Soc',
   'disc_musica': 'Mús',
-  'disc_frances': 'Fran'
+  'disc_frances': 'Fran',
+  'general_early_childhood': 'Ed. Inf.'
 };
 
 // NOVO: Tipos para o sistema de mensagens
@@ -325,6 +327,7 @@ export interface TeacherMedia {
   timestamp: string;
   date: string; // YYYY-MM-DD for daily limits
   subjectId: string; // Novo: ID canônico (disc_musica)
+  albumTitle?: string; // Novo: Título do álbum para agrupamento
   expiresAt: string; // ISO String for cleanup logic
 }
 

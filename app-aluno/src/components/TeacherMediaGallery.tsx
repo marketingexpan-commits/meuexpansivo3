@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { db, storage } from '../firebaseConfig';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
-import { Camera, Image as ImageIcon, Video, Trash2, AlertCircle, Info, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
+import { Camera, Image as ImageIcon, Video, Trash2, AlertCircle, Info, ChevronLeft, ChevronRight, CheckCircle, X, Download, Pencil } from 'lucide-react';
 import { Teacher, SchoolUnit, SchoolShift, SchoolClass, TeacherMedia, SHIFT_LABELS } from '../types';
 import { normalizeShift, normalizeClass, parseGradeLevel, resolveGradeId } from '../utils/academicUtils';
+import { getFullSubjectLabel } from '../utils/subjectUtils';
 import { SCHOOL_CLASSES_LIST } from '../constants';
 import { Button } from './Button';
 
@@ -23,6 +24,8 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
     const [filterGrade, setFilterGrade] = useState('');
     const [filterClass, setFilterClass] = useState<SchoolClass>(SchoolClass.A);
     const [filterShift, setFilterShift] = useState<SchoolShift | ''>('');
+    const [albumTitle, setAlbumTitle] = useState('');
+    const [albumSubjectId, setAlbumSubjectId] = useState('');
     
     const [mediaList, setMediaList] = useState<TeacherMedia[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -30,6 +33,13 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadType, setUploadType] = useState<'image' | 'video' | null>(null);
+
+    // Media Viewer State
+    const [viewingMedia, setViewingMedia] = useState<TeacherMedia | null>(null);
+    const [viewingIndex, setViewingIndex] = useState(0);
+    const [viewingItems, setViewingItems] = useState<TeacherMedia[]>([]);
+    const [touchStart, setTouchStart] = useState<number | null>(null);
+    const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
     // Initial Filter Setup
     useEffect(() => {
@@ -56,6 +66,39 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
         }
         return Array.from(shifts);
     }, [teacher.assignments, teacher.shift]);
+
+    const availableSubjects = useMemo(() => {
+        const subjects = new Set<string>();
+        
+        // 1. Considerar as disciplinas do cadastro base do professor
+        if (teacher.subjects) {
+            teacher.subjects.forEach(s => subjects.add(s as string));
+        }
+
+        // 2. Considerar as disciplinas das atribuições específicas (se houver)
+        if (teacher.assignments && filterGrade) {
+            let assignments = teacher.assignments.filter(a => a.gradeLevel === filterGrade || a.gradeId === filterGrade);
+            if (filterShift) {
+                assignments = assignments.filter(a => a.shift === filterShift);
+            }
+            assignments.forEach(a => {
+                if (a.subjects) {
+                    a.subjects.forEach(s => subjects.add(s as string));
+                }
+            });
+        }
+        
+        // 3. Fallback para Educação Infantil (se não houver nenhuma outra disciplina)
+        if (filterGrade && parseGradeLevel(filterGrade).segmentId === 'seg_infantil' && subjects.size === 0) {
+            subjects.add('general_early_childhood');
+        }
+        
+        const list = Array.from(subjects);
+        if (list.length === 1 && !albumSubjectId) {
+            setAlbumSubjectId(list[0]);
+        }
+        return list;
+    }, [teacher, filterGrade, filterShift]);
 
     const fetchMedia = async () => {
         if (!filterGrade || !filterShift) return;
@@ -179,6 +222,16 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
         const file = e.target.files?.[0];
         if (!file || !filterGrade || !filterShift) return;
 
+        if (!albumTitle.trim()) {
+            alert('Por favor, informe o título do álbum antes de anexar uma mídia.');
+            return;
+        }
+
+        if (!albumSubjectId) {
+            alert('Por favor, selecione a disciplina deste álbum.');
+            return;
+        }
+
         const isImage = file.type.startsWith('image/');
         const isVideo = file.type.startsWith('video/');
         const type = isImage ? 'image' : 'video';
@@ -244,7 +297,8 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
                             filename: `${timestamp}.${extension}`,
                             timestamp: new Date().toISOString(),
                             date: today,
-                            subjectId: 'disc_musica',
+                            subjectId: albumSubjectId || 'disc_musica',
+                            albumTitle: albumTitle.trim() || 'Álbum Geral',
                             expiresAt: expiresAt.toISOString()
                         };
 
@@ -265,6 +319,83 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
             setUploadProgress(0);
             e.target.value = '';
         }
+    };
+
+    const handleDownload = async (url: string, filename: string) => {
+        try {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(blobUrl);
+        } catch (error) {
+            console.error("Download error:", error);
+            window.open(url, '_blank');
+        }
+    };
+
+    const handlePrev = () => {
+        if (!viewingItems.length) return;
+        const newIndex = (viewingIndex - 1 + viewingItems.length) % viewingItems.length;
+        setViewingIndex(newIndex);
+        setViewingMedia(viewingItems[newIndex]);
+    };
+
+    const handleNext = () => {
+        if (!viewingItems.length) return;
+        const newIndex = (viewingIndex + 1) % viewingItems.length;
+        setViewingIndex(newIndex);
+        setViewingMedia(viewingItems[newIndex]);
+    };
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        setTouchStart(e.targetTouches[0].clientX);
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        setTouchEnd(e.targetTouches[0].clientX);
+    };
+
+    const handleTouchEnd = () => {
+        if (!touchStart || !touchEnd) return;
+        const distance = touchStart - touchEnd;
+        const isLeftSwipe = distance > 50;
+        const isRightSwipe = distance < -50;
+
+        if (isLeftSwipe) handleNext();
+        if (isRightSwipe) handlePrev();
+
+        setTouchStart(null);
+        setTouchEnd(null);
+    };
+
+    const openViewer = (item: TeacherMedia, items: TeacherMedia[]) => {
+        const index = items.findIndex(m => m.id === item.id);
+        setViewingItems(items);
+        setViewingIndex(index !== -1 ? index : 0);
+        setViewingMedia(item);
+    };
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!viewingMedia) return;
+            if (e.key === 'ArrowLeft') handlePrev();
+            if (e.key === 'ArrowRight') handleNext();
+            if (e.key === 'Escape') setViewingMedia(null);
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [viewingMedia, viewingIndex, viewingItems]);
+
+    const handleEditAlbum = (item: TeacherMedia) => {
+        setAlbumTitle(item.albumTitle || '');
+        setAlbumSubjectId(item.subjectId || '');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleDelete = async (item: TeacherMedia) => {
@@ -343,6 +474,34 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
                         </select>
                     </div>
                 </div>
+
+                {filterGrade && filterShift && (
+                    <div className="mt-6 p-4 bg-blue-50/30 rounded-xl border border-blue-100 flex flex-col md:flex-row gap-4">
+                         <div className="flex-1">
+                            <label className="block text-xs font-black text-blue-900 uppercase tracking-widest mb-2">Disciplina da Mídia</label>
+                            <select 
+                                value={albumSubjectId} 
+                                onChange={(e) => setAlbumSubjectId(e.target.value)}
+                                className="w-full p-3 bg-white border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-900 transition-all font-bold text-gray-700"
+                            >
+                                <option value="">Selecione a Disciplina...</option>
+                                {availableSubjects.map(sub => (
+                                    <option key={sub} value={sub}>{getFullSubjectLabel(sub)}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex-[2]">
+                            <label className="block text-xs font-black text-blue-900 uppercase tracking-widest mb-2">Título do Álbum</label>
+                            <input 
+                                type="text"
+                                value={albumTitle}
+                                onChange={(e) => setAlbumTitle(e.target.value)}
+                                placeholder="Ex: Apresentação Dia das Mães, Atividade Prática 01..."
+                                className="w-full p-3 bg-white border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-900 transition-all font-bold text-gray-700 placeholder:font-normal"
+                            />
+                        </div>
+                    </div>
+                )}
 
                 {filterGrade && filterShift && (
                     <div className="mt-8 pt-8 border-t border-gray-100 flex flex-wrap gap-4">
@@ -436,11 +595,22 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
                                         <video src={item.url} className="w-full h-full object-cover" />
                                     )}
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="p-2 bg-white rounded-full text-gray-800 hover:scale-110 transition-transform">
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                                        </a>
-                                        <button onClick={() => handleDelete(item)} className="p-2 bg-white rounded-full text-red-600 hover:scale-110 transition-transform">
-                                            <Trash2 className="w-5 h-5" />
+                                        <button 
+                                            onClick={() => openViewer(item, mediaList)}
+                                            className="p-3 bg-white rounded-full text-blue-900 hover:scale-110 transition-transform shadow-lg"
+                                            title="Visualizar"
+                                        >
+                                            <ImageIcon className="w-6 h-6" />
+                                        </button>
+                                        <button 
+                                            onClick={() => handleEditAlbum(item)}
+                                            className="p-3 bg-white rounded-full text-blue-900 hover:scale-110 transition-transform shadow-lg"
+                                            title="Editar Álbum (Adicionar mais fotos)"
+                                        >
+                                            <Pencil className="w-6 h-6" />
+                                        </button>
+                                        <button onClick={() => handleDelete(item)} className="p-3 bg-white rounded-full text-red-600 hover:scale-110 transition-transform shadow-lg">
+                                            <Trash2 className="w-6 h-6" />
                                         </button>
                                     </div>
                                     <div className="absolute top-2 left-2 px-2 py-1 bg-black/60 backdrop-blur-md rounded text-[10px] font-bold text-white uppercase tracking-wider">
@@ -448,6 +618,9 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
                                     </div>
                                 </div>
                                 <div className="p-4 flex flex-col gap-1">
+                                    <h5 className="font-bold text-blue-900 text-sm truncate" title={item.albumTitle || 'Álbum Geral'}>
+                                        {item.albumTitle || 'Álbum Geral'}
+                                    </h5>
                                     <div className="flex justify-between items-start">
                                         <span className="text-[10px] font-black text-gray-400 tracking-wider uppercase">{item.schoolClass} • {SHIFT_LABELS[item.shift as SchoolShift]}</span>
                                         <span className="text-[9px] text-red-500 font-bold bg-red-50 px-1.5 py-0.5 rounded">Expira em {new Date(item.expiresAt).toLocaleDateString()}</span>
@@ -459,6 +632,110 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
                     </div>
                 )}
             </div>
+
+            {/* Media Viewer Modal */}
+            {viewingMedia && (
+                <div className="fixed inset-0 z-[110] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="relative max-w-5xl w-full max-h-full flex flex-col items-center gap-4">
+                        <div 
+                            className="relative w-full bg-black rounded-3xl overflow-hidden shadow-2xl border border-white/10 flex items-center justify-center group/viewer"
+                            onTouchStart={handleTouchStart}
+                            onTouchMove={handleTouchMove}
+                            onTouchEnd={handleTouchEnd}
+                        >
+                            {/* Navigation Arrows (Visible on Desktop) */}
+                            {viewingItems.length > 1 && (
+                                <>
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); handlePrev(); }}
+                                        className="absolute left-4 z-10 p-4 bg-black/40 hover:bg-black/60 rounded-2xl text-white backdrop-blur-md transition-all opacity-0 group-hover/viewer:opacity-100 hidden md:block"
+                                    >
+                                        <ChevronLeft className="w-8 h-8" />
+                                    </button>
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); handleNext(); }}
+                                        className="absolute right-4 z-10 p-4 bg-black/40 hover:bg-black/60 rounded-2xl text-white backdrop-blur-md transition-all opacity-0 group-hover/viewer:opacity-100 hidden md:block"
+                                    >
+                                        <ChevronRight className="w-8 h-8" />
+                                    </button>
+                                </>
+                            )}
+
+                            <div className="w-full h-full flex items-center justify-center min-h-[50vh]">
+                                {viewingMedia.type === 'image' ? (
+                                    <img 
+                                        key={viewingMedia.id}
+                                        src={viewingMedia.url} 
+                                        alt="Preview" 
+                                        className="max-w-full max-h-[80vh] object-contain animate-in fade-in zoom-in-95 duration-300" 
+                                    />
+                                ) : (
+                                    <video 
+                                        key={viewingMedia.id}
+                                        src={viewingMedia.url} 
+                                        controls 
+                                        autoPlay 
+                                        className="max-w-full max-h-[80vh] animate-in fade-in duration-300" 
+                                    />
+                                )}
+                            </div>
+
+                            {/* Pagination Dots */}
+                            {viewingItems.length > 1 && (
+                                <div className="absolute bottom-6 flex gap-2">
+                                    {viewingItems.map((_, i) => (
+                                        <div 
+                                            key={i} 
+                                            className={`h-1.5 rounded-full transition-all duration-300 ${i === viewingIndex ? 'w-8 bg-white' : 'w-2 bg-white/20'}`}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="w-full flex justify-between items-center bg-white p-6 rounded-3xl shadow-2xl">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-900 border border-blue-100">
+                                    {viewingMedia.type === 'image' ? <ImageIcon className="w-6 h-6" /> : <Video className="w-6 h-6" />}
+                                </div>
+                                <div>
+                                    <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest leading-none mb-1">Álbum: {viewingMedia.albumTitle || 'Geral'}</p>
+                                    <p className="text-gray-950 font-bold text-sm leading-tight">Mídia {viewingIndex + 1} de {viewingItems.length}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Button 
+                                    onClick={() => handleDelete(viewingMedia)}
+                                    className="p-4 bg-red-600 text-white rounded-2xl hover:bg-red-700 transition-colors shadow-lg border-none"
+                                    title="Excluir Mídia"
+                                >
+                                    <Trash2 className="w-6 h-6" />
+                                </Button>
+                                <Button 
+                                    onClick={() => handleEditAlbum(viewingMedia)}
+                                    className="p-4 bg-blue-50 text-blue-900 rounded-2xl hover:bg-blue-100 transition-colors border-2 border-blue-200"
+                                    title="Editar Álbum (Selecionar para novos uploads)"
+                                >
+                                    <Pencil className="w-6 h-6" />
+                                </Button>
+                                <Button 
+                                    onClick={() => handleDownload(viewingMedia.url, viewingMedia.filename)}
+                                    className="p-4 bg-blue-100 text-blue-900 rounded-2xl hover:bg-blue-200 transition-colors border-2 border-blue-200"
+                                    title="Baixar Mídia"
+                                >
+                                    <Download className="w-6 h-6" />
+                                </Button>
+                                <Button 
+                                    onClick={() => setViewingMedia(null)}
+                                    className="bg-blue-950 px-8 py-4 rounded-2xl font-black tracking-widest text-white"
+                                >
+                                    FECHAR
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
