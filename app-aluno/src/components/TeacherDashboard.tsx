@@ -400,6 +400,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         return teacher.gradeLevels.some(grade => parseGradeLevel(grade).segmentId === 'seg_infantil');
     }, [teacher.gradeLevels]);
 
+    const isMediaAuthorizedTeacher = useMemo(() => {
+        // Habilitado para professores do Infantil ou Fundamental I
+        if (!teacher.gradeLevels || teacher.gradeLevels.length === 0) return false;
+        return teacher.gradeLevels.some(grade => {
+            const segId = parseGradeLevel(grade).segmentId;
+            return segId === 'seg_infantil' || segId === 'seg_fund_1';
+        });
+    }, [teacher.gradeLevels]);
+
     const isMusicTeacher = useMemo(() => {
         // IDs: disc_musica (from types.ts)
         return teacher.subjects.includes('disc_musica' as any);
@@ -1554,7 +1563,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                         </button>
                                     )}
 
-                                    {(isMusicTeacher || isEarlyChildhoodTeacher) && (
+                                    {isMediaAuthorizedTeacher && (
                                         <button
                                             onClick={() => setActiveTab('media_gallery')}
                                             className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
@@ -1635,7 +1644,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     )}
 
                     {/* CONTEÚDO TAB: GALERIA DE MÍDIA */}
-                    {activeTab === 'media_gallery' && (
+                    {activeTab === 'media_gallery' && isMediaAuthorizedTeacher && (
                         <TeacherMediaGallery 
                             teacher={teacher}
                             academicGrades={academicGrades}

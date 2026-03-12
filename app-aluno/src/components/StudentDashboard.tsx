@@ -686,7 +686,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         return staticData;
     }, [student.unit, contactSettings]);
 
-    // Verifica se o aluno é da educação infantil
+    // Verifica se o aluno é autorizado a ver a Galeria de Mídia (Infantil e Fundamental I)
+    const isMediaAuthorized = useMemo(() => {
+        const segmentId = parseGradeLevel(student.gradeLevel).segmentId;
+        return segmentId === 'seg_infantil' || segmentId === 'seg_fund_1';
+    }, [student.gradeLevel]);
+
     const isEarlyChildhood = useMemo(() => {
         return parseGradeLevel(student.gradeLevel).segmentId === 'seg_infantil';
     }, [student.gradeLevel]);
@@ -1541,7 +1546,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">Autorizações e Termos</h3>
                                     </button>
 
-                                    {(hasMusicTeacher || isEarlyChildhood) && (
+                                    {isMediaAuthorized && (
                                         <button
                                             onClick={() => setCurrentView('music_gallery')}
                                             className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square relative"
@@ -1559,7 +1564,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                     {currentView === 'financeiro' && <FinanceiroScreen student={student} mensalidades={mensalidades} eventos={eventos} unitContacts={unitContacts} contactSettings={contactSettings} />}
                     {currentView === 'authorizations' && <TermsSigner student={student} />}
-                    {currentView === 'music_gallery' && (
+                    {currentView === 'music_gallery' && isMediaAuthorized && (
                         <StudentMediaGallery 
                             student={student}
                         />
