@@ -771,24 +771,18 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
                                     <Trash2 className="w-6 h-6" />
                                 </Button>
                                 <Button 
-                                    onClick={() => handleEditAlbum(viewingMedia)}
-                                    className="flex-1 sm:flex-none p-4 bg-blue-50 text-blue-900 rounded-2xl hover:bg-blue-100 transition-all border-2 border-blue-200 active:scale-95"
-                                    title="Editar Álbum"
+                                    onClick={() => setViewingMedia(null)}
+                                    className="flex-1 sm:flex-none p-4 bg-gray-900 text-white rounded-2xl hover:bg-black transition-all border-2 border-gray-900 active:scale-95"
+                                    title="Fechar"
                                 >
-                                    <Pencil className="w-6 h-6" />
+                                    <X className="w-6 h-6" />
                                 </Button>
                                 <Button 
                                     onClick={() => handleDownload(viewingMedia.url, viewingMedia.filename)}
-                                    className="flex-1 sm:flex-none p-4 bg-blue-100 text-blue-900 rounded-2xl hover:bg-blue-200 transition-all border-2 border-blue-200 active:scale-95"
+                                    className="flex-1 sm:flex-none p-4 bg-blue-950 text-white rounded-2xl hover:bg-blue-900 transition-all border-2 border-blue-950 active:scale-95"
                                     title="Baixar Mídia"
                                 >
                                     <Download className="w-6 h-6" />
-                                </Button>
-                                <Button 
-                                    onClick={() => setViewingMedia(null)}
-                                    className="flex-1 sm:flex-none p-4 bg-gray-100 text-gray-900 rounded-2xl hover:bg-gray-200 transition-all border-2 border-gray-200 active:scale-95 sm:hidden"
-                                >
-                                    <X className="w-6 h-6" />
                                 </Button>
                             </div>
                         </div>
