@@ -172,12 +172,11 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
         fetchMedia();
     }, [filterGrade, filterClass, filterShift, activeUnit, dateFilter]);
 
-    const checkLimits = async (type: 'image' | 'video') => {
-        const today = new Date().toLocaleDateString('en-CA');
+    const checkLimits = async (type: 'image' | 'video', targetDate: string) => {
         const snapshot = await db.collection('teacher_media')
             .where('teacherId', '==', teacher.id)
             .where('gradeLevel', '==', filterGrade)
-            .where('date', '==', today)
+            .where('date', '==', targetDate)
             .where('type', '==', type)
             .get();
         
@@ -257,9 +256,9 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
             return;
         }
 
-        const withinLimits = await checkLimits(type);
+        const withinLimits = await checkLimits(type, dateFilter);
         if (!withinLimits) {
-            alert(`Limite diário atingido para esta série: ${type === 'video' ? '1 vídeo' : '5 imagens'}.`);
+            alert(`Limite diário atingido para esta série nesta data (${new Date(dateFilter + 'T12:00:00').toLocaleDateString()}): ${type === 'video' ? '1 vídeo' : '5 imagens'}.`);
             return;
         }
 
@@ -297,7 +296,6 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
                     reject,
                     async () => {
                         const url = await getDownloadURL(uploadTask.snapshot.ref);
-                        const today = new Date().toLocaleDateString('en-CA');
                         const expiresAt = new Date();
                         expiresAt.setDate(expiresAt.getDate() + 7);
 
@@ -312,7 +310,7 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
                             url,
                             filename: `${timestamp}.${extension}`,
                             timestamp: new Date().toISOString(),
-                            date: today,
+                            date: dateFilter, // Usando a data selecionada no painel (que pode ser retroativa)
                             subjectId: albumSubjectId || 'disc_musica',
                             albumTitle: albumTitle.trim() || 'Álbum Geral',
                             expiresAt: expiresAt.toISOString()
@@ -493,7 +491,15 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
                     </div>
 
                     <div>
-                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Filtrar por Data</label>
+                        <label className="block text-xs font-black text-blue-900 uppercase tracking-widest mb-2 flex items-center gap-1">
+                            Data da Postagem / Filtro
+                            <div className="group/info relative">
+                                <Info className="w-3 h-3 text-blue-400" />
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-900 text-white text-[9px] rounded-lg opacity-0 group-hover/info:opacity-100 transition-opacity pointer-events-none z-50 font-medium leading-tight">
+                                    Esta data define onde a mídia será salva e também filtra a lista abaixo.
+                                </div>
+                            </div>
+                        </label>
                         <div className="relative">
                             <input 
                                 type="date" 
