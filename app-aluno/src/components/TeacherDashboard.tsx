@@ -1575,16 +1575,18 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                         </button>
                                     )}
 
-                                    <button
-                                        onClick={() => setActiveTab('tickets')}
-                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square relative"
-                                    >
-                                        {/* Global Style for File Inputs removed - using Tailwind file: modifier instead */}
-                                        <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                                            <HelpCircle className="w-7 h-7 text-blue-950" />
-                                        </div>
-                                        <h3 className="font-bold text-gray-800 text-sm text-center">{isEarlyChildhoodTeacher ? 'Mensagens dos Pais e Responsáveis' : 'Dúvidas dos Alunos'}</h3>
-                                    </button>
+                                    {!isEarlyChildhoodTeacher && (
+                                        <button
+                                            onClick={() => setActiveTab('tickets')}
+                                            className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square relative"
+                                        >
+                                            {/* Global Style for File Inputs removed - using Tailwind file: modifier instead */}
+                                            <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                                <HelpCircle className="w-7 h-7 text-blue-950" />
+                                            </div>
+                                            <h3 className="font-bold text-gray-800 text-sm text-center">Dúvidas dos Alunos</h3>
+                                        </button>
+                                    )}
 
                                     {/* MENU: MENSAGENS DOS ALUNOS (NEW) */}
                                     <button
