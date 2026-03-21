@@ -1334,8 +1334,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
         setIsSavingExam(true);
         try {
-            let fileUrl = undefined;
-            let fileName = undefined;
+            let fileUrl: string | null = null;
+            let fileName: string | null = null;
 
             // If editing, preserve existing file info if no new file uploaded
             if (editingGuideId) {
