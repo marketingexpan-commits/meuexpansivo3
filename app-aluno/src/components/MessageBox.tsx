@@ -224,11 +224,13 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
                       required
                     >
                       <option value="">-- Selecione --</option>
-                      {coordinators.map(c => (
-                        <option key={c.id} value={c.id}>
-                          {c.name} {c.segment ? `(${c.segment === 'geral' ? 'Ambos' : c.segment === 'infantil_fund1' ? 'Inf./Fund. I' : 'Fund. II/Médio'})` : ''}
-                        </option>
-                      ))}
+                      {coordinators
+                        .filter(c => !c.shift || c.shift === 'all' || c.shift === student.shift)
+                        .map(c => (
+                          <option key={c.id} value={c.id}>
+                            {c.name} {c.segment ? `(${c.segment === 'geral' ? 'Ambos' : c.segment === 'infantil_fund1' ? 'Inf./Fund. I' : 'Fund. II/Médio'})` : ''}
+                          </option>
+                        ))}
                     </select>
                   </div>
                 )}

@@ -997,11 +997,19 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
     const filteredMessages = useMemo(() => {
         return messages.filter(msg => {
-            if (messageFilter === 'new') return msg.status === 'new';
-            if (messageFilter === 'read') return msg.status !== 'new';
+            // 1. Status Filter
+            if (messageFilter === 'new' && msg.status !== 'new') return false;
+            if (messageFilter === 'read' && msg.status === 'new') return false;
+
+            // 2. Shift Filter (if coordinator has a specific shift)
+            if (coordinator.shift && coordinator.shift !== 'all') {
+                const student = studentProfiles[msg.studentId];
+                if (student && student.shift !== coordinator.shift) return false;
+            }
+
             return true;
         });
-    }, [messages, messageFilter]);
+    }, [messages, messageFilter, coordinator.shift, studentProfiles]);
 
 
 
@@ -1074,7 +1082,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         level: '',
         grade: '',
         class: '',
-        shift: ''
+        shift: (coordinator.shift && coordinator.shift !== 'all') ? coordinator.shift : ''
     });
     const [occStudents, setOccStudents] = useState<any[]>([]);
     const [selectedOccStudent, setSelectedOccStudent] = useState<any | null>(null);
@@ -1100,6 +1108,13 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     const [attSaving, setAttSaving] = useState(false);
     const [attLoadedRecord, setAttLoadedRecord] = useState<AttendanceRecord | null>(null);
 
+    // Sync Attendance Shift with Coordinator Shift
+    useEffect(() => {
+        if (coordinator.shift && coordinator.shift !== 'all') {
+            setAttShift(coordinator.shift);
+        }
+    }, [coordinator.shift]);
+
 
     // --- CALENDAR MANAGEMENT STATE ---
 
@@ -1113,13 +1128,12 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         return `${rounded.toString().replace('.', ',')} h`;
     };
 
-    const [diagnostics, setDiagnostics] = useState<string>('');
+
 
     // --- FETCH DATA ---
     const handleFetchPendingGrades = async () => {
         if (!coordinator.unit) return;
         setLoading(true);
-        setDiagnostics('Iniciando busca...');
         try {
             // 0. Fetch Teachers for this unit (to ensure names are available)
             const teachersSnap = await db.collection('teachers').where('unit', '==', coordinator.unit).get();
@@ -1137,9 +1151,12 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 .where('enrolledYears', 'array-contains', String(searchYear));
 
             const studentsSnap = await studentsQuery.get();
-            const studentsData = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            let studentsData = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-            setDiagnostics(`Alunos encontrados na unidade ${coordinator.unit}: ${studentsData.length}`);
+            // 1. Filter by Shift (if applicable)
+            if (coordinator.shift && coordinator.shift !== 'all') {
+                studentsData = studentsData.filter((s: any) => s.shift === coordinator.shift);
+            }
 
             if (studentsData.length === 0) {
                 setPendingGradesStudents([]);
@@ -1225,8 +1242,6 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 }
             });
 
-            console.log(`[PendingGrades] Finished processing. Found pending grades for ${studentsWithPending.size} students.`);
-
             // 4. Fetch Attendance for these students for frequency calculation
             const allAttendance: AttendanceRecord[] = [];
             const attSnap = await db.collection('attendance')
@@ -1240,11 +1255,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             setPendingGradesMap(pendingMap);
             setAllStudentGradesMap(fullMap);
 
-            setDiagnostics(prev => `${prev} -> Filtro segmento: ${filteredStudents.length} -> Com Notas: ${allGrades.length} -> Pendentes: ${pendingFound.length}`);
-
         } catch (error) {
             console.error("Error fetching data:", error);
-            setDiagnostics(prev => `${prev} -> ERRO: ${error}`);
             alert("Erro ao buscar dados.");
         } finally {
             setLoading(false);
@@ -1465,7 +1477,13 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 .get();
 
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Occurrence));
-            setHistoryOccurrences(data);
+            
+            // Client-side filter by Shift
+            const filteredData = coordinator.shift && coordinator.shift !== 'all'
+                ? data.filter(occ => occ.shift === coordinator.shift)
+                : data;
+
+            setHistoryOccurrences(filteredData);
         } catch (error) {
             console.error("Erro ao buscar histórico de ocorrências:", error);
             // Fallback for missing index if orderBy timestamp fails (should be rare if index exists or simple query)
@@ -2391,13 +2409,6 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                             </div>
                             <h3 className="text-lg font-medium text-gray-900">Tudo em dia!</h3>
                             <p className="text-gray-500 mt-1 max-w-sm mx-auto">Nenhuma pendência encontrada para os filtros selecionados.</p>
-                            {/* DIAGNOSTIC UI BLOCK */}
-                            {diagnostics && (
-                                <div className="mt-6 p-4 bg-gray-50 rounded-lg text-left inline-block border border-gray-200">
-                                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Diagnóstico Técnico (Visível Temporariamente):</h4>
-                                    <p className="text-xs font-mono text-gray-700 break-words max-w-2xl">{diagnostics}</p>
-                                </div>
-                            )}
                         </div>
                     )}
 
@@ -3590,13 +3601,6 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                             ? "Não há notas, médias ou recuperações pendentes no momento."
                                             : "Nenhuma pendência encontrada para os filtros selecionados."}
                                     </p>
-                                    {/* DIAGNOSTIC UI BLOCK */}
-                                    {diagnostics && (
-                                        <div className="mt-6 p-4 bg-gray-50 rounded-lg text-left inline-block border border-gray-200">
-                                            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Diagnóstico Técnico (Visível Temporariamente):</h4>
-                                            <p className="text-xs font-mono text-gray-700 break-words max-w-2xl">{diagnostics}</p>
-                                        </div>
-                                    )}
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 gap-6">
