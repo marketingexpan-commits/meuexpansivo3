@@ -118,6 +118,7 @@ export function DirectorMessages() {
             case MessageType.COMPLIMENT: return "bg-emerald-50 text-emerald-700 border-emerald-100";
             case MessageType.SUGGESTION: return "bg-blue-50 text-blue-700 border-blue-100";
             case MessageType.COMPLAINT: return "bg-rose-50 text-rose-700 border-rose-100";
+            case MessageType.OTHER: return "bg-slate-50 text-slate-700 border-slate-100";
             default: return "bg-slate-50 text-slate-700 border-slate-100";
         }
     };
@@ -173,6 +174,7 @@ export function DirectorMessages() {
                             <option value={MessageType.COMPLIMENT}>Elogios</option>
                             <option value={MessageType.SUGGESTION}>Sugestões</option>
                             <option value={MessageType.COMPLAINT}>Reclamações</option>
+                            <option value={MessageType.OTHER}>Outros</option>
                         </select>
                     </div>
 

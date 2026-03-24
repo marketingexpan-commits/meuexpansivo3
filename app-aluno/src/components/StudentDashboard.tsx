@@ -2688,7 +2688,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         recipient: MessageRecipient.TEACHERS,
                                         messageType: t.message.includes('[Elogio]') ? 'Elogio' :
                                             t.message.includes('[Sugestão]') ? 'Sugestão' :
-                                                t.message.includes('[Reclamação]') ? 'Reclamação' : 'Sugestão',
+                                                t.message.includes('[Reclamação]') ? 'Reclamação' :
+                                                    t.message.includes('[Outros]') ? 'Outros' : 'Sugestão',
                                         content: t.message,
                                         timestamp: t.timestamp,
                                         read: true,
@@ -2719,7 +2720,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 <div className="flex items-center gap-2 mb-1">
                                                                     <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-black border ${msg.messageType === 'Elogio' ? 'bg-green-50 text-green-600 border-green-100' :
                                                                         msg.messageType === 'Sugestão' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                                            'bg-red-50 text-red-600 border-red-100'
+                                                                            msg.messageType === 'Reclamação' ? 'bg-red-50 text-red-600 border-red-100' :
+                                                                                'bg-slate-50 text-slate-600 border-slate-100'
                                                                         }`}>
                                                                         {msg.messageType}
                                                                     </span>

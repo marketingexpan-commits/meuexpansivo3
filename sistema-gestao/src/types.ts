@@ -193,6 +193,7 @@ export enum MessageType {
   COMPLIMENT = 'Elogio',
   SUGGESTION = 'Sugestão',
   COMPLAINT = 'Reclamação',
+  OTHER = 'Outros',
 }
 
 export interface SchoolMessage {

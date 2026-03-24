@@ -3644,9 +3644,10 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
                                                     <div className="flex items-center gap-2">
                                                         <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border shadow-sm ${msg.messageType === 'Elogio' ? 'bg-green-50 text-green-600 border-green-100' :
-                                                            msg.messageType === 'Sugestão' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                                'bg-red-50 text-red-600 border-red-100'
-                                                            }`}>
+    msg.messageType === 'Sugestão' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+        msg.messageType === 'Reclamação' ? 'bg-red-50 text-red-600 border-red-100' :
+            'bg-slate-50 text-slate-600 border-slate-100'
+    }`}>
                                                             {msg.messageType}
                                                         </span>
                                                         {msg.status === 'read' && (

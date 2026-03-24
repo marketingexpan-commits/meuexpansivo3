@@ -267,7 +267,7 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
             </div>
             <div>
               <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-1">Sua Mensagem</label>
-              <textarea id="content" value={content} onChange={e => setContent(e.target.value)} rows={4} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white" placeholder="Escreva seu elogio, sugestão ou reclamação aqui..." required minLength={10}></textarea>
+              <textarea id="content" value={content} onChange={e => setContent(e.target.value)} rows={4} className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white" placeholder="Escreva seu elogio, sugestão, reclamação ou outros assuntos aqui..." required minLength={10}></textarea>
             </div>
             <div className="text-right">
               <Button type="submit" disabled={isSending}>
