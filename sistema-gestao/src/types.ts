@@ -365,6 +365,7 @@ export interface UnitContact {
   role: ContactRole | string; // Allow string for legacy/flexibility
   unit: SchoolUnit;
   segment?: CoordinationSegment;
+  shift?: SchoolShift | 'all';
   password?: string; // Added for Coordinator Access Control
 }
 // --- FIM ---

@@ -4,7 +4,7 @@ import { Select } from './Select';
 import { Button } from './Button';
 import { User, Phone, Mail, GraduationCap, X, Loader2, Key, Layers } from 'lucide-react';
 import { coordinatorService } from '../services/coordinatorService';
-import { type UnitContact, CoordinationSegment } from '../types';
+import { type UnitContact, CoordinationSegment, SchoolShift } from '../types';
 import { useSchoolUnits } from '../hooks/useSchoolUnits';
 import { sanitizePhone } from '../utils';
 
@@ -27,6 +27,7 @@ export function CoordinatorForm({ onClose, coordinator }: CoordinatorFormProps) 
         email: '',
         unit: (isAdminGeral ? '' : userUnit) as any,
         segment: CoordinationSegment.GERAL,
+        shift: 'all',
         password: ''
     });
 
@@ -37,7 +38,8 @@ export function CoordinatorForm({ onClose, coordinator }: CoordinatorFormProps) 
                 email: coordinator.email || '',
                 password: coordinator.password || '',
                 phoneNumber: coordinator.phoneNumber || '55',
-                segment: coordinator.segment || CoordinationSegment.GERAL
+                segment: coordinator.segment || CoordinationSegment.GERAL,
+                shift: coordinator.shift || 'all'
             });
         }
     }, [coordinator]);
@@ -159,6 +161,19 @@ export function CoordinatorForm({ onClose, coordinator }: CoordinatorFormProps) 
                                 { label: 'Educação Infantil / Fundamental I', value: CoordinationSegment.INFANTIL_FUND1 },
                                 { label: 'Fundamental II / Ensino Médio', value: CoordinationSegment.FUND2_MEDIO },
                                 { label: 'Geral (Ambos)', value: CoordinationSegment.GERAL }
+                            ]}
+                            startIcon={<Layers className="w-4 h-4" />}
+                            required
+                        />
+                        <Select
+                            label="Turno de Atuação"
+                            name="shift"
+                            value={formData.shift}
+                            onChange={handleChange}
+                            options={[
+                                { label: 'Matutino', value: SchoolShift.MORNING },
+                                { label: 'Vespertino', value: SchoolShift.AFTERNOON },
+                                { label: 'Geral (Ambos)', value: 'all' }
                             ]}
                             startIcon={<Layers className="w-4 h-4" />}
                             required

@@ -4,9 +4,9 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Select } from '../components/Select';
 import { CoordinatorForm } from '../components/CoordinatorForm';
-import { Search, Loader2, UserPlus, User, Pencil, Trash2, MessagesSquare, GraduationCap, Layers } from 'lucide-react';
+import { Search, Loader2, UserPlus, User, Pencil, Trash2, MessagesSquare, GraduationCap, Layers, Clock } from 'lucide-react';
 import { coordinatorService } from '../services/coordinatorService';
-import { type UnitContact, CoordinationSegment } from '../types';
+import { type UnitContact, CoordinationSegment, SHIFT_LABELS, SchoolShift } from '../types';
 import { useSchoolUnits } from '../hooks/useSchoolUnits';
 
 export function Coordenadores() {
@@ -199,6 +199,12 @@ export function Coordenadores() {
                                             <MessagesSquare className="w-4 h-4 text-blue-950/50" />
                                             <span className="text-xs font-mono font-bold tracking-tight">
                                                 +{coord.phoneNumber}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100 group-hover:border-blue-950/10 group-hover:bg-white transition-all">
+                                            <Clock className="w-4 h-4 text-blue-950/50" />
+                                            <span className="text-xs font-semibold">
+                                                Turno: {coord.shift === 'all' ? 'Geral (Ambos)' : (SHIFT_LABELS[coord.shift as SchoolShift] || coord.shift)}
                                             </span>
                                         </div>
                                     </div>
