@@ -554,7 +554,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         const matchesYear = student.enrolledYears?.includes('2026');
 
         return matchesUnit && isAuthorized && matchesGrade && matchesShift && matchesClass && matchesSearch && matchesYear;
-    }), [students, activeUnit, teacher.gradeLevels, teacher.assignments, filterGrade, filterShift, filterClass, searchTerm]);
+    }).sort((a, b) => a.name.localeCompare(b.name)), [students, activeUnit, teacher.gradeLevels, teacher.assignments, filterGrade, filterShift, filterClass, searchTerm]);
+
 
     const { absenceData, currentBimester } = useMemo(() => {
         if (attendanceStudents.length === 0) return { absenceData: {} as Record<string, StudentAbsenceSummary>, currentBimester: 1 };
@@ -778,8 +779,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 sGrade === attendanceGrade &&
                 sClass === attendanceClass &&
                 (!attendanceShift || s.shift === attendanceShift);
-        });
+        }).sort((a, b) => a.name.localeCompare(b.name));
         setAttendanceStudents(studentsInClass);
+
         // ID Includes Discipline now
         const recordId = `${attendanceDate}_${activeUnit}_${attendanceGrade}_${attendanceClass}_${attendanceSubject}`;
         const existingRecord = attendanceRecords.find(r => r.id === recordId);
