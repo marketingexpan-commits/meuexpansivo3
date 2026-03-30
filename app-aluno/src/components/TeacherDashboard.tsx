@@ -2440,32 +2440,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                 {(() => {
                                                                     const normalize = (s: string) => s.toLowerCase().trim();
                                                                     const studentGradeLevelRaw = selectedStudent.gradeLevel || "";
-                                                                    const studentGradeLevelNorm = normalize(studentGradeLevelRaw);
 
-                                                                    const allCurriculumSubjects = getCurriculumSubjects(studentGradeLevelRaw, academicSubjects, matrices, selectedStudent.unit, selectedStudent.shift);
+                                                                    // DRIVE TABLE BY TEACHER ASSIGNMENTS (User Requirement)
+                                                                    // This ensures "Redação" appears if assigned, and "Produção de Texto" is hidden if not.
+                                                                    const teacherAuthorizedSubjects = getFilteredSubjects(studentGradeLevelRaw, selectedStudent.shift);
 
-                                                                    const teacherAuthorizedSubjects = allCurriculumSubjects.filter(subName => {
-                                                                        const subNameNorm = normalize(subName);
-
-                                                                        // 1. Check for specific assignment for this grade level (Exact Match requested)
-                                                                        if (teacher.assignments && teacher.assignments.length > 0) {
-                                                                            const gradeAssignment = teacher.assignments.find(a => {
-                                                                                const assignNorm = normalize(a.gradeLevel);
-                                                                                return assignNorm === studentGradeLevelNorm || studentGradeLevelNorm.includes(assignNorm) || assignNorm.includes(studentGradeLevelNorm);
-                                                                            });
-                                                                            if (gradeAssignment) {
-                                                                                return gradeAssignment.subjects.some(s => normalize(s) === subNameNorm);
-                                                                            }
-                                                                        }
-
-                                                                        // 2. Fallback: If assignments exist but none match this grade, return false
-                                                                        if (teacher.assignments && teacher.assignments.length > 0) {
-                                                                            return false;
-                                                                        }
-
-                                                                        // 3. Fallback: Rely on general subjects list if no assignments are defined
-                                                                        return teacher.subjects.some(s => normalize(s) === subNameNorm);
-                                                                    });
                                                                     const studentId = selectedStudent.id;
 
                                                                     // 1. Matérias que já possuem registros
