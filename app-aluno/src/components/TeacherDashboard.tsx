@@ -345,6 +345,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     const [editingGuideId, setEditingGuideId] = useState<string | null>(null);
     const [viewingGuide, setViewingGuide] = useState<ExamGuide | null>(null);
 
+    const [editingAgendaId, setEditingAgendaId] = useState<string | null>(null);
+    const [viewingAgenda, setViewingAgenda] = useState<DailyAgenda | null>(null);
+
+
 
     // Estados para Notificações
     const [showNotifications, setShowNotifications] = useState(false);
@@ -1252,6 +1256,39 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         }
     };
 
+    const handleEditAgenda = (agenda: DailyAgenda) => {
+        setEditingAgendaId(agenda.id);
+        setAgendaDate(agenda.date);
+        setAgendaSubject(agenda.subject || '');
+        setAgendaGrade(agenda.gradeLevel);
+        setAgendaShift(agenda.shift || '');
+        setAgendaClass(agenda.schoolClass || 'A');
+        setContentInClass(agenda.contentInClass);
+        setHomework(agenda.homework || '');
+
+        // Scroll to form (for mobile)
+        if (window.innerWidth < 768) {
+            setTimeout(() => {
+                const formElement = document.getElementById('agenda-form');
+                formElement?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+    };
+
+    const handleCancelEditAgenda = () => {
+        setEditingAgendaId(null);
+        setAgendaDate(new Date().toLocaleDateString('en-CA'));
+        // If teacher has only one subject/grade, let the useEffect handle re-selection,
+        // but for now, clear it to be safe.
+        setAgendaSubject('');
+        setAgendaGrade('');
+        setAgendaShift('');
+        setAgendaClass('A');
+        setContentInClass('');
+        setHomework('');
+    };
+
+
     const handleEditExamGuide = (guide: ExamGuide) => {
         setEditingGuideId(guide.id);
         setExamTitle(guide.title);
@@ -1298,8 +1335,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
         setIsSavingAgenda(true);
         try {
+            const agendaId = editingAgendaId || `agenda-${Date.now()}`;
+            const agendaTimestamp = editingAgendaId 
+                ? teacherAgendas.find(a => a.id === editingAgendaId)?.timestamp || new Date().toISOString()
+                : new Date().toISOString();
+
             const newAgenda: DailyAgenda = {
-                id: `agenda-${Date.now()}`,
+                id: agendaId,
                 teacherId: teacher.id,
                 teacherName: teacher.name,
                 gradeLevel: agendaGrade,
@@ -1309,16 +1351,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 date: agendaDate,
                 contentInClass,
                 homework,
-                timestamp: new Date().toISOString(),
+                timestamp: agendaTimestamp,
                 unit: activeUnit as SchoolUnit
             };
 
-            await db.collection('daily_agenda').doc(newAgenda.id).set(newAgenda);
-            alert("Agenda salva com sucesso!");
+            await db.collection('daily_agenda').doc(agendaId).set(newAgenda);
+            alert(editingAgendaId ? "Agenda atualizada com sucesso!" : "Agenda salva com sucesso!");
 
-            // Limpar campos (exceto data e turma para facilitar lançamentos sequenciais)
-            setContentInClass('');
-            setHomework('');
+            // Limpar campos
+            handleCancelEditAgenda();
         } catch (error) {
             console.error("Erro ao salvar agenda:", error);
             alert("Erro ao salvar agenda.");
@@ -1326,6 +1367,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             setIsSavingAgenda(false);
         }
     };
+
 
     const handleSaveExamGuide = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -1808,9 +1850,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                     <div className="w-8 h-8 bg-blue-950/10 rounded-full flex items-center justify-center">
                                         <svg className="w-5 h-5 text-blue-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                     </div>
-                                    Nova Agenda
+                                    {editingAgendaId ? 'Editar Agenda' : 'Nova Agenda'}
                                 </h2>
-                                <form onSubmit={handleSaveAgenda} className="space-y-4">
+                                <form id="agenda-form" onSubmit={handleSaveAgenda} className="space-y-4">
+
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Data</label>
                                         <input type="date" value={agendaDate} onChange={e => setAgendaDate(e.target.value)} className="w-full p-2 border border-blue-200 rounded focus:ring-purple-500 focus:border-purple-500" required />
@@ -1860,9 +1903,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Para Casa (Tarefas)</label>
                                         <textarea value={homework} onChange={e => setHomework(e.target.value)} rows={2} className="w-full p-2 border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500" placeholder="Exercícios, páginas do livro..." />
                                     </div>
-                                    <Button type="submit" disabled={isSavingAgenda} className="w-full bg-blue-950 hover:bg-black text-white font-bold py-2 rounded-lg shadow-md transition-colors flex justify-center items-center">
-                                        {isSavingAgenda ? 'Salvando...' : 'Salvar Agenda'}
-                                    </Button>
+                                    <div className="flex gap-2">
+                                        <Button type="submit" disabled={isSavingAgenda} className="flex-1 bg-blue-950 hover:bg-black text-white font-bold py-2 rounded-lg shadow-md transition-colors flex justify-center items-center">
+                                            {isSavingAgenda ? 'Salvando...' : (editingAgendaId ? 'Atualizar' : 'Salvar Agenda')}
+                                        </Button>
+                                        {editingAgendaId && (
+                                            <Button type="button" onClick={handleCancelEditAgenda} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg shadow-md transition-colors">
+                                                Cancelar
+                                            </Button>
+                                        )}
+                                    </div>
+
                                 </form>
                             </div>
                             {/* LISTA DE AGENDAS */}
@@ -1902,13 +1953,27 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                             )}
                                                         </div>
                                                     </div>
-                                                    <button
-                                                        onClick={() => handleDeleteAgenda(agenda)}
-                                                        className="ml-4 p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
-                                                        title="Excluir Agenda"
-                                                    >
-                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                                    </button>
+                                                    <div className="flex flex-col gap-2 ml-4 shrink-0">
+                                                        <button
+                                                            onClick={() => setViewingAgenda(agenda)}
+                                                            className="px-3 py-1.5 bg-blue-950 text-white rounded text-[10px] font-bold hover:bg-black transition-colors w-24 shadow-sm"
+                                                        >
+                                                            Visualizar
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleEditAgenda(agenda)}
+                                                            className="px-3 py-1.5 bg-orange-600 text-white rounded text-[10px] font-bold hover:bg-orange-700 transition-colors w-24 shadow-sm"
+                                                        >
+                                                            Editar
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteAgenda(agenda)}
+                                                            className="px-3 py-1.5 bg-red-600 text-white rounded text-[10px] font-bold hover:bg-red-700 transition-colors w-24 shadow-sm"
+                                                        >
+                                                            Excluir
+                                                        </button>
+                                                    </div>
+
                                                 </div>
                                             ))}
                                         </div>
@@ -2063,8 +2128,61 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                         </div>
                     )}
 
+                    {/* MODAL DE VISUALIZAÇÃO DA AGENDA */}
+                    {viewingAgenda && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-fade-in-up">
+                                <div className="bg-gradient-to-r from-blue-900 to-black p-6 flex justify-between items-center sticky top-0">
+                                    <h2 className="text-white text-xl font-bold">Detalhes da Agenda</h2>
+                                    <button
+                                        onClick={() => setViewingAgenda(null)}
+                                        className="text-white hover:bg-white/20 rounded-full p-2 transition-colors"
+                                    >
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    </button>
+                                </div>
+                                <div className="p-6 space-y-6 text-left">
+                                    <div className="flex flex-col md:flex-row justify-between md:items-center border-b border-gray-100 pb-4">
+                                        <div>
+                                            <h3 className="text-2xl font-bold text-gray-800">{getSubjectLabel(viewingAgenda.subject, academicSubjects)}</h3>
+                                            <p className="text-sm font-medium text-gray-500 mt-1">{viewingAgenda.gradeLevel} - {viewingAgenda.schoolClass} ({SHIFT_LABELS[viewingAgenda.shift as SchoolShift] || viewingAgenda.shift})</p>
+                                        </div>
+                                        <div className="flex flex-col items-end mt-2 md:mt-0">
+                                            <span className="text-blue-900 font-bold bg-blue-50 px-3 py-1 rounded-full text-sm border border-blue-100">
+                                                Aula: {new Date(viewingAgenda.date + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                            </span>
+                                            <span className="text-[10px] text-gray-400 mt-1">Postado em: {formatDateWithTimeBr(viewingAgenda.timestamp)}</span>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-blue-950 text-xs uppercase font-extrabold mb-2 tracking-wider">Conteúdo em Sala</label>
+                                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-gray-700 whitespace-pre-wrap leading-relaxed">
+                                            {viewingAgenda.contentInClass}
+                                        </div>
+                                    </div>
+
+                                    {viewingAgenda.homework && (
+                                        <div>
+                                            <label className="block text-orange-700 text-xs uppercase font-extrabold mb-2 tracking-wider">Trabalho para Casa / Tarefas</label>
+                                            <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 text-orange-900 whitespace-pre-wrap leading-relaxed">
+                                                {viewingAgenda.homework}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="p-4 bg-gray-50 flex justify-end">
+                                    <Button onClick={() => setViewingAgenda(null)} variant="secondary">
+                                        Fechar
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* MODAL DE VISUALIZAÇÃO DO ROTEIRO */}
                     {viewingGuide && (
+
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
                             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-fade-in-up">
                                 <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-6 flex justify-between items-center sticky top-0">
