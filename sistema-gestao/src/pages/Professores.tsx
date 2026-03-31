@@ -101,7 +101,7 @@ export function Professores() {
         const matchesShift = !filterShift || t.assignments?.some(a => a.shift === filterShift);
 
         return matchesSearch && matchesUnit && matchesSubject && matchesGrade && matchesShift;
-    });
+    }).sort((a, b) => a.name.localeCompare(b.name));
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
