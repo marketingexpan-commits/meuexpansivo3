@@ -103,8 +103,10 @@ export const SUBJECT_LABELS: Record<string, string> = {
   'disc_sociologia': 'Sociologia',
   'disc_musica': 'Música',
   'disc_frances': 'Francês',
-  'general_early_childhood': 'Educação Infantil'
+  'general_early_childhood': 'Educação Infantil',
+  'general_activity': 'Atividade Geral / Eventos'
 };
+
 
 export const SUBJECT_SHORT_LABELS: Record<string, string> = {
   'disc_matematica': 'Mat',

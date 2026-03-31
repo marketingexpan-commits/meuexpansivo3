@@ -94,12 +94,18 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
             subjects.add('general_early_childhood');
         }
         
-        const list = Array.from(subjects);
-        if (list.length === 1 && !albumSubjectId) {
-            setAlbumSubjectId(list[0]);
-        }
-        return list;
+        return Array.from(subjects);
     }, [teacher, filterGrade, filterShift]);
+
+    // OPTION 3: Auto-select if only one subject is available
+    useEffect(() => {
+        if (availableSubjects.length === 1 && !albumSubjectId) {
+            setAlbumSubjectId(availableSubjects[0]);
+        } else if (availableSubjects.length === 0 && !albumSubjectId) {
+            setAlbumSubjectId(''); // Clear if no subjects, defaults to General Activity
+        }
+    }, [availableSubjects, albumSubjectId]);
+
 
     const cleanupExpiredMedia = async () => {
         try {
@@ -242,10 +248,9 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
             return;
         }
 
-        if (!albumSubjectId) {
-            alert('Por favor, selecione a disciplina deste álbum.');
-            return;
-        }
+        // OPTION 2: Subject is now optional. If not selected, it will be 'general_activity'
+        const effectiveSubjectId = albumSubjectId || 'general_activity';
+
 
         const isImage = file.type.startsWith('image/');
         const isVideo = file.type.startsWith('video/');
@@ -311,8 +316,9 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
                             filename: `${timestamp}.${extension}`,
                             timestamp: new Date().toISOString(),
                             date: dateFilter, // Usando a data selecionada no painel (que pode ser retroativa)
-                            subjectId: albumSubjectId || 'disc_musica',
+                            subjectId: effectiveSubjectId,
                             albumTitle: albumTitle.trim() || 'Álbum Geral',
+
                             expiresAt: expiresAt.toISOString()
                         };
 
@@ -435,7 +441,8 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
                     </div>
                     <div>
                         <h2 className="text-2xl font-black tracking-tight text-blue-950">Galeria de Mídia</h2>
-                        <p className="text-gray-500 text-sm font-medium">Compartilhe momentos da disciplina de música</p>
+                        <p className="text-gray-500 text-sm font-medium">Compartilhe momentos das suas aulas e atividades</p>
+
                     </div>
                 </div>
                 <div className="mt-4 flex items-start gap-3 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
@@ -522,19 +529,20 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
 
                 {filterGrade && filterShift && (
                     <div className="mt-6 p-4 bg-blue-50/30 rounded-xl border border-blue-100 flex flex-col md:flex-row gap-4">
-                         <div className="flex-1">
+                        <div className="flex-1">
                             <label className="block text-xs font-black text-blue-900 uppercase tracking-widest mb-2">Disciplina da Mídia</label>
                             <select 
                                 value={albumSubjectId} 
                                 onChange={(e) => setAlbumSubjectId(e.target.value)}
                                 className="w-full p-3 bg-white border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-900 transition-all font-bold text-gray-700"
                             >
-                                <option value="">Selecione a Disciplina...</option>
+                                <option value="">Opcional (Atividade Geral / Eventos)</option>
                                 {availableSubjects.map(sub => (
                                     <option key={sub} value={sub}>{getFullSubjectLabel(sub)}</option>
                                 ))}
                             </select>
                         </div>
+
                         <div className="flex-[2]">
                             <label className="block text-xs font-black text-blue-900 uppercase tracking-widest mb-2">Título do Álbum</label>
                             <input 
