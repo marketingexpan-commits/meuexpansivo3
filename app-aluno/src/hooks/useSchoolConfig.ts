@@ -12,6 +12,9 @@ export interface SchoolConfig {
     appName: string;
     appSubtitle: string;
     logoUrl: string;
+    logoSize?: number;
+    coverMode?: 'default' | 'image';
+    coverImageUrl?: string;
     instagramUrl: string;
     primaryColor: string;
     accentColor: string;
@@ -28,6 +31,9 @@ const DEFAULT_CONFIG: SchoolConfig = {
     appName: 'Meu Expansivo',
     appSubtitle: 'APLICATIVO',
     logoUrl: 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png',
+    logoSize: 80,
+    coverMode: 'default',
+    coverImageUrl: '',
     instagramUrl: 'https://www.instagram.com/redeexpansivo',
     primaryColor: '#172554', // blue-950
     accentColor: '#ea580c', // orange-600

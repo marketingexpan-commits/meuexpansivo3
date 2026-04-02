@@ -26,6 +26,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
   const [animateLogo, setAnimateLogo] = useState(false);
   // Controla a visibilidade do logo estático no header para fazer a troca "mágica"
   const [showStaticLogo, setShowStaticLogo] = useState(false);
+  const [showText, setShowText] = useState(false);
 
   // --- CONTADOR DE VISITAS PÚBLICAS ---
   useEffect(() => {
@@ -68,8 +69,14 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
     // 3. Remover splash da DOM e mostrar logo estático (5.5s)
     const timer3 = setTimeout(() => {
-      setShowSplash(false);
+      // Sincronia de quadro (Frame-perfect swap)
       setShowStaticLogo(true);
+      setShowSplash(false);
+      
+      // Delay de prestígio maior (3s) para o usuário admirar a logo antes de abrir.
+      setTimeout(() => {
+        setShowText(true);
+      }, 3000);
     }, 5500);
 
     return () => {
@@ -136,33 +143,43 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
   // --- REF PARA MEDIR POSIÇÃO DO LOGO ---
   const logoRef = useRef<HTMLDivElement>(null);
-  const [logoPosition, setLogoPosition] = useState({ top: '50%', left: '50%' });
+  const [logoPosition, setLogoPosition] = useState({ top: '50%', left: '50%', width: '128px', height: '128px' });
 
   // Calcular posição exata do logo no header
-  useLayoutEffect(() => {
-    const calculatePosition = () => {
-      const rect = logoRef.current?.getBoundingClientRect();
-      if (rect) {
-        // Calcular o centro do elemento alvo
-        const centerY = rect.top + rect.height / 2;
-        const centerX = rect.left + rect.width / 2;
-        // Atualizar estado com posição exata
-        setLogoPosition({ top: `${centerY}px`, left: `${centerX}px` });
-      }
-    };
+  const calculatePosition = React.useCallback(() => {
+    const rect = logoRef.current?.getBoundingClientRect();
+    if (rect && rect.width > 0 && rect.height > 0) {
+      // Calcular o centro do elemento alvo com precisão de ponto flutuante
+      const centerY = rect.top + (rect.height / 2);
+      const centerX = rect.left + (rect.width / 2);
+      // Atualizar estado com posição exata
+      setLogoPosition({ 
+          top: `${centerY}px`, 
+          left: `${centerX}px`, 
+          width: `${rect.width}px`, 
+          height: `${rect.height}px` 
+      });
+    }
+  }, []);
 
+  useLayoutEffect(() => {
     // Calcular inicialmente e em resize
-    // Pequeno delay para garantir que o layout estabilizou e elementos estão visíveis
     const timer = setTimeout(() => {
       calculatePosition();
     }, 100);
+    
+    // Tenta recalcular dinamicamente enquanto a imagem pode estar carregando
+    const interval = setInterval(calculatePosition, 50); // Frequência ultra-alta para correção instantanea
+    const stopInterval = setTimeout(() => clearInterval(interval), 5000);
 
     window.addEventListener('resize', calculatePosition);
     return () => {
       window.removeEventListener('resize', calculatePosition);
       clearTimeout(timer);
+      clearInterval(interval);
+      clearTimeout(stopInterval);
     };
-  }, []);
+  }, [calculatePosition, config.logoSize, config.coverMode, config.coverImageUrl]);
 
   const [muralItems, setMuralItems] = useState<MuralItem[]>([]);
   const [downloadLinks, setDownloadLinks] = useState<MuralItem[]>([]);
@@ -319,17 +336,51 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
       <div className="min-h-screen flex flex-col items-center justify-center bg-white p-4 md:p-6">
 
         {/* --- HEADER HORIZONTAL (ESTILO REFERÊNCIA) --- */}
-        <div className="flex items-center gap-4 mb-8 animate-fade-in-down">
-          <div
-            ref={logoRef}
-            onClick={handleSecretClick}
-            className={`cursor-pointer active:scale-95 transition-transform h-16 md:h-20 w-auto ${showStaticLogo ? 'opacity-100' : 'opacity-0'} transition-opacity duration-0`}
-          >
-            <SchoolLogo className="!h-full w-auto" />
-          </div>
-          <div className="flex flex-col justify-center">
-            <span className="text-xs font-semibold uppercase tracking-[0.15em] leading-none mb-1" style={{ color: config.accentColor }}>{config.appSubtitle}</span>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight leading-none" style={{ color: config.primaryColor }}>{config.appName}</h1>
+        <div className="flex flex-col items-center mb-10 w-full">
+          <div className="relative flex items-center justify-center min-h-[80px] w-full max-w-lg">
+            {config.coverMode === 'image' && config.coverImageUrl ? (
+              <div
+                ref={logoRef}
+                onClick={handleSecretClick}
+                className={`cursor-pointer active:scale-95 w-auto ${showStaticLogo ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+                style={{ height: `${config.logoSize || 120}px` }}
+              >
+                <img onLoad={calculatePosition} src={config.coverImageUrl} alt="Capa" className="h-full w-auto object-contain max-w-[90vw]" />
+              </div>
+            ) : (
+              <div className="flex items-center justify-center">
+                {/* Logo wrapper com transição de posição suave e aceleração de hardware */}
+                <div
+                  ref={logoRef}
+                  onClick={handleSecretClick}
+                  className={`cursor-pointer active:scale-95 w-auto ${showStaticLogo ? 'opacity-100' : 'opacity-0'}`}
+                  style={{ 
+                    height: `${config.logoSize || 80}px`,
+                    transition: 'all 12s cubic-bezier(0.4, 0, 0.2, 1)',
+                    willChange: 'transform, opacity'
+                  }}
+                >
+                  <SchoolLogo className="!h-full w-auto" />
+                </div>
+                
+                {/* Texto wrapper que expande suavemente com aceleração de hardware */}
+                <div
+                  className={`flex flex-col justify-center overflow-hidden`}
+                  style={{
+                    maxWidth: showText ? '600px' : '0px',
+                    opacity: showText ? 1 : 0,
+                    marginLeft: showText ? '4rem' : '0rem',
+                    transition: 'all 12s cubic-bezier(0.4, 0, 0, 1)',
+                    willChange: 'max-width, opacity, margin-left'
+                  }}
+                >
+                  <div className="whitespace-nowrap flex flex-col justify-center pl-2">
+                    <span className="block text-[14px] md:text-base font-semibold uppercase tracking-[0.4em] mb-3 opacity-60" style={{ color: config.accentColor }}>{config.appSubtitle}</span>
+                    <h1 className="block text-3xl md:text-6xl font-black tracking-tighter leading-none" style={{ color: config.primaryColor }}>{config.appName}</h1>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -364,12 +415,12 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                 {/* LOGO QUE VIAJA (Livre para sair do Card) */}
                 {/* LOGO QUE VIAJA (Posição Dinâmica) */}
                 <div
-                  className={`absolute z-[70] transition-all duration-1000 ease-in-out perspective-[1000px] -translate-x-1/2 -translate-y-1/2
-                   ${splashFading ? 'h-12 md:h-16 w-24 md:w-32 scale-90 md:scale-100' : 'h-32 w-32 scale-100'}
-                `}
+                  className={`absolute z-[70] transition-all duration-1000 ease-in-out perspective-[1000px] -translate-x-1/2 -translate-y-1/2`}
                   style={{
                     top: splashFading ? logoPosition.top : '50%',
                     left: splashFading ? logoPosition.left : '50%',
+                    width: splashFading ? logoPosition.width : '128px',
+                    height: splashFading ? logoPosition.height : '128px',
                   }}
                 >
                   {/* 3D Flip Container */}
@@ -377,7 +428,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                     className={`relative w-full h-full transition-transform duration-[1500ms] [transform-style:preserve-3d] ${animateLogo ? '[transform:rotateY(180deg)]' : ''}`}
                   >
                     {/* Logo Branca (FRENTE) */}
-                    <div className="absolute inset-0 [backface-visibility:hidden]">
+                    <div className="absolute inset-0 [backface-visibility:hidden] flex items-center justify-center">
                       <img
                         src={SCHOOL_LOGO_WHITE_URL}
                         alt="Logo Branca"
@@ -386,7 +437,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                     </div>
 
                     {/* Logo Laranja (VERSO) */}
-                    <div className="absolute inset-0 [transform:rotateY(180deg)] [backface-visibility:hidden]">
+                    <div className="absolute inset-0 [transform:rotateY(180deg)] [backface-visibility:hidden] flex items-center justify-center">
                       <img
                         src={SCHOOL_LOGO_URL}
                         alt="Logo Oficial"

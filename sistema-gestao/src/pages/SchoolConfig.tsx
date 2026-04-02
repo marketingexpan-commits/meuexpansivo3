@@ -15,6 +15,9 @@ interface SchoolConfigData {
     appName: string;
     appSubtitle: string;
     logoUrl: string;
+    logoSize?: number;
+    coverMode?: 'default' | 'image';
+    coverImageUrl?: string;
     instagramUrl: string;
     primaryColor: string; // Cor Principal (Azul)
     accentColor: string; // Cor de Destaque (Laranja)
@@ -40,6 +43,9 @@ const DEFAULT_CONFIG: SchoolConfigData = {
     appName: 'Meu Expansivo',
     appSubtitle: 'APLICATIVO',
     logoUrl: 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png',
+    logoSize: 80,
+    coverMode: 'default',
+    coverImageUrl: '',
     instagramUrl: 'https://www.instagram.com/redeexpansivo',
     primaryColor: '#172554', // blue-950
     accentColor: '#ea580c', // orange-600
@@ -241,25 +247,139 @@ export const SchoolConfig = () => {
                                     />
                                 </div>
 
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">URL da Logo (Imagem)</label>
-                                    <div className="flex gap-4 items-start">
-                                        <div className="w-20 h-20 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
-                                            {config.logoUrl ? (
-                                                <img src={config.logoUrl} alt="Logo App" className="w-full h-full object-contain p-2" />
-                                            ) : (
-                                                <Smartphone className="w-8 h-8 text-slate-300" />
-                                            )}
-                                        </div>
-                                        <div className="flex-1">
+                                <div className="md:col-span-2 mt-2 pt-4 border-t border-slate-100">
+                                    <label className="block text-sm font-semibold text-slate-700 mb-3">Modo de Exibição da Capa do App</label>
+                                    <div className="flex gap-4 mb-4">
+                                        <label className={`flex-1 flex items-center gap-2 p-3 border rounded-xl cursor-pointer transition-all ${config.coverMode !== 'image' ? 'border-blue-950 bg-blue-50/50 text-blue-950 shadow-sm' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                                             <input
-                                                type="text"
-                                                value={config.logoUrl}
-                                                onChange={e => setConfig({ ...config, logoUrl: e.target.value })}
-                                                className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
-                                                placeholder="https://..."
+                                                type="radio"
+                                                name="coverMode"
+                                                checked={config.coverMode !== 'image'}
+                                                onChange={() => setConfig({ ...config, coverMode: 'default' })}
+                                                className="w-4 h-4 text-blue-950 focus:ring-blue-950 cursor-pointer"
                                             />
-                                            <p className="text-xs text-slate-500 mt-2">Recomendado: Imagem PNG com fundo transparente do App.</p>
+                                            <span className="font-semibold text-sm">Logo + Texto (Padrão)</span>
+                                        </label>
+                                        <label className={`flex-1 flex items-center gap-2 p-3 border rounded-xl cursor-pointer transition-all ${config.coverMode === 'image' ? 'border-blue-950 bg-blue-50/50 text-blue-950 shadow-sm' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                                            <input
+                                                type="radio"
+                                                name="coverMode"
+                                                checked={config.coverMode === 'image'}
+                                                onChange={() => setConfig({ ...config, coverMode: 'image' })}
+                                                className="w-4 h-4 text-blue-950 focus:ring-blue-950 cursor-pointer"
+                                            />
+                                            <span className="font-semibold text-sm">Anexo de Imagem (PNG Direto)</span>
+                                        </label>
+                                    </div>
+                                    
+                                    {config.coverMode !== 'image' ? (
+                                        <div className="flex gap-4 items-start bg-slate-50 p-4 rounded-xl border border-slate-100 animate-fade-in">
+                                            <div className="w-20 h-20 bg-white rounded-xl border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+                                                {config.logoUrl ? (
+                                                    <img src={config.logoUrl} alt="Logo App" className="w-full h-full object-contain p-2" />
+                                                ) : (
+                                                    <Smartphone className="w-8 h-8 text-slate-300" />
+                                                )}
+                                            </div>
+                                            <div className="flex-1">
+                                                <label className="block text-xs font-semibold text-slate-600 mb-1">URL da Logo (Minimizada ao lado do Título)</label>
+                                                <input
+                                                    type="text"
+                                                    value={config.logoUrl}
+                                                    onChange={e => setConfig({ ...config, logoUrl: e.target.value })}
+                                                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all"
+                                                    placeholder="https://..."
+                                                />
+                                                <p className="text-xs text-slate-500 mt-2">Recomendado: Imagem PNG com fundo transparente do App.</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex gap-4 items-start bg-blue-50/50 p-4 rounded-xl border border-blue-100 animate-fade-in">
+                                            <div className="w-20 h-20 bg-white rounded-xl border border-blue-200 flex items-center justify-center overflow-hidden shrink-0">
+                                                {config.coverImageUrl ? (
+                                                    <img src={config.coverImageUrl} alt="Imagem da Capa" className="w-full h-full object-contain p-2" />
+                                                ) : (
+                                                    <Smartphone className="w-8 h-8 text-blue-300" />
+                                                )}
+                                            </div>
+                                            <div className="flex-1">
+                                                <label className="block text-xs font-semibold text-blue-900 mb-1">URL da Imagem de Capa (PNG Direto)</label>
+                                                <input
+                                                    type="text"
+                                                    value={config.coverImageUrl || ''}
+                                                    onChange={e => setConfig({ ...config, coverImageUrl: e.target.value })}
+                                                    className="w-full p-2.5 bg-white border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none transition-all placeholder-blue-300"
+                                                    placeholder="https://..."
+                                                />
+                                                <p className="text-xs text-blue-600 mt-2">Esta imagem substituirá completamente a logo e o texto na capa do aplicativo.</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* SLIDER E PREVIEW DE TAMANHO */}
+                                    <div className="mt-6 border-t border-slate-100 pt-6">
+                                        <div className="flex flex-col md:flex-row gap-8 items-center md:items-start">
+                                            {/* Regulador */}
+                                            <div className="flex-1 w-full bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                                                <div className="flex justify-between items-center mb-4">
+                                                    <div>
+                                                        <label className="block text-sm font-bold text-slate-800">Tamanho do Logotipo</label>
+                                                        <p className="text-xs text-slate-500 mt-1">Ajuste a altura da imagem na tela inicial.</p>
+                                                    </div>
+                                                    <span className="text-sm font-bold bg-blue-100 text-blue-800 px-3 py-1 rounded-lg border border-blue-200">{config.logoSize || 80}px</span>
+                                                </div>
+                                                <input 
+                                                    type="range" 
+                                                    min="40" 
+                                                    max="240" 
+                                                    step="5"
+                                                    value={config.logoSize || 80} 
+                                                    onChange={e => setConfig({...config, logoSize: parseInt(e.target.value)})}
+                                                    className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600 transition-all hover:accent-blue-700" 
+                                                />
+                                                <div className="flex justify-between text-xs text-slate-400 mt-3 font-semibold px-1">
+                                                    <span>Min (40px)</span>
+                                                    <span>Original (80px)</span>
+                                                    <span>Max (240px)</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Preview Mockup */}
+                                            <div className="w-full md:w-56 shrink-0 flex flex-col items-center">
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1">
+                                                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Preview Real
+                                                </span>
+                                                <div className="w-full aspect-[9/16] max-w-[180px] bg-slate-50 border-4 border-slate-800 rounded-[2rem] shadow-xl overflow-hidden relative flex flex-col">
+                                                    <div className="h-4 w-full bg-slate-800/5 mb-3"></div>
+                                                    
+                                                    {/* Header Fake */}
+                                                    <div className={`px-3 flex items-center gap-2 mb-4 transition-all ${config.coverMode === 'image' ? 'justify-center' : ''}`}>
+                                                        {config.coverMode === 'image' && config.coverImageUrl ? (
+                                                            <div className="flex justify-center transition-all duration-300" style={{ height: `${(config.logoSize || 80) * 0.4}px`, maxHeight: '100px' }}>
+                                                                <img src={config.coverImageUrl} className="h-full w-auto object-contain" alt="Capa" />
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <div className="flex justify-center shrink-0 transition-all duration-300" style={{ height: `${(config.logoSize || 80) * 0.4}px` }}>
+                                                                    {config.logoUrl ? <img src={config.logoUrl} className="h-full w-auto object-contain" alt="Logo" /> : <div className="h-full aspect-square bg-slate-200 rounded"></div>}
+                                                                </div>
+                                                                <div className="flex flex-col justify-center overflow-hidden shrink-0">
+                                                                    <div className="h-[4px] w-12 rounded mb-1 opacity-80" style={{ backgroundColor: config.accentColor }}></div>
+                                                                    <div className="h-[6px] w-20 rounded opacity-90" style={{ backgroundColor: config.primaryColor }}></div>
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Form Fake */}
+                                                    <div className="mx-3 flex-1 bg-white rounded-t-xl shadow-sm border border-slate-100 flex flex-col p-2 gap-2">
+                                                        <div className="h-4 w-full bg-slate-100 rounded"></div>
+                                                        <div className="h-6 w-full bg-slate-50 rounded border border-slate-100 mt-1"></div>
+                                                        <div className="h-6 w-full bg-slate-50 rounded border border-slate-100"></div>
+                                                        <div className="h-8 w-full rounded mt-auto opacity-90" style={{ backgroundColor: config.accentColor }}></div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
