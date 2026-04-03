@@ -25,6 +25,7 @@ export interface SchoolConfig {
     developerUrl: string;
     contactMessage: string;
     developerMessage: string;
+    secretClickArea?: 'left' | 'right' | 'total';
 }
 
 const DEFAULT_CONFIG: SchoolConfig = {
@@ -43,7 +44,8 @@ const DEFAULT_CONFIG: SchoolConfig = {
     developerName: 'HC Apps | 84988739180',
     developerUrl: 'https://wa.me/5584988739180',
     contactMessage: 'Olá, gostaria de informações sobre a escola.',
-    developerMessage: 'Olá, preciso de suporte no App do Aluno.'
+    developerMessage: 'Olá, preciso de suporte no App do Aluno.',
+    secretClickArea: 'right'
 };
 
 export const useSchoolConfig = () => {

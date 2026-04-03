@@ -341,19 +341,28 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
             {config.coverMode === 'image' && config.coverImageUrl ? (
               <div
                 ref={logoRef}
-                onClick={handleSecretClick}
-                className={`cursor-pointer active:scale-95 w-auto ${showStaticLogo ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+                className={`cursor-pointer active:scale-95 w-auto relative ${showStaticLogo ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
                 style={{ height: `${config.logoSize || 120}px` }}
               >
                 <img onLoad={calculatePosition} src={config.coverImageUrl} alt="Capa" className="h-full w-auto object-contain max-w-[90vw]" />
+                
+                {/* Zona de clique invisível para segredo */}
+                <div 
+                  onClick={handleSecretClick}
+                  className={`absolute top-0 h-full z-10 cursor-pointer ${
+                    config.secretClickArea === 'left' ? 'left-0 w-[45%]' : 
+                    config.secretClickArea === 'total' ? 'inset-0 w-full' : 
+                    'right-0 w-[45%]'
+                  }`}
+                  title="Zona Mágica"
+                />
               </div>
             ) : (
               <div className="flex items-center justify-center">
                 {/* Logo wrapper com transição de posição suave e aceleração de hardware */}
                 <div
                   ref={logoRef}
-                  onClick={handleSecretClick}
-                  className={`cursor-pointer active:scale-95 w-auto ${showStaticLogo ? 'opacity-100' : 'opacity-0'}`}
+                  className={`cursor-pointer active:scale-95 w-auto relative transition-all duration-[12000ms] ease-in-out will-change-transform ${showStaticLogo ? 'opacity-100' : 'opacity-0'}`}
                   style={{ 
                     height: `${config.logoSize || 80}px`,
                     transition: 'all 12s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -361,6 +370,17 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                   }}
                 >
                   <SchoolLogo className="!h-full w-auto" />
+                  
+                  {/* Zona de clique invisível para segredo */}
+                  <div 
+                    onClick={handleSecretClick}
+                    className={`absolute top-0 h-full z-10 cursor-pointer ${
+                      config.secretClickArea === 'left' ? 'left-0 w-[45%]' : 
+                      config.secretClickArea === 'total' ? 'inset-0 w-full' : 
+                      'right-0 w-[45%]'
+                    }`}
+                    title="Zona Mágica"
+                  />
                 </div>
                 
                 {/* Texto wrapper que expande suavemente com aceleração de hardware */}

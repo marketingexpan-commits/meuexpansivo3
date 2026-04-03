@@ -37,6 +37,7 @@ interface SchoolConfigData {
     adminSystemLabel: string;
     adminFooterText: string;
     adminCopyright: string;
+    secretClickArea?: 'left' | 'right' | 'total';
 }
 
 const DEFAULT_CONFIG: SchoolConfigData = {
@@ -85,7 +86,8 @@ const DEFAULT_CONFIG: SchoolConfigData = {
     adminSystemLabel: 'SISTEMA',
     adminSystemSubtitle: 'Gestão Escolar',
     adminFooterText: 'Sistema Meu Expansivo - Gestão Escolar v1.0',
-    adminCopyright: '© 2026 Expansivo Rede de Ensino. Todos os direitos reservados.'
+    adminCopyright: '© 2026 Expansivo Rede de Ensino. Todos os direitos reservados.',
+    secretClickArea: 'right'
 };
 
 export const SchoolConfig = () => {
@@ -342,6 +344,37 @@ export const SchoolConfig = () => {
                                                     <span>Original (80px)</span>
                                                     <span>Max (240px)</span>
                                                 </div>
+
+                                                {/* ÁREA DO CLIQUE SECRETO */}
+                                                <div className="mt-8 pt-6 border-t border-slate-200">
+                                                    <label className="block text-sm font-bold text-blue-900 mb-3 flex items-center gap-2">
+                                                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                                        Local do Clique Mágico (Segredo)
+                                                    </label>
+                                                    <div className="grid grid-cols-3 gap-2">
+                                                        {[
+                                                            { id: 'left', label: 'Esquerda' },
+                                                            { id: 'right', label: 'Direita' },
+                                                            { id: 'total', label: 'Toda a Logo' }
+                                                        ].map((item) => (
+                                                            <button
+                                                                key={item.id}
+                                                                type="button"
+                                                                onClick={() => setConfig({ ...config, secretClickArea: item.id as any })}
+                                                                className={`py-2 px-3 rounded-lg text-xs font-bold transition-all border ${
+                                                                    (config.secretClickArea || 'right') === item.id
+                                                                        ? 'bg-blue-600 text-white border-blue-700 shadow-sm'
+                                                                        : 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50'
+                                                                }`}
+                                                            >
+                                                                {item.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <p className="text-[10px] text-blue-600/70 mt-3 italic">
+                                                        * Define onde o usuário deve clicar 5x para abrir os menus de coordenação.
+                                                    </p>
+                                                </div>
                                             </div>
 
                                             {/* Preview Mockup */}
@@ -353,21 +386,35 @@ export const SchoolConfig = () => {
                                                     <div className="h-4 w-full bg-slate-800/5 mb-3"></div>
                                                     
                                                     {/* Header Fake */}
-                                                    <div className={`px-3 flex items-center gap-2 mb-4 transition-all ${config.coverMode === 'image' ? 'justify-center' : ''}`}>
+                                                    <div className={`px-3 flex items-center gap-2 mb-4 transition-all relative ${config.coverMode === 'image' ? 'justify-center' : ''}`}>
                                                         {config.coverMode === 'image' && config.coverImageUrl ? (
-                                                            <div className="flex justify-center transition-all duration-300" style={{ height: `${(config.logoSize || 80) * 0.4}px`, maxHeight: '100px' }}>
+                                                            <div className="relative flex justify-center transition-all duration-300" style={{ height: `${(config.logoSize || 80) * 0.3}px`, maxHeight: '80px' }}>
                                                                 <img src={config.coverImageUrl} className="h-full w-auto object-contain" alt="Capa" />
+                                                                
+                                                                {/* Indicador de Click Area no Preview */}
+                                                                <div className={`absolute top-0 h-full bg-red-500/20 border border-red-500/40 rounded-sm pointer-events-none transition-all ${
+                                                                    (config.secretClickArea || 'right') === 'left' ? 'left-0 w-[45%]' : 
+                                                                    (config.secretClickArea || 'right') === 'right' ? 'right-0 w-[45%]' : 
+                                                                    'inset-0 w-full'
+                                                                }`}></div>
                                                             </div>
                                                         ) : (
-                                                            <>
-                                                                <div className="flex justify-center shrink-0 transition-all duration-300" style={{ height: `${(config.logoSize || 80) * 0.4}px` }}>
+                                                            <div className="flex items-center gap-2 relative">
+                                                                <div className="relative flex justify-center shrink-0 transition-all duration-300" style={{ height: `${(config.logoSize || 80) * 0.3}px` }}>
                                                                     {config.logoUrl ? <img src={config.logoUrl} className="h-full w-auto object-contain" alt="Logo" /> : <div className="h-full aspect-square bg-slate-200 rounded"></div>}
+                                                                    
+                                                                    {/* Indicador de Click Area no Preview */}
+                                                                    <div className={`absolute top-0 h-full bg-red-500/20 border border-red-500/40 rounded-sm pointer-events-none transition-all ${
+                                                                        (config.secretClickArea || 'right') === 'left' ? 'left-0 w-[45%]' : 
+                                                                        (config.secretClickArea || 'right') === 'right' ? 'right-0 w-[45%]' : 
+                                                                        'inset-0 w-full'
+                                                                    }`}></div>
                                                                 </div>
                                                                 <div className="flex flex-col justify-center overflow-hidden shrink-0">
-                                                                    <div className="h-[4px] w-12 rounded mb-1 opacity-80" style={{ backgroundColor: config.accentColor }}></div>
-                                                                    <div className="h-[6px] w-20 rounded opacity-90" style={{ backgroundColor: config.primaryColor }}></div>
+                                                                    <div className="h-[3px] w-8 rounded mb-0.5 opacity-80" style={{ backgroundColor: config.accentColor }}></div>
+                                                                    <div className="h-[4px] w-14 rounded opacity-90" style={{ backgroundColor: config.primaryColor }}></div>
                                                                 </div>
-                                                            </>
+                                                            </div>
                                                         )}
                                                     </div>
 
