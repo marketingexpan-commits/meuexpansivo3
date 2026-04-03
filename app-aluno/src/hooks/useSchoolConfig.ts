@@ -29,6 +29,7 @@ export interface SchoolConfig {
     appShortName?: string;
     appIconUrl?: string;
     appFaviconUrl?: string;
+    appIconRotation?: number;
 }
 
 const DEFAULT_CONFIG: SchoolConfig = {
@@ -51,7 +52,8 @@ const DEFAULT_CONFIG: SchoolConfig = {
     secretClickArea: 'right',
     appShortName: 'MeuExpansivo',
     appIconUrl: '',
-    appFaviconUrl: ''
+    appFaviconUrl: '',
+    appIconRotation: 0
 };
 
 export const useSchoolConfig = () => {

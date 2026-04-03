@@ -12,49 +12,7 @@
   <meta name="apple-mobile-web-app-title" content="MeuExpansivo">
   <meta name="theme-color" content="#172554">
   <link id="favicon" rel="icon" type="image/png" href="" />
-  <script>
-    (function () {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = function () {
-        console.log('Favicon image loaded successfully');
-        const canvas = document.createElement('canvas');
-        canvas.width = 128;
-        canvas.height = 128;
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, 128, 128);
 
-        // Manter proporção original no desenho do canvas (favicons)
-        const aspect = img.width / img.height;
-        let dw = 110, dh = 110;
-        if (aspect > 1) { // Larga
-          dh = 110 / aspect;
-        } else { // Alta
-          dw = 110 * aspect;
-        }
-
-        ctx.translate(64, 64);
-        ctx.rotate(7 * Math.PI / 180);
-        ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
-
-        const newLink = document.createElement('link');
-        newLink.rel = 'icon';
-        newLink.id = 'favicon';
-        newLink.type = 'image/png';
-        newLink.href = canvas.toDataURL('image/png');
-
-        const head = document.getElementsByTagName('head')[0];
-        const oldLinks = document.querySelectorAll('link[rel*="icon"]');
-        oldLinks.forEach(link => head.removeChild(link));
-        head.appendChild(newLink);
-        console.log('Favicon properly aspect-ratio scaled and injected');
-      };
-      img.onerror = function () {
-        console.error('Failed to load favicon image');
-      };
-      img.src = '';
-    })();
-  </script>
   <link rel="stylesheet" href="/style.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>

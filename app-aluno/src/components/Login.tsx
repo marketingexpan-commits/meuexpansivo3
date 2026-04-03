@@ -66,14 +66,40 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
       updateOrCreateLink('apple-touch-icon', config.appIconUrl);
     }
 
-    // Priorizar Favicon Independente para a aba do navegador
+    // Priorizar Favicon Independente para a aba do navegador com Rotação Dinâmica
     const faviconUrl = config.appFaviconUrl || config.appIconUrl;
     if (faviconUrl) {
-      updateOrCreateLink('icon', faviconUrl);
-      
-      // Atualizar favicon original do index.html se existir
-      const faviconLink = document.getElementById('favicon') as HTMLLinkElement;
-      if (faviconLink) faviconLink.setAttribute('href', faviconUrl);
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = faviconUrl;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, 128, 128);
+          
+          // Manter proporção original no desenho do canvas
+          const aspect = img.width / img.height;
+          let dw = 110, dh = 110;
+          if (aspect > 1) { // Larga
+            dh = 110 / aspect;
+          } else { // Alta
+            dw = 110 * aspect;
+          }
+
+          ctx.translate(64, 64);
+          ctx.rotate((config.appIconRotation ?? 0) * Math.PI / 180);
+          ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+          
+          const dynamicIconUrl = canvas.toDataURL('image/png');
+          updateOrCreateLink('icon', dynamicIconUrl);
+          
+          const faviconLink = document.getElementById('favicon') as HTMLLinkElement;
+          if (faviconLink) faviconLink.setAttribute('href', dynamicIconUrl);
+        }
+      };
     }
 
     // 4. Update Android Manifest Dinamicamente

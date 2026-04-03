@@ -43,6 +43,7 @@ interface SchoolConfigData {
     appShortName?: string;
     appIconUrl?: string;
     appFaviconUrl?: string;
+    appIconRotation?: number;
 }
 
 const DEFAULT_CONFIG: SchoolConfigData = {
@@ -95,7 +96,8 @@ const DEFAULT_CONFIG: SchoolConfigData = {
     secretClickArea: 'right',
     appShortName: 'MeuExpansivo',
     appIconUrl: '',
-    appFaviconUrl: ''
+    appFaviconUrl: '',
+    appIconRotation: 0
 };
 
 export const SchoolConfig = () => {
@@ -507,7 +509,12 @@ export const SchoolConfig = () => {
                                                                         {/* Preview do Ícone PWA (GIGANTE para melhor conferência) */}
                                                                         <div className="flex flex-col items-center gap-1.5 min-w-[80px]">
                                                                             <div className="w-20 h-20 bg-white rounded-[1.3rem] shadow-lg border border-slate-200 overflow-hidden flex items-center justify-center p-2.5 transition-all hover:scale-105 active:scale-95">
-                                                                                <img src={config.appIconUrl} alt="App Icon" className="w-full h-full object-contain" />
+                                                                                <img 
+                                                                                    src={config.appIconUrl} 
+                                                                                    alt="App Icon" 
+                                                                                    className="w-full h-full object-contain transition-transform" 
+                                                                                    style={{ transform: `rotate(${config.appIconRotation || 0}deg)` }}
+                                                                                />
                                                                             </div>
                                                                             <span className="text-[10px] font-bold text-slate-600 truncate max-w-[80px] text-center leading-tight tracking-tight uppercase">{config.appShortName || 'MeuExpansivo'}</span>
                                                                         </div>
@@ -534,6 +541,29 @@ export const SchoolConfig = () => {
                                                             />
                                                             <p className="text-[9px] text-slate-400 mt-2 italic">
                                                                 * Use uma URL de logotipo com fundo transparente (ex: Postimg). Este ícone aparecerá apenas na aba do Chrome/Safari.
+                                                            </p>
+                                                        </div>
+
+                                                        {/* Campo de Rotação do Favicon */}
+                                                        <div className="pt-4 border-t border-slate-100">
+                                                            <div className="flex justify-between items-center mb-1">
+                                                                <label className="block text-[10px] font-bold text-slate-500 uppercase">
+                                                                    Rotação do Favicon
+                                                                </label>
+                                                                <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded leading-none">
+                                                                    {config.appIconRotation || 0}°
+                                                                </span>
+                                                            </div>
+                                                            <input
+                                                                type="range"
+                                                                min="0"
+                                                                max="360"
+                                                                value={config.appIconRotation ?? 7}
+                                                                onChange={e => setConfig({ ...config, appIconRotation: parseInt(e.target.value) })}
+                                                                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                                            />
+                                                            <p className="text-[9px] text-slate-400 mt-1 italic">
+                                                                * Ajuste para inclinar a logo na aba do navegador. (Padrão: 7°)
                                                             </p>
                                                         </div>
                                                     </div>
