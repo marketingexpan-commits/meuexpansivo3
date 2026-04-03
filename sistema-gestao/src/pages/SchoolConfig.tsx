@@ -44,6 +44,7 @@ interface SchoolConfigData {
     appIconUrl?: string;
     appFaviconUrl?: string;
     appIconRotation?: number;
+    appIconSize?: number;
 }
 
 const DEFAULT_CONFIG: SchoolConfigData = {
@@ -97,7 +98,8 @@ const DEFAULT_CONFIG: SchoolConfigData = {
     appShortName: 'MeuExpansivo',
     appIconUrl: '',
     appFaviconUrl: '',
-    appIconRotation: 0
+    appIconRotation: 0,
+    appIconSize: 110
 };
 
 export const SchoolConfig = () => {
@@ -527,6 +529,42 @@ export const SchoolConfig = () => {
                                                             </p>
                                                         </div>
 
+                                                        {/* Simulador de Aba de Navegador (PREVIEW REAL) */}
+                                                        <div className="mb-6 p-4 bg-slate-100/50 rounded-xl border border-slate-200">
+                                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-3 tracking-widest text-center">
+                                                                Simulador de Aba do Navegador
+                                                            </label>
+                                                            
+                                                            <div className="w-full h-8 bg-[#dee1e6] rounded-t-lg flex items-end px-2 gap-1 overflow-hidden">
+                                                                {/* Tab Ativa */}
+                                                                <div className="bg-white h-7 px-3 rounded-t-lg min-w-[140px] flex items-center gap-2 shadow-[0_-1px_3px_rgba(0,0,0,0.05)] relative">
+                                                                    <div className="w-4 h-4 flex items-center justify-center overflow-hidden shrink-0">
+                                                                        <img 
+                                                                            src={config.appFaviconUrl || config.appIconUrl || 'https://i.postimg.cc/8PzXrtS3/favicon-placeholder.png'} 
+                                                                            alt="Tab Icon" 
+                                                                            className="transition-all"
+                                                                            style={{ 
+                                                                                transform: `rotate(${config.appIconRotation || 0}deg) scale(${(config.appIconSize || 110) / 110})`,
+                                                                                width: '100%',
+                                                                                height: '100%',
+                                                                                objectFit: 'contain'
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                    <span className="text-[10px] text-slate-700 truncate font-medium">
+                                                                        {config.appShortName || 'Meu Expansivo'}
+                                                                    </span>
+                                                                    <div className="ml-auto w-3 h-3 hover:bg-slate-100 rounded-full flex items-center justify-center text-[8px] text-slate-400">✕</div>
+                                                                </div>
+                                                                {/* Tab Inativa */}
+                                                                <div className="h-6 px-3 rounded-t-md min-w-[100px] flex items-center gap-2 opacity-40">
+                                                                    <div className="w-3 h-3 bg-slate-400 rounded-sm"></div>
+                                                                    <div className="w-12 h-1.5 bg-slate-400 rounded-full"></div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="w-full h-1 bg-white shadow-sm"></div>
+                                                        </div>
+
                                                         {/* Campo Independente para Favicon (Aba do Navegador) */}
                                                         <div className="pt-4 border-t border-slate-100">
                                                             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2 flex items-center gap-2">
@@ -545,6 +583,7 @@ export const SchoolConfig = () => {
                                                         </div>
 
                                                         {/* Campo de Rotação do Favicon */}
+                                                        {/* Campo de Rotação do Favicon */}
                                                         <div className="pt-4 border-t border-slate-100">
                                                             <div className="flex justify-between items-center mb-1">
                                                                 <label className="block text-[10px] font-bold text-slate-500 uppercase">
@@ -558,12 +597,35 @@ export const SchoolConfig = () => {
                                                                 type="range"
                                                                 min="0"
                                                                 max="360"
-                                                                value={config.appIconRotation ?? 7}
+                                                                value={config.appIconRotation ?? 0}
                                                                 onChange={e => setConfig({ ...config, appIconRotation: parseInt(e.target.value) })}
                                                                 className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                                                             />
                                                             <p className="text-[9px] text-slate-400 mt-1 italic">
-                                                                * Ajuste para inclinar a logo na aba do navegador. (Padrão: 7°)
+                                                                * Ajuste para inclinar a logo na aba do navegador. (Padrão: 0°)
+                                                            </p>
+                                                        </div>
+
+                                                        {/* Campo de Tamanho do Favicon */}
+                                                        <div className="pt-4 border-t border-slate-100">
+                                                            <div className="flex justify-between items-center mb-1">
+                                                                <label className="block text-[10px] font-bold text-slate-500 uppercase">
+                                                                    Tamanho do Favicon
+                                                                </label>
+                                                                <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded leading-none">
+                                                                    {config.appIconSize || 110}px
+                                                                </span>
+                                                            </div>
+                                                            <input
+                                                                type="range"
+                                                                min="50"
+                                                                max="128"
+                                                                value={config.appIconSize ?? 110}
+                                                                onChange={e => setConfig({ ...config, appIconSize: parseInt(e.target.value) })}
+                                                                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                                            />
+                                                            <p className="text-[9px] text-slate-400 mt-1 italic">
+                                                                * Aumente para preencher melhor o espaço da aba do navegador. (Padrão: 110px)
                                                             </p>
                                                         </div>
                                                     </div>

@@ -81,12 +81,13 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
           ctx.clearRect(0, 0, 128, 128);
           
           // Manter proporção original no desenho do canvas
+          const targetSize = config.appIconSize || 110;
           const aspect = img.width / img.height;
-          let dw = 110, dh = 110;
+          let dw = targetSize, dh = targetSize;
           if (aspect > 1) { // Larga
-            dh = 110 / aspect;
+            dh = targetSize / aspect;
           } else { // Alta
-            dw = 110 * aspect;
+            dw = targetSize * aspect;
           }
 
           ctx.translate(64, 64);
