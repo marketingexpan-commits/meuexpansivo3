@@ -28,6 +28,87 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
   const [showStaticLogo, setShowStaticLogo] = useState(false);
   const [showText, setShowText] = useState(false);
 
+  // --- PWA DYNAMIC INJECTOR (IOS & ANDROID) ---
+  useEffect(() => {
+    if (!config) return;
+
+    // 1. Update Document Title
+    document.title = config.appName || 'Meu Expansivo';
+
+    // 2. Update iOS Meta Tags
+    const updateOrCreateMeta = (name: string, content: string) => {
+      let meta = document.querySelector(`meta[name="${name}"]`);
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.setAttribute('name', name);
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute('content', content);
+    };
+
+    updateOrCreateMeta('apple-mobile-web-app-title', config.appShortName || 'MeuExpansivo');
+    updateOrCreateMeta('apple-mobile-web-app-capable', 'yes');
+    updateOrCreateMeta('apple-mobile-web-app-status-bar-style', 'default');
+
+    // 3. Update Apple Touch Icon
+    const updateOrCreateLink = (rel: string, href: string) => {
+      let link = document.querySelector(`link[rel="${rel}"]`);
+      if (!link) {
+        link = document.createElement('link');
+        link.setAttribute('rel', rel);
+        document.head.appendChild(link);
+      }
+      link.setAttribute('href', href);
+    };
+
+    if (config.appIconUrl) {
+      updateOrCreateLink('apple-touch-icon', config.appIconUrl);
+      updateOrCreateLink('icon', config.appIconUrl);
+    }
+
+    // 4. Update Android Manifest Dinamicamente
+    const generateDynamicManifest = () => {
+      const manifest = {
+        name: config.appName || 'Meu Expansivo',
+        short_name: config.appShortName || 'MeuExpansivo',
+        description: `Aplicativo do Aluno - ${config.appName}`,
+        start_url: '.',
+        display: 'standalone',
+        background_color: '#ffffff',
+        theme_color: config.primaryColor || '#172554',
+        icons: [
+          {
+            src: config.appIconUrl || '/icon-512.png',
+            sizes: '192x192',
+            type: 'image/png'
+          },
+          {
+            src: config.appIconUrl || '/icon-512.png',
+            sizes: '512x512',
+            type: 'image/png'
+          }
+        ]
+      };
+
+      const stringManifest = JSON.stringify(manifest);
+      const blob = new Blob([stringManifest], { type: 'application/json' });
+      const manifestURL = URL.createObjectURL(blob);
+      
+      let manifestLink = document.querySelector('link[rel="manifest"]');
+      if (!manifestLink) {
+        manifestLink = document.createElement('link');
+        manifestLink.setAttribute('rel', 'manifest');
+        document.head.appendChild(manifestLink);
+      }
+      manifestLink.setAttribute('href', manifestURL);
+      
+      return () => URL.revokeObjectURL(manifestURL);
+    };
+
+    const cleanupManifest = generateDynamicManifest();
+    return () => cleanupManifest();
+  }, [config]);
+
   // --- CONTADOR DE VISITAS PÚBLICAS ---
   useEffect(() => {
     try {

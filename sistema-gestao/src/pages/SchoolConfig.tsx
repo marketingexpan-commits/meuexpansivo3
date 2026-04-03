@@ -38,6 +38,8 @@ interface SchoolConfigData {
     adminFooterText: string;
     adminCopyright: string;
     secretClickArea?: 'left' | 'right' | 'total';
+    appShortName?: string;
+    appIconUrl?: string;
 }
 
 const DEFAULT_CONFIG: SchoolConfigData = {
@@ -87,7 +89,9 @@ const DEFAULT_CONFIG: SchoolConfigData = {
     adminSystemSubtitle: 'Gestão Escolar',
     adminFooterText: 'Sistema Meu Expansivo - Gestão Escolar v1.0',
     adminCopyright: '© 2026 Expansivo Rede de Ensino. Todos os direitos reservados.',
-    secretClickArea: 'right'
+    secretClickArea: 'right',
+    appShortName: 'MeuExpansivo',
+    appIconUrl: '/icon-512.png'
 };
 
 export const SchoolConfig = () => {
@@ -375,6 +379,40 @@ export const SchoolConfig = () => {
                                                         * Define onde o usuário deve clicar 5x para abrir os menus de coordenação.
                                                     </p>
                                                 </div>
+
+                                                {/* CONFIGURAÇÃO PWA (ÍCONE E NOME) */}
+                                                <div className="mt-8 pt-6 border-t border-slate-200">
+                                                    <label className="block text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                                        <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                                                        Personalização da Tela de Início (PWA)
+                                                    </label>
+
+                                                    <div className="space-y-4">
+                                                        <div>
+                                                            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nome abaixo do Ícone</label>
+                                                            <input
+                                                                type="text"
+                                                                value={config.appShortName || ''}
+                                                                onChange={e => setConfig({ ...config, appShortName: e.target.value })}
+                                                                className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none"
+                                                                placeholder="Ex: MeuExpansivo"
+                                                            />
+                                                            <p className="text-[9px] text-slate-400 mt-1">O nome que aparece na tela do celular (máx. 12 carac.).</p>
+                                                        </div>
+
+                                                        <div>
+                                                            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">URL do Ícone (Quadrado 1:1)</label>
+                                                            <input
+                                                                type="text"
+                                                                value={config.appIconUrl || ''}
+                                                                onChange={e => setConfig({ ...config, appIconUrl: e.target.value })}
+                                                                className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none"
+                                                                placeholder="https://..."
+                                                            />
+                                                            <p className="text-[9px] text-slate-400 mt-1">Obrigatório ser uma imagem quadrada, ex.: 512x512 PNG.</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
 
                                             {/* Preview Mockup */}
@@ -382,6 +420,19 @@ export const SchoolConfig = () => {
                                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1">
                                                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Preview Real
                                                 </span>
+                                                
+                                                {/* PWA Icon Simulator (Ícone flutuante do iPhone) */}
+                                                <div className="mb-4 flex flex-col items-center gap-1 animate-fade-in">
+                                                    <div className="w-14 h-14 bg-white rounded-[1.1rem] shadow-lg border border-slate-200 overflow-hidden flex items-center justify-center p-2 transition-all">
+                                                        {config.appIconUrl ? (
+                                                            <img src={config.appIconUrl} alt="App Icon" className="w-full h-full object-contain" />
+                                                        ) : (
+                                                            <Smartphone className="w-6 h-6 text-slate-300" />
+                                                        )}
+                                                    </div>
+                                                    <span className="text-[9px] font-bold text-slate-600 truncate max-w-[80px]">{config.appShortName || 'MeuExpansivo'}</span>
+                                                </div>
+
                                                 <div className="w-full aspect-[9/16] max-w-[180px] bg-slate-50 border-4 border-slate-800 rounded-[2rem] shadow-xl overflow-hidden relative flex flex-col">
                                                     <div className="h-4 w-full bg-slate-800/5 mb-3"></div>
                                                     

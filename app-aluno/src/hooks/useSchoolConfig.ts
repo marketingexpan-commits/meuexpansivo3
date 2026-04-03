@@ -26,6 +26,8 @@ export interface SchoolConfig {
     contactMessage: string;
     developerMessage: string;
     secretClickArea?: 'left' | 'right' | 'total';
+    appShortName?: string;
+    appIconUrl?: string;
 }
 
 const DEFAULT_CONFIG: SchoolConfig = {
@@ -45,7 +47,9 @@ const DEFAULT_CONFIG: SchoolConfig = {
     developerUrl: 'https://wa.me/5584988739180',
     contactMessage: 'Olá, gostaria de informações sobre a escola.',
     developerMessage: 'Olá, preciso de suporte no App do Aluno.',
-    secretClickArea: 'right'
+    secretClickArea: 'right',
+    appShortName: 'MeuExpansivo',
+    appIconUrl: '/icon-512.png'
 };
 
 export const useSchoolConfig = () => {
