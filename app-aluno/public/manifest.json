@@ -1,7 +1,7 @@
 {
-  "name": "App do Aluno",
-  "short_name": "App do Aluno",
-  "description": "Aplicativo do Aluno - Sistema",
+  "name": "",
+  "short_name": "",
+  "description": "Aplicativo",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#ffffff",
