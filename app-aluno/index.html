@@ -6,11 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Meu Expansivo</title>
   <link rel="manifest" href="/manifest.json">
-  <link rel="apple-touch-icon" href="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png">
+  <link rel="apple-touch-icon" href="/icon-512.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#172554">
-  <link id="favicon" rel="icon" type="image/png" href="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png" />
+  <link id="favicon" rel="icon" type="image/png" href="/icon-512.png" />
   <script>
     (function () {
       const img = new Image();
@@ -22,9 +22,19 @@
         canvas.height = 128;
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, 128, 128);
+
+        // Manter proporção original no desenho do canvas (favicons)
+        const aspect = img.width / img.height;
+        let dw = 110, dh = 110;
+        if (aspect > 1) { // Larga
+          dh = 110 / aspect;
+        } else { // Alta
+          dw = 110 * aspect;
+        }
+
         ctx.translate(64, 64);
         ctx.rotate(7 * Math.PI / 180);
-        ctx.drawImage(img, -64, -64, 128, 128);
+        ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
 
         const newLink = document.createElement('link');
         newLink.rel = 'icon';
@@ -36,12 +46,12 @@
         const oldLinks = document.querySelectorAll('link[rel*="icon"]');
         oldLinks.forEach(link => head.removeChild(link));
         head.appendChild(newLink);
-        console.log('Favicon rotated and injected');
+        console.log('Favicon properly aspect-ratio scaled and injected');
       };
       img.onerror = function () {
-        console.error('Failed to load favicon image for rotation');
+        console.error('Failed to load favicon image');
       };
-      img.src = 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png?v=' + Date.now();
+      img.src = '/icon-512.png';
     })();
   </script>
   <link rel="stylesheet" href="/style.css">
