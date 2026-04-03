@@ -7,6 +7,46 @@ import { MuralDigital } from './MuralDigital';
 import { LegalTermsManager } from '../components/LegalTermsManager';
 import { Upload, Loader2 } from 'lucide-react';
 
+// Função auxiliar para recortar bordas transparentes (TRIM) de logotipos
+const trimCanvas = (img: HTMLImageElement): HTMLImageElement | HTMLCanvasElement => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return img;
+
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    let top = canvas.height, left = canvas.width, bottom = 0, right = 0;
+
+    for (let y = 0; y < canvas.height; y++) {
+        for (let x = 0; x < canvas.width; x++) {
+            const alpha = data[(y * canvas.width + x) * 4 + 3];
+            if (alpha > 0) {
+                if (x < left) left = x;
+                if (x > right) right = x;
+                if (y < top) top = y;
+                if (y > bottom) bottom = y;
+            }
+        }
+    }
+
+    if (right < left || bottom < top) return img;
+
+    const trimmedCanvas = document.createElement('canvas');
+    const trimmedCtx = trimmedCanvas.getContext('2d');
+    const trimmedWidth = right - left + 1;
+    const trimmedHeight = bottom - top + 1;
+
+    trimmedCanvas.width = trimmedWidth;
+    trimmedCanvas.height = trimmedHeight;
+    trimmedCtx?.drawImage(canvas, left, top, trimmedWidth, trimmedHeight, 0, 0, trimmedWidth, trimmedHeight);
+
+    return trimmedCanvas;
+};
+
 interface UnitContact {
     name: string;
     address: string;
@@ -45,6 +85,8 @@ interface SchoolConfigData {
     appFaviconUrl?: string;
     appIconRotation?: number;
     appIconSize?: number;
+    appPwaIconSize?: number;
+    appIconBgColor?: string;
 }
 
 const DEFAULT_CONFIG: SchoolConfigData = {
@@ -99,7 +141,9 @@ const DEFAULT_CONFIG: SchoolConfigData = {
     appIconUrl: '',
     appFaviconUrl: '',
     appIconRotation: 0,
-    appIconSize: 110
+    appIconSize: 110,
+    appPwaIconSize: 85,
+    appIconBgColor: '#FFFFFF'
 };
 
 export const SchoolConfig = () => {
@@ -107,6 +151,9 @@ export const SchoolConfig = () => {
     const [saving, setSaving] = useState(false);
     const [config, setConfig] = useState<SchoolConfigData>(DEFAULT_CONFIG);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [iconPreviewUrl, setIconPreviewUrl] = useState<string | null>(null);
+    const [iconCanvasRef, setIconCanvasRef] = useState<HTMLCanvasElement | null>(null);
+    const [originalIconImg, setOriginalIconImg] = useState<HTMLImageElement | null>(null);
     const [activeTab, setActiveTab] = useState<'general' | 'admin' | 'mural' | 'terms'>('general');
 
     useEffect(() => {
@@ -138,7 +185,54 @@ export const SchoolConfig = () => {
         }
     };
 
+    // Efeito para carregar o ícone atual na memória (para permitir redimensionamento de ícones já salvos)
+    useEffect(() => {
+        if (config.appIconUrl && !originalIconImg && config.appIconUrl.startsWith('http')) {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.src = config.appIconUrl;
+            img.onload = () => setOriginalIconImg(img);
+        }
+    }, [config.appIconUrl]);
+
     const [uploadingIcon, setUploadingIcon] = useState(false);
+
+    // Função para processar a imagem no Canvas com o tamanho atual do slider
+    const processIcon = (img: HTMLImageElement, pwaSize: number, pwaBgColor?: string) => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const size = 512;
+        canvas.width = size;
+        canvas.height = size;
+
+        if (ctx) {
+            // Recortar bordas vazias da imagem antes de desenhar
+            const trimmedImg = trimCanvas(img);
+            const iw = trimmedImg.width;
+            const ih = trimmedImg.height;
+
+            // Aplicar Cor de Fundo selecionada (ou Branco como fallback)
+            ctx.fillStyle = pwaBgColor || '#FFFFFF';
+            ctx.fillRect(0, 0, size, size);
+
+            // Cálculo de enquadramento baseado no slider de porcentagem (0-100%)
+            const margin = (100 - pwaSize) / 100;
+            const innerSize = size * (1 - margin);
+            
+            const scale = Math.min(innerSize / iw, innerSize / ih);
+            const w = iw * scale;
+            const h = ih * scale;
+            const x = (size - w) / 2;
+            const y = (size - h) / 2;
+
+            ctx.drawImage(trimmedImg, x, y, w, h);
+            
+            // Preview Instantâneo (DataURL)
+            const previewUrl = canvas.toDataURL('image/png');
+            setIconPreviewUrl(previewUrl);
+            setIconCanvasRef(canvas);
+        }
+    };
 
     const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -146,7 +240,6 @@ export const SchoolConfig = () => {
 
         setUploadingIcon(true);
         try {
-            // 1. Processar a imagem no Canvas para garantir proporção 1:1 profissional
             const img = new Image();
             const objectUrl = URL.createObjectURL(file);
             
@@ -156,73 +249,60 @@ export const SchoolConfig = () => {
                 img.src = objectUrl;
             });
 
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            const size = 512;
-            canvas.width = size;
-            canvas.height = size;
-
-            if (ctx) {
-                // Fundo Branco (Ideal para ícones de celular/PWA no Android/iOS)
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(0, 0, size, size);
-
-                // Cálculo de enquadramento mantendo proporção (com 15% de margem)
-                const margin = 0.15;
-                const innerSize = size * (1 - margin);
-                const scale = Math.min(innerSize / img.width, innerSize / img.height);
-                const w = img.width * scale;
-                const h = img.height * scale;
-                const x = (size - w) / 2;
-                const y = (size - h) / 2;
-
-                ctx.drawImage(img, x, y, w, h);
-            }
-
-            // 2. Converter Canvas para Blob
-            const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
-            if (!blob) throw new Error("Erro ao processar imagem.");
-
-            // 3. Upload para Firebase Storage (Pasta organizada para ícones)
-            const storagePath = `mural/app_icons/icon_${Date.now()}.png`;
-            const storageRef = ref(storage, storagePath);
-            const snapshot = await uploadBytes(storageRef, blob);
-            const downloadUrl = await getDownloadURL(snapshot.ref);
-
-            // 4. Atualizar Configuração
-            setConfig({ ...config, appIconUrl: downloadUrl });
-            URL.revokeObjectURL(objectUrl);
+            setOriginalIconImg(img);
+            processIcon(img, config.appPwaIconSize || 85);
             
         } catch (error) {
-            console.error("Erro no upload do ícone:", error);
-            alert("Erro ao processar e enviar ícone.");
+            console.error("Erro ao carregar ícone:", error);
+            alert("Erro ao carregar imagem.");
         } finally {
             setUploadingIcon(false);
             if (e.target) e.target.value = '';
         }
     };
 
+    // Efeito para atualizar o Ícone EM TEMPO REAL quando o slider ou a COR mudarem
+    useEffect(() => {
+        if (originalIconImg) {
+            processIcon(originalIconImg, config.appPwaIconSize || 85, config.appIconBgColor || '#FFFFFF');
+        }
+    }, [config.appPwaIconSize, config.appIconBgColor, originalIconImg]);
+
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log("Iniciando salvamento...");
         try {
             setSaving(true);
             setMessage(null);
 
+            let finalConfig = { ...config };
+
+            // Se o usuário ajustou o ícone (tem um novo canvas em memória), enviamos para o Storage AGORA no clique do Salvar Geral
+            if (iconCanvasRef) {
+                const blob = await new Promise<Blob | null>(resolve => iconCanvasRef.toBlob(resolve, 'image/png'));
+                if (blob) {
+                    const storagePath = `mural/app_icons/icon_${Date.now()}.png`;
+                    const storageRef = ref(storage, storagePath);
+                    const snapshot = await uploadBytes(storageRef, blob);
+                    const downloadUrl = await getDownloadURL(snapshot.ref);
+                    finalConfig.appIconUrl = downloadUrl;
+                }
+            }
+
             const docRef = doc(db, 'school_config', 'global');
-            console.log("Definindo documento...", config);
-            await setDoc(docRef, config);
-            console.log("Documento salvo!");
+            await setDoc(docRef, finalConfig);
 
             setMessage({ type: 'success', text: 'Configurações salvas com sucesso!' });
-            alert("Sucesso! Configurações salvas."); // Debug fallback
+            alert("Sucesso! Configurações salvas.");
+            
+            // Limpar estados temporários para não re-enviar no próximo save
+            setIconCanvasRef(null);
+            setOriginalIconImg(null);
+            
         } catch (error) {
             console.error("Erro ao salvar:", error);
-            setMessage({ type: 'error', text: 'Erro ao salvar configurações: ' + error });
-            alert("Erro ao salvar: " + error); // Debug fallback
+            setMessage({ type: 'error', text: 'Erro ao salvar: ' + error });
         } finally {
             setSaving(false);
-            console.log("Finalizado.");
         }
     };
 
@@ -510,9 +590,9 @@ export const SchoolConfig = () => {
                                                                         
                                                                         {/* Preview do Ícone PWA (GIGANTE para melhor conferência) */}
                                                                         <div className="flex flex-col items-center gap-1.5 min-w-[80px]">
-                                                                            <div className="w-20 h-20 bg-white rounded-[1.3rem] shadow-lg border border-slate-200 overflow-hidden flex items-center justify-center p-2.5 transition-all hover:scale-105 active:scale-95">
+                                                                            <div className="w-20 h-20 bg-white rounded-[1.3rem] shadow-lg border border-slate-200 overflow-hidden flex items-center justify-center p-0 transition-all hover:scale-105 active:scale-95">
                                                                                 <img 
-                                                                                    src={config.appIconUrl} 
+                                                                                    src={iconPreviewUrl || config.appIconUrl} 
                                                                                     alt="App Icon" 
                                                                                     className="w-full h-full object-contain transition-transform" 
                                                                                     style={{ transform: `rotate(${config.appIconRotation || 0}deg)` }}
@@ -524,6 +604,44 @@ export const SchoolConfig = () => {
                                                                 )}
                                                             </div>
                                                             
+                                                            <div className="flex flex-col gap-4 mt-2">
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-2">
+                                                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                                                                        Cor de Fundo do Ícone
+                                                                    </span>
+                                                                    <div className="flex items-center gap-2 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">
+                                                                        <input
+                                                                            type="color"
+                                                                            value={config.appIconBgColor || '#FFFFFF'}
+                                                                            onChange={e => setConfig({ ...config, appIconBgColor: e.target.value })}
+                                                                            className="w-5 h-5 rounded-md border-none cursor-pointer bg-transparent"
+                                                                        />
+                                                                        <span className="text-[9px] font-mono font-bold text-slate-600 uppercase tabular-nums">
+                                                                            {config.appIconBgColor || '#FFFFFF'}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div>
+                                                                    <div className="flex justify-between items-center mb-1">
+                                                                        <span className="text-[10px] font-bold text-slate-500 uppercase">
+                                                                            Tamanho da Logo no Ícone
+                                                                        </span>
+                                                                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded leading-none">
+                                                                            {config.appPwaIconSize || 85}%
+                                                                        </span>
+                                                                    </div>
+                                                                    <input
+                                                                        type="range"
+                                                                        min="50"
+                                                                        max="100"
+                                                                        value={config.appPwaIconSize ?? 85}
+                                                                        onChange={e => setConfig({ ...config, appPwaIconSize: parseInt(e.target.value) })}
+                                                                        className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                                                    />
+                                                                </div>
+                                                            </div>
                                                             <p className="text-[9px] text-slate-400 mt-2 italic">
                                                                 * Envie qualquer logotipo. O sistema cuidará do enquadramento automático profissional.
                                                             </p>
@@ -540,7 +658,7 @@ export const SchoolConfig = () => {
                                                                 <div className="bg-white h-7 px-3 rounded-t-lg min-w-[140px] flex items-center gap-2 shadow-[0_-1px_3px_rgba(0,0,0,0.05)] relative">
                                                                     <div className="w-4 h-4 flex items-center justify-center overflow-hidden shrink-0">
                                                                         <img 
-                                                                            src={config.appFaviconUrl || config.appIconUrl || 'https://i.postimg.cc/8PzXrtS3/favicon-placeholder.png'} 
+                                                                            src={config.appFaviconUrl || iconPreviewUrl || config.appIconUrl || 'https://i.postimg.cc/8PzXrtS3/favicon-placeholder.png'} 
                                                                             alt="Tab Icon" 
                                                                             className="transition-all"
                                                                             style={{ 

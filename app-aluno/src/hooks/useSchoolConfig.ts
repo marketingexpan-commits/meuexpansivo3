@@ -31,6 +31,8 @@ export interface SchoolConfig {
     appFaviconUrl?: string;
     appIconRotation?: number;
     appIconSize?: number;
+    appPwaIconSize?: number;
+    appIconBgColor?: string;
 }
 
 const DEFAULT_CONFIG: SchoolConfig = {
@@ -55,7 +57,9 @@ const DEFAULT_CONFIG: SchoolConfig = {
     appIconUrl: '',
     appFaviconUrl: '',
     appIconRotation: 0,
-    appIconSize: 110
+    appIconSize: 110,
+    appPwaIconSize: 85,
+    appIconBgColor: '#FFFFFF'
 };
 
 export const useSchoolConfig = () => {
