@@ -127,9 +127,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
         ] : []
       };
 
-      const stringManifest = JSON.stringify(manifest);
-      const blob = new Blob([stringManifest], { type: 'application/json' });
-      const manifestURL = URL.createObjectURL(blob);
+      const stringManifest = encodeURIComponent(JSON.stringify(manifest));
+      const manifestURL = `data:application/manifest+json;charset=utf-8,${stringManifest}`;
       
       let manifestLink = document.querySelector('link[rel="manifest"]');
       if (!manifestLink) {
@@ -139,7 +138,9 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
       }
       manifestLink.setAttribute('href', manifestURL);
       
-      return () => URL.revokeObjectURL(manifestURL);
+      return () => {
+         // Cleanup if needed
+      };
     };
 
     const cleanupManifest = generateDynamicManifest();
