@@ -3,7 +3,7 @@ import { Smartphone, Save, AlertCircle, CheckCircle, Plus } from 'lucide-react';
 import { db, storage } from '../firebaseConfig';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { MuralDigital } from './MuralDigital'; 
+import { MuralDigital } from './MuralDigital';
 import { LegalTermsManager } from '../components/LegalTermsManager';
 import { Upload, Loader2 } from 'lucide-react';
 
@@ -218,7 +218,7 @@ export const SchoolConfig = () => {
             // Cálculo de enquadramento baseado no slider de porcentagem (0-100%)
             const margin = (100 - pwaSize) / 100;
             const innerSize = size * (1 - margin);
-            
+
             const scale = Math.min(innerSize / iw, innerSize / ih);
             const w = iw * scale;
             const h = ih * scale;
@@ -226,7 +226,7 @@ export const SchoolConfig = () => {
             const y = (size - h) / 2;
 
             ctx.drawImage(trimmedImg, x, y, w, h);
-            
+
             // Preview Instantâneo (DataURL)
             const previewUrl = canvas.toDataURL('image/png');
             setIconPreviewUrl(previewUrl);
@@ -242,7 +242,7 @@ export const SchoolConfig = () => {
         try {
             const img = new Image();
             const objectUrl = URL.createObjectURL(file);
-            
+
             await new Promise((resolve, reject) => {
                 img.onload = resolve;
                 img.onerror = reject;
@@ -251,7 +251,7 @@ export const SchoolConfig = () => {
 
             setOriginalIconImg(img);
             processIcon(img, config.appPwaIconSize || 85);
-            
+
         } catch (error) {
             console.error("Erro ao carregar ícone:", error);
             alert("Erro ao carregar imagem.");
@@ -293,11 +293,11 @@ export const SchoolConfig = () => {
 
             setMessage({ type: 'success', text: 'Configurações salvas com sucesso!' });
             alert("Sucesso! Configurações salvas.");
-            
+
             // Limpar estados temporários para não re-enviar no próximo save
             setIconCanvasRef(null);
             setOriginalIconImg(null);
-            
+
         } catch (error) {
             console.error("Erro ao salvar:", error);
             setMessage({ type: 'error', text: 'Erro ao salvar: ' + error });
@@ -429,7 +429,7 @@ export const SchoolConfig = () => {
                                             <span className="font-semibold text-sm">Anexo de Imagem (PNG Direto)</span>
                                         </label>
                                     </div>
-                                    
+
                                     {config.coverMode !== 'image' ? (
                                         <div className="flex gap-4 items-start bg-slate-50 p-4 rounded-xl border border-slate-100 animate-fade-in">
                                             <div className="w-20 h-20 bg-white rounded-xl border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
@@ -486,14 +486,14 @@ export const SchoolConfig = () => {
                                                     </div>
                                                     <span className="text-sm font-bold bg-blue-100 text-blue-800 px-3 py-1 rounded-lg border border-blue-200">{config.logoSize || 80}px</span>
                                                 </div>
-                                                <input 
-                                                    type="range" 
-                                                    min="40" 
-                                                    max="240" 
+                                                <input
+                                                    type="range"
+                                                    min="40"
+                                                    max="240"
                                                     step="5"
-                                                    value={config.logoSize || 80} 
-                                                    onChange={e => setConfig({...config, logoSize: parseInt(e.target.value)})}
-                                                    className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600 transition-all hover:accent-blue-700" 
+                                                    value={config.logoSize || 80}
+                                                    onChange={e => setConfig({ ...config, logoSize: parseInt(e.target.value) })}
+                                                    className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600 transition-all hover:accent-blue-700"
                                                 />
                                                 <div className="flex justify-between text-xs text-slate-400 mt-3 font-semibold px-1">
                                                     <span>Min (40px)</span>
@@ -517,11 +517,10 @@ export const SchoolConfig = () => {
                                                                 key={item.id}
                                                                 type="button"
                                                                 onClick={() => setConfig({ ...config, secretClickArea: item.id as any })}
-                                                                className={`py-2 px-3 rounded-lg text-xs font-bold transition-all border ${
-                                                                    (config.secretClickArea || 'right') === item.id
+                                                                className={`py-2 px-3 rounded-lg text-xs font-bold transition-all border ${(config.secretClickArea || 'right') === item.id
                                                                         ? 'bg-blue-600 text-white border-blue-700 shadow-sm'
                                                                         : 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50'
-                                                                }`}
+                                                                    }`}
                                                             >
                                                                 {item.label}
                                                             </button>
@@ -554,7 +553,7 @@ export const SchoolConfig = () => {
 
                                                         <div>
                                                             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2">Ícone do Aplicativo (PNG)</label>
-                                                            
+
                                                             <div className="flex items-center gap-3">
                                                                 <div className="relative group">
                                                                     <input
@@ -567,11 +566,10 @@ export const SchoolConfig = () => {
                                                                     />
                                                                     <label
                                                                         htmlFor="app-icon-upload"
-                                                                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border shadow-sm ${
-                                                                            uploadingIcon 
-                                                                                ? 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed' 
+                                                                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border shadow-sm ${uploadingIcon
+                                                                                ? 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed'
                                                                                 : 'bg-white text-blue-900 border-blue-100 hover:bg-blue-50 active:scale-95'
-                                                                        }`}
+                                                                            }`}
                                                                     >
                                                                         {uploadingIcon ? (
                                                                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -587,14 +585,14 @@ export const SchoolConfig = () => {
                                                                         <div className="text-[9px] text-green-600 font-bold flex items-center gap-1 bg-green-50 px-2 py-1 rounded-lg border border-green-100 h-fit">
                                                                             <CheckCircle className="w-3 h-3" /> Ícone Pronto
                                                                         </div>
-                                                                        
+
                                                                         {/* Preview do Ícone PWA (GIGANTE para melhor conferência) */}
                                                                         <div className="flex flex-col items-center gap-1.5 min-w-[80px]">
                                                                             <div className="w-20 h-20 bg-white rounded-[1.3rem] shadow-lg border border-slate-200 overflow-hidden flex items-center justify-center p-0 transition-all hover:scale-105 active:scale-95">
-                                                                                <img 
-                                                                                    src={iconPreviewUrl || config.appIconUrl} 
-                                                                                    alt="App Icon" 
-                                                                                    className="w-full h-full object-contain transition-transform" 
+                                                                                <img
+                                                                                    src={iconPreviewUrl || config.appIconUrl}
+                                                                                    alt="App Icon"
+                                                                                    className="w-full h-full object-contain transition-transform"
                                                                                 />
                                                                             </div>
                                                                             <span className="text-[10px] font-bold text-slate-600 truncate max-w-[80px] text-center leading-tight tracking-tight uppercase">{config.appShortName || 'MeuExpansivo'}</span>
@@ -602,7 +600,7 @@ export const SchoolConfig = () => {
                                                                     </div>
                                                                 )}
                                                             </div>
-                                                            
+
                                                             <div className="flex flex-col gap-4 mt-2">
                                                                 <div className="flex items-center justify-between">
                                                                     <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-2">
@@ -651,16 +649,16 @@ export const SchoolConfig = () => {
                                                             <label className="block text-[10px] font-bold text-slate-400 uppercase mb-3 tracking-widest text-center">
                                                                 Simulador de Aba do Navegador
                                                             </label>
-                                                            
+
                                                             <div className="w-full h-8 bg-[#dee1e6] rounded-t-lg flex items-end px-2 gap-1 overflow-hidden">
                                                                 {/* Tab Ativa */}
                                                                 <div className="bg-white h-7 px-3 rounded-t-lg min-w-[140px] flex items-center gap-2 shadow-[0_-1px_3px_rgba(0,0,0,0.05)] relative">
                                                                     <div className="w-4 h-4 flex items-center justify-center overflow-hidden shrink-0">
-                                                                        <img 
-                                                                            src={config.appFaviconUrl || iconPreviewUrl || config.appIconUrl || 'https://i.postimg.cc/8PzXrtS3/favicon-placeholder.png'} 
-                                                                            alt="Tab Icon" 
+                                                                        <img
+                                                                            src={config.appFaviconUrl || iconPreviewUrl || config.appIconUrl || 'https://i.postimg.cc/8PzXrtS3/favicon-placeholder.png'}
+                                                                            alt="Tab Icon"
                                                                             className="transition-all"
-                                                                            style={{ 
+                                                                            style={{
                                                                                 transform: `rotate(${config.appIconRotation || 0}deg) scale(${(config.appIconSize || 110) / 110})`,
                                                                                 width: '100%',
                                                                                 height: '100%',
@@ -758,31 +756,29 @@ export const SchoolConfig = () => {
 
                                                 <div className="w-full aspect-[9/16] max-w-[180px] bg-slate-50 border-4 border-slate-800 rounded-[2rem] shadow-xl overflow-hidden relative flex flex-col">
                                                     <div className="h-4 w-full bg-slate-800/5 mb-3"></div>
-                                                    
+
                                                     {/* Header Fake */}
                                                     <div className={`px-3 flex items-center gap-2 mb-4 transition-all relative ${config.coverMode === 'image' ? 'justify-center' : ''}`}>
                                                         {config.coverMode === 'image' && config.coverImageUrl ? (
                                                             <div className="relative flex justify-center transition-all duration-300" style={{ height: `${(config.logoSize || 80) * 0.3}px`, maxHeight: '80px' }}>
                                                                 <img src={config.coverImageUrl} className="h-full w-auto object-contain" alt="Capa" />
-                                                                
+
                                                                 {/* Indicador de Click Area no Preview */}
-                                                                <div className={`absolute top-0 h-full bg-red-500/20 border border-red-500/40 rounded-sm pointer-events-none transition-all ${
-                                                                    (config.secretClickArea || 'right') === 'left' ? 'left-0 w-[45%]' : 
-                                                                    (config.secretClickArea || 'right') === 'right' ? 'right-0 w-[45%]' : 
-                                                                    'inset-0 w-full'
-                                                                }`}></div>
+                                                                <div className={`absolute top-0 h-full bg-red-500/20 border border-red-500/40 rounded-sm pointer-events-none transition-all ${(config.secretClickArea || 'right') === 'left' ? 'left-0 w-[45%]' :
+                                                                        (config.secretClickArea || 'right') === 'right' ? 'right-0 w-[45%]' :
+                                                                            'inset-0 w-full'
+                                                                    }`}></div>
                                                             </div>
                                                         ) : (
                                                             <div className="flex items-center gap-2 relative">
                                                                 <div className="relative flex justify-center shrink-0 transition-all duration-300" style={{ height: `${(config.logoSize || 80) * 0.3}px` }}>
                                                                     {config.logoUrl ? <img src={config.logoUrl} className="h-full w-auto object-contain" alt="Logo" /> : <div className="h-full aspect-square bg-slate-200 rounded"></div>}
-                                                                    
+
                                                                     {/* Indicador de Click Area no Preview */}
-                                                                    <div className={`absolute top-0 h-full bg-red-500/20 border border-red-500/40 rounded-sm pointer-events-none transition-all ${
-                                                                        (config.secretClickArea || 'right') === 'left' ? 'left-0 w-[45%]' : 
-                                                                        (config.secretClickArea || 'right') === 'right' ? 'right-0 w-[45%]' : 
-                                                                        'inset-0 w-full'
-                                                                    }`}></div>
+                                                                    <div className={`absolute top-0 h-full bg-red-500/20 border border-red-500/40 rounded-sm pointer-events-none transition-all ${(config.secretClickArea || 'right') === 'left' ? 'left-0 w-[45%]' :
+                                                                            (config.secretClickArea || 'right') === 'right' ? 'right-0 w-[45%]' :
+                                                                                'inset-0 w-full'
+                                                                        }`}></div>
                                                                 </div>
                                                                 <div className="flex flex-col justify-center overflow-hidden shrink-0">
                                                                     <div className="h-[3px] w-8 rounded mb-0.5 opacity-80" style={{ backgroundColor: config.accentColor }}></div>
