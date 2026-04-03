@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Smartphone, Save, AlertCircle, CheckCircle, Plus } from 'lucide-react';
-import { db } from '../firebaseConfig';
+import { db, storage } from '../firebaseConfig';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { MuralDigital } from './MuralDigital'; // Assuming a named export or default fallback
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { MuralDigital } from './MuralDigital'; 
 import { LegalTermsManager } from '../components/LegalTermsManager';
+import { Upload, Loader2 } from 'lucide-react';
 
 interface UnitContact {
     name: string;
@@ -91,7 +93,7 @@ const DEFAULT_CONFIG: SchoolConfigData = {
     adminCopyright: '© 2026 Expansivo Rede de Ensino. Todos os direitos reservados.',
     secretClickArea: 'right',
     appShortName: 'MeuExpansivo',
-    appIconUrl: '/icon-512.png'
+    appIconUrl: ''
 };
 
 export const SchoolConfig = () => {
@@ -127,6 +129,70 @@ export const SchoolConfig = () => {
             setMessage({ type: 'error', text: 'Erro ao carregar configurações.' });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const [uploadingIcon, setUploadingIcon] = useState(false);
+
+    const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploadingIcon(true);
+        try {
+            // 1. Processar a imagem no Canvas para garantir proporção 1:1 profissional
+            const img = new Image();
+            const objectUrl = URL.createObjectURL(file);
+            
+            await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = reject;
+                img.src = objectUrl;
+            });
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const size = 512;
+            canvas.width = size;
+            canvas.height = size;
+
+            if (ctx) {
+                // Fundo Branco
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, size, size);
+
+                // Calcular enquadramento mantendo proporção (com 25% de margem)
+                const margin = 0.25;
+                const innerSize = size * (1 - margin);
+                const scale = Math.min(innerSize / img.width, innerSize / img.height);
+                const w = img.width * scale;
+                const h = img.height * scale;
+                const x = (size - w) / 2;
+                const y = (size - h) / 2;
+
+                ctx.drawImage(img, x, y, w, h);
+            }
+
+            // 2. Converter Canvas para Blob
+            const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+            if (!blob) throw new Error("Erro ao processar imagem.");
+
+            // 3. Upload para Firebase Storage (Pasta organizada para ícones)
+            const storagePath = `mural/app_icons/icon_${Date.now()}.png`;
+            const storageRef = ref(storage, storagePath);
+            const snapshot = await uploadBytes(storageRef, blob);
+            const downloadUrl = await getDownloadURL(snapshot.ref);
+
+            // 4. Atualizar Configuração
+            setConfig({ ...config, appIconUrl: downloadUrl });
+            URL.revokeObjectURL(objectUrl);
+            
+        } catch (error) {
+            console.error("Erro no upload do ícone:", error);
+            alert("Erro ao processar e enviar ícone.");
+        } finally {
+            setUploadingIcon(false);
+            if (e.target) e.target.value = '';
         }
     };
 
@@ -401,15 +467,55 @@ export const SchoolConfig = () => {
                                                         </div>
 
                                                         <div>
-                                                            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">URL do Ícone (Quadrado 1:1)</label>
-                                                            <input
-                                                                type="text"
-                                                                value={config.appIconUrl || ''}
-                                                                onChange={e => setConfig({ ...config, appIconUrl: e.target.value })}
-                                                                className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none"
-                                                                placeholder="https://..."
-                                                            />
-                                                            <p className="text-[9px] text-slate-400 mt-1">Obrigatório ser uma imagem quadrada, ex.: 512x512 PNG.</p>
+                                                            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2">Ícone do Aplicativo (PNG)</label>
+                                                            
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="relative group">
+                                                                    <input
+                                                                        type="file"
+                                                                        id="app-icon-upload"
+                                                                        className="hidden"
+                                                                        accept="image/png, image/jpeg"
+                                                                        onChange={handleIconUpload}
+                                                                        disabled={uploadingIcon}
+                                                                    />
+                                                                    <label
+                                                                        htmlFor="app-icon-upload"
+                                                                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border shadow-sm ${
+                                                                            uploadingIcon 
+                                                                                ? 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed' 
+                                                                                : 'bg-white text-blue-900 border-blue-100 hover:bg-blue-50 active:scale-95'
+                                                                        }`}
+                                                                    >
+                                                                        {uploadingIcon ? (
+                                                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                                                        ) : (
+                                                                            <Upload className="w-4 h-4" />
+                                                                        )}
+                                                                        {uploadingIcon ? 'Processando...' : 'Selecionar PNG'}
+                                                                    </label>
+                                                                </div>
+
+                                                                {config.appIconUrl && (
+                                                                    <div className="flex items-center gap-3 animate-fade-in">
+                                                                        <div className="text-[9px] text-green-600 font-bold flex items-center gap-1 bg-green-50 px-2 py-1 rounded-lg border border-green-100 h-fit">
+                                                                            <CheckCircle className="w-3 h-3" /> Ícone Pronto
+                                                                        </div>
+                                                                        
+                                                                        {/* Preview do Ícone PWA (GIGANTE para melhor conferência) */}
+                                                                        <div className="flex flex-col items-center gap-1.5 min-w-[80px]">
+                                                                            <div className="w-20 h-20 bg-white rounded-[1.3rem] shadow-lg border border-slate-200 overflow-hidden flex items-center justify-center p-2.5 transition-all hover:scale-105 active:scale-95">
+                                                                                <img src={config.appIconUrl} alt="App Icon" className="w-full h-full object-contain" />
+                                                                            </div>
+                                                                            <span className="text-[10px] font-bold text-slate-600 truncate max-w-[80px] text-center leading-tight tracking-tight uppercase">{config.appShortName || 'MeuExpansivo'}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            
+                                                            <p className="text-[9px] text-slate-400 mt-2 italic">
+                                                                * Envie qualquer logotipo. O sistema cuidará do enquadramento automático profissional.
+                                                            </p>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -420,18 +526,7 @@ export const SchoolConfig = () => {
                                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1">
                                                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Preview Real
                                                 </span>
-                                                
-                                                {/* PWA Icon Simulator (Ícone flutuante do iPhone) */}
-                                                <div className="mb-4 flex flex-col items-center gap-1 animate-fade-in">
-                                                    <div className="w-14 h-14 bg-white rounded-[1.1rem] shadow-lg border border-slate-200 overflow-hidden flex items-center justify-center p-2 transition-all">
-                                                        {config.appIconUrl ? (
-                                                            <img src={config.appIconUrl} alt="App Icon" className="w-full h-full object-contain" />
-                                                        ) : (
-                                                            <Smartphone className="w-6 h-6 text-slate-300" />
-                                                        )}
-                                                    </div>
-                                                    <span className="text-[9px] font-bold text-slate-600 truncate max-w-[80px]">{config.appShortName || 'MeuExpansivo'}</span>
-                                                </div>
+
 
                                                 <div className="w-full aspect-[9/16] max-w-[180px] bg-slate-50 border-4 border-slate-800 rounded-[2rem] shadow-xl overflow-hidden relative flex flex-col">
                                                     <div className="h-4 w-full bg-slate-800/5 mb-3"></div>

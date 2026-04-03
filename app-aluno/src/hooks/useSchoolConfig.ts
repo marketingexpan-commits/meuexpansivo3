@@ -49,7 +49,7 @@ const DEFAULT_CONFIG: SchoolConfig = {
     developerMessage: 'Olá, preciso de suporte no App do Aluno.',
     secretClickArea: 'right',
     appShortName: 'MeuExpansivo',
-    appIconUrl: '/icon-512.png'
+    appIconUrl: ''
 };
 
 export const useSchoolConfig = () => {

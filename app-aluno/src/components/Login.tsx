@@ -76,18 +76,18 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
         display: 'standalone',
         background_color: '#ffffff',
         theme_color: config.primaryColor || '#172554',
-        icons: [
+        icons: config.appIconUrl ? [
           {
-            src: config.appIconUrl || '/icon-512.png',
+            src: config.appIconUrl,
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: config.appIconUrl || '/icon-512.png',
+            src: config.appIconUrl,
             sizes: '512x512',
             type: 'image/png'
           }
-        ]
+        ] : []
       };
 
       const stringManifest = JSON.stringify(manifest);
