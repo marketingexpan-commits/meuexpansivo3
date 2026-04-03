@@ -46,7 +46,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
       meta.setAttribute('content', content);
     };
 
-    updateOrCreateMeta('apple-mobile-web-app-title', config.appShortName || config.appName || 'App');
+    updateOrCreateMeta('apple-mobile-web-app-title', config.appShortName || 'App do Aluno');
     updateOrCreateMeta('apple-mobile-web-app-capable', 'yes');
     updateOrCreateMeta('apple-mobile-web-app-status-bar-style', 'default');
 
@@ -107,7 +107,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
     const generateDynamicManifest = () => {
       const manifest = {
         name: config.appName || 'Aplicativo Escolar',
-        short_name: config.appShortName || config.appName || 'Aplicativo',
+        short_name: config.appShortName || 'App do Aluno',
         description: `Aplicativo do Aluno - ${config.appName || 'Escolar'}`,
         start_url: '.',
         display: 'standalone',

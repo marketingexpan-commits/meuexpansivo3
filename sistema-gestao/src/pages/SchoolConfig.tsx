@@ -595,7 +595,7 @@ export const SchoolConfig = () => {
                                                                                     className="w-full h-full object-contain transition-transform"
                                                                                 />
                                                                             </div>
-                                                                            <span className="text-[10px] font-bold text-slate-600 truncate max-w-[80px] text-center leading-tight tracking-tight uppercase">{config.appShortName || config.appName || 'App'}</span>
+                                                                            <span className="text-[10px] font-bold text-slate-600 truncate max-w-[80px] text-center leading-tight tracking-tight uppercase">{config.appShortName || 'App do Aluno'}</span>
                                                                         </div>
                                                                     </div>
                                                                 )}
