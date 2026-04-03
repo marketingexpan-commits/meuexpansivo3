@@ -36,7 +36,7 @@ export interface SchoolConfig {
 }
 
 const DEFAULT_CONFIG: SchoolConfig = {
-    appName: 'Meu Expansivo',
+    appName: '',
     appSubtitle: 'APLICATIVO',
     logoUrl: 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png',
     logoSize: 80,
@@ -47,7 +47,7 @@ const DEFAULT_CONFIG: SchoolConfig = {
     accentColor: '#ea580c', // orange-600
     maintenanceMode: false,
     units: [],
-    copyrightText: '© 2026 Expansivo Rede de Ensino. Todos os direitos reservados.',
+    copyrightText: '© 2026 Todos os direitos reservados.',
     developerName: 'HC Apps | 84988739180',
     developerUrl: 'https://wa.me/5584988739180',
     contactMessage: 'Olá, gostaria de informações sobre a escola.',

@@ -33,7 +33,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
     if (!config) return;
 
     // 1. Update Document Title
-    document.title = config.appName || 'Meu Expansivo';
+    document.title = config.appShortName || config.appName || 'App do Aluno';
 
     // 2. Update iOS Meta Tags
     const updateOrCreateMeta = (name: string, content: string) => {
@@ -106,9 +106,9 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
     // 4. Update Android Manifest Dinamicamente
     const generateDynamicManifest = () => {
       const manifest = {
-        name: config.appName || 'Aplicativo Escolar',
+        name: config.appShortName || config.appName || 'App do Aluno',
         short_name: config.appShortName || 'App do Aluno',
-        description: `Aplicativo do Aluno - ${config.appName || 'Escolar'}`,
+        description: `Aplicativo do Aluno - ${config.appName || 'App do Aluno'}`,
         start_url: '.',
         display: 'standalone',
         background_color: '#ffffff',

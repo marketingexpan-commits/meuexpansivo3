@@ -7,44 +7,60 @@ import { MuralDigital } from './MuralDigital';
 import { LegalTermsManager } from '../components/LegalTermsManager';
 import { Upload, Loader2 } from 'lucide-react';
 
-// Função auxiliar para recortar bordas transparentes (TRIM) de logotipos
+// Função auxiliar para recortar bordas transparentes e fundos brancos (TRIM) de logotipos
 const trimCanvas = (img: HTMLImageElement): HTMLImageElement | HTMLCanvasElement => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return img;
+    try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return img;
 
-    canvas.width = img.width;
-    canvas.height = img.height;
-    ctx.drawImage(img, 0, 0);
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
 
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-    let top = canvas.height, left = canvas.width, bottom = 0, right = 0;
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        let top = canvas.height, left = canvas.width, bottom = 0, right = 0;
+        let hasVisiblePixel = false;
 
-    for (let y = 0; y < canvas.height; y++) {
-        for (let x = 0; x < canvas.width; x++) {
-            const alpha = data[(y * canvas.width + x) * 4 + 3];
-            if (alpha > 0) {
-                if (x < left) left = x;
-                if (x > right) right = x;
-                if (y < top) top = y;
-                if (y > bottom) bottom = y;
+        for (let y = 0; y < canvas.height; y++) {
+            for (let x = 0; x < canvas.width; x++) {
+                const idx = (y * canvas.width + x) * 4;
+                const r = data[idx];
+                const g = data[idx + 1];
+                const b = data[idx + 2];
+                const alpha = data[idx + 3];
+
+                // Removemos transparências falsas e também o "fundo branco" que algumas logos possuem
+                const isWhite = r > 240 && g > 240 && b > 240;
+                
+                if (alpha > 10 && !isWhite) {
+                    hasVisiblePixel = true;
+                    if (x < left) left = x;
+                    if (x > right) right = x;
+                    if (y < top) top = y;
+                    if (y > bottom) bottom = y;
+                }
             }
         }
+
+        if (!hasVisiblePixel || right < left || bottom < top) return img;
+
+        const trimmedCanvas = document.createElement('canvas');
+        const trimmedCtx = trimmedCanvas.getContext('2d');
+        const trimmedWidth = right - left + 1;
+        const trimmedHeight = bottom - top + 1;
+
+        trimmedCanvas.width = trimmedWidth;
+        trimmedCanvas.height = trimmedHeight;
+        trimmedCtx?.drawImage(canvas, left, top, trimmedWidth, trimmedHeight, 0, 0, trimmedWidth, trimmedHeight);
+
+        return trimmedCanvas;
+    } catch (e) {
+        // Se houver erro de Cross-Origin (CORS) ou manipulação, devolva a imagem segura
+        console.warn('Trim canvas falhou (CORS/Tainted). Retornando imagem original.', e);
+        return img;
     }
-
-    if (right < left || bottom < top) return img;
-
-    const trimmedCanvas = document.createElement('canvas');
-    const trimmedCtx = trimmedCanvas.getContext('2d');
-    const trimmedWidth = right - left + 1;
-    const trimmedHeight = bottom - top + 1;
-
-    trimmedCanvas.width = trimmedWidth;
-    trimmedCanvas.height = trimmedHeight;
-    trimmedCtx?.drawImage(canvas, left, top, trimmedWidth, trimmedHeight, 0, 0, trimmedWidth, trimmedHeight);
-
-    return trimmedCanvas;
 };
 
 interface UnitContact {
@@ -90,7 +106,7 @@ interface SchoolConfigData {
 }
 
 const DEFAULT_CONFIG: SchoolConfigData = {
-    appName: 'Meu Expansivo',
+    appName: '',
     appSubtitle: 'APLICATIVO',
     logoUrl: 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png',
     logoSize: 80,
@@ -129,13 +145,13 @@ const DEFAULT_CONFIG: SchoolConfigData = {
     developerUrl: 'https://wa.me/5584988739180',
 
     // Admin Defaults
-    adminLogoUrl: 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png',
+    adminLogoUrl: '',
     adminPrimaryColor: '#172554', // blue-950
-    adminSystemTitle: 'Meu Expansivo',
+    adminSystemTitle: 'Sistema Escolar',
     adminSystemLabel: 'SISTEMA',
     adminSystemSubtitle: 'Gestão Escolar',
-    adminFooterText: 'Sistema Meu Expansivo - Gestão Escolar v1.0',
-    adminCopyright: '© 2026 Expansivo Rede de Ensino. Todos os direitos reservados.',
+    adminFooterText: 'Sistema Escolar v1.0',
+    adminCopyright: '© 2026 Todos os direitos reservados.',
     secretClickArea: 'right',
     appShortName: '',
     appIconUrl: '',
@@ -227,10 +243,14 @@ export const SchoolConfig = () => {
 
             ctx.drawImage(trimmedImg, x, y, w, h);
 
-            // Preview Instantâneo (DataURL)
-            const previewUrl = canvas.toDataURL('image/png');
-            setIconPreviewUrl(previewUrl);
-            setIconCanvasRef(canvas);
+            try {
+                // Preview Instantâneo (DataURL)
+                const previewUrl = canvas.toDataURL('image/png');
+                setIconPreviewUrl(previewUrl);
+                setIconCanvasRef(canvas);
+            } catch (e) {
+                console.warn("Navegador bloqueou preview do canvas em tempo real devido a CORS. O ícone ainda será salvo ao clicar em 'Salvar'.", e);
+            }
         }
     };
 
@@ -667,7 +687,7 @@ export const SchoolConfig = () => {
                                                                         />
                                                                     </div>
                                                                     <span className="text-[10px] text-slate-700 truncate font-medium">
-                                                                        {config.appShortName || 'Meu Expansivo'}
+                                                                        {config.appShortName || config.appName || 'App do Aluno'}
                                                                     </span>
                                                                     <div className="ml-auto w-3 h-3 hover:bg-slate-100 rounded-full flex items-center justify-center text-[8px] text-slate-400">✕</div>
                                                                 </div>
