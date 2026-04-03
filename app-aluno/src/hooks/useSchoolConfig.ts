@@ -53,7 +53,7 @@ const DEFAULT_CONFIG: SchoolConfig = {
     contactMessage: 'Olá, gostaria de informações sobre a escola.',
     developerMessage: 'Olá, preciso de suporte no App do Aluno.',
     secretClickArea: 'right',
-    appShortName: 'MeuExpansivo',
+    appShortName: '',
     appIconUrl: '',
     appFaviconUrl: '',
     appIconRotation: 0,

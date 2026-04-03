@@ -137,7 +137,7 @@ const DEFAULT_CONFIG: SchoolConfigData = {
     adminFooterText: 'Sistema Meu Expansivo - Gestão Escolar v1.0',
     adminCopyright: '© 2026 Expansivo Rede de Ensino. Todos os direitos reservados.',
     secretClickArea: 'right',
-    appShortName: 'MeuExpansivo',
+    appShortName: '',
     appIconUrl: '',
     appFaviconUrl: '',
     appIconRotation: 0,
@@ -546,7 +546,7 @@ export const SchoolConfig = () => {
                                                                 value={config.appShortName || ''}
                                                                 onChange={e => setConfig({ ...config, appShortName: e.target.value })}
                                                                 className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none"
-                                                                placeholder="Ex: MeuExpansivo"
+                                                                placeholder="Ex: App Aluno"
                                                             />
                                                             <p className="text-[9px] text-slate-400 mt-1">O nome que aparece na tela do celular (máx. 12 carac.).</p>
                                                         </div>
@@ -595,7 +595,7 @@ export const SchoolConfig = () => {
                                                                                     className="w-full h-full object-contain transition-transform"
                                                                                 />
                                                                             </div>
-                                                                            <span className="text-[10px] font-bold text-slate-600 truncate max-w-[80px] text-center leading-tight tracking-tight uppercase">{config.appShortName || 'MeuExpansivo'}</span>
+                                                                            <span className="text-[10px] font-bold text-slate-600 truncate max-w-[80px] text-center leading-tight tracking-tight uppercase">{config.appShortName || config.appName || 'App'}</span>
                                                                         </div>
                                                                     </div>
                                                                 )}

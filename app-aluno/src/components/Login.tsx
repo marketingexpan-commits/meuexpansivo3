@@ -46,7 +46,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
       meta.setAttribute('content', content);
     };
 
-    updateOrCreateMeta('apple-mobile-web-app-title', config.appShortName || 'MeuExpansivo');
+    updateOrCreateMeta('apple-mobile-web-app-title', config.appShortName || config.appName || 'App');
     updateOrCreateMeta('apple-mobile-web-app-capable', 'yes');
     updateOrCreateMeta('apple-mobile-web-app-status-bar-style', 'default');
 
@@ -106,9 +106,9 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
     // 4. Update Android Manifest Dinamicamente
     const generateDynamicManifest = () => {
       const manifest = {
-        name: config.appName || 'Meu Expansivo',
-        short_name: config.appShortName || 'MeuExpansivo',
-        description: `Aplicativo do Aluno - ${config.appName}`,
+        name: config.appName || 'Aplicativo Escolar',
+        short_name: config.appShortName || config.appName || 'Aplicativo',
+        description: `Aplicativo do Aluno - ${config.appName || 'Escolar'}`,
         start_url: '.',
         display: 'standalone',
         background_color: '#ffffff',
