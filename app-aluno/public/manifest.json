@@ -1,6 +1,6 @@
 {
   "name": "Meu Expansivo",
-  "short_name": "Expansivo",
+  "short_name": "MeuExpansivo",
   "description": "Aplicativo do Aluno - Rede Expansivo",
   "start_url": ".",
   "display": "standalone",
