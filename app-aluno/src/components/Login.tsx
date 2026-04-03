@@ -61,9 +61,19 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
       link.setAttribute('href', href);
     };
 
+    // 3. Update Icons
     if (config.appIconUrl) {
       updateOrCreateLink('apple-touch-icon', config.appIconUrl);
-      updateOrCreateLink('icon', config.appIconUrl);
+    }
+
+    // Priorizar Favicon Independente para a aba do navegador
+    const faviconUrl = config.appFaviconUrl || config.appIconUrl;
+    if (faviconUrl) {
+      updateOrCreateLink('icon', faviconUrl);
+      
+      // Atualizar favicon original do index.html se existir
+      const faviconLink = document.getElementById('favicon') as HTMLLinkElement;
+      if (faviconLink) faviconLink.setAttribute('href', faviconUrl);
     }
 
     // 4. Update Android Manifest Dinamicamente

@@ -28,6 +28,7 @@ export interface SchoolConfig {
     secretClickArea?: 'left' | 'right' | 'total';
     appShortName?: string;
     appIconUrl?: string;
+    appFaviconUrl?: string;
 }
 
 const DEFAULT_CONFIG: SchoolConfig = {
@@ -49,7 +50,8 @@ const DEFAULT_CONFIG: SchoolConfig = {
     developerMessage: 'Olá, preciso de suporte no App do Aluno.',
     secretClickArea: 'right',
     appShortName: 'MeuExpansivo',
-    appIconUrl: ''
+    appIconUrl: '',
+    appFaviconUrl: ''
 };
 
 export const useSchoolConfig = () => {

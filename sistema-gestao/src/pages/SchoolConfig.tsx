@@ -42,6 +42,7 @@ interface SchoolConfigData {
     secretClickArea?: 'left' | 'right' | 'total';
     appShortName?: string;
     appIconUrl?: string;
+    appFaviconUrl?: string;
 }
 
 const DEFAULT_CONFIG: SchoolConfigData = {
@@ -93,7 +94,8 @@ const DEFAULT_CONFIG: SchoolConfigData = {
     adminCopyright: '© 2026 Expansivo Rede de Ensino. Todos os direitos reservados.',
     secretClickArea: 'right',
     appShortName: 'MeuExpansivo',
-    appIconUrl: ''
+    appIconUrl: '',
+    appFaviconUrl: ''
 };
 
 export const SchoolConfig = () => {
@@ -157,8 +159,12 @@ export const SchoolConfig = () => {
             canvas.height = size;
 
             if (ctx) {
-                // Cálculo de enquadramento mantendo proporção (com 25% de margem)
-                const margin = 0.25;
+                // Fundo Branco (Ideal para ícones de celular/PWA no Android/iOS)
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, size, size);
+
+                // Cálculo de enquadramento mantendo proporção (com 15% de margem)
+                const margin = 0.15;
                 const innerSize = size * (1 - margin);
                 const scale = Math.min(innerSize / img.width, innerSize / img.height);
                 const w = img.width * scale;
@@ -511,6 +517,23 @@ export const SchoolConfig = () => {
                                                             
                                                             <p className="text-[9px] text-slate-400 mt-2 italic">
                                                                 * Envie qualquer logotipo. O sistema cuidará do enquadramento automático profissional.
+                                                            </p>
+                                                        </div>
+
+                                                        {/* Campo Independente para Favicon (Aba do Navegador) */}
+                                                        <div className="pt-4 border-t border-slate-100">
+                                                            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2 flex items-center gap-2">
+                                                                Favicon da Aba do Navegador (URL - Transparente)
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                value={config.appFaviconUrl || ''}
+                                                                onChange={e => setConfig({ ...config, appFaviconUrl: e.target.value })}
+                                                                className="w-full p-2 border border-slate-200 rounded-lg text-xs font-mono focus:ring-2 focus:ring-blue-950/20 focus:border-blue-950 outline-none"
+                                                                placeholder="https://i.postimg.cc/..."
+                                                            />
+                                                            <p className="text-[9px] text-slate-400 mt-2 italic">
+                                                                * Use uma URL de logotipo com fundo transparente (ex: Postimg). Este ícone aparecerá apenas na aba do Chrome/Safari.
                                                             </p>
                                                         </div>
                                                     </div>
