@@ -157,11 +157,7 @@ export const SchoolConfig = () => {
             canvas.height = size;
 
             if (ctx) {
-                // Fundo Branco
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(0, 0, size, size);
-
-                // Calcular enquadramento mantendo proporção (com 25% de margem)
+                // Cálculo de enquadramento mantendo proporção (com 25% de margem)
                 const margin = 0.25;
                 const innerSize = size * (1 - margin);
                 const scale = Math.min(innerSize / img.width, innerSize / img.height);
