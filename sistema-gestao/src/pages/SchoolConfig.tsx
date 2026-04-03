@@ -595,7 +595,6 @@ export const SchoolConfig = () => {
                                                                                     src={iconPreviewUrl || config.appIconUrl} 
                                                                                     alt="App Icon" 
                                                                                     className="w-full h-full object-contain transition-transform" 
-                                                                                    style={{ transform: `rotate(${config.appIconRotation || 0}deg)` }}
                                                                                 />
                                                                             </div>
                                                                             <span className="text-[10px] font-bold text-slate-600 truncate max-w-[80px] text-center leading-tight tracking-tight uppercase">{config.appShortName || 'MeuExpansivo'}</span>
