@@ -36,17 +36,18 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
     document.title = config.appShortName || config.appName || 'App do Aluno';
 
     // 2. Update iOS Meta Tags
-    const updateOrCreateMeta = (name: string, content: string) => {
-      let meta = document.querySelector(`meta[name="${name}"]`);
+    const updateOrCreateMeta = (name: string, content: string, id?: string) => {
+      let meta = id ? document.getElementById(id) : document.querySelector(`meta[name="${name}"]`);
       if (!meta) {
         meta = document.createElement('meta');
         meta.setAttribute('name', name);
+        if (id) meta.setAttribute('id', id);
         document.head.appendChild(meta);
       }
       meta.setAttribute('content', content);
     };
 
-    updateOrCreateMeta('apple-mobile-web-app-title', config.appShortName || 'App do Aluno');
+    updateOrCreateMeta('apple-mobile-web-app-title', config.appShortName || config.appName || 'App do Aluno', 'apple-app-title');
     updateOrCreateMeta('apple-mobile-web-app-capable', 'yes');
     updateOrCreateMeta('apple-mobile-web-app-status-bar-style', 'default');
 
