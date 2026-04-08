@@ -178,7 +178,7 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
         fetchMedia();
     }, [filterGrade, filterClass, filterShift, activeUnit, dateFilter]);
 
-    const checkLimits = async (type: 'image' | 'video', targetDate: string) => {
+    const getRemainingLimit = async (type: 'image' | 'video', targetDate: string) => {
         const snapshot = await db.collection('teacher_media')
             .where('teacherId', '==', teacher.id)
             .where('gradeLevel', '==', filterGrade)
@@ -187,7 +187,7 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
             .get();
         
         const limit = type === 'video' ? 1 : 5;
-        return snapshot.size < limit;
+        return limit - snapshot.size;
     };
 
     const processImage = (file: File): Promise<Blob> => {
@@ -240,41 +240,57 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
     };
 
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>, useCamera = false) => {
-        const file = e.target.files?.[0];
-        if (!file || !filterGrade || !filterShift) return;
+        const fileList = e.target.files;
+        if (!fileList?.length || !filterGrade || !filterShift) return;
 
         if (!albumTitle.trim()) {
             alert('Por favor, informe o título do álbum antes de anexar uma mídia.');
+            e.target.value = '';
             return;
         }
 
-        // OPTION 2: Subject is now optional. If not selected, it will be 'general_activity'
+        const files = Array.from(fileList);
         const effectiveSubjectId = albumSubjectId || 'general_activity';
 
-
-        const isImage = file.type.startsWith('image/');
-        const isVideo = file.type.startsWith('video/');
+        const isImage = files[0].type.startsWith('image/');
+        const isVideo = files[0].type.startsWith('video/');
         const type = isImage ? 'image' : 'video';
 
         if (!isImage && !isVideo) {
             alert("Tipo de arquivo não suportado.");
+            e.target.value = '';
             return;
         }
 
-        const withinLimits = await checkLimits(type, dateFilter);
-        if (!withinLimits) {
-            alert(`Limite diário atingido para esta série nesta data (${new Date(dateFilter + 'T12:00:00').toLocaleDateString()}): ${type === 'video' ? '1 vídeo' : '5 imagens'}.`);
+        if (isVideo && files.length > 1) {
+            alert("Selecione apenas 1 vídeo por vez.");
+            e.target.value = '';
             return;
+        }
+
+        const remainingLimit = await getRemainingLimit(type, dateFilter);
+        if (remainingLimit <= 0) {
+            alert(`Limite diário atingido para esta série nesta data (${new Date(dateFilter + 'T12:00:00').toLocaleDateString()}): ${type === 'video' ? '1 vídeo' : '5 imagens'}.`);
+            e.target.value = '';
+            return;
+        }
+
+        const filesToProcess = files.slice(0, remainingLimit);
+        
+        if (files.length > remainingLimit) {
+            alert(`Você só pode enviar mais ${remainingLimit} ${type === 'image' ? 'imagem(ns)' : 'vídeo(s)'} hoje. Apenas os primeiros ${remainingLimit} arquivos serão processados.`);
         }
 
         if (isVideo) {
-            const duration = await checkVideoDuration(file);
+            const duration = await checkVideoDuration(filesToProcess[0]);
             if (duration > 61) { // 1 minute buffer
                 alert("O vídeo deve ter no máximo 1 minuto de duração.");
+                e.target.value = '';
                 return;
             }
-            if (file.size > 50 * 1024 * 1024) { // 50MB limit
+            if (filesToProcess[0].size > 50 * 1024 * 1024) { // 50MB limit
                 alert("O arquivo de vídeo é muito grande. Tente reduzir a resolução.");
+                e.target.value = '';
                 return;
             }
         }
@@ -284,51 +300,60 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
         setUploadProgress(0);
 
         try {
-            let blobToUpload: Blob | File = file;
-            if (isImage) {
-                blobToUpload = await processImage(file);
+            const totalFiles = filesToProcess.length;
+            let currentProcessed = 0;
+
+            for (const file of filesToProcess) {
+                let blobToUpload: Blob | File = file;
+                if (isImage) {
+                    blobToUpload = await processImage(file);
+                }
+
+                const timestamp = Date.now();
+                const extension = isImage ? 'jpg' : (file.name.split('.').pop() || 'mp4');
+                const storagePath = `teacher_media/${activeUnit}/${filterGrade}/${type}/${timestamp}_${teacher.id}.${extension}`;
+                const storageRef = ref(storage, storagePath);
+                
+                // Em uploads múltiplos, reinicia o progresso parcial por arquivo ou soma se preferir. 
+                // Aqui mantemos simplificado focando no progresso do arquivo atual.
+                setUploadProgress(0); 
+                const uploadTask = uploadBytesResumable(storageRef, blobToUpload);
+
+                await new Promise<void>((resolve, reject) => {
+                    uploadTask.on('state_changed', 
+                        (snapshot) => setUploadProgress((snapshot.bytesTransferred / snapshot.totalBytes) * 100),
+                        reject,
+                        async () => {
+                            const url = await getDownloadURL(uploadTask.snapshot.ref);
+                            const expiresAt = new Date();
+                            expiresAt.setDate(expiresAt.getDate() + 7);
+
+                            const newMedia: Omit<TeacherMedia, 'id'> = {
+                                teacherId: teacher.id,
+                                teacherName: teacher.name,
+                                unit: normalizeUnit(activeUnit) as SchoolUnit,
+                                gradeLevel: filterGrade,
+                                schoolClass: normalizeClass(filterClass) as SchoolClass,
+                                shift: normalizeShift(filterShift) as SchoolShift,
+                                type,
+                                url,
+                                filename: `${timestamp}.${extension}`,
+                                timestamp: new Date().toISOString(),
+                                date: dateFilter,
+                                subjectId: effectiveSubjectId,
+                                albumTitle: albumTitle.trim() || 'Álbum Geral',
+                                expiresAt: expiresAt.toISOString()
+                            };
+
+                            await db.collection('teacher_media').add(newMedia);
+                            currentProcessed++;
+                            resolve();
+                        }
+                    );
+                });
             }
 
-            const timestamp = Date.now();
-            const extension = isImage ? 'jpg' : (file.name.split('.').pop() || 'mp4');
-            const storagePath = `teacher_media/${activeUnit}/${filterGrade}/${type}/${timestamp}_${teacher.id}.${extension}`;
-            const storageRef = ref(storage, storagePath);
-            const uploadTask = uploadBytesResumable(storageRef, blobToUpload);
-
-            await new Promise<void>((resolve, reject) => {
-                uploadTask.on('state_changed', 
-                    (snapshot) => setUploadProgress((snapshot.bytesTransferred / snapshot.totalBytes) * 100),
-                    reject,
-                    async () => {
-                        const url = await getDownloadURL(uploadTask.snapshot.ref);
-                        const expiresAt = new Date();
-                        expiresAt.setDate(expiresAt.getDate() + 7);
-
-                        const newMedia: Omit<TeacherMedia, 'id'> = {
-                            teacherId: teacher.id,
-                            teacherName: teacher.name,
-                            unit: normalizeUnit(activeUnit) as SchoolUnit,
-                            gradeLevel: filterGrade, // Already resolved in state
-                            schoolClass: normalizeClass(filterClass) as SchoolClass,
-                            shift: normalizeShift(filterShift) as SchoolShift,
-                            type,
-                            url,
-                            filename: `${timestamp}.${extension}`,
-                            timestamp: new Date().toISOString(),
-                            date: dateFilter, // Usando a data selecionada no painel (que pode ser retroativa)
-                            subjectId: effectiveSubjectId,
-                            albumTitle: albumTitle.trim() || 'Álbum Geral',
-
-                            expiresAt: expiresAt.toISOString()
-                        };
-
-                        await db.collection('teacher_media').add(newMedia);
-                        resolve();
-                    }
-                );
-            });
-
-            alert("Mídia postada com sucesso!");
+            alert(totalFiles > 1 ? `${totalFiles} mídias postadas com sucesso!` : "Mídia postada com sucesso!");
             fetchMedia();
         } catch (error) {
             console.error("Upload error:", error);
@@ -577,6 +602,7 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
                             <input 
                                 type="file" 
                                 accept="image/jpeg,image/png" 
+                                multiple
                                 onChange={(e) => handleUpload(e)}
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                                 disabled={uploading}
