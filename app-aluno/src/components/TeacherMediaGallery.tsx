@@ -34,6 +34,9 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadType, setUploadType] = useState<'image' | 'video' | null>(null);
+    const [currentUploadIndex, setCurrentUploadIndex] = useState(0);
+    const [totalUploads, setTotalUploads] = useState(0);
+    const [uploadPreviews, setUploadPreviews] = useState<string[]>([]);
 
     // Media Viewer State
     const [viewingMedia, setViewingMedia] = useState<TeacherMedia | null>(null);
@@ -269,8 +272,11 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
         }
 
         const remainingLimit = await getRemainingLimit(type, dateFilter);
+        const maxLimit = type === 'video' ? 1 : 5;
+        const alreadyUploaded = maxLimit - remainingLimit;
+
         if (remainingLimit <= 0) {
-            alert(`Limite diário atingido para esta série nesta data (${new Date(dateFilter + 'T12:00:00').toLocaleDateString()}): ${type === 'video' ? '1 vídeo' : '5 imagens'}.`);
+            alert(`Limite excedido. Não é possível anexar mais ${type === 'image' ? 'imagens' : 'vídeos'} para esta turma nesta data (${new Date(dateFilter + 'T12:00:00').toLocaleDateString()}).`);
             e.target.value = '';
             return;
         }
@@ -278,7 +284,18 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
         const filesToProcess = files.slice(0, remainingLimit);
         
         if (files.length > remainingLimit) {
-            alert(`Você só pode enviar mais ${remainingLimit} ${type === 'image' ? 'imagem(ns)' : 'vídeo(s)'} hoje. Apenas os primeiros ${remainingLimit} arquivos serão processados.`);
+            const mediaName = type === 'image' ? (remainingLimit === 1 ? 'imagem' : 'imagens') : (remainingLimit === 1 ? 'vídeo' : 'vídeos');
+            const mediaUploadedName = type === 'image' ? (alreadyUploaded === 1 ? 'imagem' : 'imagens') : (alreadyUploaded === 1 ? 'vídeo' : 'vídeos');
+            
+            let alertMsg = '';
+            if (alreadyUploaded > 0) {
+                alertMsg = `Você já anexou ${alreadyUploaded} ${mediaUploadedName} para esta turma hoje. Resta(m) apenas ${remainingLimit} envio(s) disponível(is). `;
+            } else {
+                alertMsg = `O limite diário é de ${maxLimit} ${mediaName}. `;
+            }
+            alertMsg += `Apenas os primeiros ${remainingLimit} arquivos selecionados serão processados.`;
+            
+            alert(alertMsg);
         }
 
         if (isVideo) {
@@ -295,15 +312,21 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
             }
         }
 
+        const previews = filesToProcess.map(file => URL.createObjectURL(file));
+        setUploadPreviews(previews);
+        setTotalUploads(filesToProcess.length);
+        setCurrentUploadIndex(0);
+
         setUploading(true);
         setUploadType(type);
         setUploadProgress(0);
 
         try {
             const totalFiles = filesToProcess.length;
-            let currentProcessed = 0;
 
-            for (const file of filesToProcess) {
+            for (let i = 0; i < filesToProcess.length; i++) {
+                setCurrentUploadIndex(i);
+                const file = filesToProcess[i];
                 let blobToUpload: Blob | File = file;
                 if (isImage) {
                     blobToUpload = await processImage(file);
@@ -346,7 +369,6 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
                             };
 
                             await db.collection('teacher_media').add(newMedia);
-                            currentProcessed++;
                             resolve();
                         }
                     );
@@ -362,6 +384,10 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
             setUploading(false);
             setUploadType(null);
             setUploadProgress(0);
+            setCurrentUploadIndex(0);
+            setTotalUploads(0);
+            uploadPreviews.forEach(url => URL.revokeObjectURL(url));
+            setUploadPreviews([]);
             e.target.value = '';
         }
     };
@@ -629,14 +655,38 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
                     </div>
                 )}
 
-                {uploading && (
-                    <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Enviando {uploadType === 'image' ? 'Imagem' : 'Vídeo'}...</span>
-                            <span className="text-sm font-bold text-blue-900">{Math.round(uploadProgress)}%</span>
+                {uploading && totalUploads > 0 && (
+                    <div className="mt-6 p-4 md:p-6 bg-blue-50/50 rounded-2xl border border-blue-100 shadow-sm animate-fade-in">
+                        <div className="flex justify-between items-center mb-4">
+                            <span className="text-xs md:text-sm font-black text-blue-900 uppercase tracking-widest">
+                                Enviando {uploadType === 'image' ? 'Imagens' : 'Vídeo'} ({currentUploadIndex + 1} de {totalUploads})...
+                            </span>
+                            <span className="text-sm md:text-base font-black text-blue-950 bg-blue-100 px-3 py-1 rounded-lg">
+                                {Math.round(uploadProgress)}%
+                            </span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                            <div className="bg-blue-900 h-full transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
+                        
+                        <div className="flex gap-3 md:gap-4 mb-4 overflow-x-auto pb-2 scrollbar-hide py-1">
+                            {uploadPreviews.map((preview, idx) => (
+                                <div key={idx} className={`relative shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden border-2 transition-all duration-300 ease-out shadow-sm ${idx === currentUploadIndex ? 'border-orange-500 scale-110 shadow-md ring-4 ring-orange-100' : idx < currentUploadIndex ? 'border-green-500 opacity-80' : 'border-gray-200 opacity-40 grayscale-[50%]'}`}>
+                                    {uploadType === 'image' ? (
+                                        <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <video src={preview} className="w-full h-full object-cover" />
+                                    )}
+                                    {idx < currentUploadIndex && (
+                                        <div className="absolute inset-0 bg-green-500/20 backdrop-blur-[1px] flex items-center justify-center">
+                                            <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-green-500 drop-shadow-md bg-white rounded-full" />
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="w-full bg-blue-100/50 rounded-full h-3 overflow-hidden shadow-inner">
+                            <div className="bg-gradient-to-r from-blue-600 to-blue-900 h-full transition-all duration-300 ease-out relative" style={{ width: `${uploadProgress}%` }}>
+                                <div className="absolute inset-0 bg-white/20 animate-progress-indeterminate"></div>
+                            </div>
                         </div>
                     </div>
                 )}
