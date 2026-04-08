@@ -17,7 +17,7 @@ interface LoginProps {
 import { useSchoolConfig } from '../hooks/useSchoolConfig';
 
 export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, onLoginCoordinator, onResetSystem, error }) => {
-  const { config, loading } = useSchoolConfig();
+  const { config } = useSchoolConfig();
   // --- SPLASH SCREEN STATE ---
   // --- SPLASH SCREEN STATE ---
   const [showSplash, setShowSplash] = useState(true);
@@ -27,127 +27,6 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
   // Controla a visibilidade do logo estático no header para fazer a troca "mágica"
   const [showStaticLogo, setShowStaticLogo] = useState(false);
   const [showText, setShowText] = useState(false);
-
-  // --- PWA DYNAMIC INJECTOR (IOS & ANDROID) ---
-  useEffect(() => {
-    if (loading) return;
-    if (!config) return;
-
-    // 1. Update Document Title
-    document.title = config.appShortName || config.appName || 'App do Aluno';
-
-    // 2. Update iOS Meta Tags
-    const updateOrCreateMeta = (name: string, content: string, id?: string) => {
-      let meta = id ? document.getElementById(id) : document.querySelector(`meta[name="${name}"]`);
-      if (!meta) {
-        meta = document.createElement('meta');
-        meta.setAttribute('name', name);
-        if (id) meta.setAttribute('id', id);
-        document.head.appendChild(meta);
-      }
-      meta.setAttribute('content', content);
-    };
-
-    updateOrCreateMeta('apple-mobile-web-app-title', config.appShortName || config.appName || 'App do Aluno', 'apple-app-title');
-    updateOrCreateMeta('apple-mobile-web-app-capable', 'yes');
-    updateOrCreateMeta('apple-mobile-web-app-status-bar-style', 'default');
-
-    // 3. Update Apple Touch Icon
-    const updateOrCreateLink = (rel: string, href: string) => {
-      let link = document.querySelector(`link[rel="${rel}"]`);
-      if (!link) {
-        link = document.createElement('link');
-        link.setAttribute('rel', rel);
-        document.head.appendChild(link);
-      }
-      link.setAttribute('href', href);
-    };
-
-    // 3. Update Icons
-    if (config.appIconUrl) {
-      updateOrCreateLink('apple-touch-icon', config.appIconUrl);
-    }
-
-    // Priorizar Favicon Independente para a aba do navegador com Rotação Dinâmica
-    const faviconUrl = config.appFaviconUrl || config.appIconUrl;
-    if (faviconUrl) {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.src = faviconUrl;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = 128;
-        canvas.height = 128;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.clearRect(0, 0, 128, 128);
-          
-          // Manter proporção original no desenho do canvas
-          const targetSize = config.appIconSize || 110;
-          const aspect = img.width / img.height;
-          let dw = targetSize, dh = targetSize;
-          if (aspect > 1) { // Larga
-            dh = targetSize / aspect;
-          } else { // Alta
-            dw = targetSize * aspect;
-          }
-
-          ctx.translate(64, 64);
-          ctx.rotate((config.appIconRotation ?? 0) * Math.PI / 180);
-          ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
-          
-          const dynamicIconUrl = canvas.toDataURL('image/png');
-          updateOrCreateLink('icon', dynamicIconUrl);
-          
-          const faviconLink = document.getElementById('favicon') as HTMLLinkElement;
-          if (faviconLink) faviconLink.setAttribute('href', dynamicIconUrl);
-        }
-      };
-    }
-
-    // 4. Update Android Manifest Dinamicamente
-    const generateDynamicManifest = () => {
-      const manifest = {
-        name: config.appShortName || config.appName || 'App do Aluno',
-        short_name: config.appShortName || 'App do Aluno',
-        description: `Aplicativo do Aluno - ${config.appName || 'App do Aluno'}`,
-        start_url: '.',
-        display: 'standalone',
-        background_color: '#ffffff',
-        theme_color: config.primaryColor || '#172554',
-        icons: config.appIconUrl ? [
-          {
-            src: config.appIconUrl,
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: config.appIconUrl,
-            sizes: '512x512',
-            type: 'image/png'
-          }
-        ] : []
-      };
-
-      const stringManifest = encodeURIComponent(JSON.stringify(manifest));
-      const manifestURL = `data:application/manifest+json;charset=utf-8,${stringManifest}`;
-      
-      let manifestLink = document.querySelector('link[rel="manifest"]');
-      if (!manifestLink) {
-        manifestLink = document.createElement('link');
-        manifestLink.setAttribute('rel', 'manifest');
-        document.head.appendChild(manifestLink);
-      }
-      manifestLink.setAttribute('href', manifestURL);
-      
-      return () => {
-         // Cleanup if needed
-      };
-    };
-
-    const cleanupManifest = generateDynamicManifest();
-    return () => cleanupManifest();
-  }, [config]);
 
   // --- CONTADOR DE VISITAS PÚBLICAS ---
   useEffect(() => {
