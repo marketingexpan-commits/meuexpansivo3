@@ -17,7 +17,7 @@ interface LoginProps {
 import { useSchoolConfig } from '../hooks/useSchoolConfig';
 
 export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, onLoginCoordinator, onResetSystem, error }) => {
-  const { config } = useSchoolConfig();
+  const { config, loading } = useSchoolConfig();
   // --- SPLASH SCREEN STATE ---
   // --- SPLASH SCREEN STATE ---
   const [showSplash, setShowSplash] = useState(true);
@@ -30,6 +30,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
   // --- PWA DYNAMIC INJECTOR (IOS & ANDROID) ---
   useEffect(() => {
+    if (loading) return;
     if (!config) return;
 
     // 1. Update Document Title
