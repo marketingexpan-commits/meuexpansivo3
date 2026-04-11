@@ -3,7 +3,7 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { db, storage } from '../firebaseConfig';
 import { TeacherMediaGallery } from './TeacherMediaGallery';
 import { useAcademicData } from '../hooks/useAcademicData';
-import { MessageCircle, HelpCircle, ClipboardCheck, Calendar } from 'lucide-react';
+import { MessageCircle, HelpCircle, ClipboardCheck, Calendar, User } from 'lucide-react';
 import {
     Teacher, Student, GradeEntry, BimesterData, SchoolUnit, Subject, SchoolClass, AttendanceRecord, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, Ticket,
     TicketStatus,
@@ -136,6 +136,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
     // New State for Bimester Filter - Default to current bimester
     const [selectedFilterBimester, setSelectedFilterBimester] = useState<number>(() => getDynamicBimester(new Date().toLocaleDateString('en-CA'), academicSettings));
+
+    // Estados para Zoom da Foto do Aluno
+    const [zoomedPhoto, setZoomedPhoto] = useState<{ url: string, name: string } | null>(null);
 
 
     // Estados para a Chamada
@@ -2290,13 +2293,32 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                     <ul className="divide-y divide-gray-200">
                                         {filteredStudents.length > 0 ? (
                                             filteredStudents.map(student => (
-                                                <li key={student.id} className={`p-3 cursor-pointer hover:bg-blue-50 transition rounded-md mb-1 ${selectedStudent?.id === student.id ? 'bg-blue-100 border-l-4 border-blue-950 shadow-sm' : ''}`} onClick={() => handleStudentSelect(student)}>
-                                                    <span className="font-bold text-gray-900 block">{student.name}</span>
-                                                    <span className="text-xs text-gray-500 block mt-1">Matrícula: {student.code}</span>
-                                                    <span className="text-xs text-gray-400 block mt-0.5">{student.gradeLevel}</span>
-                                                    <div className="flex justify-between items-center mt-1">
-                                                        <span className="text-[10px] text-white bg-blue-950 px-1.5 py-0.5 rounded">{UNIT_LABELS[student.unit as SchoolUnit] || student.unit}</span>
-                                                        <span className="text-[10px] text-gray-500">{student.schoolClass} - {SHIFT_LABELS[student.shift as SchoolShift] || student.shift}</span>
+                                                <li key={student.id} className={`p-3 cursor-pointer hover:bg-blue-50 transition rounded-md mb-1 flex gap-3 items-start ${selectedStudent?.id === student.id ? 'bg-blue-100 border-l-4 border-blue-950 shadow-sm' : ''}`} onClick={() => handleStudentSelect(student)}>
+                                                    {/* Student Photo 3x4 */}
+                                                    <div
+                                                        className="w-10 h-13 shrink-0 rounded border border-gray-200 bg-white overflow-hidden shadow-sm aspect-[3/4] flex items-center justify-center cursor-zoom-in group/photo"
+                                                        onClick={(e) => {
+                                                            if (student.photoUrl) {
+                                                                e.stopPropagation();
+                                                                setZoomedPhoto({ url: student.photoUrl, name: student.name });
+                                                            }
+                                                        }}
+                                                    >
+                                                        {student.photoUrl ? (
+                                                            <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover group-hover/photo:scale-110 transition-transform duration-300" />
+                                                        ) : (
+                                                            <User className="w-5 h-5 text-gray-300" />
+                                                        )}
+                                                    </div>
+
+                                                    <div className="flex-1 min-w-0">
+                                                        <span className="font-bold text-gray-900 block truncate">{student.name}</span>
+                                                        <span className="text-xs text-gray-500 block mt-0.5">Matrícula: {student.code}</span>
+                                                        <span className="text-xs text-gray-400 block mt-0.5">{student.gradeLevel}</span>
+                                                        <div className="flex justify-between items-center mt-1">
+                                                            <span className="text-[10px] text-white bg-blue-950 px-1.5 py-0.5 rounded">{UNIT_LABELS[student.unit as SchoolUnit] || student.unit}</span>
+                                                            <span className="text-[10px] text-gray-500">{student.schoolClass} - {SHIFT_LABELS[student.shift as SchoolShift] || student.shift}</span>
+                                                        </div>
                                                     </div>
                                                 </li>
                                             ))
@@ -2328,7 +2350,23 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                                                     <div>
                                                         <label className="block text-sm font-bold text-gray-700 mb-1">Aluno(a)</label>
-                                                        <div className="w-full p-2.5 border border-gray-300 rounded-md bg-gray-100 font-semibold">{selectedStudent.name}</div>
+                                                        <div className="flex items-center gap-3 w-full p-2 border border-gray-300 rounded-md bg-gray-100">
+                                                            <div
+                                                                className="w-10 h-13 shrink-0 rounded border border-gray-200 bg-white overflow-hidden shadow-sm aspect-[3/4] flex items-center justify-center cursor-zoom-in"
+                                                                onClick={() => {
+                                                                    if (selectedStudent.photoUrl) {
+                                                                        setZoomedPhoto({ url: selectedStudent.photoUrl, name: selectedStudent.name });
+                                                                    }
+                                                                }}
+                                                            >
+                                                                {selectedStudent.photoUrl ? (
+                                                                    <img src={selectedStudent.photoUrl} alt={selectedStudent.name} className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <User className="w-5 h-5 text-gray-300" />
+                                                                )}
+                                                            </div>
+                                                            <span className="font-semibold text-gray-800">{selectedStudent.name}</span>
+                                                        </div>
                                                     </div>
                                                     <div>
                                                         <label className="block text-sm font-bold text-gray-700 mb-1">Semestre</label>
@@ -2399,10 +2437,25 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                     Lançamento de Notas
                                                 </h2>
                                                 {selectedStudent && (
-                                                    <div className="bg-blue-50 border border-blue-200 text-blue-900 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 animate-fade-in">
-                                                        <span className="text-blue-400">👤</span>
-                                                        {selectedStudent.name}
-                                                        <span className="text-xs font-normal text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded ml-1">{selectedStudent.code}</span>
+                                                    <div className="bg-blue-50 border border-blue-200 text-blue-900 px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-3 animate-fade-in shadow-sm">
+                                                        <div
+                                                            className="w-8 h-11 shrink-0 rounded border border-blue-200 bg-white overflow-hidden aspect-[3/4] flex items-center justify-center cursor-zoom-in"
+                                                            onClick={() => {
+                                                                if (selectedStudent.photoUrl) {
+                                                                    setZoomedPhoto({ url: selectedStudent.photoUrl, name: selectedStudent.name });
+                                                                }
+                                                            }}
+                                                        >
+                                                            {selectedStudent.photoUrl ? (
+                                                                <img src={selectedStudent.photoUrl} alt={selectedStudent.name} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <User className="w-4 h-4 text-blue-300" />
+                                                            )}
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="leading-tight">{selectedStudent.name}</span>
+                                                            <span className="text-[10px] font-normal text-blue-600 bg-blue-100 px-1 py-0.5 rounded w-fit mt-0.5">{selectedStudent.code}</span>
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
@@ -3448,6 +3501,38 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     )}
                 </div>
             </div>
+
+            {/* MODAL PARA ZOOM DA FOTO DO ALUNO */}
+            {zoomedPhoto && (
+                <div 
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in p-4 cursor-zoom-out"
+                    onClick={() => setZoomedPhoto(null)}
+                >
+                    <div 
+                        className="bg-white p-2 rounded-2xl shadow-2xl relative animate-zoom-in max-w-sm w-full outline outline-4 outline-white/20 border border-gray-100"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button 
+                            className="absolute -top-3 -right-3 bg-red-600 text-white rounded-full p-2 shadow-lg hover:bg-red-700 transition-colors z-10"
+                            onClick={() => setZoomedPhoto(null)}
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                        
+                        <div className="aspect-[3/4] w-full rounded-xl overflow-hidden bg-gray-100 shadow-inner">
+                            <img 
+                                src={zoomedPhoto.url} 
+                                alt={zoomedPhoto.name} 
+                                className="w-full h-full object-cover"
+                            />
+                        </div>
+                        
+                        <div className="mt-4 pb-2 px-2 text-center">
+                            <h4 className="font-bold text-gray-800 text-lg leading-tight uppercase tracking-tight">{zoomedPhoto.name}</h4>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };
