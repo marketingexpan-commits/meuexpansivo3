@@ -1086,25 +1086,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             </button>
                         </div>
 
-                        <div className="flex-1 flex flex-col items-center">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">
-                                {currentView === 'grades' ? 'Boletim Escolar' : 
-                                 currentView === 'attendance' ? 'Frequência' :
-                                 currentView === 'support' ? 'Suporte' :
-                                 currentView === 'messages' ? 'Fale Conosco' :
-                                 currentView === 'early_childhood' ? 'Desenvolvimento' :
-                                 currentView === 'financeiro' ? 'Financeiro' :
-                                 currentView === 'tickets' ? 'Minhas Dúvidas' :
-                                 currentView === 'materials' ? 'Biblioteca' :
-                                 currentView === 'occurrences' ? 'Ocorrências' :
-                                 currentView === 'calendar' ? 'Calendário' :
-                                 currentView === 'schedule' ? 'Grade Horária' :
-                                 currentView === 'lost_found' ? 'Achados e Perdidos' :
-                                 currentView === 'authorizations' ? 'Autorizações' :
-                                 currentView === 'announcements' ? 'Comunicados' :
-                                 'Painel'}
-                            </span>
-                        </div>
+                        <div className="flex-1"></div>
 
                         <div className="flex items-center gap-2 relative">
                             <button
