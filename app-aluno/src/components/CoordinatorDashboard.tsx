@@ -408,9 +408,12 @@ const CoordinatorAnnouncementsView: React.FC<{
             </div>
 
             <div className="w-full">
-                {announcements.length > 0 ? (
+                {announcements.filter(ann => ann.authorId === coordinator.id).length > 0 ? (
                     <div className="col-span-full bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm flex flex-col">
-                        {announcements.sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map((ann, idx) => {
+                        {announcements
+                            .filter(ann => ann.authorId === coordinator.id)
+                            .sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                            .map((ann, idx) => {
                             const isImage = /\.(jpeg|jpg|png|webp|gif)(\?.*)?$/i.test((ann.attachmentName || ann.attachmentUrl || '').split('?')[0]) || 
                                           (ann.attachmentName || ann.attachmentUrl || '').toLowerCase().includes('%2fimage') ||
                                           (ann.attachmentName || ann.attachmentUrl || '').toLowerCase().includes('image_');
