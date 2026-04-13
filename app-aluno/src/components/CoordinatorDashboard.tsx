@@ -325,6 +325,23 @@ const CoordinatorAnnouncementsView: React.FC<{
             }
 
 
+            // When a restricted coordinator sends to "Todos os Segmentos" (targetSegment = ''),
+            // we resolve their allowed segment IDs so students/teachers outside their scope don't see it.
+            let allowedSegmentIds: string[] | null = null;
+            if (!targetSegment && coordinator.segment && coordinator.segment !== CoordinationSegment.GERAL) {
+                allowedSegmentIds = academicSegments
+                    .filter(seg => {
+                        if (coordinator.segment === CoordinationSegment.INFANTIL_FUND1) {
+                            return seg.name === 'Educação Infantil' || seg.name === 'Fundamental I';
+                        }
+                        if (coordinator.segment === CoordinationSegment.FUND2_MEDIO) {
+                            return seg.name === 'Fundamental II' || seg.name === 'Ensino Médio';
+                        }
+                        return false;
+                    })
+                    .map(seg => seg.id);
+            }
+
             const announcementData: Partial<Announcement> = {
                 title,
                 content: editor?.getHTML() || content,
@@ -335,6 +352,7 @@ const CoordinatorAnnouncementsView: React.FC<{
                     gradeId: targetGrade || null,
                     class: targetClass || null,
                     shift: (!coordinator.shift || coordinator.shift === 'all') ? (targetShift || null) : coordinator.shift,
+                    allowedSegmentIds: allowedSegmentIds,
                 },
                 attachmentUrl,
                 attachmentName,

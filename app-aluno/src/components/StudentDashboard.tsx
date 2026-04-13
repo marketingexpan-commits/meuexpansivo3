@@ -376,8 +376,17 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                 // Targeting filters (Granular)
                 if (ann.target.segmentId && ann.target.segmentId !== studentSegmentId) return false;
+
+                // If coordinator scoped the broadcast to specific segments (without picking one),
+                // check student is within those allowed segments.
+                // We only block this IF academic data is ready and we confirmed student is NOT in the list.
+                if (!ann.target.segmentId && ann.target.allowedSegmentIds && ann.target.allowedSegmentIds.length > 0) {
+                    if (!loadingAcademic) { // Only filter if we are sure about the student's segment
+                        if (!studentSegmentId || !ann.target.allowedSegmentIds.includes(studentSegmentId)) return false;
+                    }
+                }
                 
-                // Grade check (using 기술 ID if available, fallback to parsed names)
+                // Grade check (using canonical ID if available, fallback to parsed names)
                 const annGradeId = ann.target.gradeId;
                 if (annGradeId) {
                     if (student.gradeId && annGradeId !== student.gradeId) return false;
@@ -457,7 +466,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         return `${rounded.toString().replace('.', ',')} h`;
     };
 
-    const { subjects: academicSubjects, matrices, grades: allGrades } = useAcademicData();
+    const { subjects: academicSubjects, matrices, grades: allGrades, loading: loadingAcademic } = useAcademicData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState({ title: '', tip: '' });
     const [isLoadingAI, setIsLoadingAI] = useState(false);

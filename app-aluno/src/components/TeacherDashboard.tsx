@@ -259,6 +259,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     if (!teacherSegmentIds.has(ann.target.segmentId)) return false;
                 }
 
+                // 2b. allowedSegmentIds — coordinator "Todos os Segmentos" with restricted scope
+                // If announcement has no specific segmentId but has allowedSegmentIds,
+                // teacher must belong to at least one of those allowed segments
+                if (!ann.target?.segmentId && ann.target?.allowedSegmentIds && ann.target.allowedSegmentIds.length > 0) {
+                    if (gradesReady && hasAnyGradeDefined) {
+                        const teacherInAllowed = ann.target.allowedSegmentIds.some(sid => teacherSegmentIds.has(sid));
+                        if (!teacherInAllowed) return false;
+                    }
+                    // If grades not ready or teacher has no grade info, show the announcement (don't exclude)
+                }
+
                 // 3. Grade filter — canonical ID comparison (direct set lookup)
                 if (ann.target?.gradeId && hasAnyGradeDefined) {
                     if (!teacherGradeIds.has(ann.target.gradeId)) return false;

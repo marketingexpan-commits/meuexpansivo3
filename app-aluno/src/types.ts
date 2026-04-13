@@ -833,10 +833,13 @@ export interface Announcement {
   unit: SchoolUnit | 'all';
   recipient: AnnouncementRecipient;
   target: {
-    segmentId?: string; // ID canônico (ex: seg_infantil)
-    gradeId?: string;   // ID canônico (ex: grade_1_ano)
-    class?: SchoolClass;
-    shift?: SchoolShift;
+    segmentId?: string | null; // ID canônico (ex: seg_infantil)
+    gradeId?: string | null;   // ID canônico (ex: grade_1_ano)
+    class?: SchoolClass | null;
+    shift?: SchoolShift | null;
+    // When a restricted coordinator sends to "Todos os Segmentos", this holds
+    // the canonical IDs of the segments they manage (prevents cross-segment leakage)
+    allowedSegmentIds?: string[] | null;
   };
   attachmentUrl?: string | null;
   attachmentName?: string | null;
