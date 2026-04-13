@@ -432,7 +432,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                 <div className="flex-1 min-w-0 pr-2">
                                     <h3 className="text-sm sm:text-base font-bold text-gray-900 truncate uppercase mt-0.5" title={ann.title}>{ann.title}</h3>
-                                    <p className="text-[11px] sm:text-xs text-gray-400 font-medium mb-1">Comunicado Oficial</p>
+                                    <p className="text-[11px] sm:text-xs text-gray-400 font-medium mb-1">Comunicado de {ann.authorName}</p>
                                     <TextExpander text={ann.content} title={ann.title} isHtml={true} />
                                     {ann.attachmentUrl && !isImage && (
                                         <div className="mt-2">
@@ -442,8 +442,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 </div>
 
                                 <div className="shrink-0 text-right pt-1">
-                                    <span className="text-[10px] sm:text-xs font-semibold text-gray-400">
+                                    <span className="text-[10px] sm:text-xs font-semibold text-gray-400 block">
                                         {new Date(ann.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                                    </span>
+                                    <span className="text-[10px] text-gray-400 block mt-0.5">
+                                        {new Date(ann.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                     </span>
                                 </div>
                             </div>

@@ -335,8 +335,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                     )}
                                 </div>
                                 <div className="shrink-0 text-right pt-1">
-                                    <span className="text-[10px] sm:text-xs font-semibold text-gray-400">
+                                    <span className="text-[10px] sm:text-xs font-semibold text-gray-400 block">
                                         {new Date(ann.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                                    </span>
+                                    <span className="text-[10px] text-gray-400 block mt-0.5">
+                                        {new Date(ann.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                     </span>
                                 </div>
                             </div>

@@ -431,7 +431,7 @@ const CoordinatorAnnouncementsView: React.FC<{
                                 </div>
                                 <div className="flex-1 min-w-0 pr-2">
                                     <h3 className="text-sm sm:text-base font-bold text-gray-900 truncate uppercase mt-0.5" title={ann.title}>{ann.title}</h3>
-                                    <p className="text-[11px] sm:text-xs text-gray-400 font-medium mb-1">Comunicado Oficial</p>
+                                    <p className="text-[11px] sm:text-xs text-gray-400 font-medium mb-1">Comunicado de {ann.authorName}</p>
                                     <TextExpander text={ann.content} title={ann.title} isHtml={true} />
                                     {ann.attachmentUrl && !isImage && (
                                         <div className="mt-2">
@@ -439,9 +439,12 @@ const CoordinatorAnnouncementsView: React.FC<{
                                         </div>
                                     )}
                                 </div>
-                                <div className="shrink-0 flex flex-col items-end gap-2 pt-1">
+                                <div className="shrink-0 flex flex-col items-end pt-1">
                                     <span className="text-[10px] sm:text-xs font-semibold text-gray-400">
                                         {new Date(ann.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                                    </span>
+                                    <span className="text-[10px] text-gray-400 mt-0.5 mb-2">
+                                        {new Date(ann.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                     </span>
                                     <div className="flex items-center gap-2">
                                         <button 
