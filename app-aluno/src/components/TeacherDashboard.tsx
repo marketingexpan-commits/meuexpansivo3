@@ -213,37 +213,73 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         teacher: Teacher;
     }> = ({ announcements, teacher }) => {
         const teacherAnnouncements = useMemo(() => {
-            // Get all segments the teacher belongs to based on their assigned grades
-            const teacherSegmentIds = academicGrades
-                .filter(g => teacher.gradeIds?.includes(g.id) || teacher.gradeLevels?.includes(g.name))
-                .map(g => g.segmentId);
+            // GUARD: academicGrades is loaded async — if empty, skip segment/grade ID lookups
+            // to avoid incorrectly filtering out all announcements during the loading phase.
+            const gradesReady = academicGrades.length > 0;
+
+            // Collect all canonical segmentIds the teacher belongs to.
+            // Source 1: teacher.gradeIds (canonical grade IDs from Firestore)
+            // Source 2: teacher.assignments[].gradeId (canonical grade IDs per assignment)
+            // Source 3: teacher.gradeLevels (legacy string names — matched by grade.name)
+            const teacherSegmentIds = new Set<string>();
+            if (gradesReady) {
+                academicGrades.forEach(g => {
+                    const matched =
+                        teacher.gradeIds?.includes(g.id) ||
+                        teacher.gradeLevels?.includes(g.name) ||
+                        teacher.assignments?.some(a => a.gradeId === g.id || a.gradeLevel === g.name);
+                    if (matched) teacherSegmentIds.add(g.segmentId);
+                });
+            }
+
+            // Collect all canonical gradeIds the teacher belongs to (from all sources)
+            const teacherGradeIds = new Set<string>();
+            teacher.gradeIds?.forEach(id => teacherGradeIds.add(id));
+            teacher.assignments?.forEach(a => { if (a.gradeId) teacherGradeIds.add(a.gradeId); });
+            // Also resolve legacy gradeLevels to IDs using the loaded academicGrades
+            if (gradesReady) {
+                teacher.gradeLevels?.forEach(gl => {
+                    const found = academicGrades.find(g => g.name === gl);
+                    if (found) teacherGradeIds.add(found.id);
+                });
+            }
+
+            const hasAnyGradeDefined = (teacher.gradeIds && teacher.gradeIds.length > 0) ||
+                                       (teacher.gradeLevels && teacher.gradeLevels.length > 0) ||
+                                       (teacher.assignments && teacher.assignments.length > 0);
 
             return announcements.filter(ann => {
-                // Basic scope filters
+                // 1. Basic recipient + unit scope
                 const matchesRecipient = ann.recipient === AnnouncementRecipient.ALL || ann.recipient === AnnouncementRecipient.TEACHERS;
                 const matchesUnit = ann.unit === 'all' || normalizeUnit(ann.unit) === normalizeUnit(teacher.unit);
                 if (!matchesRecipient || !matchesUnit) return false;
 
-                // Targeting filters (Granular)
-                if (ann.target.segmentId && !teacherSegmentIds.includes(ann.target.segmentId)) return false;
-                
-                if (ann.target.gradeId) {
-                    const isGradeMatch = teacher.gradeIds?.includes(ann.target.gradeId) || 
-                                       teacher.gradeLevels?.some(gl => {
-                                           const gName = academicGrades.find(g => g.id === ann.target.gradeId)?.name;
-                                           return gName === gl;
-                                       });
-                    if (!isGradeMatch) return false;
+                // 2. Segment filter — only applies when academicGrades are loaded AND teacher has grades defined
+                if (ann.target?.segmentId && gradesReady && hasAnyGradeDefined) {
+                    if (!teacherSegmentIds.has(ann.target.segmentId)) return false;
                 }
 
-                // Teachers seeing specific class/shift announcements? 
-                if (ann.target.class || ann.target.shift) {
-                    const matchesAssignment = teacher.assignments?.some(asgn => {
-                        const classMatch = !ann.target.class || normalizeClass(asgn.class) === normalizeClass(ann.target.class);
-                        const shiftMatch = !ann.target.shift || normalizeShift(asgn.shift) === normalizeShift(ann.target.shift);
-                        return classMatch && shiftMatch;
-                    });
-                    if (!matchesAssignment && teacher.assignments && teacher.assignments.length > 0) return false;
+                // 3. Grade filter — canonical ID comparison (direct set lookup)
+                if (ann.target?.gradeId && hasAnyGradeDefined) {
+                    if (!teacherGradeIds.has(ann.target.gradeId)) return false;
+                }
+
+                // For teachers, we IGNORE the class (Turma) filter entirely.
+                // A teacher teaches multiple classes — the class filter is only meaningful for students.
+                // We only apply the shift filter to avoid showing wrong shift announcements.
+                if (ann.target?.shift) {
+                    const annShift = normalizeShift(ann.target.shift);
+                    if (teacher.assignments && teacher.assignments.length > 0) {
+                        // Teacher matches if ANY of their assignments is in the target shift
+                        const matchesShift = teacher.assignments.some(asgn =>
+                            normalizeShift(asgn.shift) === annShift
+                        );
+                        if (!matchesShift) return false;
+                    } else if (teacher.shift) {
+                        // Fallback: use teacher's single shift field
+                        if (normalizeShift(teacher.shift) !== annShift) return false;
+                    }
+                    // If teacher has no shift info at all, we show the announcement (don't exclude)
                 }
 
                 return true;
@@ -1562,19 +1598,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                         )}
 
                         <div className="flex-1 flex flex-col items-center">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">
-                                {activeTab === 'grades' ? (isEarlyChildhoodTeacher ? 'Desenvolvimento' : 'Notas') : 
-                                 activeTab === 'attendance' ? 'Chamada' :
-                                 activeTab === 'tickets' ? (isEarlyChildhoodTeacher ? 'Mensagens' : 'Dúvidas') :
-                                 activeTab === 'materials' ? 'Materiais' :
-                                 activeTab === 'messages' ? 'Mensagens' :
-                                 activeTab === 'calendar' ? 'Calendário' :
-                                 activeTab === 'exam_guides' ? 'Roteiros' :
-                                 activeTab === 'agenda' ? 'Agenda' :
-                                 activeTab === 'media_gallery' ? 'Mídia' :
-                                 activeTab === 'announcements' ? 'Comunicados' :
-                                 'Painel'}
-                            </span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                             <span className="font-medium text-gray-800">{teacher.name}</span>
