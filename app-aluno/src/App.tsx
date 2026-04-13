@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import firebase from 'firebase/compat/app';
-import { UserRole, UserSession, Student, Teacher, GradeEntry, SchoolMessage, AttendanceRecord, EarlyChildhoodReport, UnitContact, AppNotification, Mensalidade, EventoFinanceiro, AcademicSettings, Ticket, ClassMaterial, DailyAgenda, ExamGuide, CalendarEvent, ClassSchedule, SchoolUnit, UNIT_LABELS } from './types';
+import { UserRole, UserSession, Student, Teacher, GradeEntry, SchoolMessage, AttendanceRecord, EarlyChildhoodReport, UnitContact, AppNotification, Mensalidade, EventoFinanceiro, AcademicSettings, Ticket, ClassMaterial, DailyAgenda, ExamGuide, CalendarEvent, ClassSchedule, SchoolUnit, UNIT_LABELS, Announcement } from './types';
 import { MOCK_STUDENTS, MOCK_TEACHERS, FINAL_GRADES_CALCULATED, ALLOW_MOCK_LOGIN } from './constants';
 import { Login } from './components/Login';
 import { StudentDashboard } from './components/StudentDashboard';
@@ -61,6 +61,8 @@ const AppContent: React.FC = () => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]); // New State
   const [classSchedules, setClassSchedules] = useState<ClassSchedule[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+
 
 
   const [loginError, setLoginError] = useState<string>('');
@@ -83,7 +85,8 @@ const AppContent: React.FC = () => {
     examGuides: false,
     tickets: false,
     calendarEvents: false, // New Initial Load Key
-    classSchedules: false
+    classSchedules: false,
+    announcements: false
   });
 
   const [isSeeding, setIsSeeding] = useState(false);
@@ -405,6 +408,14 @@ const AppContent: React.FC = () => {
         setInitialLoad(prev => ({ ...prev, messages: true }));
       }));
 
+      unsubs.push(db.collection('announcements').where('unit', 'in', [userUnit, 'all']).onSnapshot(snap => {
+        setAnnouncements(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Announcement)));
+        setInitialLoad(prev => ({ ...prev, announcements: true }));
+      }, (err) => {
+        console.error("Announcements listen error:", err);
+        setInitialLoad(prev => ({ ...prev, announcements: true }));
+      }));
+
       // Set others to ready for students
       setInitialLoad(prev => ({ ...prev, students: true, admins: true, messages: true }));
 
@@ -531,6 +542,14 @@ const AppContent: React.FC = () => {
         setInitialLoad(prev => ({ ...prev, messages: true }));
       }));
 
+      unsubs.push(db.collection('announcements').where('unit', 'in', [userUnit, 'all']).onSnapshot(snap => {
+        setAnnouncements(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Announcement)));
+        setInitialLoad(prev => ({ ...prev, announcements: true }));
+      }, (err) => {
+        console.error("Announcements listen error:", err);
+        setInitialLoad(prev => ({ ...prev, announcements: true }));
+      }));
+
       setInitialLoad(prev => ({ ...prev, teachers: true, admins: true, messages: true, mensalidades: true, academicSettings: true }));
 
     } else if (session.role === UserRole.COORDINATOR) {
@@ -566,6 +585,14 @@ const AppContent: React.FC = () => {
         setInitialLoad(prev => ({ ...prev, classSchedules: true }));
       }));
 
+      unsubs.push(db.collection('announcements').where('unit', 'in', [userUnit, 'all']).onSnapshot(snap => {
+        setAnnouncements(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Announcement)));
+        setInitialLoad(prev => ({ ...prev, announcements: true }));
+      }, (err) => {
+        console.error("Announcements listen error:", err);
+        setInitialLoad(prev => ({ ...prev, announcements: true }));
+      }));
+
       // We just need to signal that the "initial load" is complete so the router can proceed.
       setInitialLoad(prev => ({
         ...prev,
@@ -586,7 +613,8 @@ const AppContent: React.FC = () => {
         examGuides: true,
         tickets: true,
         calendarEvents: true,
-        classSchedules: true
+        classSchedules: true,
+        announcements: true
       }));
     }
 
@@ -612,7 +640,15 @@ const AppContent: React.FC = () => {
       // Essentials for student: Grades, Fees and Settings
       return initialLoad.grades && initialLoad.mensalidades && initialLoad.academicSettings;
     }
-    // Teachers and Admins still need more full sets
+    if (session.role === UserRole.TEACHER) {
+      // Essentials for teacher: Students, Grades, Attendance, and Settings
+      return initialLoad.students && initialLoad.grades && initialLoad.attendance && initialLoad.academicSettings;
+    }
+    if (session.role === UserRole.COORDINATOR) {
+      // Coordinator is self-managed in its dashboard
+      return true;
+    }
+    // Admins still need more full sets
     return Object.values(initialLoad).every(Boolean);
   })();
 
@@ -1435,6 +1471,7 @@ const AppContent: React.FC = () => {
           tickets={tickets}
           calendarEvents={calendarEvents}
           classSchedules={classSchedules}
+          announcements={announcements}
         />
         <BackToTopButton />
       </>
@@ -1466,6 +1503,7 @@ const AppContent: React.FC = () => {
           tickets={tickets}
           classSchedules={classSchedules}
           schoolMessages={schoolMessages}
+          announcements={announcements}
         />
         <BackToTopButton />
       </>
@@ -1496,6 +1534,7 @@ const AppContent: React.FC = () => {
           tickets={tickets}
           classSchedules={classSchedules}
           schoolMessages={schoolMessages}
+          announcements={announcements}
         />
         <BackToTopButton />
       </>

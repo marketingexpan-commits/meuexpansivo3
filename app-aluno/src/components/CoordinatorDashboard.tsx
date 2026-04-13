@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
-import { db } from '../firebaseConfig';
-import { UnitContact, SchoolUnit, UNIT_LABELS, SHIFT_LABELS, CoordinationSegment, Subject, SUBJECT_LABELS, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket, SchoolMessage, MessageRecipient, CalendarEvent, ClassSchedule, PedagogicalAttendance, BimesterData, PhotographerDemand } from '../types';
+import { db, storage } from '../firebaseConfig';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { UnitContact, SchoolUnit, UNIT_LABELS, SHIFT_LABELS, CoordinationSegment, Subject, SUBJECT_LABELS, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket, SchoolMessage, MessageRecipient, CalendarEvent, ClassSchedule, PedagogicalAttendance, BimesterData, PhotographerDemand, Announcement, AnnouncementRecipient } from '../types';
 import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, CURRICULUM_MATRIX, getCurriculumSubjects, calculateBimesterMedia, calculateFinalData, SCHOOL_CLASSES_OPTIONS, ACADEMIC_GRADES } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency, calculateTaughtClasses, calculateBimesterGeneralFrequency } from '../utils/frequency';
 import { getDynamicBimester, isClassScheduled, normalizeClass, parseGradeLevel, safeParseDate, calculateSchoolDays, getSubjectDurationForDay, normalizeUnit, resolveGradeId } from '../utils/academicUtils';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 import { SchoolCalendar } from './SchoolCalendar';
+import { AttachmentViewer } from './AttachmentViewer';
+import { TextExpander } from './TextExpander';
 import { generateSchoolCalendar } from '../utils/calendarGenerator';
 import {
     AlertCircle,
@@ -40,8 +43,147 @@ import {
     Camera,
     AlertTriangle,
     ArrowLeft,
-    BookCheck
+    BookCheck,
+    Bold as BoldIcon,
+    Italic as ItalicIcon,
+    List as ListIcon,
+    ListOrdered as ListOrderedIcon,
+    Smile as SmileIcon,
+    Undo as UndoIcon,
+    Redo as RedoIcon
 } from 'lucide-react';
+
+// Tiptap Imports
+import { useEditor, EditorContent } from '@tiptap/react';
+import { StarterKit } from '@tiptap/starter-kit';
+import { Underline } from '@tiptap/extension-underline';
+import { Link } from '@tiptap/extension-link';
+import { TextStyle } from '@tiptap/extension-text-style';
+import { Color } from '@tiptap/extension-color';
+import { ListItem } from '@tiptap/extension-list-item';
+import { BulletList } from '@tiptap/extension-bullet-list';
+import { OrderedList } from '@tiptap/extension-ordered-list';
+
+// --- SUB-COMPONENT: EDITOR TOOLBAR ---
+const MenuBar = ({ editor }: { editor: any }) => {
+    if (!editor) {
+        return null;
+    }
+
+    const insertEmoji = (type: 'smile' | 'dot', color: 'orange' | 'navy') => {
+        const hex = color === 'orange' ? '#ea580c' : '#1e3a8a';
+        const content = type === 'smile' ? '☺ ' : '● ';
+        editor.chain()
+            .focus()
+            .insertContent(`<span style="color: ${hex}">${content}</span>`)
+            .run();
+    };
+
+    return (
+        <div className="flex flex-wrap gap-1 p-2 bg-slate-50 border-b border-slate-200 sticky top-0 z-10 rounded-t-xl">
+            <button
+                type="button"
+                onClick={() => editor.chain().focus().toggleBold().run()}
+                className={`p-1.5 rounded hover:bg-slate-200 transition-colors ${editor.isActive('bold') ? 'bg-slate-200 text-blue-900 shadow-inner' : 'text-slate-600'}`}
+                title="Negrito"
+            >
+                <BoldIcon className="w-4 h-4" />
+            </button>
+            <button
+                type="button"
+                onClick={() => editor.chain().focus().toggleItalic().run()}
+                className={`p-1.5 rounded hover:bg-slate-200 transition-colors ${editor.isActive('italic') ? 'bg-slate-200 text-blue-900 shadow-inner' : 'text-slate-600'}`}
+                title="Itálico"
+            >
+                <ItalicIcon className="w-4 h-4" />
+            </button>
+            <button
+                type="button"
+                onClick={() => editor.chain().focus().toggleUnderline().run()}
+                className={`p-1.5 rounded hover:bg-slate-200 transition-colors ${editor.isActive('underline') ? 'bg-slate-200 text-blue-900 shadow-inner' : 'text-slate-600'}`}
+                title="Sublinhado"
+            >
+                <span className="font-bold underline text-xs px-0.5">U</span>
+            </button>
+
+            <div className="w-px h-5 bg-slate-200 mx-1 my-auto"></div>
+
+            <button
+                type="button"
+                onClick={() => editor.chain().focus().toggleBulletList().run()}
+                className={`p-1.5 rounded hover:bg-slate-200 transition-colors ${editor.isActive('bulletList') ? 'bg-slate-200 text-blue-900 shadow-inner' : 'text-slate-600'}`}
+                title="Lista com marcadores"
+            >
+                <ListIcon className="w-4 h-4" />
+            </button>
+            <button
+                type="button"
+                onClick={() => editor.chain().focus().toggleOrderedList().run()}
+                className={`p-1.5 rounded hover:bg-slate-200 transition-colors ${editor.isActive('orderedList') ? 'bg-slate-200 text-blue-900 shadow-inner' : 'text-slate-600'}`}
+                title="Lista numerada"
+            >
+                <ListOrderedIcon className="w-4 h-4" />
+            </button>
+
+            <div className="w-px h-5 bg-slate-200 mx-1 my-auto"></div>
+
+            {/* GRUPO AZUL MARINHO */}
+            <button
+                type="button"
+                onClick={() => insertEmoji('smile', 'navy')}
+                className="p-1.5 rounded hover:bg-slate-200 transition-colors text-[#1e3a8a]"
+                title="Rostinho Azul Marinho"
+            >
+                <SmileIcon className="w-4 h-4" />
+            </button>
+            <button
+                type="button"
+                onClick={() => insertEmoji('dot', 'navy')}
+                className="p-1.5 rounded hover:bg-slate-200 transition-colors"
+                title="Ponto Azul Marinho"
+            >
+                <span className="w-3 h-3 rounded-full bg-[#1e3a8a] block mx-0.5"></span>
+            </button>
+
+            {/* GRUPO LARANJA */}
+            <button
+                type="button"
+                onClick={() => insertEmoji('smile', 'orange')}
+                className="p-1.5 rounded hover:bg-slate-200 transition-colors text-[#ea580c]"
+                title="Rostinho Laranja"
+            >
+                <SmileIcon className="w-4 h-4" />
+            </button>
+            <button
+                type="button"
+                onClick={() => insertEmoji('dot', 'orange')}
+                className="p-1.5 rounded hover:bg-slate-200 transition-colors"
+                title="Ponto Laranja"
+            >
+                <span className="w-3 h-3 rounded-full bg-[#ea580c] block mx-0.5"></span>
+            </button>
+
+            <div className="flex-1"></div>
+
+            <button
+                type="button"
+                onClick={() => editor.chain().focus().undo().run()}
+                className="p-1.5 rounded hover:bg-slate-200 text-slate-400"
+                title="Desfazer"
+            >
+                <UndoIcon className="w-4 h-4" />
+            </button>
+            <button
+                type="button"
+                onClick={() => editor.chain().focus().redo().run()}
+                className="p-1.5 rounded hover:bg-slate-200 text-slate-400"
+                title="Refazer"
+            >
+                <RedoIcon className="w-4 h-4" />
+            </button>
+        </div>
+    );
+};
 
 import { Input } from './Input';
 import { useLostAndFound } from '../hooks/useLostAndFound';
@@ -54,6 +196,450 @@ import { ScheduleTimeline } from './ScheduleTimeline';
 
 
 
+
+// --- SUB-COMPONENT: ANNOUNCEMENTS (COORDINATOR) ---
+const CoordinatorAnnouncementsView: React.FC<{
+    coordinator: UnitContact;
+    announcements: Announcement[];
+    onCreateNotification?: (title: string, message: string, studentId?: string, teacherId?: string) => Promise<void>;
+}> = ({ coordinator, announcements, onCreateNotification }) => {
+    const { grades: academicGrades, segments: academicSegments } = useAcademicData();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
+
+    // Form State
+    const [title, setTitle] = useState('');
+    const [content, setContent] = useState('');
+    const [recipient, setRecipient] = useState<AnnouncementRecipient>(AnnouncementRecipient.ALL);
+    const [targetUnit, setTargetUnit] = useState<SchoolUnit | 'all'>(coordinator.unit as SchoolUnit);
+    const [targetSegment, setTargetSegment] = useState<string>('');
+    const [targetGrade, setTargetGrade] = useState<string>('');
+    const [targetClass, setTargetClass] = useState<SchoolClass | ''>('');
+    const [targetShift, setTargetShift] = useState<SchoolShift | ''>('');
+    const [file, setFile] = useState<File | null>(null);
+    const [uploadProgress, setUploadProgress] = useState(0);
+
+    const editor = useEditor({
+        extensions: [
+            StarterKit,
+            Underline,
+            TextStyle,
+            Color,
+            ListItem,
+            BulletList.configure({
+                HTMLAttributes: {
+                    class: 'list-disc ml-4',
+                },
+            }),
+            OrderedList.configure({
+                HTMLAttributes: {
+                    class: 'list-decimal ml-4',
+                },
+            }),
+            Link.configure({
+                openOnClick: false,
+            }),
+        ],
+        content: '',
+        onUpdate: ({ editor }) => {
+            setContent(editor.getHTML());
+        },
+    });
+
+    const resetForm = () => {
+        setTitle('');
+        setContent('');
+        if (editor) editor.commands.setContent('');
+        setRecipient(AnnouncementRecipient.ALL);
+        setTargetUnit(coordinator.unit as SchoolUnit);
+        setTargetSegment('');
+        setTargetGrade('');
+        setTargetClass('');
+        setTargetShift('');
+        setFile(null);
+        setEditingAnnouncement(null);
+        setUploadProgress(0);
+    };
+
+    const handleEdit = (ann: Announcement) => {
+        setEditingAnnouncement(ann);
+        setTitle(ann.title);
+        setContent(ann.content);
+        if (editor) editor.commands.setContent(ann.content);
+        setRecipient(ann.recipient);
+        setTargetUnit(ann.unit as SchoolUnit);
+        setTargetSegment(ann.target.segmentId || '');
+        setTargetGrade(ann.target.gradeId || '');
+        setTargetClass(ann.target.class || '');
+        setTargetShift(ann.target.shift || '');
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!window.confirm("Deseja excluir este comunicado permanentemente?")) return;
+        try {
+            await db.collection('announcements').doc(id).delete();
+            alert("Comunicado excluído com sucesso!");
+        } catch (error) {
+            console.error("Erro ao excluir comunicado:", error);
+            alert("Erro ao excluir comunicado.");
+        }
+    };
+
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!title.trim() || !content.trim()) return alert("Preencha o título e o conteúdo.");
+
+        setIsSaving(true);
+        try {
+            let attachmentUrl = editingAnnouncement?.attachmentUrl || null;
+            let attachmentName = editingAnnouncement?.attachmentName || null;
+
+            if (file) {
+                const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+                if (!allowedTypes.includes(file.type)) {
+                    setIsSaving(false);
+                    return alert("Formato de arquivo inválido. Por favor, anexe apenas arquivos PDF, ou imagens JPEG/PNG.");
+                }
+
+                if (file.size > 5 * 1024 * 1024) {
+                    setIsSaving(false);
+                    return alert("O arquivo excede o limite de 5 MB. Por favor, escolha um arquivo menor.");
+                }
+
+                const storageRef = ref(storage, `announcements/${Date.now()}_${file.name}`);
+                const uploadTask = uploadBytesResumable(storageRef, file);
+
+                await new Promise((resolve, reject) => {
+                    uploadTask.on('state_changed',
+                        (snapshot) => setUploadProgress((snapshot.bytesTransferred / snapshot.totalBytes) * 100),
+                        (error) => reject(error),
+                        async () => {
+                            attachmentUrl = await getDownloadURL(uploadTask.snapshot.ref);
+                            attachmentName = file.name;
+                            resolve(null);
+                        }
+                    );
+                });
+            }
+
+            // Validation for restricted segment
+            if (coordinator.segment && coordinator.segment !== CoordinationSegment.GERAL && !targetSegment) {
+                setIsSaving(false);
+                return alert("Por favor, selecione um Segmento. Você não tem permissão para enviar a Todos os Segmentos da escola.");
+            }
+
+            const announcementData: Partial<Announcement> = {
+                title,
+                content: editor?.getHTML() || content,
+                unit: targetUnit,
+                recipient,
+                target: {
+                    segmentId: targetSegment || null,
+                    gradeId: targetGrade || null,
+                    class: targetClass || null,
+                    shift: (!coordinator.shift || coordinator.shift === 'all') ? (targetShift || null) : coordinator.shift,
+                },
+                attachmentUrl,
+                attachmentName,
+                authorId: coordinator.id,
+                authorName: coordinator.name,
+                timestamp: editingAnnouncement?.timestamp || new Date().toISOString(),
+                lastUpdated: new Date().toISOString()
+            };
+
+            if (editingAnnouncement) {
+                await db.collection('announcements').doc(editingAnnouncement.id).update(announcementData);
+            } else {
+                const newDoc = await db.collection('announcements').add(announcementData);
+                
+                // NOTIFICATION LOGIC
+                if (onCreateNotification) {
+                    const notifyTitle = `Novo Comunicado: ${title}`;
+                    const notifyMessage = content.substring(0, 100) + (content.length > 100 ? '...' : '');
+                    
+                    // Note: Massive notification broadcasting is tricky in Firestore.
+                    // For now, we follow the pattern of the app where we can notify roles or specific types.
+                    // If recipient is 'PROFESSORES', we notify teachers.
+                    // If 'ALUNOS', we notify students.
+                    // Implementation of broadcast notification would depend on the backend/functions,
+                    // but here we can try to notify the primary target if it's broad.
+                    // Since the current `onCreateNotification` seems to take studentId/teacherId, 
+                    // a global announcement might need a different handling or individual notifications.
+                    // Given the constraint of not changing logic, we'll implement a simple version or a placeholder.
+                }
+            }
+
+            alert(editingAnnouncement ? "Comunicado atualizado!" : "Comunicado criado!");
+            setIsModalOpen(false);
+            resetForm();
+        } catch (error) {
+            console.error("Erro ao salvar comunicado:", error);
+            alert("Erro ao salvar comunicado.");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <div className="space-y-6 animate-fade-in-up">
+            <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                <div>
+                    <h3 className="text-lg font-bold text-gray-800">Gerenciar Comunicados</h3>
+                    <p className="text-sm text-gray-500">Crie e edite avisos para alunos e professores.</p>
+                </div>
+                <Button onClick={() => { resetForm(); setIsModalOpen(true); }} className="flex items-center gap-2">
+                    <Plus className="w-4 h-4" /> Novo Comunicado
+                </Button>
+            </div>
+
+            <div className="w-full">
+                {announcements.length > 0 ? (
+                    <div className="col-span-full bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm flex flex-col">
+                        {announcements.sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map((ann, idx) => {
+                            const isImage = /\.(jpeg|jpg|png|webp|gif)(\?.*)?$/i.test((ann.attachmentName || ann.attachmentUrl || '').split('?')[0]) || 
+                                          (ann.attachmentName || ann.attachmentUrl || '').toLowerCase().includes('%2fimage') ||
+                                          (ann.attachmentName || ann.attachmentUrl || '').toLowerCase().includes('image_');
+                            
+                            return (
+                            <div key={ann.id} className={`flex items-start gap-3 sm:gap-4 p-4 ${idx !== announcements.length - 1 ? 'border-b border-gray-100' : ''} hover:bg-gray-50 transition-colors`}>
+                                <div className="shrink-0">
+                                    {ann.attachmentUrl && isImage ? (
+                                        <AttachmentViewer url={ann.attachmentUrl} name={ann.attachmentName} asIcon={true} />
+                                    ) : (
+                                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white text-[#1e3a8a] flex items-center justify-center shrink-0 shadow-sm border border-blue-50">
+                                            <Bell className="w-6 h-6 sm:w-7 sm:h-7" />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex-1 min-w-0 pr-2">
+                                    <h3 className="text-sm sm:text-base font-bold text-gray-900 truncate uppercase mt-0.5" title={ann.title}>{ann.title}</h3>
+                                    <p className="text-[11px] sm:text-xs text-gray-400 font-medium mb-1">Comunicado Oficial</p>
+                                    <TextExpander text={ann.content} title={ann.title} isHtml={true} />
+                                    {ann.attachmentUrl && !isImage && (
+                                        <div className="mt-2">
+                                            <AttachmentViewer url={ann.attachmentUrl} name={ann.attachmentName} />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="shrink-0 flex flex-col items-end gap-2 pt-1">
+                                    <span className="text-[10px] sm:text-xs font-semibold text-gray-400">
+                                        {new Date(ann.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <button 
+                                            onClick={() => handleEdit(ann)} 
+                                            className="text-gray-400 hover:text-blue-600 transition-colors"
+                                            title="Editar"
+                                        >
+                                            <Search className="w-4 h-4" />
+                                        </button>
+                                        <button 
+                                            onClick={() => handleDelete(ann.id!)} 
+                                            className="text-gray-400 hover:text-red-600 transition-colors"
+                                            title="Excluir"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )})}
+                    </div>
+                ) : (
+                    <div className="col-span-full py-12 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                        <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-500 font-medium">Nenhum comunicado cadastrado.</p>
+                    </div>
+                )}
+            </div>
+
+            {/* Modal de Cadastro/Edição */}
+            <Dialog 
+                isOpen={isModalOpen} 
+                onCancel={() => setIsModalOpen(false)} 
+                type="confirm"
+                title={editingAnnouncement ? "Editar Comunicado" : "Novo Comunicado"}
+                message=""
+                maxWidth="max-w-2xl"
+                hideFooter
+            >
+                <form onSubmit={handleSave} className="space-y-4">
+                    <Input 
+                        label="Título do Comunicado" 
+                        placeholder="Ex: Reunião de Pais, Mudança de Horário..." 
+                        value={title} 
+                        onChange={e => setTitle(e.target.value)} 
+                        required 
+                    />
+                    
+                    <div className="space-y-1">
+                        <label className="block text-sm font-semibold text-gray-700 pl-1">Conteúdo</label>
+                        <div className="border border-gray-200 rounded-xl focus-within:ring-2 focus-within:ring-blue-950 transition-all overflow-hidden bg-white min-h-[250px] flex flex-col">
+                            <MenuBar editor={editor} />
+                            <EditorContent
+                                editor={editor}
+                                className="prose prose-sm max-w-none p-4 focus:outline-none flex-1 overflow-y-auto min-h-[200px] tiptap-editor text-left"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider pl-1">Público-Alvo</label>
+                            <select 
+                                value={recipient}
+                                onChange={e => setRecipient(e.target.value as AnnouncementRecipient)}
+                                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 outline-none"
+                            >
+                                <option value={AnnouncementRecipient.ALL}>Alunos, Pais e Professores</option>
+                                <option value={AnnouncementRecipient.STUDENTS}>Apenas Alunos e Pais</option>
+                                <option value={AnnouncementRecipient.TEACHERS}>Apenas Professores</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider pl-1">Unidade</label>
+                            <div className="w-full p-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm font-bold text-gray-500 cursor-not-allowed">
+                                {UNIT_LABELS[coordinator.unit as SchoolUnit] || coordinator.unit}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-blue-50/50 p-4 rounded-xl space-y-4 border border-blue-100">
+                        <p className="text-xs font-bold text-blue-900 uppercase tracking-widest flex items-center gap-2">
+                           <Filter className="w-3 h-3" /> Filtros de Segmentação (Opcional)
+                        </p>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase pl-1">Segmento</label>
+                                <select 
+                                    value={targetSegment}
+                                    onChange={e => { setTargetSegment(e.target.value); setTargetGrade(''); }}
+                                    className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs outline-none"
+                                >
+                                    {(!coordinator.segment || coordinator.segment === CoordinationSegment.GERAL) ? (
+                                        <option value="">Todos os Segmentos</option>
+                                    ) : (
+                                        <option value="" disabled>Selecione um Segmento</option>
+                                    )}
+                                    {academicSegments.filter(seg => {
+                                        if (!coordinator.segment || coordinator.segment === CoordinationSegment.GERAL) return true;
+                                        if (coordinator.segment === CoordinationSegment.INFANTIL_FUND1) {
+                                            return seg.name === 'Educação Infantil' || seg.name === 'Fundamental I';
+                                        }
+                                        if (coordinator.segment === CoordinationSegment.FUND2_MEDIO) {
+                                            return seg.name === 'Fundamental II' || seg.name === 'Ensino Médio';
+                                        }
+                                        return false;
+                                    }).map(seg => (
+                                        <option key={seg.id} value={seg.id}>{seg.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase pl-1">Série / Nível</label>
+                                <select 
+                                    value={targetGrade}
+                                    onChange={e => setTargetGrade(e.target.value)}
+                                    className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs outline-none"
+                                    disabled={!targetSegment}
+                                >
+                                    <option value="">Todas as Séries</option>
+                                    {academicGrades.filter(g => g.segmentId === targetSegment).map(grade => (
+                                        <option key={grade.id} value={grade.id}>{grade.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase pl-1">Turma</label>
+                                <select 
+                                    value={targetClass}
+                                    onChange={e => setTargetClass(e.target.value as SchoolClass)}
+                                    className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs outline-none"
+                                >
+                                    <option value="">Todas as Turmas</option>
+                                    {SCHOOL_CLASSES_LIST.map(cls => (
+                                        <option key={cls} value={cls}>Turma {cls}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase pl-1">Turno</label>
+                                {(!coordinator.shift || coordinator.shift === 'all') ? (
+                                    <select 
+                                        value={targetShift}
+                                        onChange={e => setTargetShift(e.target.value as SchoolShift)}
+                                        className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs outline-none"
+                                    >
+                                        <option value="">Todos os Turnos</option>
+                                        {Object.entries(SHIFT_LABELS).map(([id, label]) => (
+                                            <option key={id} value={id}>{label}</option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <div className="w-full p-2 bg-gray-100 border border-gray-200 rounded-lg text-xs text-gray-500 cursor-not-allowed">
+                                        {SHIFT_LABELS[coordinator.shift as SchoolShift] || coordinator.shift}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="block text-sm font-semibold text-gray-700 pl-1">Anexo (Opcional)</label>
+                        <div className="flex items-center gap-3">
+                            <input 
+                                type="file" 
+                                id="announcement-file"
+                                className="hidden" 
+                                onChange={e => setFile(e.target.files?.[0] || null)}
+                                accept=".pdf,.jpeg,.jpg,.png,application/pdf,image/jpeg,image/png"
+                            />
+                            <label 
+                                htmlFor="announcement-file"
+                                className="flex-1 p-3 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center gap-2 cursor-pointer hover:border-blue-900 hover:bg-blue-50 transition-all text-sm text-gray-500 font-medium overflow-hidden"
+                            >
+                                <Package className="w-5 h-5 flex-shrink-0" />
+                                <span className="truncate">{file ? file.name : "Clique para anexar PDF ou Imagem"}</span>
+                            </label>
+                            {file && (
+                                <button type="button" onClick={() => setFile(null)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg flex-shrink-0">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            )}
+                        </div>
+                        <p className="text-[10px] text-gray-400 pl-1 font-medium">* Tamanho máximo permitido: 5MB</p>
+                        {uploadProgress > 0 && (
+                            <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2 overflow-hidden">
+                                <div className="bg-blue-600 h-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="pt-4 flex gap-3">
+                        <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} className="flex-1 py-3" disabled={isSaving}>
+                            Cancelar
+                        </Button>
+                        <Button type="submit" className="flex-1 py-3" disabled={isSaving}>
+                            {isSaving ? (
+                                <div className="flex items-center justify-center gap-2">
+                                    <Loader2 className="w-4 h-4 animate-spin" /> Salvando...
+                                </div>
+                            ) : (
+                                editingAnnouncement ? "Atualizar Comunicado" : "Publicar Comunicado"
+                            )}
+                        </Button>
+                    </div>
+                </form>
+            </Dialog>
+        </div>
+    );
+};
 
 // --- SUB-COMPONENT: LOST AND FOUND (COORDINATOR) ---
 const CoordinatorLostFoundView: React.FC<{ unit: SchoolUnit }> = ({ unit }) => {
@@ -521,6 +1107,7 @@ interface CoordinatorDashboardProps {
     onCreateNotification?: (title: string, message: string, studentId?: string, teacherId?: string) => Promise<void>;
     academicSettings?: any;
     tickets?: Ticket[];
+    announcements?: Announcement[];
     calendarEvents?: CalendarEvent[];
     classSchedules?: ClassSchedule[];
 }
@@ -799,6 +1386,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     onCreateNotification,
     academicSettings,
     tickets = [],
+    announcements = [],
     calendarEvents = [],
     classSchedules = []
 }) => {
@@ -835,7 +1423,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     }, [academicSettings]);
 
     // NEW: Navigation State
-    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages' | 'attendance' | 'crm' | 'schedule' | 'access_control' | 'lost_found' | 'photographer_demands' | 'agenda_report'>('menu');
+    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages' | 'attendance' | 'crm' | 'schedule' | 'access_control' | 'lost_found' | 'photographer_demands' | 'agenda_report' | 'announcements'>('menu');
     const TabTypes = ['classes', 'students', 'occurrences', 'attendance', 'lost_found', 'messages', 'releases', 'crm', 'calendar', 'photographer_demands', 'agenda_report'] as const;
     // --- SCHEDULE STATE ---
     const [scheduleGrade, setScheduleGrade] = useState('');
@@ -2104,7 +2692,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans transition-all duration-500 ease-in-out print:min-h-0 print:h-auto print:bg-white print:p-0 print:block print:overflow-visible">
             <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${activeTab === 'menu' ? 'max-w-2xl' :
-                (activeTab === 'occurrences' || activeTab === 'messages') ? 'max-w-3xl' :
+                (activeTab === 'occurrences' || activeTab === 'messages' || activeTab === 'announcements') ? 'max-w-3xl' :
                     'max-w-5xl'
                 } print:min-h-0 print:h-auto print:shadow-none print:rounded-none print:max-w-none print:overflow-visible print:w-full print:inline-block`}>
 
@@ -2242,9 +2830,11 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                 ? "Gerencie o histórico e registre novas ocorrências disciplinares."
                                                 : activeTab === 'messages'
                                                     ? "Gerencie as mensagens e feedbacks enviados pelos alunos."
-                                                    : activeTab === 'calendar'
-                                                        ? "Calendário letivo da unidade."
-                                                        : null
+                                                    : activeTab === 'announcements'
+                                                        ? "Crie e gerencie comunicados direcionados para alunos, pais e professores."
+                                                        : activeTab === 'calendar'
+                                                            ? "Calendário letivo da unidade."
+                                                            : null
                                 }
                             </p>
                         </div>
@@ -2271,6 +2861,16 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                     <ClipboardList className="w-6 h-6 text-blue-950" />
                                 </div>
                                 <h3 className="font-bold text-gray-800 text-sm text-center">Ocorrências</h3>
+                            </button>
+
+                            <button
+                                onClick={() => setActiveTab('announcements')}
+                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                            >
+                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                    <Bell className="w-6 h-6 text-blue-950" />
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-sm text-center">Comunicados</h3>
                             </button>
 
                             <button
@@ -3759,6 +4359,14 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                     )}
 
                     {/* AGENDA REPORT VIEW */}
+                    {activeTab === 'announcements' && (
+                        <CoordinatorAnnouncementsView 
+                            coordinator={coordinator} 
+                            announcements={announcements}
+                            onCreateNotification={onCreateNotification}
+                        />
+                    )}
+
                     {activeTab === 'agenda_report' && (
                         <CoordinatorAgendaReport unit={coordinator.unit as SchoolUnit} />
                     )}

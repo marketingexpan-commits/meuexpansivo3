@@ -14,11 +14,14 @@ interface DialogProps {
     title: string;
     message: string;
     image?: string;
-    onConfirm: () => void;
+    onConfirm?: () => void;
     onCancel?: () => void;
     confirmText?: string;
     cancelText?: string;
     variant?: 'success' | 'danger' | 'warning' | 'info';
+    children?: React.ReactNode;
+    maxWidth?: string;
+    hideFooter?: boolean;
 }
 
 export const Dialog: React.FC<DialogProps> = ({
@@ -31,7 +34,10 @@ export const Dialog: React.FC<DialogProps> = ({
     onCancel,
     confirmText = 'Confirmar',
     cancelText = 'Cancelar',
-    variant
+    variant,
+    children,
+    maxWidth,
+    hideFooter
 }) => {
     if (!isOpen) return null;
 
@@ -73,10 +79,11 @@ export const Dialog: React.FC<DialogProps> = ({
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-md animate-in fade-in duration-200">
             <div
-                className="bg-white rounded-2xl p-6 sm:p-8 w-[95%] sm:w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 relative border border-gray-100 text-center"
+                className={`bg-white rounded-2xl p-6 sm:p-8 w-[95%] sm:w-full ${maxWidth || 'max-w-sm'} shadow-2xl animate-in zoom-in-95 duration-200 relative border border-gray-100 text-center flex flex-col max-h-[90vh]`}
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className={`w-24 h-32 rounded-2xl flex items-center justify-center mx-auto mb-4 overflow-hidden border-4 border-white shadow-lg ${getIconBg()}`}>
+                <div className="overflow-y-auto custom-scrollbar flex-1 -mx-4 px-4 pb-2">
+                    <div className={`w-24 h-24 sm:h-32 rounded-2xl flex items-center justify-center mx-auto mb-4 overflow-hidden border-2 sm:border-4 border-white shadow-lg shrink-0 ${getIconBg()}`}>
                     {image ? (
                         <img
                             src={image}
@@ -94,11 +101,13 @@ export const Dialog: React.FC<DialogProps> = ({
                     {title}
                 </h3>
 
-                <div className="text-gray-600 text-sm mb-8 leading-relaxed whitespace-pre-wrap">
-                    {message}
+                <div className="text-gray-600 text-sm mb-6 leading-relaxed whitespace-pre-wrap">
+                    {children ? children : message}
+                </div>
                 </div>
 
-                <div className="flex gap-3">
+                {!hideFooter && (
+                <div className="flex gap-3 pt-4 border-t border-gray-50 mt-auto shrink-0">
                     {type === 'confirm' ? (
                         <>
                             <button
@@ -123,6 +132,7 @@ export const Dialog: React.FC<DialogProps> = ({
                         </button>
                     )}
                 </div>
+                )}
             </div>
         </div>
     );

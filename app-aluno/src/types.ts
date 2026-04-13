@@ -460,6 +460,7 @@ export interface TeacherAssignment {
   gradeId?: string;
   subjects: string[];
   shift: SchoolShift;
+  class?: string;
 }
 
 export interface Teacher {
@@ -815,4 +816,32 @@ export interface PhotographerDemand {
   photographerNotes?: string;
   photographerId?: string;   // NEW
   photographerName?: string; // NEW
+}
+
+// --- SISTEMA DE COMUNICADOS ---
+
+export enum AnnouncementRecipient {
+  ALL = 'TODOS',
+  STUDENTS = 'ALUNOS',
+  TEACHERS = 'PROFESSORES'
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  unit: SchoolUnit | 'all';
+  recipient: AnnouncementRecipient;
+  target: {
+    segmentId?: string; // ID canônico (ex: seg_infantil)
+    gradeId?: string;   // ID canônico (ex: grade_1_ano)
+    class?: SchoolClass;
+    shift?: SchoolShift;
+  };
+  attachmentUrl?: string | null;
+  attachmentName?: string | null;
+  authorId: string;
+  authorName: string;
+  timestamp: string; // ISO
+  lastUpdated?: string; // ISO
 }

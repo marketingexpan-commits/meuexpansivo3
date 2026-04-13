@@ -29,3 +29,42 @@
 #reader__dashboard_section_swaplink {
   display: none !important;
 }
+
+/* Tiptap Editor & HTML Content Styles */
+.tiptap-editor, .prose {
+  text-align: left !important;
+}
+
+.tiptap-editor :focus {
+  outline: none;
+}
+
+.prose ul {
+  list-style-type: disc !important;
+  margin-left: 1.25rem !important;
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.prose ol {
+  list-style-type: decimal !important;
+  margin-left: 1.25rem !important;
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.prose li {
+  margin-bottom: 0.25rem !important;
+}
+
+.prose strong {
+  font-weight: 700 !important;
+}
+
+.prose em {
+  font-style: italic !important;
+}
+
+.prose u {
+  text-decoration: underline !important;
+}

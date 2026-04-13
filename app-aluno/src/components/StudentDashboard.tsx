@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
-import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial, Occurrence, DailyAgenda, ExamGuide, CalendarEvent, AcademicSubject, SUBJECT_LABELS, SUBJECT_SHORT_LABELS, SHIFT_LABELS, UNIT_LABELS } from '../types';
+import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial, Occurrence, DailyAgenda, ExamGuide, CalendarEvent, AcademicSubject, SUBJECT_LABELS, SUBJECT_SHORT_LABELS, SHIFT_LABELS, UNIT_LABELS, Announcement, AnnouncementRecipient } from '../types';
 import { getAttendanceBreakdown } from '../utils/attendanceUtils'; // Import helper
 import { getDynamicBimester, normalizeClass, normalizeShift, normalizeUnit, parseGradeLevel, calculateSchoolDays, isClassScheduled, calculateEffectiveTaughtClasses, getSubjectDurationForDay, doesEventApplyToStudent, formatDateWithTimeBr, safeParseDate } from '../utils/academicUtils';
 import { ACADEMIC_GRADES } from '../utils/academicDefaults';
@@ -21,6 +21,8 @@ import { ErrorState } from './ErrorState';
 import { useFinancialSettings } from '../hooks/useFinancialSettings';
 import { ScheduleTimeline } from './ScheduleTimeline';
 import { TermsSigner } from './TermsSigner';
+import { AttachmentViewer } from './AttachmentViewer';
+import { TextExpander } from './TextExpander';
 
 import {
     Bot,
@@ -44,7 +46,8 @@ import {
     Package,
     X,
     PenTool,
-    Music
+    Music,
+    Bell
 } from 'lucide-react';
 import { db } from '../firebaseConfig';
 import StudentMediaGallery from './StudentMediaGallery';
@@ -146,6 +149,7 @@ interface StudentDashboardProps {
     calendarEvents?: CalendarEvent[];
     classSchedules?: any[]; // ClassSchedule[]
     schoolMessages?: SchoolMessage[];
+    announcements?: Announcement[];
     onCreateNotification?: (title: string, message: string, studentId?: string, teacherId?: string) => Promise<void>;
     [key: string]: any;
 }
@@ -178,7 +182,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     tickets: propsTickets = [],
     calendarEvents = [],
     classSchedules = [],
-    schoolMessages = []
+    schoolMessages = [],
+    announcements = []
 }) => {
     const hasMusicTeacher = useMemo(() => {
         return (teachers || []).some(t => t.subjects?.includes('disc_musica' as any));
@@ -355,7 +360,98 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         );
     };
 
+    // --- SUB-COMPONENT: ANNOUNCEMENTS (STUDENT) ---
+    const StudentAnnouncementsView: React.FC<{
+        announcements: Announcement[];
+        student: Student;
+    }> = ({ announcements, student }) => {
+        const studentAnnouncements = useMemo(() => {
+            const studentSegmentId = allGrades.find(g => g.id === student.gradeId || g.name === student.gradeLevel)?.segmentId;
+            
+            return announcements.filter(ann => {
+                // Basic scope filters
+                const matchesRecipient = ann.recipient === AnnouncementRecipient.ALL || ann.recipient === AnnouncementRecipient.STUDENTS;
+                const matchesUnit = ann.unit === 'all' || normalizeUnit(ann.unit) === normalizeUnit(student.unit);
+                if (!matchesRecipient || !matchesUnit) return false;
+
+                // Targeting filters (Granular)
+                if (ann.target.segmentId && ann.target.segmentId !== studentSegmentId) return false;
+                
+                // Grade check (using 기술 ID if available, fallback to parsed names)
+                const annGradeId = ann.target.gradeId;
+                if (annGradeId) {
+                    if (student.gradeId && annGradeId !== student.gradeId) return false;
+                    // Fallback to name match if technical ID not present in student profile
+                    if (!student.gradeId) {
+                        const targetGradeName = allGrades.find(g => g.id === annGradeId)?.name;
+                        if (targetGradeName && targetGradeName !== student.gradeLevel) return false;
+                    }
+                }
+
+                if (ann.target.class && normalizeClass(ann.target.class) !== normalizeClass(student.schoolClass)) return false;
+                if (ann.target.shift && normalizeShift(ann.target.shift) !== normalizeShift(student.shift)) return false;
+
+                return true;
+            }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        }, [announcements, student, allGrades]);
+
+        return (
+            <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
+                    <h2 className="text-xl font-black text-blue-950 uppercase tracking-tight">Comunicados Oficiais</h2>
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mt-0.5">Avisos e comunicados da escola</p>
+                </div>
+
+                {studentAnnouncements.length > 0 ? (
+                    <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm flex flex-col">
+                        {studentAnnouncements.map((ann, idx) => {
+                            const isImage = /\.(jpeg|jpg|png|webp|gif)(\?.*)?$/i.test((ann.attachmentName || ann.attachmentUrl || '').split('?')[0]) || 
+                                          (ann.attachmentName || ann.attachmentUrl || '').toLowerCase().includes('%2fimage') ||
+                                          (ann.attachmentName || ann.attachmentUrl || '').toLowerCase().includes('image_');
+
+                            return (
+                            <div key={ann.id} className={`flex items-start gap-3 sm:gap-4 p-4 ${idx !== studentAnnouncements.length - 1 ? 'border-b border-gray-100' : ''} hover:bg-gray-50 transition-colors`}>
+                                <div className="shrink-0">
+                                    {ann.attachmentUrl && isImage ? (
+                                        <AttachmentViewer url={ann.attachmentUrl} name={ann.attachmentName} asIcon={true} />
+                                    ) : (
+                                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white text-[#1e3a8a] flex items-center justify-center shrink-0 shadow-sm border border-blue-50">
+                                            <Bell className="w-6 h-6 sm:w-7 sm:h-7" />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex-1 min-w-0 pr-2">
+                                    <h3 className="text-sm sm:text-base font-bold text-gray-900 truncate uppercase mt-0.5" title={ann.title}>{ann.title}</h3>
+                                    <p className="text-[11px] sm:text-xs text-gray-400 font-medium mb-1">Comunicado Oficial</p>
+                                    <TextExpander text={ann.content} title={ann.title} isHtml={true} />
+                                    {ann.attachmentUrl && !isImage && (
+                                        <div className="mt-2">
+                                            <AttachmentViewer url={ann.attachmentUrl} name={ann.attachmentName} />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="shrink-0 text-right pt-1">
+                                    <span className="text-[10px] sm:text-xs font-semibold text-gray-400">
+                                        {new Date(ann.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                                    </span>
+                                </div>
+                            </div>
+                        )})}
+                    </div>
+                ) : (
+                    <div className="text-center py-20 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+                        <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-500 font-medium uppercase text-xs tracking-widest">Nenhum comunicado no momento</p>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     const formatWorkload = (hours: number) => {
+
         if (hours === 0) return '-';
         const rounded = Math.round(hours * 10) / 10;
         return `${rounded.toString().replace('.', ',')} h`;
@@ -365,7 +461,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState({ title: '', tip: '' });
     const [isLoadingAI, setIsLoadingAI] = useState(false);
-    const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro' | 'tickets' | 'materials' | 'occurrences' | 'calendar' | 'schedule' | 'lost_found' | 'authorizations' | 'music_gallery'>('menu');
+    const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro' | 'tickets' | 'materials' | 'occurrences' | 'calendar' | 'schedule' | 'lost_found' | 'authorizations' | 'music_gallery' | 'announcements'>('menu');
     const [showIdCard, setShowIdCard] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
 
@@ -976,7 +1072,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans transition-all duration-500 ease-in-out print:min-h-0 print:h-auto print:bg-white print:p-0 print:block print:overflow-visible">
-            <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${currentView === 'menu' ? 'max-w-md' : 'max-w-5xl'} print:min-h-0 print:h-auto print:shadow-none print:rounded-none print:max-w-none print:overflow-visible print:w-auto print:inline-block`}>
+            <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${currentView === 'menu' ? 'max-w-md' : (currentView === 'messages' || currentView === 'announcements') ? 'max-w-xl' : 'max-w-5xl'} print:min-h-0 print:h-auto print:shadow-none print:rounded-none print:max-w-none print:overflow-visible print:w-auto print:inline-block`}>
 
                 {/* Minimal Header Bar - For all views EXCEPT menu */}
                 {currentView !== 'menu' && (
@@ -988,6 +1084,26 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                             </button>
+                        </div>
+
+                        <div className="flex-1 flex flex-col items-center">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">
+                                {currentView === 'grades' ? 'Boletim Escolar' : 
+                                 currentView === 'attendance' ? 'Frequência' :
+                                 currentView === 'support' ? 'Suporte' :
+                                 currentView === 'messages' ? 'Fale Conosco' :
+                                 currentView === 'early_childhood' ? 'Desenvolvimento' :
+                                 currentView === 'financeiro' ? 'Financeiro' :
+                                 currentView === 'tickets' ? 'Minhas Dúvidas' :
+                                 currentView === 'materials' ? 'Biblioteca' :
+                                 currentView === 'occurrences' ? 'Ocorrências' :
+                                 currentView === 'calendar' ? 'Calendário' :
+                                 currentView === 'schedule' ? 'Grade Horária' :
+                                 currentView === 'lost_found' ? 'Achados e Perdidos' :
+                                 currentView === 'authorizations' ? 'Autorizações' :
+                                 currentView === 'announcements' ? 'Comunicados' :
+                                 'Painel'}
+                            </span>
                         </div>
 
                         <div className="flex items-center gap-2 relative">
@@ -1425,6 +1541,17 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         <h3 className="font-bold text-gray-800 text-sm">{isEarlyChildhood ? 'Relatório de Desenvolvimento' : 'Boletim Escolar'}</h3>
                                     </button>
 
+                                    <button
+                                        onClick={() => setCurrentView('announcements')}
+                                        className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square relative"
+                                    >
+                                        <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
+                                            <Bell className="w-6 h-6 text-blue-950" />
+                                        </div>
+                                        <h3 className="font-bold text-gray-800 text-sm text-center">Comunicados</h3>
+                                        {/* Optional: Indicator for new announcements? */}
+                                    </button>
+
                                     {!isEarlyChildhood && (
                                         <button
                                             onClick={() => setCurrentView('attendance')}
@@ -1563,6 +1690,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     )}
 
                     {currentView === 'financeiro' && <FinanceiroScreen student={student} mensalidades={mensalidades} eventos={eventos} unitContacts={unitContacts} contactSettings={contactSettings} />}
+
+                    {currentView === 'announcements' && <StudentAnnouncementsView announcements={announcements} student={student} />}
                     {currentView === 'authorizations' && <TermsSigner student={student} />}
                     {currentView === 'music_gallery' && isMediaAuthorized && (
                         <StudentMediaGallery 

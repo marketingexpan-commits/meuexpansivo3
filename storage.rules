@@ -44,6 +44,12 @@ service firebase.storage {
       allow write: if isValidSize();
     }
     
+    // Announcements folder
+    match /announcements/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.resource.size < 5 * 1024 * 1024 && (request.resource.contentType.matches('application/pdf') || request.resource.contentType.matches('image/jpeg') || request.resource.contentType.matches('image/png'));
+    }
+    
     // Default rule - deny all other access
     match /{allPaths=**} {
       allow read, write: if false;

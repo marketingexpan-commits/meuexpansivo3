@@ -2,8 +2,10 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { db, storage } from '../firebaseConfig';
 import { TeacherMediaGallery } from './TeacherMediaGallery';
+import { AttachmentViewer } from './AttachmentViewer';
+import { TextExpander } from './TextExpander';
 import { useAcademicData } from '../hooks/useAcademicData';
-import { MessageCircle, HelpCircle, ClipboardCheck, Calendar, User } from 'lucide-react';
+import { MessageCircle, HelpCircle, ClipboardCheck, Calendar, User, Bell, Download } from 'lucide-react';
 import {
     Teacher, Student, GradeEntry, BimesterData, SchoolUnit, Subject, SchoolClass, AttendanceRecord, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, Ticket,
     TicketStatus,
@@ -19,7 +21,9 @@ import {
     SUBJECT_LABELS,
     SUBJECT_SHORT_LABELS,
     SHIFT_LABELS,
-    SchoolShift
+    SchoolShift,
+    Announcement,
+    AnnouncementRecipient
 } from '../types';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
@@ -54,6 +58,7 @@ interface TeacherDashboardProps {
     calendarEvents?: CalendarEvent[];
     classSchedules?: ClassSchedule[];
     schoolMessages?: SchoolMessage[];
+    announcements?: Announcement[];
 }
 
 const formatGrade = (value: number | undefined | null) => {
@@ -88,11 +93,12 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     tickets: propsTickets = [],
     calendarEvents = [],
     classSchedules = [],
-    schoolMessages = []
+    schoolMessages = [],
+    announcements = []
 }) => {
     const { grades: academicGrades, subjects: academicSubjects, matrices, loading: loadingAcademic } = useAcademicData();
 
-    const [activeTab, setActiveTab] = useState<'menu' | 'grades' | 'attendance' | 'tickets' | 'materials' | 'messages' | 'calendar' | 'exam_guides' | 'agenda' | 'media_gallery'>('menu');
+    const [activeTab, setActiveTab] = useState<'menu' | 'grades' | 'attendance' | 'tickets' | 'materials' | 'messages' | 'calendar' | 'exam_guides' | 'agenda' | 'media_gallery' | 'announcements'>('menu');
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const activeUnit = normalizeUnit(teacher.unit) as SchoolUnit;
@@ -200,6 +206,104 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         if (!propsAgendas) return [];
         return propsAgendas.filter(a => a.teacherId === teacher.id);
     }, [propsAgendas, teacher.id]);
+
+    // --- SUB-COMPONENT: ANNOUNCEMENTS (TEACHER) ---
+    const TeacherAnnouncementsView: React.FC<{
+        announcements: Announcement[];
+        teacher: Teacher;
+    }> = ({ announcements, teacher }) => {
+        const teacherAnnouncements = useMemo(() => {
+            // Get all segments the teacher belongs to based on their assigned grades
+            const teacherSegmentIds = academicGrades
+                .filter(g => teacher.gradeIds?.includes(g.id) || teacher.gradeLevels?.includes(g.name))
+                .map(g => g.segmentId);
+
+            return announcements.filter(ann => {
+                // Basic scope filters
+                const matchesRecipient = ann.recipient === AnnouncementRecipient.ALL || ann.recipient === AnnouncementRecipient.TEACHERS;
+                const matchesUnit = ann.unit === 'all' || normalizeUnit(ann.unit) === normalizeUnit(teacher.unit);
+                if (!matchesRecipient || !matchesUnit) return false;
+
+                // Targeting filters (Granular)
+                if (ann.target.segmentId && !teacherSegmentIds.includes(ann.target.segmentId)) return false;
+                
+                if (ann.target.gradeId) {
+                    const isGradeMatch = teacher.gradeIds?.includes(ann.target.gradeId) || 
+                                       teacher.gradeLevels?.some(gl => {
+                                           const gName = academicGrades.find(g => g.id === ann.target.gradeId)?.name;
+                                           return gName === gl;
+                                       });
+                    if (!isGradeMatch) return false;
+                }
+
+                // Teachers seeing specific class/shift announcements? 
+                if (ann.target.class || ann.target.shift) {
+                    const matchesAssignment = teacher.assignments?.some(asgn => {
+                        const classMatch = !ann.target.class || normalizeClass(asgn.class) === normalizeClass(ann.target.class);
+                        const shiftMatch = !ann.target.shift || normalizeShift(asgn.shift) === normalizeShift(ann.target.shift);
+                        return classMatch && shiftMatch;
+                    });
+                    if (!matchesAssignment && teacher.assignments && teacher.assignments.length > 0) return false;
+                }
+
+                return true;
+            }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        }, [announcements, teacher, academicGrades]);
+
+        return (
+            <div className="space-y-6 animate-fade-in-up pb-20 px-1">
+                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex justify-between items-center">
+                    <div>
+                        <h2 className="text-xl font-black text-blue-950 uppercase tracking-tight">Comunicados Docentes</h2>
+                        <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mt-0.5">Avisos e comunicados da coordenação</p>
+                    </div>
+                </div>
+
+                {teacherAnnouncements.length > 0 ? (
+                    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm flex flex-col">
+                        {teacherAnnouncements.map((ann, idx) => {
+                            const isImage = /\.(jpeg|jpg|png|webp|gif)(\?.*)?$/i.test((ann.attachmentName || ann.attachmentUrl || '').split('?')[0]) || 
+                                          (ann.attachmentName || ann.attachmentUrl || '').toLowerCase().includes('%2fimage') ||
+                                          (ann.attachmentName || ann.attachmentUrl || '').toLowerCase().includes('image_');
+                            
+                            return (
+                            <div key={ann.id} className={`flex items-start gap-3 sm:gap-4 p-4 ${idx !== teacherAnnouncements.length - 1 ? 'border-b border-gray-100' : ''} hover:bg-gray-50 transition-colors`}>
+                                <div className="shrink-0">
+                                    {ann.attachmentUrl && isImage ? (
+                                        <AttachmentViewer url={ann.attachmentUrl} name={ann.attachmentName} asIcon={true} />
+                                    ) : (
+                                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white text-[#1e3a8a] flex items-center justify-center shrink-0 shadow-sm border border-blue-50">
+                                            <Bell className="w-6 h-6 sm:w-7 sm:h-7" />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex-1 min-w-0 pr-2">
+                                    <h3 className="text-sm sm:text-base font-bold text-gray-900 truncate uppercase mt-0.5" title={ann.title}>{ann.title}</h3>
+                                    <p className="text-[11px] sm:text-xs text-gray-400 font-medium mb-1">Comunicado de {ann.authorName}</p>
+                                    <TextExpander text={ann.content} title={ann.title} isHtml={true} />
+                                    {ann.attachmentUrl && !isImage && (
+                                        <div className="mt-2">
+                                            <AttachmentViewer url={ann.attachmentUrl} name={ann.attachmentName} />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="shrink-0 text-right pt-1">
+                                    <span className="text-[10px] sm:text-xs font-semibold text-gray-400">
+                                        {new Date(ann.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                                    </span>
+                                </div>
+                            </div>
+                        )})}
+                    </div>
+                ) : (
+                    <div className="text-center py-20 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                        <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-500 font-medium uppercase text-[10px] tracking-[0.2em]">Nenhum comunicado disponível</p>
+                    </div>
+                )}
+            </div>
+        );
+    };
 
 
     const [replyingTicketId, setReplyingTicketId] = useState<string | null>(null);
@@ -1443,7 +1547,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans">
-            <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${activeTab === 'menu' ? 'max-w-md' : 'max-w-5xl'}`}>
+            <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${activeTab === 'menu' ? 'max-w-md' : activeTab === 'announcements' ? 'max-w-xl' : 'max-w-5xl'}`}>
 
                 {/* Minimal Header Bar */}
                 <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white shrink-0">
@@ -1456,6 +1560,22 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                             </button>
                         )}
+
+                        <div className="flex-1 flex flex-col items-center">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">
+                                {activeTab === 'grades' ? (isEarlyChildhoodTeacher ? 'Desenvolvimento' : 'Notas') : 
+                                 activeTab === 'attendance' ? 'Chamada' :
+                                 activeTab === 'tickets' ? (isEarlyChildhoodTeacher ? 'Mensagens' : 'Dúvidas') :
+                                 activeTab === 'materials' ? 'Materiais' :
+                                 activeTab === 'messages' ? 'Mensagens' :
+                                 activeTab === 'calendar' ? 'Calendário' :
+                                 activeTab === 'exam_guides' ? 'Roteiros' :
+                                 activeTab === 'agenda' ? 'Agenda' :
+                                 activeTab === 'media_gallery' ? 'Mídia' :
+                                 activeTab === 'announcements' ? 'Comunicados' :
+                                 'Painel'}
+                            </span>
+                        </div>
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                             <span className="font-medium text-gray-800">{teacher.name}</span>
                             <span className="w-1 h-1 rounded-full bg-gray-300"></span>
@@ -1584,6 +1704,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                     <p className="text-gray-500 text-sm">Selecione uma opção para gerenciar suas atividades.</p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
+                                    <button
+                                        onClick={() => setActiveTab('announcements')}
+                                        className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square relative"
+                                    >
+                                        <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                            <Bell className="w-7 h-7 text-blue-950" />
+                                        </div>
+                                        <h3 className="font-bold text-gray-800 text-sm text-center">Comunicados</h3>
+                                    </button>
                                     {!isMusicTeacher && (
                                         <button
                                             onClick={() => setActiveTab('grades')}
@@ -1701,6 +1830,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                             activeUnit={activeUnit}
                         />
                     )}
+
+                    {activeTab === 'announcements' && <TeacherAnnouncementsView announcements={announcements} teacher={teacher} />}
 
                     {/* CONTEÚDO TAB: MATERIAIS */}
                     {activeTab === 'materials' && (
