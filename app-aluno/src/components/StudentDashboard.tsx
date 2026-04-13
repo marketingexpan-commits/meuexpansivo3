@@ -366,7 +366,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         student: Student;
     }> = ({ announcements, student }) => {
         const studentAnnouncements = useMemo(() => {
-            const studentSegmentId = allGrades.find(g => g.id === student.gradeId || g.name === student.gradeLevel)?.segmentId;
+            // Resolve segment ID immediately using robust parsing (available from the start)
+            const resolved = parseGradeLevel(student.gradeId || student.gradeLevel);
+            const studentSegmentId = resolved.segmentId;
             
             return announcements.filter(ann => {
                 // Basic scope filters
@@ -375,15 +377,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 if (!matchesRecipient || !matchesUnit) return false;
 
                 // Targeting filters (Granular)
+                // We apply filters immediately if we have the student segment identified
                 if (ann.target.segmentId && ann.target.segmentId !== studentSegmentId) return false;
 
-                // If coordinator scoped the broadcast to specific segments (without picking one),
-                // check student is within those allowed segments.
-                // We only block this IF academic data is ready and we confirmed student is NOT in the list.
+                // Case: coordinator broadcast to multiple segments
                 if (!ann.target.segmentId && ann.target.allowedSegmentIds && ann.target.allowedSegmentIds.length > 0) {
-                    if (!loadingAcademic) { // Only filter if we are sure about the student's segment
-                        if (!studentSegmentId || !ann.target.allowedSegmentIds.includes(studentSegmentId)) return false;
-                    }
+                    if (!studentSegmentId || !ann.target.allowedSegmentIds.includes(studentSegmentId)) return false;
                 }
                 
                 // Grade check (using canonical ID if available, fallback to parsed names)

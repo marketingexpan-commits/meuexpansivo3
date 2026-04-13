@@ -236,13 +236,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             const teacherGradeIds = new Set<string>();
             teacher.gradeIds?.forEach(id => teacherGradeIds.add(id));
             teacher.assignments?.forEach(a => { if (a.gradeId) teacherGradeIds.add(a.gradeId); });
-            // Also resolve legacy gradeLevels to IDs using the loaded academicGrades
-            if (gradesReady) {
-                teacher.gradeLevels?.forEach(gl => {
-                    const found = academicGrades.find(g => g.name === gl);
-                    if (found) teacherGradeIds.add(found.id);
-                });
-            }
 
             const hasAnyGradeDefined = (teacher.gradeIds && teacher.gradeIds.length > 0) ||
                                        (teacher.gradeLevels && teacher.gradeLevels.length > 0) ||
@@ -254,20 +247,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 const matchesUnit = ann.unit === 'all' || normalizeUnit(ann.unit) === normalizeUnit(teacher.unit);
                 if (!matchesRecipient || !matchesUnit) return false;
 
-                // 2. Segment filter — only applies when academicGrades are loaded AND teacher has grades defined
-                if (ann.target?.segmentId && gradesReady && hasAnyGradeDefined) {
+                // 2. Segment filter — now uses pre-resolved IDs to prevent flicker
+                if (ann.target?.segmentId && hasAnyGradeDefined) {
                     if (!teacherSegmentIds.has(ann.target.segmentId)) return false;
                 }
 
-                // 2b. allowedSegmentIds — coordinator "Todos os Segmentos" with restricted scope
-                // If announcement has no specific segmentId but has allowedSegmentIds,
-                // teacher must belong to at least one of those allowed segments
+                // 2b. allowedSegmentIds — coordinator "Todos os Segmentos"
                 if (!ann.target?.segmentId && ann.target?.allowedSegmentIds && ann.target.allowedSegmentIds.length > 0) {
-                    if (gradesReady && hasAnyGradeDefined) {
+                    if (hasAnyGradeDefined) {
                         const teacherInAllowed = ann.target.allowedSegmentIds.some(sid => teacherSegmentIds.has(sid));
                         if (!teacherInAllowed) return false;
                     }
-                    // If grades not ready or teacher has no grade info, show the announcement (don't exclude)
                 }
 
                 // 3. Grade filter — canonical ID comparison (direct set lookup)
