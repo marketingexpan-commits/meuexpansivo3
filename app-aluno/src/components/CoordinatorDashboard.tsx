@@ -324,11 +324,6 @@ const CoordinatorAnnouncementsView: React.FC<{
                 });
             }
 
-            // Validation for restricted segment
-            if (coordinator.segment && coordinator.segment !== CoordinationSegment.GERAL && !targetSegment) {
-                setIsSaving(false);
-                return alert("Por favor, selecione um Segmento. Você não tem permissão para enviar a Todos os Segmentos da escola.");
-            }
 
             const announcementData: Partial<Announcement> = {
                 title,
@@ -519,11 +514,8 @@ const CoordinatorAnnouncementsView: React.FC<{
                                     onChange={e => { setTargetSegment(e.target.value); setTargetGrade(''); }}
                                     className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs outline-none"
                                 >
-                                    {(!coordinator.segment || coordinator.segment === CoordinationSegment.GERAL) ? (
-                                        <option value="">Todos os Segmentos</option>
-                                    ) : (
-                                        <option value="" disabled>Selecione um Segmento</option>
-                                    )}
+                                    {/* All coordinators can choose to send to all their own segments */}
+                                    <option value="">Todos os Segmentos</option>
                                     {academicSegments.filter(seg => {
                                         if (!coordinator.segment || coordinator.segment === CoordinationSegment.GERAL) return true;
                                         if (coordinator.segment === CoordinationSegment.INFANTIL_FUND1) {
