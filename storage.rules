@@ -50,6 +50,12 @@ service firebase.storage {
       allow write: if request.resource.size < 5 * 1024 * 1024 && (request.resource.contentType.matches('application/pdf') || request.resource.contentType.matches('image/jpeg') || request.resource.contentType.matches('image/png'));
     }
     
+    // Lost and Found folder - Allow read/write with size and image type validation
+    match /lost_and_found/{allPaths=**} {
+      allow read: if true;
+      allow write: if isValidSize() && request.resource.contentType.matches('image/.*');
+    }
+
     // Default rule - deny all other access
     match /{allPaths=**} {
       allow read, write: if false;
