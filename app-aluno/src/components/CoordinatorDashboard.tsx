@@ -1438,6 +1438,14 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         }
     }, [academicSettings]);
 
+    // Informative message for Coordinator grade approvals
+    const [gradeApprovalMessage, setGradeApprovalMessage] = useState<string>('');
+    useEffect(() => {
+        db.collection('school_config').doc('global').get().then(snap => {
+            if (snap.exists) setGradeApprovalMessage(snap.data()?.gradeApprovalMessage || '');
+        }).catch(() => {});
+    }, []);
+
     // NEW: Navigation State
     const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages' | 'attendance' | 'crm' | 'schedule' | 'access_control' | 'lost_found' | 'photographer_demands' | 'agenda_report' | 'announcements'>('menu');
     const TabTypes = ['classes', 'students', 'occurrences', 'attendance', 'lost_found', 'messages', 'releases', 'crm', 'calendar', 'photographer_demands', 'agenda_report'] as const;
@@ -3003,6 +3011,19 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                     {/* APPROVALS VIEW (activeTab === 'approvals') */}
                     {activeTab === 'approvals' && (
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8 animate-fade-in-up">
+
+                            {/* Informative Banner: Coordinator Approval Message */}
+                            {gradeApprovalMessage && (
+                                <div className="mb-5 flex items-start gap-3 p-4 bg-blue-50 border border-blue-300 rounded-xl shadow-sm">
+                                    <div className="shrink-0 w-8 h-8 rounded-full bg-blue-200 flex items-center justify-center text-blue-700">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-blue-800 uppercase tracking-wider mb-1">Orientações para Aprovação</p>
+                                        <p className="text-sm text-blue-900 leading-relaxed whitespace-pre-wrap">{gradeApprovalMessage}</p>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="w-full">
                                 <Button

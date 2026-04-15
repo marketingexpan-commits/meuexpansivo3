@@ -98,6 +98,14 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 }) => {
     const { grades: academicGrades, subjects: academicSubjects, matrices, loading: loadingAcademic } = useAcademicData();
 
+    // Informative message from school config
+    const [gradeRulesMessage, setGradeRulesMessage] = useState<string>('');
+    useEffect(() => {
+        db.collection('school_config').doc('global').get().then(snap => {
+            if (snap.exists) setGradeRulesMessage(snap.data()?.gradeRulesMessage || '');
+        }).catch(() => {});
+    }, []);
+
     const [activeTab, setActiveTab] = useState<'menu' | 'grades' | 'attendance' | 'tickets' | 'materials' | 'messages' | 'calendar' | 'exam_guides' | 'agenda' | 'media_gallery' | 'announcements'>('menu');
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -2617,6 +2625,20 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                     </div>
                                                 )}
                                             </div>
+
+                                            {/* Informative Banner: Grade Rules */}
+                                            {gradeRulesMessage && (
+                                                <div className="mb-5 flex items-start gap-3 p-4 bg-amber-50 border border-amber-300 rounded-xl shadow-sm">
+                                                    <div className="shrink-0 w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center text-amber-700">
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-1">Orientações da Coordenação</p>
+                                                        <p className="text-sm text-amber-900 leading-relaxed whitespace-pre-wrap">{gradeRulesMessage}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             <form onSubmit={handleGradeSubmit} className="bg-white p-6 rounded-lg shadow-sm mb-8">
                                                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-6">
                                                     <label className="block text-sm font-bold text-blue-950 mb-1">Unidade Escolar</label>

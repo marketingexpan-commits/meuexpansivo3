@@ -56,6 +56,12 @@ service firebase.storage {
       allow write: if isValidSize() && request.resource.contentType.matches('image/.*');
     }
 
+    // Mural folder (app icons, banners) - Allow read/write with size and image type validation
+    match /mural/{allPaths=**} {
+      allow read: if true;
+      allow write: if isValidSize() && request.resource.contentType.matches('image/.*');
+    }
+
     // Default rule - deny all other access
     match /{allPaths=**} {
       allow read, write: if false;

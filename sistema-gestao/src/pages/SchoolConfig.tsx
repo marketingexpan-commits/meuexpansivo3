@@ -103,6 +103,10 @@ interface SchoolConfigData {
     appIconSize?: number;
     appPwaIconSize?: number;
     appIconBgColor?: string;
+
+    // Informative Messages
+    gradeRulesMessage?: string;
+    gradeApprovalMessage?: string;
 }
 
 const DEFAULT_CONFIG: SchoolConfigData = {
@@ -159,7 +163,11 @@ const DEFAULT_CONFIG: SchoolConfigData = {
     appIconRotation: 0,
     appIconSize: 110,
     appPwaIconSize: 85,
-    appIconBgColor: '#FFFFFF'
+    appIconBgColor: '#FFFFFF',
+
+    // Informative Messages
+    gradeRulesMessage: '',
+    gradeApprovalMessage: ''
 };
 
 export const SchoolConfig = () => {
@@ -170,7 +178,7 @@ export const SchoolConfig = () => {
     const [iconPreviewUrl, setIconPreviewUrl] = useState<string | null>(null);
     const [iconCanvasRef, setIconCanvasRef] = useState<HTMLCanvasElement | null>(null);
     const [originalIconImg, setOriginalIconImg] = useState<HTMLImageElement | null>(null);
-    const [activeTab, setActiveTab] = useState<'general' | 'admin' | 'mural' | 'terms'>('general');
+    const [activeTab, setActiveTab] = useState<'general' | 'admin' | 'mural' | 'terms' | 'informative'>('general');
 
     useEffect(() => {
         fetchConfig();
@@ -383,6 +391,15 @@ export const SchoolConfig = () => {
                         }`}
                 >
                     Termos de Aceite
+                </button>
+                <button
+                    onClick={() => setActiveTab('informative')}
+                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'informative'
+                        ? 'bg-white text-blue-950 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                >
+                    Textos Informativos
                 </button>
             </div>
 
@@ -1260,6 +1277,79 @@ export const SchoolConfig = () => {
                     </div>
                 )
             }
+
+            {activeTab === 'informative' && (
+                <>
+                    {message && (
+                        <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${message.type === 'success' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                            {message.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+                            {message.text}
+                        </div>
+                    )}
+                    <form onSubmit={handleSave} className="space-y-6">
+
+                        {/* Mensagem para Professores */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                            <h2 className="text-lg font-bold text-slate-800 mb-1 flex items-center gap-2">
+                                <span className="w-3 h-3 rounded-full bg-amber-400 shrink-0"></span>
+                                Aviso no Lançamento de Notas
+                                <span className="text-xs font-normal text-slate-400 ml-1">(Visível para Professores)</span>
+                            </h2>
+                            <p className="text-xs text-slate-500 mb-4">
+                                Esta mensagem aparecerá em destaque no topo da tela de Lançamento de Notas para todos os professores. Deixe em branco para não exibir nenhum aviso.
+                            </p>
+                            <textarea
+                                value={config.gradeRulesMessage || ''}
+                                onChange={e => setConfig({ ...config, gradeRulesMessage: e.target.value })}
+                                rows={5}
+                                className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-400/30 focus:border-amber-400 outline-none transition-all resize-none text-sm text-slate-700"
+                                placeholder="Ex: A nota mínima para aprovação é 6,0. O prazo para lançamento do 1º Bimestre é 30/04. Lançamentos fora do prazo devem ser justificados à coordenação."
+                            />
+                            {config.gradeRulesMessage && (
+                                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                    <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider mb-1">Prévia do banner no app:</p>
+                                    <p className="text-xs text-amber-800 leading-relaxed">{config.gradeRulesMessage}</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Mensagem para Coordenadores */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                            <h2 className="text-lg font-bold text-slate-800 mb-1 flex items-center gap-2">
+                                <span className="w-3 h-3 rounded-full bg-blue-500 shrink-0"></span>
+                                Aviso em Pendências de Notas
+                                <span className="text-xs font-normal text-slate-400 ml-1">(Visível para Coordenadores)</span>
+                            </h2>
+                            <p className="text-xs text-slate-500 mb-4">
+                                Esta mensagem aparecerá em destaque antes da lista de notas pendentes no painel do Coordenador. Use para orientar a revisão antes da aprovação.
+                            </p>
+                            <textarea
+                                value={config.gradeApprovalMessage || ''}
+                                onChange={e => setConfig({ ...config, gradeApprovalMessage: e.target.value })}
+                                rows={5}
+                                className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 outline-none transition-all resize-none text-sm text-slate-700"
+                                placeholder="Ex: Atenção: revise as notas com cuidado antes de aprovar. Notas aprovadas não podem ser alteradas sem autorização da Direção. Em caso de dúvidas, consulte o boletim impresso."
+                            />
+                            {config.gradeApprovalMessage && (
+                                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wider mb-1">Prévia do banner no app:</p>
+                                    <p className="text-xs text-blue-800 leading-relaxed">{config.gradeApprovalMessage}</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={saving}
+                            className="w-full flex items-center justify-center gap-2 py-3 px-6 bg-blue-950 text-white font-bold rounded-xl hover:bg-blue-900 transition-colors disabled:opacity-50"
+                        >
+                            <Save className="w-4 h-4" />
+                            {saving ? 'Salvando...' : 'Salvar Textos Informativos'}
+                        </button>
+                    </form>
+                </>
+            )}
         </div >
+
     );
 };
