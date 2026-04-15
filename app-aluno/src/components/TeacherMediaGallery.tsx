@@ -61,6 +61,16 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
         return academicGrades.filter(g => teacher.gradeIds?.includes(g.id) && g.isActive);
     }, [academicGrades, teacher.gradeIds]);
 
+    const isGradeAllowedForGallery = useMemo(() => {
+        if (!filterGrade) return true;
+        try {
+            const segmentId = parseGradeLevel(filterGrade).segmentId;
+            return segmentId === 'seg_infantil' || segmentId === 'seg_fund_1';
+        } catch (e) {
+            return true;
+        }
+    }, [filterGrade]);
+
     const availableShifts = useMemo(() => {
         const shifts = new Set<SchoolShift>();
         if (teacher.assignments?.length) {
@@ -578,8 +588,18 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
                     </div>
                 </div>
 
-                {filterGrade && filterShift && (
-                    <div className="mt-6 p-4 bg-blue-50/30 rounded-xl border border-blue-100 flex flex-col md:flex-row gap-4">
+                {filterGrade && filterShift && !isGradeAllowedForGallery && (
+                    <div className="mt-6 p-4 bg-red-50 rounded-xl border border-red-200 flex items-start gap-3 animate-fade-in">
+                        <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                        <div className="text-sm text-red-900">
+                            <p className="font-bold uppercase tracking-tight">Série Inválida</p>
+                            <p className="text-xs opacity-80 leading-relaxed">A Galeria de Mídia está restrita aos segmentos de Educação Infantil e Fundamental I. Não é possível realizar postagens para Fundamental II ou Médio.</p>
+                        </div>
+                    </div>
+                )}
+
+                {filterGrade && filterShift && isGradeAllowedForGallery && (
+                    <div className="mt-6 p-4 bg-blue-50/30 rounded-xl border border-blue-100 flex flex-col md:flex-row gap-4 animate-fade-in">
                         <div className="flex-1">
                             <label className="block text-xs font-black text-blue-900 uppercase tracking-widest mb-2">Disciplina da Mídia</label>
                             <select 
@@ -607,8 +627,8 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
                     </div>
                 )}
 
-                {filterGrade && filterShift && (
-                    <div className="mt-8 pt-8 border-t border-gray-100 flex flex-wrap gap-4">
+                {filterGrade && filterShift && isGradeAllowedForGallery && (
+                    <div className="mt-8 pt-8 border-t border-gray-100 flex flex-wrap gap-4 animate-fade-in">
                         <div className="relative group flex-1 min-w-[150px]">
                             <input 
                                 type="file" 

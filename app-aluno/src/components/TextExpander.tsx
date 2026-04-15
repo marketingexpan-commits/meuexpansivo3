@@ -61,11 +61,11 @@ export const TextExpander: React.FC<{ text: string, title?: string, limit?: numb
                         <div className="p-6 sm:p-8 overflow-y-auto custom-scrollbar flex-1">
                             {isHtml ? (
                                 <div 
-                                    className="text-sm sm:text-base text-gray-600 leading-relaxed break-words prose max-w-none"
+                                    className="text-sm sm:text-base text-gray-900 break-words prose max-w-none"
                                     dangerouslySetInnerHTML={{ __html: text }}
                                 />
                             ) : (
-                                <p className="text-sm sm:text-base text-gray-600 leading-relaxed whitespace-pre-wrap break-words">
+                                <p className="text-sm sm:text-base text-gray-900 whitespace-pre-wrap break-words">
                                     {text}
                                 </p>
                             )}
