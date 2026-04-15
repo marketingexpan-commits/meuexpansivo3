@@ -62,6 +62,12 @@ service firebase.storage {
       allow write: if isValidSize() && request.resource.contentType.matches('image/.*');
     }
 
+    // Teacher Media Gallery (Photos and Videos)
+    match /teacher_media/{allPaths=**} {
+      allow read: if true;
+      allow write: if isValidSize() && (request.resource.contentType.matches('image/.*') || request.resource.contentType.matches('video/.*'));
+    }
+
     // Default rule - deny all other access
     match /{allPaths=**} {
       allow read, write: if false;
