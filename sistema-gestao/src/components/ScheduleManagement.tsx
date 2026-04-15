@@ -31,7 +31,8 @@ import {
     X,
     Loader2,
     Printer,
-    FileText
+    FileText,
+    Coffee
 } from 'lucide-react';
 
 const SCHOOL_CLASSES_LIST = SCHOOL_CLASSES_OPTIONS.map((opt: { value: string }) => opt.value);
@@ -162,6 +163,10 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
 
     const handleAddItem = () => {
         setItems([...items, { startTime: '', endTime: '', subject: '' }]);
+    };
+
+    const handleAddBreak = () => {
+        setItems([...items, { startTime: '', endTime: '', subject: 'Intervalo', isBreak: true }]);
     };
 
     const handleRemoveItem = (index: number) => {
@@ -476,14 +481,24 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                         Aulas de {DAYS_OF_WEEK.find(d => d.id === selectedDay)?.label}
                     </h3>
                     {!isReadOnly && (
-                        <button
-                            onClick={handleAddItem}
-                            disabled={loading || saving}
-                            className="flex items-center gap-1 px-3 py-1.5 bg-blue-950 text-white rounded-xl text-xs font-bold hover:bg-black transition-colors"
-                        >
-                            <Plus className="w-3.5 h-3.5" />
-                            Nova Aula
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={handleAddBreak}
+                                disabled={loading || saving}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-orange-100 text-orange-700 rounded-xl text-xs font-bold hover:bg-orange-200 transition-colors"
+                            >
+                                <Coffee className="w-3.5 h-3.5" />
+                                Novo Intervalo
+                            </button>
+                            <button
+                                onClick={handleAddItem}
+                                disabled={loading || saving}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-blue-950 text-white rounded-xl text-xs font-bold hover:bg-black transition-colors"
+                            >
+                                <Plus className="w-3.5 h-3.5" />
+                                Nova Aula
+                            </button>
+                        </div>
                     )}
                 </div>
 
@@ -535,21 +550,29 @@ export function ScheduleManagement({ unit, isReadOnly }: ScheduleManagementProps
                                             </div>
                                         </div>
                                         <div className="col-span-2 md:col-span-1">
-                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Disciplina</label>
-                                            <select
-                                                value={item.subject}
-                                                onChange={(e) => handleItemChange(index, 'subject', e.target.value)}
-                                                className="w-full p-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950/10"
-                                                disabled={isReadOnly}
-                                            >
-                                                <option value="">Selecione...</option>
-                                                {subjects.filter(s => s.isActive || s.id === item.subject).map(s => (
-                                                    <option key={s.id} value={s.id}>{s.name}{!s.isActive && ' (Inativa)'}</option>
-                                                ))}
-                                                {item.subject && !subjects.find(s => s.id === item.subject) && (
-                                                    <option value={item.subject}>{subjects.find(s => s.name === item.subject)?.name || SUBJECT_LABELS[item.subject as Subject] || item.subject} (Antigo)</option>
-                                                )}
-                                            </select>
+                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
+                                                {item.isBreak ? 'Intervalo' : 'Disciplina'}
+                                            </label>
+                                            {item.isBreak ? (
+                                                <div className="w-full p-2 bg-orange-50 border border-orange-100/50 rounded-xl text-sm font-black text-orange-700 flex items-center gap-2 overflow-hidden items-center justify-center">
+                                                    <Coffee className="w-4 h-4" /> INTERVALO
+                                                </div>
+                                            ) : (
+                                                <select
+                                                    value={item.subject}
+                                                    onChange={(e) => handleItemChange(index, 'subject', e.target.value)}
+                                                    className="w-full p-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-950/10"
+                                                    disabled={isReadOnly}
+                                                >
+                                                    <option value="">Selecione...</option>
+                                                    {subjects.filter(s => s.isActive || s.id === item.subject).map(s => (
+                                                        <option key={s.id} value={s.id}>{s.name}{!s.isActive && ' (Inativa)'}</option>
+                                                    ))}
+                                                    {item.subject && !subjects.find(s => s.id === item.subject) && (
+                                                        <option value={item.subject}>{subjects.find(s => s.name === item.subject)?.name || SUBJECT_LABELS[item.subject as Subject] || item.subject} (Antigo)</option>
+                                                    )}
+                                                </select>
+                                            )}
                                         </div>
                                     </div>
                                     {!isReadOnly && (

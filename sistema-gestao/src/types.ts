@@ -726,6 +726,7 @@ export interface ScheduleItem {
   startTime: string; // HH:mm
   endTime: string;   // HH:mm
   subject: string;
+  isBreak?: boolean; // NOVO: Flag para intervalo
 }
 
 export interface ClassSchedule {

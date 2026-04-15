@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebaseConfig';
 import { ClassSchedule, ScheduleItem, SchoolUnit, SchoolShift, UNIT_LABELS, SHIFT_LABELS, AcademicSubject } from '../types';
 import { resolveGradeId, normalizeUnit, normalizeShift } from '../utils/academicUtils';
-import { Clock, Calendar, Printer, Info, Mail, Phone, MapPin } from 'lucide-react';
+import { Clock, Calendar, Printer, Info, Mail, Phone, MapPin, Coffee } from 'lucide-react';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { UNITS_DATA, DEFAULT_UNIT_DATA } from '../constants';
 import { SchoolLogo } from './SchoolLogo';
@@ -182,41 +182,49 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
                     </div>
                 ) : (
                     <div className="space-y-0 pl-4 relative">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            {schedule.items.map((item, index) => (
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            {schedule.items.map((item, index) => {
+                            const isBreak = item.isBreak || item.subject.toLowerCase() === 'intervalo';
+                            return (
                             <div key={index} className="relative flex gap-6 pb-10 group">
                                 {/* Bullet & Line Container */}
                                 <div className="relative z-10 flex flex-col items-center">
                                     {/* Vertical segment */}
-                                    <div className="absolute top-5 bottom-[-10px] w-[2px] bg-blue-950/20 rounded-full">
+                                    <div className={`absolute top-5 bottom-[-10px] w-[2px] rounded-full ${isBreak ? 'bg-orange-200' : 'bg-blue-950/20'}`}>
                                         {/* Small end marker */}
-                                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-blue-950 rounded-full shadow-sm"></div>
+                                        <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full shadow-sm ${isBreak ? 'bg-orange-400' : 'bg-blue-950'}`}></div>
                                     </div>
 
                                     {/* Hollow Marker */}
-                                    <div className="relative mt-1.5 w-[11px] h-[11px] rounded-full border-[2px] border-blue-950 bg-white shadow-sm flex items-center justify-center transition-transform group-hover:scale-110 duration-300">
-                                    </div>
+                                    {isBreak ? (
+                                        <div className="relative mt-1 w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center -ml-[7.5px] z-20">
+                                            <Coffee className="w-3.5 h-3.5 text-orange-500" />
+                                        </div>
+                                    ) : (
+                                        <div className="relative mt-1.5 w-[11px] h-[11px] rounded-full border-[2px] border-blue-950 bg-white shadow-sm flex items-center justify-center transition-transform group-hover:scale-110 duration-300">
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Content */}
-                                <div className="flex-1 bg-white p-4 rounded-2xl border border-blue-100/50 shadow-sm hover:shadow-md hover:border-blue-200 transition-all duration-300">
+                                <div className={`flex-1 p-4 rounded-2xl border shadow-sm hover:shadow-md transition-all duration-300 ${isBreak ? 'bg-gray-50 border-gray-200 hover:border-gray-300' : 'bg-white border-blue-100/50 hover:border-blue-200'}`}>
                                     <div className="flex items-center gap-2 mb-1">
-                                        <Clock className="w-4 h-4 text-blue-950" />
-                                        <span className="text-xs font-black text-blue-950 tracking-wide uppercase">
+                                        <Clock className={`w-4 h-4 ${isBreak ? 'text-gray-400' : 'text-blue-950'}`} />
+                                        <span className={`text-xs font-black tracking-wide uppercase ${isBreak ? 'text-gray-500' : 'text-blue-950'}`}>
                                             {item.startTime} <span className="mx-1 opacity-30 text-xs">às</span> {item.endTime}
                                         </span>
                                     </div>
-                                    <h4 className="text-lg font-bold text-gray-800 tracking-tight">
-                                        {academicSubjects?.find((s: AcademicSubject) => s.id === item.subject)?.name || item.subject}
+                                    <h4 className={`text-lg font-bold tracking-tight ${isBreak ? 'text-gray-600 italic' : 'text-gray-800'}`}>
+                                        {isBreak ? 'Intervalo' : (academicSubjects?.find((s: AcademicSubject) => s.id === item.subject)?.name || item.subject)}
                                     </h4>
                                 </div>
                             </div>
-                        ))}
+                        )})}
                     </div>
                 )}
             </div>
 
-            <div className="mt-8 p-4 bg-orange-50 rounded-2xl border border-orange-100 flex gap-3">
-                <span className="w-5 h-5 text-orange-400 shrink-0">
+            <div className="mt-8 p-4 bg-orange-100 rounded-2xl border border-orange-200/50 flex gap-3">
+                <span className="w-5 h-5 text-orange-500 shrink-0">
                     <Info className="w-5 h-5" />
                 </span>
                 <p className="text-xs text-orange-800 leading-relaxed font-medium">
@@ -274,18 +282,20 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
                                         </div>
                                         <div className={`flex flex-col ${densityStyles.gap}`}>
                                             {daySchedule?.items && daySchedule.items.length > 0 ? (
-                                                daySchedule.items.map((item, idx) => (
-                                                    <div key={idx} className={`${densityStyles.itemPadding} bg-white border border-gray-200 rounded-lg shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)]`}>
-                                                        <div className={`font-black text-blue-950 ${densityStyles.timeSize} mb-0.5 border-b border-blue-50/50 pb-0.5`}>
+                                                daySchedule.items.map((item, idx) => {
+                                                    const isBreak = item.isBreak || item.subject.toLowerCase() === 'intervalo';
+                                                    return (
+                                                    <div key={idx} className={`${densityStyles.itemPadding} border rounded-lg shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] ${isBreak ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-200'}`}>
+                                                        <div className={`font-black ${densityStyles.timeSize} mb-0.5 border-b pb-0.5 ${isBreak ? 'text-gray-500 border-gray-200/50' : 'text-blue-950 border-blue-50/50'}`}>
                                                             {item.startTime} - {item.endTime}
                                                         </div>
-                                                        <div className={`font-bold text-gray-800 leading-[1.1] uppercase ${densityStyles.fontSize} break-words`}>
-                                                            {academicSubjects?.find((s: AcademicSubject) => s.id === item.subject)?.label ||
+                                                        <div className={`font-bold leading-[1.1] uppercase ${densityStyles.fontSize} break-words ${isBreak ? 'text-gray-400 italic' : 'text-gray-800'}`}>
+                                                            {isBreak ? 'Intervalo' : (academicSubjects?.find((s: AcademicSubject) => s.id === item.subject)?.label ||
                                                                 academicSubjects?.find((s: AcademicSubject) => s.id === item.subject)?.name ||
-                                                                item.subject}
+                                                                item.subject)}
                                                         </div>
                                                     </div>
-                                                ))
+                                                )})
                                             ) : (
                                                 <div className="text-center py-2 text-gray-300 italic text-[8px] border border-dashed border-gray-100 rounded-lg">
                                                     Sem Disciplinas
@@ -308,18 +318,20 @@ export const ScheduleTimeline: React.FC<ScheduleTimelineProps> = ({
                                         </div>
                                         <div className={`flex flex-col ${densityStyles.gap}`}>
                                             {daySchedule?.items && daySchedule.items.length > 0 ? (
-                                                daySchedule.items.map((item, idx) => (
-                                                    <div key={idx} className={`${densityStyles.itemPadding} bg-white border border-gray-200 rounded-lg shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)]`}>
-                                                        <div className={`font-black text-blue-950 ${densityStyles.timeSize} mb-0.5 border-b border-blue-50/50 pb-0.5`}>
+                                                daySchedule.items.map((item, idx) => {
+                                                    const isBreak = item.isBreak || item.subject.toLowerCase() === 'intervalo';
+                                                    return (
+                                                    <div key={idx} className={`${densityStyles.itemPadding} border rounded-lg shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] ${isBreak ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-200'}`}>
+                                                        <div className={`font-black ${densityStyles.timeSize} mb-0.5 border-b pb-0.5 ${isBreak ? 'text-gray-500 border-gray-200/50' : 'text-blue-950 border-blue-50/50'}`}>
                                                             {item.startTime} - {item.endTime}
                                                         </div>
-                                                        <div className={`font-bold text-gray-800 leading-[1.1] uppercase ${densityStyles.fontSize} break-words`}>
-                                                            {academicSubjects?.find((s: AcademicSubject) => s.id === item.subject)?.label ||
+                                                        <div className={`font-bold leading-[1.1] uppercase ${densityStyles.fontSize} break-words ${isBreak ? 'text-gray-400 italic' : 'text-gray-800'}`}>
+                                                            {isBreak ? 'Intervalo' : (academicSubjects?.find((s: AcademicSubject) => s.id === item.subject)?.label ||
                                                                 academicSubjects?.find((s: AcademicSubject) => s.id === item.subject)?.name ||
-                                                                item.subject}
+                                                                item.subject)}
                                                         </div>
                                                     </div>
-                                                ))
+                                                )})
                                             ) : (
                                                 <div className="text-center py-2 text-gray-300 italic text-[8px] border border-dashed border-gray-100 rounded-lg">
                                                     Sem Disciplinas

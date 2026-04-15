@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 
-export const TextExpander: React.FC<{ text: string, title?: string, limit?: number, isHtml?: boolean }> = ({ text, title, limit = 60, isHtml = false }) => {
+export const TextExpander: React.FC<{ text: string, title?: string, limit?: number, isHtml?: boolean }> = ({ text, title, limit = 150, isHtml = false }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     
     if (!text) return null;
@@ -12,7 +12,7 @@ export const TextExpander: React.FC<{ text: string, title?: string, limit?: numb
 
     return (
         <div className="mt-0.5">
-            <div className={`text-[12px] sm:text-sm text-gray-400 line-clamp-1 leading-snug text-left ${isHtml ? 'prose prose-sm max-w-none' : ''}`}>
+            <div className={`text-[12px] sm:text-sm text-gray-400 line-clamp-2 leading-snug text-left ${isHtml ? 'prose prose-sm max-w-none' : ''}`}>
                 {isHtml ? (
                     <div dangerouslySetInnerHTML={{ __html: text.replace(/<p><\/p>/g, '') }} />
                 ) : (

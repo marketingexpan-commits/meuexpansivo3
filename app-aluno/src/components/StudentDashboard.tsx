@@ -770,10 +770,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             }
         });
 
-        // Safety: If !hasScheduleForClass, return studentGrades (show all).
-        if (!hasScheduleForClass) return studentGrades;
-
-        return studentGrades.filter(g => validSubjects.has(g.subject));
+        // Safety: Filter out Intervalo subjects regardless of schedule
+        return studentGrades.filter(g => {
+            const subjectObj = academicSubjects?.find(s => s.id === g.subject);
+            const subjectName = subjectObj ? subjectObj.name.toLowerCase() : g.subject.toLowerCase();
+            
+            // Never show 'Intervalo' or 'Break' in the Gradebook (Boletim)
+            if (subjectName.includes('intervalo') || subjectName.includes('break')) {
+                return false;
+            }
+            
+            return hasScheduleForClass ? validSubjects.has(g.subject) : true;
+        });
     }, [studentGrades, classSchedules, student.gradeLevel, student.schoolClass]);
 
 
@@ -1083,7 +1091,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans transition-all duration-500 ease-in-out print:min-h-0 print:h-auto print:bg-white print:p-0 print:block print:overflow-visible">
-            <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${currentView === 'menu' ? 'max-w-md' : (currentView === 'messages' || currentView === 'announcements') ? 'max-w-xl' : 'max-w-5xl'} print:min-h-0 print:h-auto print:shadow-none print:rounded-none print:max-w-none print:overflow-visible print:w-auto print:inline-block`}>
+            <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${currentView === 'menu' ? 'max-w-md' : 'max-w-5xl'} print:min-h-0 print:h-auto print:shadow-none print:rounded-none print:max-w-none print:overflow-visible print:w-auto print:inline-block`}>
 
                 {/* Minimal Header Bar - For all views EXCEPT menu */}
                 {currentView !== 'menu' && (
