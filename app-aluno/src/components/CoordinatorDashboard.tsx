@@ -1572,6 +1572,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
     // NEW: Navigation State
     const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages' | 'attendance' | 'crm' | 'schedule' | 'access_control' | 'lost_found' | 'photographer_demands' | 'agenda_report' | 'announcements'>('menu');
+    const [zoomedPhoto, setZoomedPhoto] = useState<{ url: string, name: string, title: string } | null>(null);
     const TabTypes = ['classes', 'students', 'occurrences', 'attendance', 'lost_found', 'messages', 'releases', 'crm', 'calendar', 'photographer_demands', 'agenda_report'] as const;
     // --- SCHEDULE STATE ---
     const [scheduleGrade, setScheduleGrade] = useState('');
@@ -1920,16 +1921,16 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
             // 1.5 Filter Students by Segment (Performance Optimization)
             const filteredStudents = studentsData.filter((student: any) => {
-                if (!coordinator.segment || coordinator.segment === 'geral') return true; // View all
+                if (!coordinator.segment || coordinator.segment === CoordinationSegment.GERAL) return true; // View all
 
                 // Robust Segment Resolution (Handles both gradeId and legacy gradeLevel strings)
                 const parsed = parseGradeLevel(student.gradeId || student.gradeLevel);
                 const segmentId = parsed.segmentId;
 
-                if (coordinator.segment === 'infantil_fund1') {
+                if (coordinator.segment === CoordinationSegment.INFANTIL_FUND1) {
                     return segmentId === 'seg_infantil' || segmentId === 'seg_fund_1';
                 }
-                if (coordinator.segment === 'fund2_medio') {
+                if (coordinator.segment === CoordinationSegment.FUND2_MEDIO) {
                     return segmentId === 'seg_fund_2' || segmentId === 'seg_medio';
                 }
                 // Fallback for other specific segments
@@ -2283,15 +2284,15 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
     // 1. Helper to Filter Grades based on Segment
     const availableGradesForAttendance = useMemo(() => {
-        if (!coordinator.segment || coordinator.segment === 'geral') return academicGrades.filter(g => g.isActive);
+        if (!coordinator.segment || coordinator.segment === CoordinationSegment.GERAL) return academicGrades.filter(g => g.isActive);
 
         return academicGrades.filter(g => {
             if (!g.isActive) return false;
 
-            if (coordinator.segment === 'infantil_fund1') {
+            if (coordinator.segment === CoordinationSegment.INFANTIL_FUND1) {
                 return g.segmentId === 'seg_infantil' || g.segmentId === 'seg_fund_1';
             }
-            if (coordinator.segment === 'fund2_medio') {
+            if (coordinator.segment === CoordinationSegment.FUND2_MEDIO) {
                 return g.segmentId === 'seg_fund_2' || g.segmentId === 'seg_medio';
             }
             return g.segmentId === coordinator.segment;
@@ -2547,7 +2548,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 if (!matchesSearch) return false;
 
                 // Segment Restriction
-                if (!coordinator.segment || coordinator.segment === 'geral') return true;
+                if (!coordinator.segment || coordinator.segment === CoordinationSegment.GERAL) return true;
 
                 if (s.gradeId) return allowedGradeIds.has(s.gradeId);
 
@@ -2651,7 +2652,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.code.includes(searchTerm);
                 if (!matchesSearch) return false;
 
-                if (!coordinator.segment || coordinator.segment === 'geral') return true;
+                if (!coordinator.segment || coordinator.segment === CoordinationSegment.GERAL) return true;
                 if (s.gradeId) return allowedGradeIds.has(s.gradeId);
                 const { grade: sGradeName } = parseGradeLevel(s.gradeLevel);
                 return allowedGradeNames.has(sGradeName) || allowedGradeNames.has(s.gradeLevel);
@@ -2867,189 +2868,206 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 <main className="flex-1 w-full p-4 md:p-8 bg-gray-50/50 overflow-y-auto print:p-0 print:overflow-visible print:bg-white">
 
                     {/* Welcome Card with inline header info */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-6 print:hidden">
-                        {/* Compact top bar with logout */}
-                        <div className="flex justify-between items-center mb-3 pb-2 border-b border-gray-100">
-                            <div className="flex items-center gap-2 text-base text-gray-600">
-                                {activeTab !== 'menu' && (
-                                    <button
-                                        onClick={() => setActiveTab('menu')}
-                                        className="p-1.5 hover:bg-gray-100 rounded-full transition-colors text-gray-600 -ml-1 mr-1"
-                                        title="Voltar ao Menu"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                                        </svg>
-                                    </button>
-                                )}
-                                <div className="flex items-center gap-2">
-                                    {coordinator.photoUrl ? (
-                                        <div className="w-9 h-12 rounded-lg overflow-hidden border-2 border-blue-100 shadow-sm flex-shrink-0 bg-gray-50">
-                                            <img src={coordinator.photoUrl} alt={coordinator.name} className="w-full h-full object-cover" />
-                                        </div>
-                                    ) : (
-                                        <div className="w-9 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-300 flex-shrink-0 border-2 border-white shadow-sm overflow-hidden">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7">
-                                                <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clipRule="evenodd" />
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-5 mb-6 print:hidden">
+                        <div className="flex flex-col gap-4 mb-4 pb-4 border-b border-gray-100 relative">
+                            <div className="flex justify-between items-center w-full gap-3">
+                                <div className="flex items-center gap-2 text-base text-gray-600 min-w-0">
+                                    {activeTab !== 'menu' && (
+                                        <button
+                                            onClick={() => setActiveTab('menu')}
+                                            className="p-1.5 hover:bg-gray-100 rounded-full transition-colors text-gray-600 -ml-1 mr-0.5 shrink-0"
+                                            title="Voltar ao Menu"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                                             </svg>
-                                        </div>
+                                        </button>
                                     )}
-                                    <div className="flex flex-col">
-                                        <span className="bg-blue-100 text-[#1e3a8a] text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest w-fit">
-                                            {getCoordinatorTitle(coordinator.gender, coordinator.role, coordinator.unit)}
-                                        </span>
-                                        <span className="font-bold text-gray-800 text-sm leading-tight">{coordinator.name}</span>
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        {coordinator.photoUrl ? (
+                                            <div 
+                                                className="w-9 h-12 rounded-lg overflow-hidden border-2 border-blue-100 shadow-sm flex-shrink-0 bg-gray-50 cursor-zoom-in"
+                                                onClick={() => setZoomedPhoto({ 
+                                                    url: coordinator.photoUrl!, 
+                                                    name: coordinator.name,
+                                                    title: getCoordinatorTitle(coordinator.gender, coordinator.role, coordinator.unit)
+                                                })}
+                                            >
+                                                <img src={coordinator.photoUrl} alt={coordinator.name} className="w-full h-full object-cover" />
+                                            </div>
+                                        ) : (
+                                            <div className="w-9 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-300 flex-shrink-0 border-2 border-white shadow-sm overflow-hidden">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7">
+                                                    <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clipRule="evenodd" />
+                                                </svg>
+                                            </div>
+                                        )}
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="bg-blue-100 text-[#1e3a8a] text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest w-fit whitespace-nowrap">
+                                                {getCoordinatorTitle(coordinator.gender, coordinator.role, coordinator.unit)}
+                                            </span>
+                                            <span className="font-bold text-gray-800 text-sm leading-tight truncate">{coordinator.name}</span>
+                                        </div>
                                     </div>
                                 </div>
-                                {coordinator.unit !== 'all' && (
-                                    <>
-                                        <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
-                                        <span className="text-gray-500">{UNIT_LABELS[currentUnit as SchoolUnit] || currentUnit}</span>
-                                    </>
-                                )}
-                                {coordinator.unit === 'all' ? (
-                                    <>
-                                        <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
-                                        <select
-                                            value={currentUnit}
-                                            onChange={(e) => setCurrentUnit(e.target.value)}
-                                            className="text-xs font-bold text-blue-950 bg-blue-50 border border-blue-200 rounded-lg px-2 py-1 focus:outline-none"
-                                        >
-                                            {Object.entries(UNIT_LABELS).map(([unit, label]) => (
-                                                <option key={unit} value={unit}>{label}</option>
-                                            ))}
-                                        </select>
-                                    </>
-                                ) : (
-                                    coordinator.segment && (
-                                        <>
-                                            <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
-                                            <span className="text-gray-500 text-xs">
-                                                {coordinator.segment === CoordinationSegment.INFANTIL_FUND1 ? 'Infantil & Fund. I' :
-                                                    coordinator.segment === CoordinationSegment.FUND2_MEDIO ? 'Fund. II & Médio' : 'Geral'}
+
+                                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                                    {/* NOTIFICATION BELL */}
+                                    <button
+                                        onClick={() => setShowNotifications(!showNotifications)}
+                                        className="p-2 text-gray-600 hover:text-gray-800 transition-colors relative hover:bg-gray-100 rounded-full"
+                                    >
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                                        {(messages.filter(m => m.status === 'new').length + notifications.filter(n => !n.read).length) > 0 && (
+                                            <span className="absolute -top-1 -right-1 bg-orange-600 text-white text-[10px] font-bold min-w-[20px] h-[20px] px-1 flex items-center justify-center rounded-full border-2 border-white shadow-sm transform scale-100">
+                                                {messages.filter(m => m.status === 'new').length + notifications.filter(n => !n.read).length}
                                             </span>
-                                        </>
-                                    )
-                                )}
+                                        )}
+                                    </button>
+
+                                    <Button
+                                        variant="secondary"
+                                        onClick={onLogout}
+                                        className="text-sm font-semibold py-1.5 px-4 h-10"
+                                    >
+                                        Sair
+                                    </Button>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-3 relative">
-                                {/* NOTIFICATION BELL */}
-                                <button
-                                    onClick={() => setShowNotifications(!showNotifications)}
-                                    className="p-2 text-gray-400 hover:text-blue-950 hover:bg-blue-50 transition-colors relative rounded-full"
-                                    title="Notificações de Mensagens"
-                                >
-                                    <Bell className="w-5 h-5" />
-                                    {(messages.filter(m => m.status === 'new').length + notifications.filter(n => !n.read).length) > 0 && (
-                                        <span className="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-bold min-w-[16px] h-[16px] px-0.5 flex items-center justify-center rounded-full border-2 border-white shadow-sm">
-                                            {messages.filter(m => m.status === 'new').length + notifications.filter(n => !n.read).length}
-                                        </span>
-                                    )}
-                                </button>
 
-                                {showNotifications && (
-                                    <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden ring-1 ring-black ring-opacity-5 animate-in fade-in zoom-in-95 duration-200">
-                                        <div className="p-3 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
-                                            <h4 className="font-bold text-blue-950 text-xs uppercase tracking-wider">Notificações</h4>
-                                            <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-blue-800">
-                                                <ChevronUp className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                        <div className="max-h-64 overflow-y-auto">
-                                            {/* COORDINATOR NOTIFICATIONS */}
-                                            {notifications.filter(n => !n.read).map(notif => (
-                                                <div 
-                                                    key={notif.id} 
-                                                    className="p-3 border-b border-gray-50 bg-blue-50/20 hover:bg-blue-50 transition-colors cursor-pointer group"
-                                                    onClick={() => {
-                                                        setActiveTab('announcements');
-                                                        onDeleteNotification?.(notif.id);
-                                                        setShowNotifications(false);
-                                                    }}
-                                                >
-                                                    <div className="flex items-start gap-2">
-                                                        <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg">
-                                                            <Megaphone className="w-3 h-3" />
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="text-xs font-bold text-gray-800 leading-tight mb-0.5">{notif.title}</p>
-                                                            <p className="text-[10px] text-gray-500 line-clamp-1">{notif.message.replace(/<[^>]*>?/gm, '')}</p>
-                                                            <p className="text-[9px] text-gray-400 mt-1">{new Date(notif.timestamp).toLocaleDateString()} às {new Date(notif.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                                                        </div>
-                                                        <button 
-                                                            onClick={(e) => { e.stopPropagation(); onDeleteNotification?.(notif.id); }} 
-                                                            className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                        >
-                                                            <X className="w-3 h-3" />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ))}
-
-                                            {messages.filter(m => m.status === 'new').length > 0 ? (
-                                                messages.filter(m => m.status === 'new').map(msg => (
-                                                    <div
-                                                        key={msg.id}
-                                                        className="p-3 border-b border-gray-50 hover:bg-blue-50/50 cursor-pointer transition-colors"
-                                                        onClick={() => {
-                                                            setActiveTab('messages');
-                                                            setMessageFilter('new');
-                                                            setShowNotifications(false);
-                                                        }}
-                                                    >
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
-                                                                <User className="w-3 h-3" />
-                                                            </div>
-                                                            <span className="font-bold text-xs text-gray-700 truncate flex-1">{msg.studentName}</span>
-                                                            <span className="text-[9px] text-gray-400 whitespace-nowrap">{new Date(msg.timestamp).toLocaleDateString()}</span>
-                                                        </div>
-                                                        <p className="text-xs text-gray-500 line-clamp-2 pl-8">
-                                                            {msg.content && msg.content.includes(']') ? msg.content.substring(msg.content.indexOf(']') + 1).trim() : (msg.content || '(Sem conteúdo)')}
-                                                        </p>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div className="p-8 text-center text-gray-400 text-xs italic">
-                                                    Nenhuma mensagem nova.
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="p-2 bg-gray-50 border-t border-gray-100 text-center">
-                                            <button
-                                                className="text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-wider"
+                            {/* NOTIFICATION MODAL */}
+                            {showNotifications && (
+                                <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden ring-1 ring-black ring-opacity-5 animate-in fade-in zoom-in-95 duration-200">
+                                    <div className="p-3 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
+                                        <h4 className="font-bold text-blue-950 text-xs uppercase tracking-wider">Notificações</h4>
+                                        <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-blue-800">
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                    <div className="max-h-64 overflow-y-auto">
+                                        {/* COORDINATOR NOTIFICATIONS */}
+                                        {notifications.filter(n => !n.read).map(notif => (
+                                            <div 
+                                                key={notif.id} 
+                                                className="p-3 border-b border-gray-50 bg-blue-50/20 hover:bg-blue-50 transition-colors cursor-pointer group"
                                                 onClick={() => {
-                                                    setActiveTab('messages');
+                                                    setActiveTab('announcements');
+                                                    onDeleteNotification?.(notif.id);
                                                     setShowNotifications(false);
                                                 }}
                                             >
-                                                Ver Todas as Mensagens
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
+                                                <div className="flex items-start gap-2">
+                                                    <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg">
+                                                        <Megaphone className="w-3 h-3" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-xs font-bold text-gray-800 leading-tight mb-0.5">{notif.title}</p>
+                                                        <p className="text-[10px] text-gray-500 line-clamp-1">{notif.message.replace(/<[^>]*>?/gm, '')}</p>
+                                                        <p className="text-[9px] text-gray-400 mt-1">{new Date(notif.timestamp).toLocaleDateString()} às {new Date(notif.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                                    </div>
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); onDeleteNotification?.(notif.id); }} 
+                                                        className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <X className="w-3 h-3" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
 
-                                <Button
-                                    variant="secondary"
-                                    onClick={onLogout}
-                                    className="text-sm font-semibold py-1.5 px-4"
-                                >
-                                    Sair
-                                </Button>
-                            </div>
+                                        {messages.filter(m => m.status === 'new').length > 0 ? (
+                                            messages.filter(m => m.status === 'new').map(msg => (
+                                                <div
+                                                    key={msg.id}
+                                                    className="p-3 border-b border-gray-50 hover:bg-blue-50/50 cursor-pointer transition-colors"
+                                                    onClick={() => {
+                                                        setActiveTab('messages');
+                                                        setMessageFilter('new');
+                                                        setShowNotifications(false);
+                                                    }}
+                                                >
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
+                                                            <User className="w-3 h-3" />
+                                                        </div>
+                                                        <span className="font-bold text-xs text-gray-700 truncate flex-1">{msg.studentName}</span>
+                                                        <span className="text-[9px] text-gray-400 whitespace-nowrap">{new Date(msg.timestamp).toLocaleDateString()}</span>
+                                                    </div>
+                                                    <p className="text-xs text-gray-500 line-clamp-2 pl-8">
+                                                        {msg.content && msg.content.includes(']') ? msg.content.substring(msg.content.indexOf(']') + 1).trim() : (msg.content || '(Sem conteúdo)')}
+                                                    </p>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            notifications.filter(n => !n.read).length === 0 && (
+                                                <div className="p-8 text-center text-gray-400 text-xs italic">
+                                                    Nenhuma notificação nova.
+                                                </div>
+                                            )
+                                        )}
+                                    </div>
+                                    <div className="p-2 bg-gray-50 border-t border-gray-100 text-center">
+                                        <button
+                                            className="text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-wider"
+                                            onClick={() => {
+                                                setActiveTab('messages');
+                                                setShowNotifications(false);
+                                            }}
+                                        >
+                                            Ver Todas as Mensagens
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Unit/Segment Info Row - Mobile Friendly */}
+                            {coordinator.unit && (
+                                <div className="flex flex-wrap items-center gap-2 mt-1 px-1">
+                                    {coordinator.unit !== 'all' && (
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded uppercase tracking-wider">
+                                                {UNIT_LABELS[currentUnit as SchoolUnit] || currentUnit}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {coordinator.unit === 'all' && (
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[9px] font-bold text-blue-900 uppercase tracking-widest opacity-60">Unidade:</span>
+                                            <select
+                                                value={currentUnit}
+                                                onChange={(e) => setCurrentUnit(e.target.value)}
+                                                className="text-xs font-bold text-blue-950 bg-blue-50 border border-blue-100 rounded-lg px-2 py-1 focus:outline-none"
+                                            >
+                                                {Object.entries(UNIT_LABELS).map(([unit, label]) => (
+                                                    <option key={unit} value={unit}>{label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
+                                    {coordinator.segment && (
+                                        <div className="flex items-center gap-2">
+                                            <span className="hidden xs:block w-1 h-1 rounded-full bg-gray-300"></span>
+                                            <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded uppercase tracking-wider">
+                                                {coordinator.segment === CoordinationSegment.INFANTIL_FUND1 ? 'Infantil & Fund. I' :
+                                                    coordinator.segment === CoordinationSegment.FUND2_MEDIO ? 'Fund. II & Médio' : 'Geral'}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {/* Welcome Message */}
                         <div className="flex flex-col items-start text-left">
                             {activeTab === 'menu' && (
                                 <div className="flex items-center gap-2 mt-4 mb-6 pl-1">
-                                    <div className="h-10 w-auto shrink-0">
+                                    <div className="h-8 sm:h-10 w-auto shrink-0">
                                         <SchoolLogo className="!h-full w-auto" />
                                     </div>
                                     <div className="flex flex-col justify-center">
                                         <span className="text-[9px] text-orange-600 font-bold uppercase tracking-[0.15em] leading-none mb-1">Aplicativo</span>
-                                        <h1 className="text-lg font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
-                                        <span className="text-[9px] text-blue-950/60 font-bold uppercase tracking-wider leading-none mt-1">Portal do Coordenador</span>
+                                        <h1 className="text-base sm:text-lg font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
+                                        <span className="text-[8px] sm:text-[9px] text-blue-950/60 font-bold uppercase tracking-wider leading-none mt-1">Portal do Coordenador</span>
                                     </div>
                                 </div>
                             )}
@@ -5187,6 +5205,39 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                     {/* LOST AND FOUND VIEW */}
                     {activeTab === 'lost_found' && (
                         <CoordinatorLostFoundView unit={currentUnit as SchoolUnit} />
+                    )}
+
+                    {/* PHOTO ZOOM MODAL */}
+                    {zoomedPhoto && (
+                        <div 
+                            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in p-4 cursor-zoom-out"
+                            onClick={() => setZoomedPhoto(null)}
+                        >
+                            <div 
+                                className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full animate-zoom-in cursor-default"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <button 
+                                    className="absolute -top-3 -right-3 bg-red-600 text-white rounded-full p-2 shadow-xl hover:bg-red-700 transition-colors z-20 flex items-center justify-center"
+                                    onClick={() => setZoomedPhoto(null)}
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                                
+                                <div className="aspect-[3/4] w-full rounded-t-2xl overflow-hidden bg-gray-100 shadow-inner">
+                                    <img 
+                                        src={zoomedPhoto.url} 
+                                        alt={zoomedPhoto.name} 
+                                        className="w-full h-full object-cover"
+                                    />
+                                </div>
+                                
+                                <div className="mt-4 pb-6 px-4 text-center">
+                                    <h4 className="font-bold text-gray-800 text-lg leading-tight uppercase tracking-tight">{zoomedPhoto.name}</h4>
+                                    <p className="text-xs text-blue-900/60 font-bold uppercase mt-1 tracking-widest">{zoomedPhoto.title}</p>
+                                </div>
+                            </div>
+                        </div>
                     )}
 
                     {/* GLOBAL DIALOG */}
