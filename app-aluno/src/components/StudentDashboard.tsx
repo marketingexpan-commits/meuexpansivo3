@@ -429,7 +429,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             return (
                                                 <>
                                                     {photoToDisplay ? (
-                                                        <div className="w-12 h-15 sm:w-14 sm:h-17.5 rounded-xl overflow-hidden border-2 border-white shadow-md flex-shrink-0 bg-gray-100">
+                                                        <div 
+                                                            onClick={() => {
+                                                                const isFemale = contact?.gender === 'F';
+                                                                const isGen = contact?.role === 'GENERAL_COORDINATOR' || contact?.role === 'admin_geral' || contact?.unit === 'all';
+                                                                const title = isGen ? (isFemale ? 'Coordenadora Geral' : 'Coordenador Geral') : (isFemale ? 'Coordenadora' : 'Coordenador');
+                                                                setZoomedPhoto({ url: photoToDisplay, name: contact?.name || ann.authorName, title: title });
+                                                            }}
+                                                            className="w-12 h-15 sm:w-14 sm:h-17.5 rounded-xl overflow-hidden border-2 border-white shadow-md flex-shrink-0 bg-gray-100 cursor-zoom-in active:scale-95 transition-transform"
+                                                        >
                                                             <img src={photoToDisplay} alt={ann.authorName} className="w-full h-full object-cover" />
                                                         </div>
                                                     ) : (
@@ -503,6 +511,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const [modalContent, setModalContent] = useState({ title: '', tip: '' });
     const [isLoadingAI, setIsLoadingAI] = useState(false);
     const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro' | 'tickets' | 'materials' | 'occurrences' | 'calendar' | 'schedule' | 'lost_found' | 'authorizations' | 'music_gallery' | 'announcements'>('menu');
+    const [zoomedPhoto, setZoomedPhoto] = useState<{ url: string, name: string, title: string } | null>(null);
     const [showIdCard, setShowIdCard] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
 
@@ -3266,8 +3275,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 const authorId = occ.authorId || occ.coordinatorId;
                                                                 const contact = unitContacts?.find(c => c.id === authorId);
                                                                 if (contact?.photoUrl) {
+                                                                    const isFemale = contact.gender === 'F';
+                                                                    const isGen = contact.role === 'GENERAL_COORDINATOR' || contact.role === 'admin_geral' || contact.unit === 'all';
+                                                                    const title = isGen ? (isFemale ? 'Coordenadora Geral' : 'Coordenador Geral') : (isFemale ? 'Coordenadora' : 'Coordenador');
+
                                                                     return (
-                                                                        <div className="w-8 h-10 rounded-lg overflow-hidden border border-gray-100 shadow-sm bg-gray-100">
+                                                                        <div 
+                                                                            onClick={() => setZoomedPhoto({ url: contact.photoUrl!, name: contact.name, title: title })}
+                                                                            className="w-12 h-15 sm:w-14 sm:h-17.5 rounded-xl overflow-hidden border-2 border-white shadow-md flex-shrink-0 bg-gray-100 cursor-zoom-in active:scale-95 transition-transform"
+                                                                        >
                                                                             <img src={contact.photoUrl} alt={contact.name} className="w-full h-full object-cover" />
                                                                         </div>
                                                                     );
@@ -3347,6 +3363,42 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         </div>
                     )
                 }
+
+                {/* --- Foto Ampliada do Coordenador --- */}
+                {zoomedPhoto && (
+                    <div 
+                        className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in cursor-zoom-out"
+                        onClick={() => setZoomedPhoto(null)}
+                    >
+                        <div 
+                            className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full animate-zoom-in cursor-default"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* Botão Fechar (X Vermelho) */}
+                            <button 
+                                onClick={() => setZoomedPhoto(null)}
+                                className="absolute -top-3 -right-3 bg-red-600 text-white rounded-full p-2 shadow-xl hover:bg-red-700 transition-colors z-20 flex items-center justify-center"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+
+                            {/* Container da Foto (Proporção 3x4) */}
+                            <div className="aspect-[3/4] w-full rounded-t-2xl overflow-hidden bg-gray-100 shadow-inner">
+                                <img 
+                                    src={zoomedPhoto.url} 
+                                    alt={zoomedPhoto.name}
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+
+                            {/* Informações do Coordenador */}
+                            <div className="mt-4 pb-6 px-4 text-center">
+                                <h4 className="font-bold text-gray-800 text-lg leading-tight uppercase tracking-tight">{zoomedPhoto.name}</h4>
+                                <p className="text-xs text-blue-900/60 font-bold uppercase mt-1 tracking-widest">{zoomedPhoto.title}</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
