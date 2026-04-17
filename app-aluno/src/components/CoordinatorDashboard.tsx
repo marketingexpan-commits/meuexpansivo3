@@ -4645,7 +4645,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                     )}
 
                     {activeTab === 'agenda_report' && (
-                        <CoordinatorAgendaReport unit={currentUnit as SchoolUnit} />
+                        <CoordinatorAgendaReport unit={currentUnit as SchoolUnit} coordinator={coordinator} />
                     )}
 
                     {/* PHOTOGRAPHER DEMANDS VIEW */}

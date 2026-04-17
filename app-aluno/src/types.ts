@@ -363,6 +363,8 @@ export interface UnitContact {
   gender?: 'M' | 'F';
   password?: string; // Added for Coordinator Access Control
   photoUrl?: string; // 3x4 photo for coordinators
+  gradeLevels?: string[]; // NEW: List of grades/series the coordinator is responsible for
+  gradeIds?: string[]; // NEW: List of grade IDs for robust matching
 }
 // --- FIM ---
 

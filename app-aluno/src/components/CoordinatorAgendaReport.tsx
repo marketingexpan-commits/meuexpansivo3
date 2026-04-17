@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebaseConfig';
-import { SchoolUnit, DailyAgenda, Teacher, ClassSchedule, SchoolShift, SHIFT_LABELS } from '../types';
+import { SchoolUnit, DailyAgenda, Teacher, ClassSchedule, SchoolShift, SHIFT_LABELS, UnitContact, CoordinationSegment } from '../types';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST } from '../constants';
 import { Loader2, BookCheck, AlertCircle, CheckCircle2, ChevronDown, User, Calendar as CalendarIcon, Filter } from 'lucide-react';
@@ -8,9 +8,10 @@ import { parseGradeLevel } from '../utils/academicUtils';
 
 interface CoordinatorAgendaReportProps {
     unit: SchoolUnit;
+    coordinator: UnitContact;
 }
 
-export const CoordinatorAgendaReport: React.FC<CoordinatorAgendaReportProps> = ({ unit }) => {
+export const CoordinatorAgendaReport: React.FC<CoordinatorAgendaReportProps> = ({ unit, coordinator }) => {
     const { grades, subjects, schedules, loading: academicLoading } = useAcademicData();
     const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [selectedGradeId, setSelectedGradeId] = useState<string>('all');
@@ -292,9 +293,29 @@ export const CoordinatorAgendaReport: React.FC<CoordinatorAgendaReportProps> = (
                             className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-950 outline-none font-bold text-gray-700"
                         >
                             <option value="all">Todas as Séries</option>
-                            {grades.filter(g => g.isActive).map(g => (
-                                <option key={g.id} value={g.id}>{g.name}</option>
-                            ))}
+                            {grades
+                                .filter(g => g.isActive)
+                                .filter(g => {
+                                    // 1. If coordinator has specific gradeIds assigned, use them
+                                    if (coordinator.gradeIds && coordinator.gradeIds.length > 0) {
+                                        return coordinator.gradeIds.includes(g.id);
+                                    }
+
+                                    // 2. Fallback to Segment based filtering
+                                    if (coordinator.segment === CoordinationSegment.GERAL || !coordinator.segment) return true;
+                                    
+                                    const infantilFund1 = ['seg_infantil', 'seg_fund_1'];
+                                    const fund2Medio = ['seg_fund_2', 'seg_medio'];
+                                    
+                                    if (coordinator.segment === CoordinationSegment.INFANTIL_FUND1) return infantilFund1.includes(g.segmentId);
+                                    if (coordinator.segment === CoordinationSegment.FUND2_MEDIO) return fund2Medio.includes(g.segmentId);
+                                    if (coordinator.segment === CoordinationSegment.BOTH) return true;
+                                    
+                                    return true;
+                                })
+                                .map(g => (
+                                    <option key={g.id} value={g.id}>{g.name}</option>
+                                ))}
                         </select>
                     </div>
                     <div>
