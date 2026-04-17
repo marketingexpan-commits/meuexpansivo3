@@ -593,6 +593,23 @@ const AppContent: React.FC = () => {
         setInitialLoad(prev => ({ ...prev, announcements: true }));
       }));
 
+      // Load coordinator notifications
+      unsubs.push(db.collection('notifications').where('coordinatorId', '==', userId).onSnapshot(snap => {
+        const data = snap.docs.map(doc => ({ ...doc.data() as AppNotification, id: doc.id }));
+        data.sort((a: any, b: any) => {
+          const dateA = a.timestamp?.toDate ? a.timestamp.toDate() : (a.timestamp ? new Date(a.timestamp) : new Date(0));
+          const dateB = b.timestamp?.toDate ? b.timestamp.toDate() : (b.timestamp ? new Date(b.timestamp) : new Date(0));
+          const timeA = isNaN(dateA.getTime()) ? 0 : dateA.getTime();
+          const timeB = isNaN(dateB.getTime()) ? 0 : dateB.getTime();
+          return timeB - timeA;
+        });
+        setNotifications(data);
+        setInitialLoad(prev => ({ ...prev, notifications: true }));
+      }, (err) => {
+        console.error("Coordinator Notifications listen error:", err);
+        setInitialLoad(prev => ({ ...prev, notifications: true }));
+      }));
+
       // We just need to signal that the "initial load" is complete so the router can proceed.
       setInitialLoad(prev => ({
         ...prev,
@@ -897,11 +914,12 @@ const AppContent: React.FC = () => {
   }, [session]);
 
   // Helper para criar notificação interna
-  const createNotification = async (title: string, message: string, studentId?: string, teacherId?: string) => {
+  const createNotification = async (title: string, message: string, studentId?: string, teacherId?: string, coordinatorId?: string) => {
     const notification: AppNotification = {
       id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       ...(studentId && { studentId }),
       ...(teacherId && { teacherId }),
+      ...(coordinatorId && { coordinatorId }),
       title,
       message,
       timestamp: new Date().toISOString(),
@@ -1472,6 +1490,9 @@ const AppContent: React.FC = () => {
           calendarEvents={calendarEvents}
           classSchedules={classSchedules}
           announcements={announcements}
+          unitContacts={unitContacts}
+          notifications={notifications}
+          onDeleteNotification={handleDeleteNotification}
         />
         <BackToTopButton />
       </>
@@ -1535,6 +1556,7 @@ const AppContent: React.FC = () => {
           classSchedules={classSchedules}
           schoolMessages={schoolMessages}
           announcements={announcements}
+          unitContacts={unitContacts}
         />
         <BackToTopButton />
       </>

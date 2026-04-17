@@ -364,11 +364,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const StudentAnnouncementsView: React.FC<{
         announcements: Announcement[];
         student: Student;
-    }> = ({ announcements, student }) => {
+        unitContacts: UnitContact[]; // NEW
+    }> = ({ announcements, student, unitContacts }) => {
         const studentAnnouncements = useMemo(() => {
-            // Resolve segment ID immediately using robust parsing (available from the start)
+            // Resolve segment ID exactly from database grades first to match live Coordinator mappings
+            const actualGrade = allGrades.find(g => g.id === student.gradeId || g.name === student.gradeLevel);
             const resolved = parseGradeLevel(student.gradeId || student.gradeLevel);
-            const studentSegmentId = resolved.segmentId;
+            const studentSegmentId = actualGrade?.segmentId || resolved.segmentId;
             
             return announcements.filter(ann => {
                 // Basic scope filters
@@ -419,19 +421,47 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                             return (
                             <div key={ann.id} className={`flex items-start gap-3 sm:gap-4 p-4 ${idx !== studentAnnouncements.length - 1 ? 'border-b border-gray-100' : ''} hover:bg-gray-50 transition-colors`}>
-                                <div className="shrink-0">
-                                    {ann.attachmentUrl && isImage ? (
-                                        <AttachmentViewer url={ann.attachmentUrl} name={ann.attachmentName} asIcon={true} />
-                                    ) : (
-                                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white text-[#1e3a8a] flex items-center justify-center shrink-0 shadow-sm border border-blue-50">
-                                            <Bell className="w-6 h-6 sm:w-7 sm:h-7" />
-                                        </div>
-                                    )}
+                                <div className="shrink-0 flex items-center gap-2">
+                                        {(() => {
+                                            const contact = unitContacts.find(c => c.id === ann.authorId);
+                                            const photoToDisplay = contact?.photoUrl;
+                                            
+                                            return (
+                                                <>
+                                                    {photoToDisplay ? (
+                                                        <div className="w-12 h-15 sm:w-14 sm:h-17.5 rounded-xl overflow-hidden border-2 border-white shadow-md flex-shrink-0 bg-gray-100">
+                                                            <img src={photoToDisplay} alt={ann.authorName} className="w-full h-full object-cover" />
+                                                        </div>
+                                                    ) : (
+                                                        !ann.attachmentUrl || !isImage ? (
+                                                            <div className="w-12 h-[60px] sm:w-14 sm:h-[70px] rounded-lg bg-white text-[#1e3a8a] flex items-center justify-center shrink-0 shadow-sm border border-blue-50">
+                                                                <Bell className="w-6 h-6 sm:w-7 sm:h-7" />
+                                                            </div>
+                                                        ) : null
+                                                    )}
+
+                                                    {ann.attachmentUrl && isImage && (
+                                                        <div className="relative group">
+                                                            <AttachmentViewer url={ann.attachmentUrl} name={ann.attachmentName} asIcon={true} />
+                                                        </div>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
                                 </div>
 
                                 <div className="flex-1 min-w-0 pr-2">
                                     <h3 className="text-sm sm:text-base font-bold text-gray-900 truncate uppercase mt-0.5" title={ann.title}>{ann.title}</h3>
-                                    <p className="text-[11px] sm:text-xs text-gray-400 font-medium mb-1">Comunicado de {ann.authorName}</p>
+                                    <p className="text-[11px] sm:text-xs text-gray-400 font-medium mb-1">
+                                        Comunicado de {(() => {
+                                            const contact = unitContacts.find(c => c.id === ann.authorId);
+                                            if (!contact) return ann.authorName; // Professores ou legados
+                                            const isFemale = contact.gender === 'F';
+                                            const isGen = contact.role === 'GENERAL_COORDINATOR' || contact.role === 'admin_geral' || contact.unit === 'all';
+                                            const title = isGen ? (isFemale ? 'Coordenadora Geral' : 'Coordenador Geral') : (isFemale ? 'Coordenadora' : 'Coordenador');
+                                            return `${title} ${contact.name}`;
+                                        })()}
+                                    </p>
                                     <TextExpander text={ann.content} title={ann.title} isHtml={true} />
                                     {ann.attachmentUrl && !isImage && (
                                         <div className="mt-2">
@@ -1692,7 +1722,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                     {currentView === 'financeiro' && <FinanceiroScreen student={student} mensalidades={mensalidades} eventos={eventos} unitContacts={unitContacts} contactSettings={contactSettings} />}
 
-                    {currentView === 'announcements' && <StudentAnnouncementsView announcements={announcements} student={student} />}
+                    {currentView === 'announcements' && <StudentAnnouncementsView announcements={announcements} student={student} unitContacts={unitContacts} />}
                     {currentView === 'authorizations' && <TermsSigner student={student} />}
                     {currentView === 'music_gallery' && isMediaAuthorized && (
                         <StudentMediaGallery 
@@ -2882,7 +2912,27 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                     {msg.recipient === 'Diretoria' ? 'RESPOSTA DA DIRETORIA' :
                                                                         msg.recipient === 'Professores' ? `RESPOSTA DO PROFESSOR` :
                                                                             'RESPOSTA DA COORDENAÇÃO'}
-                                                                    {msg.responseAuthor && <span className="font-normal normal-case ml-1 opacity-80">- {msg.responseAuthor}</span>}
+                                                                    {(() => {
+                                                                        const authorId = msg.responseAuthorId;
+                                                                        const authorName = msg.responseAuthor;
+                                                                        const contact = unitContacts?.find(c => c.id === authorId);
+                                                                        if (!contact) return authorName ? <span className="font-normal normal-case ml-1 opacity-80">- {authorName}</span> : null;
+                                                                        
+                                                                        const isFemale = contact.gender === 'F';
+                                                                        const isGen = contact.role === 'GENERAL_COORDINATOR' || contact.role === 'admin_geral' || contact.unit === 'all';
+                                                                        const title = isGen ? (isFemale ? 'Coordenadora Geral' : 'Coordenador Geral') : (isFemale ? 'Coordenadora' : 'Coordenador');
+                                                                        
+                                                                        return (
+                                                                            <div className="flex items-center gap-1.5 ml-2 font-normal normal-case">
+                                                                                <span className="opacity-80">- {title} {contact.name}</span>
+                                                                                {contact.photoUrl && (
+                                                                                    <div className="w-5 h-6 rounded-md overflow-hidden border border-white/50 bg-gray-100 shadow-sm">
+                                                                                        <img src={contact.photoUrl} alt={contact.name} className="w-full h-full object-cover" />
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        );
+                                                                    })()}
                                                                 </div>
                                                                 <div className="bg-white/40 p-4 rounded-xl border border-blue-200/50 mt-2 shadow-sm">
                                                                     <p className="text-gray-900 text-sm font-semibold leading-relaxed">
@@ -3195,11 +3245,39 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 )}
                                                             </span>
                                                         </div>
-                                                        <div className="text-right">
-                                                            <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider block">
-                                                                {isAccess ? 'Registrado por' : 'Coordenador Pedagógico'}
-                                                            </span>
-                                                            <span className="text-xs font-bold text-gray-600 block">{occ.authorName}</span>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="text-right">
+                                                                <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider block">
+                                                                    {isAccess ? 'Registrado por' : 'Coordenador Pedagógico'}
+                                                                </span>
+                                                                <span className="text-xs font-bold text-gray-600 block">
+                                                                    {(() => {
+                                                                        const authorId = occ.authorId || occ.coordinatorId;
+                                                                        const contact = unitContacts?.find(c => c.id === authorId);
+                                                                        if (!contact) return occ.authorName || occ.coordinatorName || 'Coordenação';
+                                                                        const isFemale = contact.gender === 'F';
+                                                                        const isGen = contact.role === 'GENERAL_COORDINATOR' || contact.role === 'admin_geral' || contact.unit === 'all';
+                                                                        const title = isGen ? (isFemale ? 'Coordenadora Geral' : 'Coordenador Geral') : (isFemale ? 'Coordenadora' : 'Coordenador');
+                                                                        return `${title} ${contact.name}`;
+                                                                    })()}
+                                                                </span>
+                                                            </div>
+                                                            {(() => {
+                                                                const authorId = occ.authorId || occ.coordinatorId;
+                                                                const contact = unitContacts?.find(c => c.id === authorId);
+                                                                if (contact?.photoUrl) {
+                                                                    return (
+                                                                        <div className="w-8 h-10 rounded-lg overflow-hidden border border-gray-100 shadow-sm bg-gray-100">
+                                                                            <img src={contact.photoUrl} alt={contact.name} className="w-full h-full object-cover" />
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                                return (
+                                                                    <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-300">
+                                                                        <User className="w-4 h-4" />
+                                                                    </div>
+                                                                );
+                                                            })()}
                                                         </div>
                                                     </div>
                                                     <h4 className="text-lg font-bold text-gray-900 mb-2">{occ.title}</h4>

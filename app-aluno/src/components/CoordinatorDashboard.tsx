@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { db, storage } from '../firebaseConfig';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { UnitContact, SchoolUnit, UNIT_LABELS, SHIFT_LABELS, CoordinationSegment, Subject, SUBJECT_LABELS, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket, SchoolMessage, MessageRecipient, CalendarEvent, ClassSchedule, PedagogicalAttendance, BimesterData, PhotographerDemand, Announcement, AnnouncementRecipient } from '../types';
+import { UnitContact, SchoolUnit, UNIT_LABELS, SHIFT_LABELS, CoordinationSegment, Subject, SUBJECT_LABELS, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket, SchoolMessage, MessageRecipient, CalendarEvent, ClassSchedule, PedagogicalAttendance, BimesterData, PhotographerDemand, Announcement, AnnouncementRecipient, AppNotification } from '../types';
 import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, CURRICULUM_MATRIX, getCurriculumSubjects, calculateBimesterMedia, calculateFinalData, SCHOOL_CLASSES_OPTIONS, ACADEMIC_GRADES } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency, calculateTaughtClasses, calculateBimesterGeneralFrequency } from '../utils/frequency';
 import { getDynamicBimester, isClassScheduled, normalizeClass, parseGradeLevel, safeParseDate, calculateSchoolDays, getSubjectDurationForDay, normalizeUnit, resolveGradeId } from '../utils/academicUtils';
@@ -34,6 +34,7 @@ import {
     ChevronDown,
     ChevronUp,
     Bell,
+    Megaphone,
     Save,
     Edit,
     Users,
@@ -201,8 +202,9 @@ import { ScheduleTimeline } from './ScheduleTimeline';
 const CoordinatorAnnouncementsView: React.FC<{
     coordinator: UnitContact;
     announcements: Announcement[];
-    onCreateNotification?: (title: string, message: string, studentId?: string, teacherId?: string) => Promise<void>;
-}> = ({ coordinator, announcements, onCreateNotification }) => {
+    unitContacts: UnitContact[]; // NEW
+    onCreateNotification?: (title: string, message: string, studentId?: string, teacherId?: string, coordinatorId?: string) => Promise<void>;
+}> = ({ coordinator, announcements, unitContacts, onCreateNotification }) => {
     const { grades: academicGrades, segments: academicSegments } = useAcademicData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -219,6 +221,9 @@ const CoordinatorAnnouncementsView: React.FC<{
     const [targetShift, setTargetShift] = useState<SchoolShift | ''>('');
     const [file, setFile] = useState<File | null>(null);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [removedExistingAttachment, setRemovedExistingAttachment] = useState(false);
+
+    const isGeneral = coordinator.unit === 'all' || coordinator.role === 'admin_geral' || coordinator.role === 'GENERAL_COORDINATOR';
 
     const editor = useEditor({
         extensions: [
@@ -260,6 +265,7 @@ const CoordinatorAnnouncementsView: React.FC<{
         setFile(null);
         setEditingAnnouncement(null);
         setUploadProgress(0);
+        setRemovedExistingAttachment(false);
     };
 
     const handleEdit = (ann: Announcement) => {
@@ -273,6 +279,7 @@ const CoordinatorAnnouncementsView: React.FC<{
         setTargetGrade(ann.target.gradeId || '');
         setTargetClass(ann.target.class || '');
         setTargetShift(ann.target.shift || '');
+        setRemovedExistingAttachment(false);
         setIsModalOpen(true);
     };
 
@@ -293,8 +300,8 @@ const CoordinatorAnnouncementsView: React.FC<{
 
         setIsSaving(true);
         try {
-            let attachmentUrl = editingAnnouncement?.attachmentUrl || null;
-            let attachmentName = editingAnnouncement?.attachmentName || null;
+            let attachmentUrl = (editingAnnouncement?.attachmentUrl && !removedExistingAttachment) ? editingAnnouncement.attachmentUrl : null;
+            let attachmentName = (editingAnnouncement?.attachmentName && !removedExistingAttachment) ? editingAnnouncement.attachmentName : null;
 
             if (file) {
                 const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
@@ -369,18 +376,21 @@ const CoordinatorAnnouncementsView: React.FC<{
                 
                 // NOTIFICATION LOGIC
                 if (onCreateNotification) {
-                    const notifyTitle = `Novo Comunicado: ${title}`;
-                    const notifyMessage = content.substring(0, 100) + (content.length > 100 ? '...' : '');
+                    const notifyTitle = `${isGeneral ? 'Coordenador Geral' : 'Coordenação'}: ${title}`;
+                    const notifyMessage = content.replace(/<[^>]*>?/gm, '').substring(0, 100) + (content.length > 100 ? '...' : '');
                     
-                    // Note: Massive notification broadcasting is tricky in Firestore.
-                    // For now, we follow the pattern of the app where we can notify roles or specific types.
-                    // If recipient is 'PROFESSORES', we notify teachers.
-                    // If 'ALUNOS', we notify students.
-                    // Implementation of broadcast notification would depend on the backend/functions,
-                    // but here we can try to notify the primary target if it's broad.
-                    // Since the current `onCreateNotification` seems to take studentId/teacherId, 
-                    // a global announcement might need a different handling or individual notifications.
-                    // Given the constraint of not changing logic, we'll implement a simple version or a placeholder.
+                    if (recipient === AnnouncementRecipient.COORDINATORS as string) {
+                        // Notify all other coordinators of the target unit(s)
+                        const targetUnits = targetUnit === 'all' ? (Object.keys(UNIT_LABELS) as SchoolUnit[]) : [targetUnit as SchoolUnit];
+                        const coordsToNotify = unitContacts.filter(c => 
+                            c.id !== coordinator.id && 
+                            targetUnits.includes(c.unit as SchoolUnit)
+                        );
+
+                        for (const coord of coordsToNotify) {
+                            await onCreateNotification(notifyTitle, notifyMessage, undefined, undefined, coord.id);
+                        }
+                    }
                 }
             }
 
@@ -408,10 +418,11 @@ const CoordinatorAnnouncementsView: React.FC<{
             </div>
 
             <div className="w-full">
-                {announcements.filter(ann => ann.authorId === coordinator.id).length > 0 ? (
+                {(() => {
+                    const visibleAnnouncements = announcements.filter(ann => isGeneral || ann.authorId === coordinator.id || ann.recipient === AnnouncementRecipient.COORDINATORS as string);
+                    return visibleAnnouncements.length > 0 ? (
                     <div className="col-span-full bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm flex flex-col">
-                        {announcements
-                            .filter(ann => ann.authorId === coordinator.id)
+                        {visibleAnnouncements
                             .sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
                             .map((ann, idx) => {
                             const isImage = /\.(jpeg|jpg|png|webp|gif)(\?.*)?$/i.test((ann.attachmentName || ann.attachmentUrl || '').split('?')[0]) || 
@@ -419,240 +430,321 @@ const CoordinatorAnnouncementsView: React.FC<{
                                           (ann.attachmentName || ann.attachmentUrl || '').toLowerCase().includes('image_');
                             
                             return (
-                            <div key={ann.id} className={`flex items-start gap-3 sm:gap-4 p-4 ${idx !== announcements.length - 1 ? 'border-b border-gray-100' : ''} hover:bg-gray-50 transition-colors`}>
-                                <div className="shrink-0">
-                                    {ann.attachmentUrl && isImage ? (
-                                        <AttachmentViewer url={ann.attachmentUrl} name={ann.attachmentName} asIcon={true} />
-                                    ) : (
-                                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white text-[#1e3a8a] flex items-center justify-center shrink-0 shadow-sm border border-blue-50">
-                                            <Bell className="w-6 h-6 sm:w-7 sm:h-7" />
-                                        </div>
-                                    )}
+                            <div key={ann.id} className={`flex items-start gap-3 sm:gap-4 p-4 ${idx !== visibleAnnouncements.length - 1 ? 'border-b border-gray-100' : ''} hover:bg-gray-50 transition-colors`}>
+                                <div className="shrink-0 flex items-center gap-2">
+                                        {(() => {
+                                            const contact = unitContacts.find(c => c.id === ann.authorId);
+                                            const photoToDisplay = contact?.photoUrl || (ann.authorId === coordinator.id ? coordinator.photoUrl : null);
+                                            
+                                            return (
+                                                <>
+                                                    {photoToDisplay ? (
+                                                        <div className="w-12 h-15 sm:w-14 sm:h-17.5 rounded-xl overflow-hidden border-2 border-white shadow-md flex-shrink-0 bg-gray-100">
+                                                            <img src={photoToDisplay} alt={ann.authorName} className="w-full h-full object-cover" />
+                                                        </div>
+                                                    ) : (
+                                                        !ann.attachmentUrl || !isImage ? (
+                                                            <div className="w-12 h-[60px] sm:w-14 sm:h-[70px] rounded-lg bg-white text-[#1e3a8a] flex items-center justify-center shrink-0 shadow-sm border border-blue-50">
+                                                                <Bell className="w-6 h-6 sm:w-7 sm:h-7" />
+                                                            </div>
+                                                        ) : null
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
+
+                                        {ann.attachmentUrl && isImage && (
+                                            <div className="w-12 h-15 sm:w-14 sm:h-17.5 rounded-xl overflow-hidden border-2 border-white shadow-md flex-shrink-0 bg-gray-100 bg-cover bg-center cursor-zoom-in" onClick={() => window.open(ann.attachmentUrl!, '_blank')}>
+                                                <img src={ann.attachmentUrl} alt="Anexo" className="w-full h-full object-cover" />
+                                            </div>
+                                        )}
                                 </div>
-                                <div className="flex-1 min-w-0 pr-2">
-                                    <h3 className="text-sm sm:text-base font-bold text-gray-900 truncate uppercase mt-0.5" title={ann.title}>{ann.title}</h3>
-                                    <p className="text-[11px] sm:text-xs text-gray-400 font-medium mb-1">Comunicado de {ann.authorName}</p>
-                                    <TextExpander text={ann.content} title={ann.title} isHtml={true} />
-                                    {ann.attachmentUrl && !isImage && (
-                                        <div className="mt-2">
-                                            <AttachmentViewer url={ann.attachmentUrl} name={ann.attachmentName} />
+
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-start gap-2 mb-1">
+                                        <div>
+                                            <h4 className="text-sm font-black text-blue-950 uppercase leading-snug break-words">
+                                                {ann.title}
+                                            </h4>
+                                            <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">
+                                                Postado por {ann.authorName || 'Coordenação'}
+                                            </p>
                                         </div>
-                                    )}
+                                        <div className="shrink-0 flex flex-col items-end gap-1">
+                                            <span className="text-[9px] font-black px-1.5 py-0.5 bg-blue-50 text-blue-800 rounded-md border border-blue-100 uppercase tracking-tighter">
+                                                {ann.recipient === AnnouncementRecipient.COORDINATORS as string ? 'Coordenação' : 
+                                                 ann.recipient === AnnouncementRecipient.TEACHERS ? 'Professores' : 
+                                                 ann.recipient === AnnouncementRecipient.STUDENTS ? 'Alunos' : 'Geral'}
+                                            </span>
+                                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                                                {new Date(ann.timestamp).toLocaleDateString('pt-BR')}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="prose prose-sm max-w-none text-gray-600 line-clamp-2 text-xs mb-3" dangerouslySetInnerHTML={{ __html: ann.content }} />
+                                    
+                                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50 group">
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {ann.target.segmentId && (
+                                                <span className="text-[8px] font-bold px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded uppercase">
+                                                    {ann.target.segmentId.split('_').pop()?.toUpperCase()}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="shrink-0 flex flex-col items-end pt-1">
-                                    <span className="text-[10px] sm:text-xs font-semibold text-gray-400">
-                                        {new Date(ann.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                                    </span>
+                                
+                                <div className="shrink-0 flex flex-col items-end gap-1">
                                     <span className="text-[10px] text-gray-400 mt-0.5 mb-2">
                                         {new Date(ann.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                     </span>
-                                    <div className="flex items-center gap-2">
-                                        <button 
-                                            onClick={() => handleEdit(ann)} 
-                                            className="text-gray-400 hover:text-blue-600 transition-colors"
-                                            title="Editar"
-                                        >
-                                            <Search className="w-4 h-4" />
-                                        </button>
-                                        <button 
-                                            onClick={() => handleDelete(ann.id!)} 
-                                            className="text-gray-400 hover:text-red-600 transition-colors"
-                                            title="Excluir"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </div>
+                                    {(isGeneral || ann.authorId === coordinator.id) && (
+                                        <div className="flex items-center gap-2">
+                                            <button 
+                                                onClick={() => handleEdit(ann)} 
+                                                className="text-gray-400 hover:text-blue-600 transition-colors"
+                                                title="Editar"
+                                            >
+                                                <Search className="w-4 h-4" />
+                                            </button>
+                                            <button 
+                                                onClick={() => handleDelete(ann.id!)} 
+                                                className="text-gray-400 hover:text-red-600 transition-colors"
+                                                title="Excluir"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )})}
                     </div>
-                ) : (
-                    <div className="col-span-full py-12 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                    ) : (
+                    <div className="col-span-full py-16 bg-white rounded-3xl border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-center">
                         <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                        <p className="text-gray-500 font-medium">Nenhum comunicado cadastrado.</p>
+                        <h3 className="text-gray-400 font-bold uppercase tracking-widest text-xs">Nenhum comunicado encontrado</h3>
                     </div>
-                )}
+                    )
+                })()}
             </div>
 
-            {/* Modal de Cadastro/Edição */}
-            <Dialog 
-                isOpen={isModalOpen} 
-                onCancel={() => setIsModalOpen(false)} 
-                type="confirm"
-                title={editingAnnouncement ? "Editar Comunicado" : "Novo Comunicado"}
-                message=""
-                maxWidth="max-w-2xl"
-                hideFooter
-            >
-                <form onSubmit={handleSave} className="space-y-4">
-                    <Input 
-                        label="Título do Comunicado" 
-                        placeholder="Ex: Reunião de Pais, Mudança de Horário..." 
-                        value={title} 
-                        onChange={e => setTitle(e.target.value)} 
-                        required 
-                    />
-                    
-                    <div className="space-y-1">
-                        <label className="block text-sm font-semibold text-gray-700 pl-1">Conteúdo</label>
-                        <div className="border border-gray-200 rounded-xl focus-within:ring-2 focus-within:ring-blue-950 transition-all overflow-hidden bg-white min-h-[250px] flex flex-col">
-                            <MenuBar editor={editor} />
-                            <EditorContent
-                                editor={editor}
-                                className="prose prose-sm max-w-none p-4 focus:outline-none flex-1 overflow-y-auto min-h-[200px] tiptap-editor text-left"
-                            />
+            {isModalOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-blue-950/40 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col border border-white/20 animate-zoom-in">
+                        {/* Modal Header */}
+                        <div className="p-6 pb-2 flex justify-between items-center bg-white">
+                            <h2 className="text-xl font-black text-blue-950 uppercase tracking-tight">
+                                {editingAnnouncement ? 'Editar Comunicado' : 'Novo Comunicado'}
+                            </h2>
+                            <button onClick={() => setIsModalOpen(false)} className="p-2 text-gray-400 hover:text-blue-950 hover:bg-gray-100 rounded-full transition-all">
+                                <X className="w-5 h-5" />
+                            </button>
                         </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider pl-1">Público-Alvo</label>
-                            <select 
-                                value={recipient}
-                                onChange={e => setRecipient(e.target.value as AnnouncementRecipient)}
-                                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 outline-none"
-                            >
-                                <option value={AnnouncementRecipient.ALL}>Alunos, Pais e Professores</option>
-                                <option value={AnnouncementRecipient.STUDENTS}>Apenas Alunos e Pais</option>
-                                <option value={AnnouncementRecipient.TEACHERS}>Apenas Professores</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider pl-1">Unidade</label>
-                            <div className="w-full p-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm font-bold text-gray-500 cursor-not-allowed">
-                                {UNIT_LABELS[coordinator.unit as SchoolUnit] || coordinator.unit}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-blue-50/50 p-4 rounded-xl space-y-4 border border-blue-100">
-                        <p className="text-xs font-bold text-blue-900 uppercase tracking-widest flex items-center gap-2">
-                           <Filter className="w-3 h-3" /> Filtros de Segmentação (Opcional)
-                        </p>
                         
-                        <div className="grid grid-cols-2 gap-4">
+                        {/* Modal Content */}
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
                             <div>
-                                <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase pl-1">Segmento</label>
-                                <select 
-                                    value={targetSegment}
-                                    onChange={e => { setTargetSegment(e.target.value); setTargetGrade(''); }}
-                                    className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs outline-none"
-                                >
-                                    {/* All coordinators can choose to send to all their own segments */}
-                                    <option value="">Todos os Segmentos</option>
-                                    {academicSegments.filter(seg => {
-                                        if (!coordinator.segment || coordinator.segment === CoordinationSegment.GERAL) return true;
-                                        if (coordinator.segment === CoordinationSegment.INFANTIL_FUND1) {
-                                            return seg.name === 'Educação Infantil' || seg.name === 'Fundamental I';
-                                        }
-                                        if (coordinator.segment === CoordinationSegment.FUND2_MEDIO) {
-                                            return seg.name === 'Fundamental II' || seg.name === 'Ensino Médio';
-                                        }
-                                        return false;
-                                    }).map(seg => (
-                                        <option key={seg.id} value={seg.id}>{seg.name}</option>
-                                    ))}
-                                </select>
+                                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider pl-1">Título</label>
+                                <input 
+                                    type="text" 
+                                    value={title}
+                                    onChange={e => setTitle(e.target.value)}
+                                    placeholder="Ex: Reunião de Pais e Mestres"
+                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 outline-none focus:border-blue-500 focus:bg-white transition-all"
+                                />
                             </div>
-                            <div>
-                                <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase pl-1">Série / Nível</label>
-                                <select 
-                                    value={targetGrade}
-                                    onChange={e => setTargetGrade(e.target.value)}
-                                    className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs outline-none"
-                                    disabled={!targetSegment}
-                                >
-                                    <option value="">Todas as Séries</option>
-                                    {academicGrades.filter(g => g.segmentId === targetSegment).map(grade => (
-                                        <option key={grade.id} value={grade.id}>{grade.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
 
-                        <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase pl-1">Turma</label>
-                                <select 
-                                    value={targetClass}
-                                    onChange={e => setTargetClass(e.target.value as SchoolClass)}
-                                    className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs outline-none"
-                                >
-                                    <option value="">Todas as Turmas</option>
-                                    {SCHOOL_CLASSES_LIST.map(cls => (
-                                        <option key={cls} value={cls}>Turma {cls}</option>
-                                    ))}
-                                </select>
+                                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider pl-1">Conteúdo</label>
+                                <div className="border border-gray-200 rounded-xl overflow-hidden focus-within:border-blue-500 transition-all">
+                                    <MenuBar editor={editor} />
+                                    <EditorContent
+                                        editor={editor}
+                                        className="prose prose-sm max-w-none p-4 focus:outline-none flex-1 overflow-y-auto min-h-[200px] tiptap-editor text-left"
+                                    />
+                                </div>
                             </div>
-                            <div>
-                                <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase pl-1">Turno</label>
-                                {(!coordinator.shift || coordinator.shift === 'all') ? (
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider pl-1">Público-Alvo</label>
                                     <select 
-                                        value={targetShift}
-                                        onChange={e => setTargetShift(e.target.value as SchoolShift)}
-                                        className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs outline-none"
+                                        value={recipient}
+                                        onChange={e => setRecipient(e.target.value as AnnouncementRecipient)}
+                                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 outline-none"
                                     >
-                                        <option value="">Todos os Turnos</option>
-                                        {Object.entries(SHIFT_LABELS).map(([id, label]) => (
-                                            <option key={id} value={id}>{label}</option>
-                                        ))}
+                                        <option value={AnnouncementRecipient.ALL}>Alunos, Pais e Professores</option>
+                                        <option value={AnnouncementRecipient.STUDENTS}>Apenas Alunos e Pais</option>
+                                        <option value={AnnouncementRecipient.TEACHERS}>Apenas Professores</option>
+                                        {isGeneral && <option value={AnnouncementRecipient.COORDINATORS as string}>Apenas Coordenação Pedagógica</option>}
                                     </select>
-                                ) : (
-                                    <div className="w-full p-2 bg-gray-100 border border-gray-200 rounded-lg text-xs text-gray-500 cursor-not-allowed">
-                                        {SHIFT_LABELS[coordinator.shift as SchoolShift] || coordinator.shift}
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider pl-1">Unidade</label>
+                                    <div className="w-full p-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm font-bold text-gray-500 cursor-not-allowed flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                                        <span className="text-slate-500">
+                                            {UNIT_LABELS[coordinator.unit as SchoolUnit] || coordinator.unit}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-blue-50/50 p-4 rounded-xl space-y-4 border border-blue-100">
+                                <p className="text-xs font-bold text-blue-900 uppercase tracking-widest flex items-center gap-2">
+                                   <Filter className="w-3 h-3" /> Filtros de Segmentação (Opcional)
+                                </p>
+                                
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase pl-1">Segmento</label>
+                                        <select 
+                                            value={targetSegment}
+                                            onChange={e => { setTargetSegment(e.target.value); setTargetGrade(''); }}
+                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs outline-none"
+                                        >
+                                            <option value="">Todos os Segmentos</option>
+                                            {academicSegments.filter(seg => {
+                                                if (!coordinator.segment || coordinator.segment === CoordinationSegment.GERAL) return true;
+                                                if (coordinator.segment === CoordinationSegment.INFANTIL_FUND1) {
+                                                    return seg.name === 'Educação Infantil' || seg.name === 'Fundamental I';
+                                                }
+                                                if (coordinator.segment === CoordinationSegment.FUND2_MEDIO) {
+                                                    return seg.name === 'Fundamental II' || seg.name === 'Ensino Médio';
+                                                }
+                                                return false;
+                                            }).map(seg => (
+                                                <option key={seg.id} value={seg.id}>{seg.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase pl-1">Série / Nível</label>
+                                        <select 
+                                            value={targetGrade}
+                                            onChange={e => setTargetGrade(e.target.value)}
+                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs outline-none"
+                                            disabled={!targetSegment}
+                                        >
+                                            <option value="">Todas as Séries</option>
+                                            {academicGrades.filter(g => g.segmentId === targetSegment).map(grade => (
+                                                <option key={grade.id} value={grade.id}>{grade.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase pl-1">Turma</label>
+                                        <select 
+                                            value={targetClass}
+                                            onChange={e => setTargetClass(e.target.value as SchoolClass)}
+                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs outline-none"
+                                        >
+                                            <option value="">Todas as Turmas</option>
+                                            {SCHOOL_CLASSES_LIST.map(cls => (
+                                                <option key={cls} value={cls}>Turma {cls}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase pl-1">Turno</label>
+                                        {(!coordinator.shift || coordinator.shift === 'all') ? (
+                                            <select 
+                                                value={targetShift}
+                                                onChange={e => setTargetShift(e.target.value as SchoolShift)}
+                                                className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs outline-none"
+                                            >
+                                                <option value="">Todos os Turnos</option>
+                                                {Object.entries(SHIFT_LABELS).map(([id, label]) => (
+                                                    <option key={id} value={id}>{label}</option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <div className="w-full p-2 bg-gray-100 border border-gray-200 rounded-lg text-xs text-gray-500 cursor-not-allowed">
+                                                {SHIFT_LABELS[coordinator.shift as SchoolShift] || coordinator.shift}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider pl-1">Anexo (Opcional)</label>
+                                <div className="flex items-center gap-3">
+                                    <input 
+                                        type="file" 
+                                        id="announcement-file-modal"
+                                        className="hidden" 
+                                        onChange={e => {
+                                            setFile(e.target.files?.[0] || null);
+                                            if (e.target.files?.[0]) setRemovedExistingAttachment(false);
+                                        }}
+                                        accept=".pdf,.jpeg,.jpg,.png,application/pdf,image/jpeg,image/png"
+                                    />
+                                    <label 
+                                        htmlFor="announcement-file-modal"
+                                        className="flex-1 p-3 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center gap-2 cursor-pointer hover:border-blue-900 hover:bg-blue-50 transition-all text-sm text-gray-500 font-medium overflow-hidden"
+                                    >
+                                        <Package className="w-5 h-5 flex-shrink-0" />
+                                        <span className="truncate">
+                                            {file ? file.name : (editingAnnouncement?.attachmentUrl && !removedExistingAttachment ? (editingAnnouncement.attachmentName || "Arquivo já anexado") : "Clique para anexar PDF ou Imagem")}
+                                        </span>
+                                    </label>
+                                    {(file || (editingAnnouncement?.attachmentUrl && !removedExistingAttachment)) && (
+                                        <button 
+                                            type="button" 
+                                            onClick={() => {
+                                                if (file) setFile(null);
+                                                else setRemovedExistingAttachment(true);
+                                            }} 
+                                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg flex-shrink-0 transition-colors"
+                                            title="Remover anexo"
+                                        >
+                                            <X className="w-5 h-5" />
+                                        </button>
+                                    )}
+                                </div>
+                                <p className="text-[10px] text-gray-400 pl-1 font-medium">* Tamanho máximo permitido: 5MB</p>
+                                {uploadProgress > 0 && (
+                                    <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2 overflow-hidden">
+                                        <div className="bg-blue-600 h-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
                                     </div>
                                 )}
                             </div>
                         </div>
-                    </div>
 
-                    <div className="space-y-1">
-                        <label className="block text-sm font-semibold text-gray-700 pl-1">Anexo (Opcional)</label>
-                        <div className="flex items-center gap-3">
-                            <input 
-                                type="file" 
-                                id="announcement-file"
-                                className="hidden" 
-                                onChange={e => setFile(e.target.files?.[0] || null)}
-                                accept=".pdf,.jpeg,.jpg,.png,application/pdf,image/jpeg,image/png"
-                            />
-                            <label 
-                                htmlFor="announcement-file"
-                                className="flex-1 p-3 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center gap-2 cursor-pointer hover:border-blue-900 hover:bg-blue-50 transition-all text-sm text-gray-500 font-medium overflow-hidden"
+                        {/* Modal Footer */}
+                        <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                            <button 
+                                onClick={() => setIsModalOpen(false)}
+                                className="px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors uppercase tracking-widest"
                             >
-                                <Package className="w-5 h-5 flex-shrink-0" />
-                                <span className="truncate">{file ? file.name : "Clique para anexar PDF ou Imagem"}</span>
-                            </label>
-                            {file && (
-                                <button type="button" onClick={() => setFile(null)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg flex-shrink-0">
-                                    <X className="w-5 h-5" />
-                                </button>
-                            )}
+                                Cancelar
+                            </button>
+                            <Button 
+                                onClick={handleSave} 
+                                disabled={isSaving || !title || !content}
+                                className="min-w-[140px]"
+                            >
+                                {isSaving ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                        Salvando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Save className="w-4 h-4 mr-2" />
+                                        {editingAnnouncement ? 'Salvar Alterações' : 'Publicar Comunicado'}
+                                    </>
+                                )}
+                            </Button>
                         </div>
-                        <p className="text-[10px] text-gray-400 pl-1 font-medium">* Tamanho máximo permitido: 5MB</p>
-                        {uploadProgress > 0 && (
-                            <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2 overflow-hidden">
-                                <div className="bg-blue-600 h-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
-                            </div>
-                        )}
                     </div>
-
-                    <div className="pt-4 flex gap-3">
-                        <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} className="flex-1 py-3" disabled={isSaving}>
-                            Cancelar
-                        </Button>
-                        <Button type="submit" className="flex-1 py-3" disabled={isSaving}>
-                            {isSaving ? (
-                                <div className="flex items-center justify-center gap-2">
-                                    <Loader2 className="w-4 h-4 animate-spin" /> Salvando...
-                                </div>
-                            ) : (
-                                editingAnnouncement ? "Atualizar Comunicado" : "Publicar Comunicado"
-                            )}
-                        </Button>
-                    </div>
-                </form>
-            </Dialog>
+                </div>
+            )}
         </div>
     );
 };
@@ -1120,12 +1212,25 @@ interface CoordinationGradeEntry {
 interface CoordinatorDashboardProps {
     coordinator: UnitContact;
     onLogout: () => void;
-    onCreateNotification?: (title: string, message: string, studentId?: string, teacherId?: string) => Promise<void>;
+    onCreateNotification?: (title: string, message: string, studentId?: string, teacherId?: string, coordinatorId?: string) => Promise<void>;
     academicSettings?: any;
     tickets?: Ticket[];
     announcements?: Announcement[];
     calendarEvents?: CalendarEvent[];
     classSchedules?: ClassSchedule[];
+    unitContacts?: UnitContact[]; // For formatting titles dynamically
+    notifications?: AppNotification[];
+    onDeleteNotification?: (id: string) => Promise<void>;
+}
+
+// NOVO: Helper dinâmico de pronomes
+export function getCoordinatorTitle(gender?: 'M' | 'F' | string, role?: string, unit?: string) {
+    const isFemale = gender === 'F';
+    const isGen = role === 'GENERAL_COORDINATOR' || role === 'admin_geral' || unit === 'all';
+    if (isGen) {
+        return isFemale ? 'Coordenadora Geral' : 'Coordenador Geral';
+    }
+    return isFemale ? 'Coordenadora' : 'Coordenador';
 }
 
 // --- SUB-COMPONENT: PHOTOGRAPHER DEMANDS (COORDINATOR) ---
@@ -1401,11 +1506,25 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     onLogout,
     onCreateNotification,
     academicSettings,
-    tickets = [],
-    announcements = [],
-    calendarEvents = [],
-    classSchedules = []
+    tickets: _tickets = [],
+    announcements: _announcements = [],
+    calendarEvents: _calendarEvents = [],
+    classSchedules: _classSchedules = [],
+    unitContacts = [],
+    notifications = [],
+    onDeleteNotification
 }) => {
+    // --- LOCAL SYNC OVERRIDES FOR GENERAL COORDINATORS ---
+    // Instead of relying exclusively on App.tsx which is bound to 'all', we manage these locally to obey currentUnit
+    const [localAnnouncements, setLocalAnnouncements] = useState<Announcement[]>(_announcements);
+    const [localCalendarEvents, setLocalCalendarEvents] = useState<CalendarEvent[]>(_calendarEvents);
+    const [localClassSchedules, setLocalClassSchedules] = useState<ClassSchedule[]>(_classSchedules);
+    const [localTickets, setLocalTickets] = useState<Ticket[]>(_tickets);
+
+    const announcements = coordinator.unit === 'all' ? localAnnouncements : _announcements;
+    const calendarEvents = coordinator.unit === 'all' ? localCalendarEvents : _calendarEvents;
+    const classSchedules = coordinator.unit === 'all' ? localClassSchedules : _classSchedules;
+    const tickets = coordinator.unit === 'all' ? localTickets : _tickets;
     // --- ACADEMIC DATA ---
     const { segments: academicSegments, grades: academicGrades, subjects: academicSubjects, matrices, loading: loadingAcademic } = useAcademicData();
 
@@ -1424,6 +1543,11 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     }, [academicSegments, coordinator.segment]);
 
     // --- STATE ---
+
+    // NEW: General Coordinator Unit State
+    const [currentUnit, setCurrentUnit] = useState<string>(
+        coordinator.unit !== 'all' ? coordinator.unit : 'unit_bs' // Default to Boa Sorte if general
+    );
 
     const [quickClassFilter, setQuickClassFilter] = useState<string>('all');
     const [quickGradeFilter, setQuickGradeFilter] = useState<string>('all');
@@ -1512,10 +1636,10 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
     // Dynamic Listener for Messages
     useEffect(() => {
-        if (!coordinator.unit) return;
+        if (!currentUnit) return;
 
         const unsubscribe = db.collection('schoolMessages')
-            .where('unit', '==', coordinator.unit)
+            .where('unit', '==', currentUnit)
             .where('recipient', '==', MessageRecipient.COORDINATION)
             .orderBy('timestamp', 'desc')
             .onSnapshot(snapshot => {
@@ -1530,6 +1654,10 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
                 // Client-side filter for specific coordinator messages if using the [PARA: Name] pattern
                 const filteredMsgs = msgs.filter(m => {
+                    // General Coordinator sees all coordination messages
+                    if (coordinator.unit === 'all' || coordinator.role === 'admin_geral' || coordinator.role === 'GENERAL_COORDINATOR') {
+                        return true;
+                    }
                     if (m.content.startsWith('[PARA:')) {
                         return m.content.includes(`[PARA: ${coordinator.name?.trim()}]`);
                     }
@@ -1542,13 +1670,26 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             });
 
         return () => unsubscribe();
-    }, [activeTab, coordinator.unit, coordinator.name]);
+    }, [activeTab, currentUnit, coordinator.name]);
 
     const handlePrintCalendar = () => {
-        generateSchoolCalendar(calendarEvents, academicSettings, coordinator.unit);
+        generateSchoolCalendar(calendarEvents, academicSettings, currentUnit);
     };
     const [historyFilterTerm, setHistoryFilterTerm] = useState('');
     const [studentSearchTerm, setStudentSearchTerm] = useState(''); // NEW: Search for students in occurrence modal
+
+    // --- DYNAMIC DATA LISTENERS FOR GENERAL COORDINATOR ---
+    useEffect(() => {
+        if (coordinator.unit !== 'all' || !currentUnit) return;
+
+        const ubs = [
+            db.collection('announcements').where('unit', 'in', [currentUnit, 'all']).onSnapshot(s => setLocalAnnouncements(s.docs.map(d => ({ id: d.id, ...d.data() } as Announcement)))),
+            db.collection('calendar_events').where('units', 'array-contains-any', [currentUnit, 'all']).onSnapshot(s => setLocalCalendarEvents(s.docs.map(d => ({ id: d.id, ...d.data() } as CalendarEvent)))),
+            db.collection('class_schedules').where('schoolId', '==', currentUnit).onSnapshot(s => setLocalClassSchedules(s.docs.map(d => ({ id: d.id, ...d.data() } as ClassSchedule)))),
+            db.collection('tickets_pedagogicos').where('unit', '==', currentUnit).onSnapshot(s => setLocalTickets(s.docs.map(d => ({ id: d.id, ...d.data() } as Ticket))))
+        ];
+        return () => ubs.forEach(u => u());
+    }, [currentUnit, coordinator.unit]);
 
     const isYearFinished = useMemo(() => {
         if (!academicSettings?.bimesters) return false;
@@ -1563,7 +1704,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     const [allStudentGradesMap, setAllStudentGradesMap] = useState<Record<string, CoordinationGradeEntry[]>>({}); // NEW: Holds ALL grades for frequency calc
 
     // --- LOST AND FOUND REAL-TIME BADGE ---
-    const { items: lostFoundItems } = useLostAndFound(coordinator.unit as SchoolUnit);
+    const { items: lostFoundItems } = useLostAndFound(currentUnit as SchoolUnit);
     const claimedCount = useMemo(() => lostFoundItems.filter(item => item.status === 'claimed').length, [lostFoundItems]);
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]); // Added for frequency calc
 
@@ -1744,11 +1885,11 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
     // --- FETCH DATA ---
     const handleFetchPendingGrades = async () => {
-        if (!coordinator.unit) return;
+        if (!currentUnit) return;
         setLoading(true);
         try {
             // 0. Fetch Teachers for this unit (to ensure names are available)
-            const teachersSnap = await db.collection('teachers').where('unit', '==', coordinator.unit).get();
+            const teachersSnap = await db.collection('teachers').where('unit', '==', currentUnit).get();
             const tMap: Record<string, string> = {};
             teachersSnap.docs.forEach(doc => {
                 const t = doc.data();
@@ -1759,7 +1900,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             const searchYear = academicSettings?.year || new Date().getFullYear();
 
             let studentsQuery = db.collection('students')
-                .where('unit', '==', coordinator.unit)
+                .where('unit', '==', currentUnit)
                 .where('enrolledYears', 'array-contains', String(searchYear));
 
             const studentsSnap = await studentsQuery.get();
@@ -1857,7 +1998,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             // 4. Fetch Attendance for these students for frequency calculation
             const allAttendance: AttendanceRecord[] = [];
             const attSnap = await db.collection('attendance')
-                .where('unit', '==', coordinator.unit)
+                .where('unit', '==', currentUnit)
                 .get();
             attSnap.docs.forEach(d => allAttendance.push({ id: d.id, ...d.data() } as AttendanceRecord));
             setAttendanceRecords(allAttendance);
@@ -1979,7 +2120,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         try {
             const searchYear = academicSettings?.year || new Date().getFullYear();
             const snap = await db.collection('students')
-                .where('unit', '==', coordinator.unit)
+                .where('unit', '==', currentUnit)
                 .where('enrolledYears', 'array-contains', String(searchYear))
                 .get();
 
@@ -2083,7 +2224,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         try {
             // Fetch occurrences for this unit
             const snap = await db.collection('occurrences')
-                .where('unit', '==', coordinator.unit)
+                .where('unit', '==', currentUnit)
                 .orderBy('timestamp', 'desc')
                 .limit(100)
                 .get();
@@ -2101,7 +2242,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             // Fallback for missing index if orderBy timestamp fails (should be rare if index exists or simple query)
             try {
                 const snap = await db.collection('occurrences')
-                    .where('unit', '==', coordinator.unit)
+                    .where('unit', '==', currentUnit)
                     .get();
                 const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Occurrence));
                 data.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -2170,7 +2311,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         // 2. Filter schedules strictly by IDs
         // class_schedules uses dayOfWeek: 1-6 (Segunda a Sábado) which match dateObj.getDay()
         const relevantSchedules = classSchedules.filter(sch =>
-            sch.schoolId === coordinator.unit &&
+            sch.schoolId === currentUnit &&
             sch.grade === attGrade && // attGrade is ID (e.g. grade_1_ser)
             sch.class === attClass && // attClass is ID (e.g. A)
             sch.shift === attShift && // attShift is ID (e.g. shift_morning)
@@ -2186,7 +2327,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         });
 
         return academicSubjects.filter(s => subjectIds.has(s.id));
-    }, [academicSubjects, classSchedules, attGrade, attClass, attShift, attDate, coordinator.unit]);
+    }, [academicSubjects, classSchedules, attGrade, attClass, attShift, attDate, currentUnit]);
 
     // 3. Reset subject when grade changes
     useEffect(() => {
@@ -2209,12 +2350,12 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             // recordId pattern: YYYY-MM-DD_UNIT_GRADENAME_CLASS_SUBJECTID
             const gradeObj = academicGrades.find(g => g.id === attGrade);
             const gradeName = gradeObj?.name || '';
-            const recordId = `${attDate}_${coordinator.unit}_${gradeName}_${attClass}_${attSubject}`;
+            const recordId = `${attDate}_${currentUnit}_${gradeName}_${attClass}_${attSubject}`;
             const recordSnap = await db.collection('attendance').doc(recordId).get();
 
             // B. Fetch Students for this Class
             const studentsSnap = await db.collection('students')
-                .where('unit', '==', coordinator.unit)
+                .where('unit', '==', currentUnit)
                 .where('shift', '==', attShift)
                 .get();
 
@@ -2266,11 +2407,11 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         const gradeObj = academicGrades.find(g => g.id === attGrade);
         const gradeName = gradeObj?.name || '';
 
-        const recordId = `${attDate}_${coordinator.unit}_${gradeName}_${attClass}_${attSubject}`;
+        const recordId = `${attDate}_${currentUnit}_${gradeName}_${attClass}_${attSubject}`;
         const record: AttendanceRecord = {
             id: recordId,
             date: attDate,
-            unit: coordinator.unit as SchoolUnit,
+            unit: currentUnit as SchoolUnit,
             gradeLevel: gradeName,
             schoolClass: attClass,
             teacherId: coordinator.id,
@@ -2319,7 +2460,9 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             await db.collection('schoolMessages').doc(message.id).update({
                 status: 'read',
                 response: responseToSave,
-                responseTimestamp: new Date().toISOString()
+                responseTimestamp: new Date().toISOString(),
+                responseAuthor: coordinator.name,
+                responseAuthorId: coordinator.id
             });
 
             if (onCreateNotification) {
@@ -2361,13 +2504,13 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         if (activeTab === 'crm') {
             loadCrmAttendances();
         }
-    }, [activeTab, coordinator.unit]);
+    }, [activeTab, currentUnit]);
 
     const loadCrmAttendances = async () => {
         setCrmLoading(true);
         try {
             const snap = await db.collection('pedagogical_attendances')
-                .where('unit', '==', coordinator.unit)
+                .where('unit', '==', currentUnit)
                 .orderBy('timestamp', 'desc')
                 .get();
 
@@ -2390,7 +2533,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
         try {
             const snap = await db.collection('students')
-                .where('unit', '==', coordinator.unit)
+                .where('unit', '==', currentUnit)
                 .get();
 
             const allStudents = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
@@ -2435,7 +2578,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 gradeLevel: crmSelectedStudent.gradeLevel,
                 schoolClass: crmSelectedStudent.schoolClass,
                 shift: crmSelectedStudent.shift,
-                unit: coordinator.unit,
+                unit: currentUnit,
                 authorId: coordinator.id,
                 authorName: coordinator.name,
                 timestamp: now
@@ -2460,17 +2603,17 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
     // --- ACCESS CONTROL LOGIC ---
     useEffect(() => {
-        if (activeTab === 'access_control' && coordinator.unit) {
+        if (activeTab === 'access_control' && currentUnit) {
             loadAccessRecords();
         }
-    }, [activeTab, coordinator.unit]);
+    }, [activeTab, currentUnit]);
     // REAL-TIME LISTENER FOR ACCESS RECORDS
     useEffect(() => {
-        if (!coordinator.unit || activeTab !== 'access_control') return;
+        if (!currentUnit || activeTab !== 'access_control') return;
 
         setAccessLoading(true);
         const unsubscribe = db.collection('accessRecords')
-            .where('unit', '==', coordinator.unit)
+            .where('unit', '==', currentUnit)
             .orderBy('timestamp', 'desc')
             .limit(50)
             .onSnapshot(snapshot => {
@@ -2483,7 +2626,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             });
 
         return () => unsubscribe();
-    }, [coordinator.unit, activeTab]);
+    }, [currentUnit, activeTab]);
 
     // Removed manual loadAccessRecords as we now listen to changes
     const loadAccessRecords = () => { }; // No-op to keep TS happy if used elsewhere, or remove calls.
@@ -2497,7 +2640,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
         try {
             const snap = await db.collection('students')
-                .where('unit', '==', coordinator.unit)
+                .where('unit', '==', currentUnit)
                 .get();
 
             const allStudents = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
@@ -2536,7 +2679,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 studentGrade: accessSelectedStudent.gradeLevel,
                 studentClass: accessSelectedStudent.schoolClass,
                 studentShift: accessSelectedStudent.shift,
-                unit: coordinator.unit,
+                unit: currentUnit,
                 coordinatorId: coordinator.id,
                 coordinatorName: coordinator.name,
                 timestamp: new Date().toISOString()
@@ -2552,7 +2695,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                     studentCode: accessSelectedStudent.code,
                     gradeLevel: accessSelectedStudent.gradeLevel,
                     schoolClass: accessSelectedStudent.schoolClass,
-                    unit: coordinator.unit,
+                    unit: currentUnit,
                     timestamp: new Date().toISOString(),
                     coordinatorId: coordinator.id,
                     coordinatorName: coordinator.name,
@@ -2622,7 +2765,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 studentGrade: student.gradeLevel,
                 studentClass: student.schoolClass,
                 studentShift: student.shift,
-                unit: coordinator.unit,
+                unit: currentUnit,
                 coordinatorId: coordinator.id,
                 coordinatorName: coordinator.name,
                 timestamp: new Date().toISOString()
@@ -2636,7 +2779,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 studentCode: student.code,
                 gradeLevel: student.gradeLevel,
                 schoolClass: student.schoolClass,
-                unit: coordinator.unit,
+                unit: currentUnit,
                 timestamp: new Date().toISOString(),
                 coordinatorId: coordinator.id,
                 coordinatorName: coordinator.name,
@@ -2739,17 +2882,54 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                         </svg>
                                     </button>
                                 )}
-                                <span className="font-bold text-gray-800">{coordinator.name}</span>
-                                <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
-                                <span className="text-gray-500">{UNIT_LABELS[coordinator.unit as SchoolUnit] || coordinator.unit}</span>
-                                {coordinator.segment && (
+                                <div className="flex items-center gap-2">
+                                    {coordinator.photoUrl ? (
+                                        <div className="w-9 h-12 rounded-lg overflow-hidden border-2 border-blue-100 shadow-sm flex-shrink-0 bg-gray-50">
+                                            <img src={coordinator.photoUrl} alt={coordinator.name} className="w-full h-full object-cover" />
+                                        </div>
+                                    ) : (
+                                        <div className="w-9 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-300 flex-shrink-0 border-2 border-white shadow-sm overflow-hidden">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7">
+                                                <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clipRule="evenodd" />
+                                            </svg>
+                                        </div>
+                                    )}
+                                    <div className="flex flex-col">
+                                        <span className="bg-blue-100 text-[#1e3a8a] text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest w-fit">
+                                            {getCoordinatorTitle(coordinator.gender, coordinator.role, coordinator.unit)}
+                                        </span>
+                                        <span className="font-bold text-gray-800 text-sm leading-tight">{coordinator.name}</span>
+                                    </div>
+                                </div>
+                                {coordinator.unit !== 'all' && (
                                     <>
                                         <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
-                                        <span className="text-gray-500">
-                                            {coordinator.segment === CoordinationSegment.INFANTIL_FUND1 ? 'Infantil & Fund. I' :
-                                                coordinator.segment === CoordinationSegment.FUND2_MEDIO ? 'Fund. II & Médio' : 'Geral'}
-                                        </span>
+                                        <span className="text-gray-500">{UNIT_LABELS[currentUnit as SchoolUnit] || currentUnit}</span>
                                     </>
+                                )}
+                                {coordinator.unit === 'all' ? (
+                                    <>
+                                        <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+                                        <select
+                                            value={currentUnit}
+                                            onChange={(e) => setCurrentUnit(e.target.value)}
+                                            className="text-xs font-bold text-blue-950 bg-blue-50 border border-blue-200 rounded-lg px-2 py-1 focus:outline-none"
+                                        >
+                                            {Object.entries(UNIT_LABELS).map(([unit, label]) => (
+                                                <option key={unit} value={unit}>{label}</option>
+                                            ))}
+                                        </select>
+                                    </>
+                                ) : (
+                                    coordinator.segment && (
+                                        <>
+                                            <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+                                            <span className="text-gray-500 text-xs">
+                                                {coordinator.segment === CoordinationSegment.INFANTIL_FUND1 ? 'Infantil & Fund. I' :
+                                                    coordinator.segment === CoordinationSegment.FUND2_MEDIO ? 'Fund. II & Médio' : 'Geral'}
+                                            </span>
+                                        </>
+                                    )
                                 )}
                             </div>
                             <div className="flex items-center gap-3 relative">
@@ -2760,9 +2940,9 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                     title="Notificações de Mensagens"
                                 >
                                     <Bell className="w-5 h-5" />
-                                    {messages.filter(m => m.status === 'new').length > 0 && (
+                                    {(messages.filter(m => m.status === 'new').length + notifications.filter(n => !n.read).length) > 0 && (
                                         <span className="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-bold min-w-[16px] h-[16px] px-0.5 flex items-center justify-center rounded-full border-2 border-white shadow-sm">
-                                            {messages.filter(m => m.status === 'new').length}
+                                            {messages.filter(m => m.status === 'new').length + notifications.filter(n => !n.read).length}
                                         </span>
                                     )}
                                 </button>
@@ -2776,6 +2956,36 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                             </button>
                                         </div>
                                         <div className="max-h-64 overflow-y-auto">
+                                            {/* COORDINATOR NOTIFICATIONS */}
+                                            {notifications.filter(n => !n.read).map(notif => (
+                                                <div 
+                                                    key={notif.id} 
+                                                    className="p-3 border-b border-gray-50 bg-blue-50/20 hover:bg-blue-50 transition-colors cursor-pointer group"
+                                                    onClick={() => {
+                                                        setActiveTab('announcements');
+                                                        onDeleteNotification?.(notif.id);
+                                                        setShowNotifications(false);
+                                                    }}
+                                                >
+                                                    <div className="flex items-start gap-2">
+                                                        <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg">
+                                                            <Megaphone className="w-3 h-3" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-xs font-bold text-gray-800 leading-tight mb-0.5">{notif.title}</p>
+                                                            <p className="text-[10px] text-gray-500 line-clamp-1">{notif.message.replace(/<[^>]*>?/gm, '')}</p>
+                                                            <p className="text-[9px] text-gray-400 mt-1">{new Date(notif.timestamp).toLocaleDateString()} às {new Date(notif.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                                        </div>
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); onDeleteNotification?.(notif.id); }} 
+                                                            className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            <X className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+
                                             {messages.filter(m => m.status === 'new').length > 0 ? (
                                                 messages.filter(m => m.status === 'new').map(msg => (
                                                     <div
@@ -2867,15 +3077,17 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                     {/* MENU GRID (activeTab === 'menu') */}
                     {activeTab === 'menu' && (
                         <div className="animate-fade-in-up grid grid-cols-2 gap-4 mb-8">
-                            <button
-                                onClick={() => setActiveTab('approvals')}
-                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
-                            >
-                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                                    <Search className="w-6 h-6 text-blue-950" />
-                                </div>
-                                <h3 className="font-bold text-gray-800 text-sm text-center">Pendências de Notas</h3>
-                            </button>
+                            {coordinator.unit !== 'all' && (
+                                <button
+                                    onClick={() => setActiveTab('approvals')}
+                                    className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                                >
+                                    <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                        <Search className="w-6 h-6 text-blue-950" />
+                                    </div>
+                                    <h3 className="font-bold text-gray-800 text-sm text-center">Pendências de Notas</h3>
+                                </button>
+                            )}
 
                             <button
                                 onClick={() => { setActiveTab('occurrences'); /* Prepare Occurrences? */ }}
@@ -2897,15 +3109,17 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                 <h3 className="font-bold text-gray-800 text-sm text-center">Comunicados</h3>
                             </button>
 
-                            <button
-                                onClick={() => setActiveTab('attendance')}
-                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
-                            >
-                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                                    <Users className="w-6 h-6 text-blue-950" />
-                                </div>
-                                <h3 className="font-bold text-gray-800 text-sm text-center">Frequência</h3>
-                            </button>
+                            {coordinator.unit !== 'all' && (
+                                <button
+                                    onClick={() => setActiveTab('attendance')}
+                                    className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                                >
+                                    <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                        <Users className="w-6 h-6 text-blue-950" />
+                                    </div>
+                                    <h3 className="font-bold text-gray-800 text-sm text-center">Frequência</h3>
+                                </button>
+                            )}
 
 
 
@@ -2958,31 +3172,35 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                             </button>
 
                             {/* ACCESS CONTROL CARD */}
-                            <button
-                                onClick={() => setActiveTab('access_control')}
-                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
-                            >
-                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                                    <LogOut className="w-6 h-6 text-blue-950" />
-                                </div>
-                                <h3 className="font-bold text-gray-800 text-sm text-center">Controle de Acessos</h3>
-                            </button>
+                            {coordinator.unit !== 'all' && (
+                                <button
+                                    onClick={() => setActiveTab('access_control')}
+                                    className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                                >
+                                    <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                        <LogOut className="w-6 h-6 text-blue-950" />
+                                    </div>
+                                    <h3 className="font-bold text-gray-800 text-sm text-center">Controle de Acessos</h3>
+                                </button>
+                            )}
 
                             {/* LOST AND FOUND CARD */}
-                            <button
-                                onClick={() => setActiveTab('lost_found')}
-                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square relative"
-                            >
-                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                                    <Package className="w-6 h-6 text-blue-950" />
-                                </div>
-                                <h3 className="font-bold text-gray-800 text-sm text-center">Achados e Perdidos</h3>
-                                {claimedCount > 0 && (
-                                    <span className="absolute top-4 right-4 bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg animate-pulse">
-                                        {claimedCount}
-                                    </span>
-                                )}
-                            </button>
+                            {coordinator.unit !== 'all' && (
+                                <button
+                                    onClick={() => setActiveTab('lost_found')}
+                                    className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square relative"
+                                >
+                                    <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                        <Package className="w-6 h-6 text-blue-950" />
+                                    </div>
+                                    <h3 className="font-bold text-gray-800 text-sm text-center">Achados e Perdidos</h3>
+                                    {claimedCount > 0 && (
+                                        <span className="absolute top-4 right-4 bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg animate-pulse">
+                                            {claimedCount}
+                                        </span>
+                                    )}
+                                </button>
+                            )}
 
                             {/* PHOTOGRAPHER DEMANDS CARD */}
                             <button
@@ -4199,7 +4417,10 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                     )}
                                                 </div>
                                                 <div className="text-[10px] text-gray-400 font-medium italic">
-                                                    Registrado por: {a.authorName}
+                                                    Registrado por: {(() => {
+                                                        const contact = unitContacts.find(c => c.id === a.authorId);
+                                                        return contact ? `${getCoordinatorTitle(contact.gender, contact.role, contact.unit)} ${contact.name}` : a.authorName;
+                                                    })()}
                                                 </div>
                                             </div>
                                         </div>
@@ -4400,17 +4621,18 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                         <CoordinatorAnnouncementsView 
                             coordinator={coordinator} 
                             announcements={announcements}
+                            unitContacts={unitContacts}
                             onCreateNotification={onCreateNotification}
                         />
                     )}
 
                     {activeTab === 'agenda_report' && (
-                        <CoordinatorAgendaReport unit={coordinator.unit as SchoolUnit} />
+                        <CoordinatorAgendaReport unit={currentUnit as SchoolUnit} />
                     )}
 
                     {/* PHOTOGRAPHER DEMANDS VIEW */}
                     {activeTab === 'photographer_demands' && (
-                        <CoordinatorPhotographerDemands unit={coordinator.unit as SchoolUnit} coordinator={coordinator} />
+                        <CoordinatorPhotographerDemands unit={currentUnit as SchoolUnit} coordinator={coordinator} />
                     )}
                     {isCrmModalOpen && (
                         <div className="fixed inset-0 bg-blue-950/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
@@ -4946,11 +5168,11 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
                                 {scheduleGrade && scheduleClass && scheduleShift ? (
                                     <ScheduleTimeline
-                                        unit={coordinator.unit || ''}
+                                        unit={currentUnit || ''}
                                         grade={scheduleGrade}
                                         schoolClass={scheduleClass}
                                         shift={scheduleShift}
-                                        title={`Grade Horária - ${coordinator.unit}`}
+                                        title={`Grade Horária - ${currentUnit}`}
                                     />
                                 ) : (
                                     <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200">
@@ -4964,7 +5186,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
                     {/* LOST AND FOUND VIEW */}
                     {activeTab === 'lost_found' && (
-                        <CoordinatorLostFoundView unit={coordinator.unit as SchoolUnit} />
+                        <CoordinatorLostFoundView unit={currentUnit as SchoolUnit} />
                     )}
 
                     {/* GLOBAL DIALOG */}

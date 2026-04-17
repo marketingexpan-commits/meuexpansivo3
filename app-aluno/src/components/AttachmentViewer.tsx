@@ -29,7 +29,7 @@ export const AttachmentViewer: React.FC<{ url: string, name?: string | null, asI
         <>
             <div 
                 onClick={() => setIsLightboxOpen(true)}
-                className={`relative overflow-hidden cursor-pointer shadow-sm hover:shadow-md transition-all group border border-gray-200 bg-gray-100 shrink-0 ${asIcon ? 'w-12 h-12 sm:w-14 sm:h-14 rounded-full' : 'w-20 h-20 sm:w-24 sm:h-24 rounded-xl'}`}
+                className={`relative overflow-hidden cursor-pointer shadow-sm hover:shadow-md transition-all group border border-gray-200 bg-gray-100 shrink-0 ${asIcon ? 'w-12 h-[60px] sm:w-14 sm:h-[70px] rounded-lg' : 'w-20 h-20 sm:w-24 sm:h-24 rounded-xl'}`}
             >
                 <img 
                     src={url} 

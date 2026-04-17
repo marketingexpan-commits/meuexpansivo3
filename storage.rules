@@ -68,6 +68,12 @@ service firebase.storage {
       allow write: if isValidSize() && (request.resource.contentType.matches('image/.*') || request.resource.contentType.matches('video/.*'));
     }
 
+    // Coordinators photos folder
+    match /coordinators/photos/{allPaths=**} {
+      allow read: if true;
+      allow write: if isValidSize();
+    }
+
     // Default rule - deny all other access
     match /{allPaths=**} {
       allow read, write: if false;

@@ -6,6 +6,7 @@ export enum UserRole {
   TEACHER = 'TEACHER',
   ADMIN = 'ADMIN',
   COORDINATOR = 'COORDINATOR',
+  GENERAL_COORDINATOR = 'GENERAL_COORDINATOR',
   PHOTOGRAPHER = 'PHOTOGRAPHER',
   NONE = 'NONE'
 }
@@ -209,6 +210,7 @@ export interface SchoolMessage {
   response?: string;
   responseAuthor?: string;
   responseTimestamp?: string;
+  responseAuthorId?: string; // ID for gender-aware title resolution
 }
 
 
@@ -353,6 +355,7 @@ export enum ContactRole {
 export enum CoordinationSegment {
   INFANTIL_FUND1 = 'infantil_fund1',
   FUND2_MEDIO = 'fund2_medio',
+  BOTH = 'both',
   GERAL = 'geral'
 }
 
@@ -363,10 +366,12 @@ export interface UnitContact {
   phone?: string; // Backwards compatibility if needed, or unify to phone
   email?: string;
   role: ContactRole | string; // Allow string for legacy/flexibility
-  unit: SchoolUnit;
+  unit: SchoolUnit | 'all';
   segment?: CoordinationSegment;
   shift?: SchoolShift | 'all';
+  gender?: 'M' | 'F';
   password?: string; // Added for Coordinator Access Control
+  photoUrl?: string; // 3x4 photo for coordinators
 }
 // --- FIM ---
 

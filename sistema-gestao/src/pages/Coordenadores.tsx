@@ -77,7 +77,7 @@ export function Coordenadores() {
     const filteredCoordinators = coordinators.filter(coord => {
         const matchesSearch = coord.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             coord.phoneNumber.includes(searchTerm);
-        const matchesUnit = !filterUnit || coord.unit === filterUnit;
+        const matchesUnit = !filterUnit || coord.unit === filterUnit || coord.unit === 'all';
         return matchesSearch && matchesUnit;
     });
 
@@ -157,8 +157,12 @@ export function Coordenadores() {
                                 <div className="p-6 space-y-4">
                                     <div className="flex items-start justify-between">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-12 h-12 rounded-xl bg-blue-950/5 flex items-center justify-center text-blue-950 group-hover:bg-blue-950 group-hover:text-white transition-all duration-300 shadow-inner">
-                                                <User className="w-6 h-6" />
+                                            <div className="w-12 h-16 rounded-xl bg-blue-950/5 flex items-center justify-center text-blue-950 group-hover:bg-blue-950 group-hover:text-white transition-all duration-300 shadow-inner overflow-hidden border border-slate-100">
+                                                {coord.photoUrl ? (
+                                                    <img src={coord.photoUrl} alt={coord.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <User className="w-6 h-6" />
+                                                )}
                                             </div>
                                             <div>
                                                 <h3 className="font-bold text-slate-900 group-hover:text-blue-950 transition-colors truncate max-w-[150px]">
@@ -166,7 +170,7 @@ export function Coordenadores() {
                                                 </h3>
                                                 <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                                                     <GraduationCap className="w-3 h-3" />
-                                                    {coord.unit}
+                                                    {coord.unit === 'all' ? 'Toda a Rede' : coord.unit}
                                                 </div>
                                             </div>
                                         </div>

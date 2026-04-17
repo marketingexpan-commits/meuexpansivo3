@@ -92,9 +92,9 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
   const [password, setPassword] = useState('');
 
 
-  const [selectedTeacherUnit, setSelectedTeacherUnit] = useState(SCHOOL_UNITS_LIST[0]);
-  const [selectedCoordinatorUnit, setSelectedCoordinatorUnit] = useState(SCHOOL_UNITS_LIST[0]);
-  const [selectedGatekeeperUnit, setSelectedGatekeeperUnit] = useState(SCHOOL_UNITS_LIST[0]);
+  const [selectedTeacherUnit, setSelectedTeacherUnit] = useState<string>(SCHOOL_UNITS_LIST[0]);
+  const [selectedCoordinatorUnit, setSelectedCoordinatorUnit] = useState<string>(SCHOOL_UNITS_LIST[0]);
+  const [selectedGatekeeperUnit, setSelectedGatekeeperUnit] = useState<string>(SCHOOL_UNITS_LIST[0]);
 
   const [isMuralOpen, setIsMuralOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
@@ -596,10 +596,11 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                     <label className="block text-sm font-bold text-gray-700 mb-1">Selecione a Unidade</label>
                     <select
                       value={selectedCoordinatorUnit}
-                      onChange={(e) => setSelectedCoordinatorUnit(e.target.value as SchoolUnit)}
+                      onChange={(e) => setSelectedCoordinatorUnit(e.target.value)}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-700 focus:outline-none focus:border-blue-950 bg-white transition-colors"
                       required
                     >
+                      <option value="all">Coordenador Geral</option>
                       {SCHOOL_UNITS_LIST.map(unit => (
                         <option key={unit} value={unit}>{UNIT_LABELS[unit as SchoolUnit] || unit}</option>
                       ))}

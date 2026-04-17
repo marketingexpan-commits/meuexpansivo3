@@ -23,7 +23,8 @@ import {
     SHIFT_LABELS,
     SchoolShift,
     Announcement,
-    AnnouncementRecipient
+    AnnouncementRecipient,
+    UnitContact
 } from '../types';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
@@ -59,6 +60,7 @@ interface TeacherDashboardProps {
     classSchedules?: ClassSchedule[];
     schoolMessages?: SchoolMessage[];
     announcements?: Announcement[];
+    unitContacts?: UnitContact[];
 }
 
 const formatGrade = (value: number | undefined | null) => {
@@ -94,7 +96,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     calendarEvents = [],
     classSchedules = [],
     schoolMessages = [],
-    announcements = []
+    announcements = [],
+    unitContacts = []
 }) => {
     const { grades: academicGrades, subjects: academicSubjects, matrices, loading: loadingAcademic } = useAcademicData();
 
@@ -313,18 +316,46 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                             
                             return (
                             <div key={ann.id} className={`flex items-start gap-3 sm:gap-4 p-4 ${idx !== teacherAnnouncements.length - 1 ? 'border-b border-gray-100' : ''} hover:bg-gray-50 transition-colors`}>
-                                <div className="shrink-0">
-                                    {ann.attachmentUrl && isImage ? (
-                                        <AttachmentViewer url={ann.attachmentUrl} name={ann.attachmentName} asIcon={true} />
-                                    ) : (
-                                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white text-[#1e3a8a] flex items-center justify-center shrink-0 shadow-sm border border-blue-50">
-                                            <Bell className="w-6 h-6 sm:w-7 sm:h-7" />
-                                        </div>
-                                    )}
+                                <div className="shrink-0 flex items-center gap-2">
+                                        {(() => {
+                                            const contact = unitContacts?.find(c => c.id === ann.authorId);
+                                            const photoToDisplay = contact?.photoUrl;
+                                            
+                                            return (
+                                                <>
+                                                    {photoToDisplay ? (
+                                                        <div className="w-12 h-15 sm:w-14 sm:h-17.5 rounded-xl overflow-hidden border-2 border-white shadow-md flex-shrink-0 bg-gray-100">
+                                                            <img src={photoToDisplay} alt={ann.authorName} className="w-full h-full object-cover" />
+                                                        </div>
+                                                    ) : (
+                                                        !ann.attachmentUrl || !isImage ? (
+                                                            <div className="w-12 h-[60px] sm:w-14 sm:h-[70px] rounded-lg bg-white text-[#1e3a8a] flex items-center justify-center shrink-0 shadow-sm border border-blue-50">
+                                                                <Bell className="w-6 h-6 sm:w-7 sm:h-7" />
+                                                            </div>
+                                                        ) : null
+                                                    )}
+
+                                                    {ann.attachmentUrl && isImage && (
+                                                        <div className="relative group">
+                                                            <AttachmentViewer url={ann.attachmentUrl} name={ann.attachmentName} asIcon={true} />
+                                                        </div>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
                                 </div>
                                 <div className="flex-1 min-w-0 pr-2">
                                     <h3 className="text-sm sm:text-base font-bold text-gray-900 truncate uppercase mt-0.5" title={ann.title}>{ann.title}</h3>
-                                    <p className="text-[11px] sm:text-xs text-gray-400 font-medium mb-1">Comunicado de {ann.authorName}</p>
+                                    <p className="text-[11px] sm:text-xs text-gray-400 font-medium mb-1">
+                                        Comunicado de {(() => {
+                                            const contact = unitContacts?.find(c => c.id === ann.authorId);
+                                            if (!contact) return ann.authorName;
+                                            const isFemale = contact.gender === 'F';
+                                            const isGen = contact.role === 'GENERAL_COORDINATOR' || contact.role === 'admin_geral' || contact.unit === 'all';
+                                            const title = isGen ? (isFemale ? 'Coordenadora Geral' : 'Coordenador Geral') : (isFemale ? 'Coordenadora' : 'Coordenador');
+                                            return `${title} ${contact.name}`;
+                                        })()}
+                                    </p>
                                     <TextExpander text={ann.content} title={ann.title} isHtml={true} />
                                     {ann.attachmentUrl && !isImage && (
                                         <div className="mt-2">
