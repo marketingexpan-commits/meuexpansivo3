@@ -64,6 +64,7 @@ import { Color } from '@tiptap/extension-color';
 import { ListItem } from '@tiptap/extension-list-item';
 import { BulletList } from '@tiptap/extension-bullet-list';
 import { OrderedList } from '@tiptap/extension-ordered-list';
+import { CoordinatorStudentReportModal } from './CoordinatorStudentReportModal';
 
 // --- SUB-COMPONENT: EDITOR TOOLBAR ---
 const MenuBar = ({ editor }: { editor: any }) => {
@@ -219,6 +220,9 @@ const CoordinatorAnnouncementsView: React.FC<{
     const [targetGrade, setTargetGrade] = useState<string>('');
     const [targetClass, setTargetClass] = useState<SchoolClass | ''>('');
     const [targetShift, setTargetShift] = useState<SchoolShift | ''>('');
+
+
+
     const [file, setFile] = useState<File | null>(null);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [removedExistingAttachment, setRemovedExistingAttachment] = useState(false);
@@ -1552,6 +1556,52 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     const [quickClassFilter, setQuickClassFilter] = useState<string>('all');
     const [quickGradeFilter, setQuickGradeFilter] = useState<string>('all');
     const [quickShiftFilter, setQuickShiftFilter] = useState<string>('all');
+
+    // --- Student Report Modal Search State ---
+    const [reportModalOpen, setReportModalOpen] = useState(false);
+    const [selectedReportStudent, setSelectedReportStudent] = useState<Student | null>(null);
+    const [reportSearchTerm, setReportSearchTerm] = useState('');
+    const [reportSearchDropdownOpen, setReportSearchDropdownOpen] = useState(false);
+
+    const currentUnitInfo = {
+        address: 'Expansivo Rede de Ensino',
+        cep: '59000-000',
+        phone: '(84) 3232-0000',
+        email: 'contato@expansivo.com.br',
+        cnpj: '00.000.000/0001-00'
+    };
+
+    const [filteredReportStudents, setFilteredReportStudents] = useState<Student[]>([]);
+
+    useEffect(() => {
+        const fetchStudents = async () => {
+            if (!reportSearchTerm || reportSearchTerm.length < 3) {
+                setFilteredReportStudents([]);
+                return;
+            }
+            try {
+                const searchUnit = coordinator.unit === 'all' || coordinator.role === 'admin_geral' ? currentUnit : coordinator.unit;
+                
+                const snap = await db.collection('students')
+                    .where('unit', '==', searchUnit)
+                    .get();
+                
+                const termLower = reportSearchTerm.toLowerCase();
+                const matched = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student)).filter(s => {
+                    const nameMatch = s.name ? String(s.name).toLowerCase().includes(termLower) : false;
+                    const codeMatch = s.code ? String(s.code).toLowerCase().includes(termLower) : false;
+                    return nameMatch || codeMatch;
+                });
+                
+                setFilteredReportStudents(matched);
+            } catch (error) {
+                console.error('Error searching students for report:', error);
+            }
+        };
+
+        const debounceTimer = setTimeout(fetchStudents, 500);
+        return () => clearTimeout(debounceTimer);
+    }, [reportSearchTerm, coordinator.unit, coordinator.role, currentUnit]);
     const [quickSubjectFilter, setQuickSubjectFilter] = useState<string>('all');
     const [quickBimesterFilter, setQuickBimesterFilter] = useState<string | number>('all');
 
@@ -2869,57 +2919,42 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
                     {/* Welcome Card with inline header info */}
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-5 mb-6 print:hidden">
-                        <div className="flex flex-col gap-4 mb-4 pb-4 border-b border-gray-100 relative">
-                            <div className="flex justify-between items-center w-full gap-3">
-                                <div className="flex items-center gap-2 text-base text-gray-600 min-w-0">
+                        <div className="flex flex-col gap-4">
+                            
+                            {/* TOP ROW: LOGO & ACTIONS */}
+                            <div className="flex items-center justify-between pb-4 border-b border-gray-100 relative">
+                                {/* LOGO */}
+                                <div className="flex items-center gap-2 sm:gap-3">
                                     {activeTab !== 'menu' && (
                                         <button
                                             onClick={() => setActiveTab('menu')}
-                                            className="p-1.5 hover:bg-gray-100 rounded-full transition-colors text-gray-600 -ml-1 mr-0.5 shrink-0"
+                                            className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600 shrink-0"
                                             title="Voltar ao Menu"
                                         >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                                             </svg>
                                         </button>
                                     )}
-                                    <div className="flex items-center gap-2 min-w-0">
-                                        {coordinator.photoUrl ? (
-                                            <div 
-                                                className="w-9 h-12 rounded-lg overflow-hidden border-2 border-blue-100 shadow-sm flex-shrink-0 bg-gray-50 cursor-zoom-in"
-                                                onClick={() => setZoomedPhoto({ 
-                                                    url: coordinator.photoUrl!, 
-                                                    name: coordinator.name,
-                                                    title: getCoordinatorTitle(coordinator.gender, coordinator.role, coordinator.unit)
-                                                })}
-                                            >
-                                                <img src={coordinator.photoUrl} alt={coordinator.name} className="w-full h-full object-cover" />
-                                            </div>
-                                        ) : (
-                                            <div className="w-9 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-300 flex-shrink-0 border-2 border-white shadow-sm overflow-hidden">
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7">
-                                                    <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clipRule="evenodd" />
-                                                </svg>
-                                            </div>
-                                        )}
-                                        <div className="flex flex-col min-w-0">
-                                            <span className="bg-blue-100 text-[#1e3a8a] text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest w-fit whitespace-nowrap">
-                                                {getCoordinatorTitle(coordinator.gender, coordinator.role, coordinator.unit)}
-                                            </span>
-                                            <span className="font-bold text-gray-800 text-sm leading-tight truncate">{coordinator.name}</span>
-                                        </div>
+                                    <div className="h-8 sm:h-10 w-auto shrink-0">
+                                        <SchoolLogo className="!h-full w-auto" />
+                                    </div>
+                                    <div className="flex flex-col justify-center pl-2 sm:pl-3 border-l-2 border-gray-100">
+                                        <span className="text-[8px] sm:text-[9px] text-orange-600 font-bold uppercase tracking-[0.15em] leading-none mb-1">Aplicativo</span>
+                                        <h1 className="text-sm sm:text-lg font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
+                                        <span className="text-[7px] sm:text-[8px] text-blue-950/60 font-bold uppercase tracking-wider leading-none mt-1">Portal do Coordenador</span>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                                    {/* NOTIFICATION BELL */}
+                                {/* ACTIONS */}
+                                <div className="flex items-center gap-2 sm:gap-3">
                                     <button
                                         onClick={() => setShowNotifications(!showNotifications)}
-                                        className="p-2 text-gray-600 hover:text-gray-800 transition-colors relative hover:bg-gray-100 rounded-full"
+                                        className="p-2 sm:p-2.5 text-gray-600 hover:text-blue-600 transition-all hover:bg-blue-50 rounded-full relative"
                                     >
-                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                                        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
                                         {(messages.filter(m => m.status === 'new').length + notifications.filter(n => !n.read).length) > 0 && (
-                                            <span className="absolute -top-1 -right-1 bg-orange-600 text-white text-[10px] font-bold min-w-[20px] h-[20px] px-1 flex items-center justify-center rounded-full border-2 border-white shadow-sm transform scale-100">
+                                            <span className="absolute top-0 right-0 sm:top-1 sm:right-1 bg-orange-600 text-white text-[9px] sm:text-[10px] font-bold min-w-[16px] h-[16px] sm:min-w-[18px] sm:h-[18px] px-1 flex items-center justify-center rounded-full border-2 border-white shadow-sm">
                                                 {messages.filter(m => m.status === 'new').length + notifications.filter(n => !n.read).length}
                                             </span>
                                         )}
@@ -2928,169 +2963,246 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                     <Button
                                         variant="secondary"
                                         onClick={onLogout}
-                                        className="text-sm font-semibold py-1.5 px-4 h-10"
+                                        className="text-[10px] sm:text-sm font-bold py-1.5 px-3 sm:py-2 sm:px-6 h-8 sm:h-11 rounded-lg sm:rounded-xl shadow-sm border-gray-200"
                                     >
                                         Sair
                                     </Button>
                                 </div>
-                            </div>
 
-                            {/* NOTIFICATION MODAL */}
-                            {showNotifications && (
-                                <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden ring-1 ring-black ring-opacity-5 animate-in fade-in zoom-in-95 duration-200">
-                                    <div className="p-3 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
-                                        <h4 className="font-bold text-blue-950 text-xs uppercase tracking-wider">Notificações</h4>
-                                        <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-blue-800">
-                                            <X className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                    <div className="max-h-64 overflow-y-auto">
-                                        {/* COORDINATOR NOTIFICATIONS */}
-                                        {notifications.filter(n => !n.read).map(notif => (
-                                            <div 
-                                                key={notif.id} 
-                                                className="p-3 border-b border-gray-50 bg-blue-50/20 hover:bg-blue-50 transition-colors cursor-pointer group"
-                                                onClick={() => {
-                                                    setActiveTab('announcements');
-                                                    onDeleteNotification?.(notif.id);
-                                                    setShowNotifications(false);
-                                                }}
-                                            >
-                                                <div className="flex items-start gap-2">
-                                                    <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg">
-                                                        <Megaphone className="w-3 h-3" />
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-xs font-bold text-gray-800 leading-tight mb-0.5">{notif.title}</p>
-                                                        <p className="text-[10px] text-gray-500 line-clamp-1">{notif.message.replace(/<[^>]*>?/gm, '')}</p>
-                                                        <p className="text-[9px] text-gray-400 mt-1">{new Date(notif.timestamp).toLocaleDateString()} às {new Date(notif.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                                                    </div>
-                                                    <button 
-                                                        onClick={(e) => { e.stopPropagation(); onDeleteNotification?.(notif.id); }} 
-                                                        className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    >
-                                                        <X className="w-3 h-3" />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-
-                                        {messages.filter(m => m.status === 'new').length > 0 ? (
-                                            messages.filter(m => m.status === 'new').map(msg => (
-                                                <div
-                                                    key={msg.id}
-                                                    className="p-3 border-b border-gray-50 hover:bg-blue-50/50 cursor-pointer transition-colors"
+                                {/* NOTIFICATION MODAL */}
+                                {showNotifications && (
+                                    <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden ring-1 ring-black ring-opacity-5 animate-in fade-in zoom-in-95 duration-200">
+                                        <div className="p-3 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
+                                            <h4 className="font-bold text-blue-950 text-xs uppercase tracking-wider">Notificações</h4>
+                                            <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-blue-800">
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        <div className="max-h-64 overflow-y-auto">
+                                            {/* COORDINATOR NOTIFICATIONS */}
+                                            {notifications.filter(n => !n.read).map(notif => (
+                                                <div 
+                                                    key={notif.id} 
+                                                    className="p-3 border-b border-gray-50 bg-blue-50/20 hover:bg-blue-50 transition-colors cursor-pointer group"
                                                     onClick={() => {
-                                                        setActiveTab('messages');
-                                                        setMessageFilter('new');
+                                                        setActiveTab('announcements');
+                                                        onDeleteNotification?.(notif.id);
                                                         setShowNotifications(false);
                                                     }}
                                                 >
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
-                                                            <User className="w-3 h-3" />
+                                                    <div className="flex items-start gap-2">
+                                                        <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg">
+                                                            <Megaphone className="w-3 h-3" />
                                                         </div>
-                                                        <span className="font-bold text-xs text-gray-700 truncate flex-1">{msg.studentName}</span>
-                                                        <span className="text-[9px] text-gray-400 whitespace-nowrap">{new Date(msg.timestamp).toLocaleDateString()}</span>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-xs font-bold text-gray-800 leading-tight mb-0.5">{notif.title}</p>
+                                                            <p className="text-[10px] text-gray-500 line-clamp-1">{notif.message.replace(/<[^>]*>?/gm, '')}</p>
+                                                            <p className="text-[9px] text-gray-400 mt-1">{new Date(notif.timestamp).toLocaleDateString()} às {new Date(notif.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                                        </div>
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); onDeleteNotification?.(notif.id); }} 
+                                                            className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            <X className="w-3 h-3" />
+                                                        </button>
                                                     </div>
-                                                    <p className="text-xs text-gray-500 line-clamp-2 pl-8">
-                                                        {msg.content && msg.content.includes(']') ? msg.content.substring(msg.content.indexOf(']') + 1).trim() : (msg.content || '(Sem conteúdo)')}
-                                                    </p>
                                                 </div>
-                                            ))
-                                        ) : (
-                                            notifications.filter(n => !n.read).length === 0 && (
-                                                <div className="p-8 text-center text-gray-400 text-xs italic">
-                                                    Nenhuma notificação nova.
-                                                </div>
-                                            )
+                                            ))}
+
+                                            {messages.filter(m => m.status === 'new').length > 0 ? (
+                                                messages.filter(m => m.status === 'new').map(msg => (
+                                                    <div
+                                                        key={msg.id}
+                                                        className="p-3 border-b border-gray-50 hover:bg-blue-50/50 cursor-pointer transition-colors"
+                                                        onClick={() => {
+                                                            setActiveTab('messages');
+                                                            setMessageFilter('new');
+                                                            setShowNotifications(false);
+                                                        }}
+                                                    >
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
+                                                                <User className="w-3 h-3" />
+                                                            </div>
+                                                            <span className="font-bold text-xs text-gray-700 truncate flex-1">{msg.studentName}</span>
+                                                            <span className="text-[9px] text-gray-400 whitespace-nowrap">{new Date(msg.timestamp).toLocaleDateString()}</span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-500 line-clamp-2 pl-8">
+                                                            {msg.content && msg.content.includes(']') ? msg.content.substring(msg.content.indexOf(']') + 1).trim() : (msg.content || '(Sem conteúdo)')}
+                                                        </p>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                notifications.filter(n => !n.read).length === 0 && (
+                                                    <div className="p-8 text-center text-gray-400 text-xs italic">
+                                                        Nenhuma notificação nova.
+                                                    </div>
+                                                )
+                                            )}
+                                        </div>
+                                        <div className="p-2 bg-gray-50 border-t border-gray-100 text-center">
+                                            <button
+                                                className="text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-wider"
+                                                onClick={() => {
+                                                    setActiveTab('messages');
+                                                    setShowNotifications(false);
+                                                }}
+                                            >
+                                                Ver Todas as Mensagens
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* MIDDLE ROW: PROFILE & SEARCH */}
+                            <div className="flex flex-col md:flex-row md:flex-wrap md:items-center justify-between gap-4 sm:gap-6">
+                                {/* PROFILE INFO */}
+                                <div className="flex items-center gap-4 min-w-0">
+                                    {coordinator.photoUrl ? (
+                                        <div 
+                                            className="w-[72px] h-24 rounded-lg overflow-hidden border-2 border-blue-100 shadow-sm flex-shrink-0 bg-gray-50 cursor-zoom-in"
+                                            onClick={() => setZoomedPhoto({ 
+                                                url: coordinator.photoUrl!, 
+                                                name: coordinator.name,
+                                                title: getCoordinatorTitle(coordinator.gender, coordinator.role, coordinator.unit)
+                                            })}
+                                        >
+                                            <img src={coordinator.photoUrl} alt={coordinator.name} className="w-full h-full object-cover" />
+                                        </div>
+                                    ) : (
+                                        <div className="w-[72px] h-24 rounded-lg bg-gray-100 flex items-center justify-center text-gray-300 flex-shrink-0 border-2 border-white shadow-sm overflow-hidden">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-14 h-14">
+                                                <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clipRule="evenodd" />
+                                            </svg>
+                                        </div>
+                                    )}
+                                    <div className="flex flex-col min-w-0">
+                                        <span className="font-extrabold text-gray-900 text-lg sm:text-xl leading-tight truncate mb-1">{coordinator.name}</span>
+                                        <span className="bg-blue-100 text-[#1e3a8a] text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest mb-2 self-start truncate max-w-full">
+                                            {getCoordinatorTitle(coordinator.gender, coordinator.role, coordinator.unit)}
+                                        </span>
+                                        {coordinator.unit && (
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                {coordinator.unit !== 'all' && (
+                                                    <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded uppercase tracking-wider">
+                                                        {UNIT_LABELS[currentUnit as SchoolUnit] || currentUnit}
+                                                    </span>
+                                                )}
+                                                {coordinator.unit === 'all' && (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[9px] font-bold text-blue-900 uppercase tracking-widest opacity-60">Unidade:</span>
+                                                        <select
+                                                            value={currentUnit}
+                                                            onChange={(e) => setCurrentUnit(e.target.value)}
+                                                            className="text-xs font-bold text-blue-950 bg-blue-50 border border-blue-100 rounded-lg px-2 py-1 focus:outline-none"
+                                                        >
+                                                            {Object.entries(UNIT_LABELS).map(([unit, label]) => (
+                                                                <option key={unit} value={unit}>{label}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                )}
+                                                {coordinator.segment && (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="hidden xs:block w-1 h-1 rounded-full bg-gray-300"></span>
+                                                        <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded uppercase tracking-wider">
+                                                            {coordinator.segment === CoordinationSegment.INFANTIL_FUND1 ? 'Infantil & Fund. I' :
+                                                                coordinator.segment === CoordinationSegment.FUND2_MEDIO ? 'Fund. II & Médio' : 'Geral'}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
-                                    <div className="p-2 bg-gray-50 border-t border-gray-100 text-center">
-                                        <button
-                                            className="text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-wider"
-                                            onClick={() => {
-                                                setActiveTab('messages');
-                                                setShowNotifications(false);
+                                </div>
+
+                                {/* SEARCH BAR */}
+                                <div className="relative w-full md:w-auto md:min-w-[320px] md:max-w-sm md:flex-1 md:self-end">
+                                    <div className="relative group">
+                                        <input
+                                            type="text"
+                                            placeholder="Buscar boletim por código ou nome"
+                                            value={reportSearchTerm}
+                                            onChange={(e) => {
+                                                setReportSearchTerm(e.target.value);
+                                                setReportSearchDropdownOpen(true);
                                             }}
-                                        >
-                                            Ver Todas as Mensagens
-                                        </button>
+                                            onFocus={() => setReportSearchDropdownOpen(true)}
+                                            className="w-full pl-11 pr-11 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 transition-all focus:bg-white shadow-sm group-hover:border-gray-300"
+                                        />
+                                        <svg className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                        {reportSearchTerm && (
+                                            <button onClick={() => setReportSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1">
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        )}
                                     </div>
-                                </div>
-                            )}
 
-                            {/* Unit/Segment Info Row - Mobile Friendly */}
-                            {coordinator.unit && (
-                                <div className="flex flex-wrap items-center gap-2 mt-1 px-1">
-                                    {coordinator.unit !== 'all' && (
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded uppercase tracking-wider">
-                                                {UNIT_LABELS[currentUnit as SchoolUnit] || currentUnit}
-                                            </span>
-                                        </div>
-                                    )}
-                                    {coordinator.unit === 'all' && (
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[9px] font-bold text-blue-900 uppercase tracking-widest opacity-60">Unidade:</span>
-                                            <select
-                                                value={currentUnit}
-                                                onChange={(e) => setCurrentUnit(e.target.value)}
-                                                className="text-xs font-bold text-blue-950 bg-blue-50 border border-blue-100 rounded-lg px-2 py-1 focus:outline-none"
-                                            >
-                                                {Object.entries(UNIT_LABELS).map(([unit, label]) => (
-                                                    <option key={unit} value={unit}>{label}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    )}
-                                    {coordinator.segment && (
-                                        <div className="flex items-center gap-2">
-                                            <span className="hidden xs:block w-1 h-1 rounded-full bg-gray-300"></span>
-                                            <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded uppercase tracking-wider">
-                                                {coordinator.segment === CoordinationSegment.INFANTIL_FUND1 ? 'Infantil & Fund. I' :
-                                                    coordinator.segment === CoordinationSegment.FUND2_MEDIO ? 'Fund. II & Médio' : 'Geral'}
-                                            </span>
+                                    {/* Dropdown Resultados */}
+                                    {reportSearchDropdownOpen && reportSearchTerm.length >= 3 && (
+                                        <div className="absolute left-0 right-0 mt-3 bg-white rounded-2xl shadow-2xl border border-gray-100 z-[100] max-h-96 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
+                                            <div className="p-3 bg-gray-50/50 border-b border-gray-100">
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Resultados da busca</span>
+                                            </div>
+                                            {filteredReportStudents.length > 0 ? (
+                                                <ul className="py-2">
+                                                    {filteredReportStudents.map(student => (
+                                                        <li
+                                                            key={student.id}
+                                                            onClick={() => {
+                                                                setSelectedReportStudent(student);
+                                                                setReportModalOpen(true);
+                                                                setReportSearchDropdownOpen(false);
+                                                                setReportSearchTerm('');
+                                                            }}
+                                                            className="px-4 py-3 hover:bg-blue-50 cursor-pointer transition-colors border-b border-gray-50 last:border-0 text-left group"
+                                                        >
+                                                            <div className="flex flex-col">
+                                                                <p className="text-sm font-bold text-gray-800 group-hover:text-blue-700 transition-colors truncate">{student.name}</p>
+                                                                <p className="text-[11px] text-gray-500 truncate mt-0.5">{student.code} • {student.gradeLevel} • {student.schoolClass}</p>
+                                                            </div>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            ) : (
+                                                <div className="p-8 text-center flex flex-col items-center gap-2">
+                                                    <div className="p-3 bg-gray-100 rounded-full text-gray-400">
+                                                        <User className="w-6 h-6" />
+                                                    </div>
+                                                    <p className="text-sm text-gray-500">Nenhum aluno encontrado para "{reportSearchTerm}"</p>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
-                            )}
-                        </div>
+                            </div>
 
-                        {/* Welcome Message */}
-                        <div className="flex flex-col items-start text-left">
-                            {activeTab === 'menu' && (
-                                <div className="flex items-center gap-2 mt-4 mb-6 pl-1">
-                                    <div className="h-8 sm:h-10 w-auto shrink-0">
-                                        <SchoolLogo className="!h-full w-auto" />
-                                    </div>
-                                    <div className="flex flex-col justify-center">
-                                        <span className="text-[9px] text-orange-600 font-bold uppercase tracking-[0.15em] leading-none mb-1">Aplicativo</span>
-                                        <h1 className="text-base sm:text-lg font-bold text-blue-950 tracking-tight leading-none">Meu Expansivo</h1>
-                                        <span className="text-[8px] sm:text-[9px] text-blue-950/60 font-bold uppercase tracking-wider leading-none mt-1">Portal do Coordenador</span>
-                                    </div>
-                                </div>
-                            )}
-                            <p className="text-gray-600 max-w-2xl">
-                                {activeTab === 'menu'
-                                    ? "Selecione uma opção para gerenciar as atividades pedagógicas da unidade."
-                                    : activeTab === 'lost_found'
-                                        ? "Gerencie os itens achados e perdidos e registre novas entradas."
-                                        : activeTab === 'approvals'
-                                            ? "Utilize os filtros abaixo para localizar e aprovar notas pendentes."
-                                            : activeTab === 'occurrences'
-                                                ? "Gerencie o histórico e registre novas ocorrências disciplinares."
-                                                : activeTab === 'messages'
-                                                    ? "Gerencie as mensagens e feedbacks enviados pelos alunos."
-                                                    : activeTab === 'announcements'
-                                                        ? "Crie e gerencie comunicados direcionados para alunos, pais e professores."
-                                                        : activeTab === 'calendar'
-                                                            ? "Calendário letivo da unidade."
-                                                            : null
-                                }
-                            </p>
+                            {/* MESSAGE ROW */}
+                            <div className="flex flex-col gap-3 mt-2">
+                                {/* Welcome Message */}
+                                <p className="text-gray-600 text-sm max-w-2xl px-1">
+                                    {activeTab === 'menu'
+                                        ? "Selecione uma opção para gerenciar as atividades pedagógicas da unidade."
+                                        : activeTab === 'lost_found'
+                                            ? "Gerencie os itens achados e perdidos e registre novas entradas."
+                                            : activeTab === 'approvals'
+                                                ? "Utilize os filtros abaixo para localizar e aprovar notas pendentes."
+                                                : activeTab === 'occurrences'
+                                                    ? "Gerencie o histórico e registre novas ocorrências disciplinares."
+                                                    : activeTab === 'messages'
+                                                        ? "Gerencie as mensagens e feedbacks enviados pelos alunos."
+                                                        : activeTab === 'announcements'
+                                                            ? "Crie e gerencie comunicados direcionados para alunos, pais e professores."
+                                                            : activeTab === 'calendar'
+                                                                ? "Calendário letivo da unidade."
+                                                                : null
+                                    }
+                                </p>
+                            </div>
                         </div>
                     </div>
+
 
                     {/* MENU GRID (activeTab === 'menu') */}
                     {activeTab === 'menu' && (
@@ -5253,6 +5365,20 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                     )}
                 </main>
             </div >
+
+            {/* Modal de Boletim do Coordenador */}
+            {reportModalOpen && selectedReportStudent && (
+                <CoordinatorStudentReportModal
+                    isOpen={reportModalOpen}
+                    onClose={() => {
+                        setReportModalOpen(false);
+                        setSelectedReportStudent(null);
+                    }}
+                    student={selectedReportStudent}
+                    academicSettings={academicSettings}
+                    calendarEvents={calendarEvents}
+                />
+            )}
         </div >
     );
 };
