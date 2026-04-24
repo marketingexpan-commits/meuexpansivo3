@@ -1590,7 +1590,21 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 const matched = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student)).filter(s => {
                     const nameMatch = s.name ? String(s.name).toLowerCase().includes(termLower) : false;
                     const codeMatch = s.code ? String(s.code).toLowerCase().includes(termLower) : false;
-                    return nameMatch || codeMatch;
+                    
+                    if (!(nameMatch || codeMatch)) return false;
+
+                    // Apply Segment Filtering
+                    const isGeneralCoordinator = coordinator.role === 'admin_geral' || coordinator.role === 'GENERAL_COORDINATOR' || coordinator.unit === 'all';
+                    if (!isGeneralCoordinator && coordinator.segment) {
+                        const studentSegment = parseGradeLevel(s.gradeLevel || '').level;
+                        if (coordinator.segment === CoordinationSegment.INFANTIL_FUND1) {
+                            if (studentSegment !== 'Educação Infantil' && studentSegment !== 'Fundamental I') return false;
+                        } else if (coordinator.segment === CoordinationSegment.FUND2_MEDIO) {
+                            if (studentSegment !== 'Fundamental II' && studentSegment !== 'Ensino Médio') return false;
+                        }
+                    }
+
+                    return true;
                 });
                 
                 setFilteredReportStudents(matched);

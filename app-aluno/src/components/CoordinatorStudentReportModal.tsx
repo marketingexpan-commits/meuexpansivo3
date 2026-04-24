@@ -374,7 +374,7 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                     </button>
                 </div>
 
-                <div className="overflow-y-auto p-8 print:p-0 bg-gray-50 print:bg-white flex-1">
+                <div className="overflow-y-auto p-2 md:p-8 print:p-0 bg-gray-50 print:bg-white flex-1">
                     {loading ? (
                         <div className="flex flex-col items-center justify-center h-64">
                             <div className="w-8 h-8 border-4 border-blue-900 border-t-transparent rounded-full animate-spin"></div>
@@ -413,7 +413,7 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                     /* 3. Ensure the modal backdrop is the only visible container */
                                     .coordinator-report-modal-backdrop { 
                                         display: block !important; 
-                                        position: absolute !important;
+                                        position: static !important;
                                         top: 0 !important;
                                         left: 0 !important;
                                         width: 100% !important;
@@ -423,6 +423,7 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                         padding: 0 !important;
                                         margin: 0 !important;
                                         visibility: visible !important;
+                                        overflow: visible !important;
                                     }
 
                                     .coordinator-report-modal-content {
@@ -434,6 +435,15 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                         overflow: visible !important;
                                         position: static !important;
                                         visibility: visible !important;
+                                        height: auto !important;
+                                    }
+                                    
+                                    /* 4. Force all scrollable containers inside the modal to be fully expanded for Safari */
+                                    .coordinator-report-modal-backdrop *,
+                                    .coordinator-report-modal-content *,
+                                    .print-bulletin-container,
+                                    .print-bulletin-container * {
+                                        overflow: visible !important;
                                     }
 
                                     /* Ensure all children of the modal are visible */
@@ -442,6 +452,15 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                     }
 
                                     /* Standard print helpers */
+                                    .print-scale-wrapper {
+                                        width: 181.818% !important;
+                                        transform: scale(0.55) !important;
+                                        transform-origin: top left !important;
+                                        display: flex !important;
+                                        justify-content: center !important;
+                                        margin: 0 !important;
+                                        padding: 0 !important;
+                                    }
                                     .print-bulletin-container { 
                                         border: none !important; 
                                         padding: 0 !important; 
@@ -449,7 +468,6 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                         display: block !important;
                                         width: max-content !important;
                                         max-width: none !important;
-                                        zoom: 0.55 !important;
                                     }
 
                                     table {
@@ -462,7 +480,8 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                             `}</style>
                             
 
-                            <div className="print-bulletin-container bg-white p-8 rounded-lg shadow-sm border border-slate-200 print:shadow-none print:border-none print:p-0">
+                            <div className="print-scale-wrapper">
+                                <div className="print-bulletin-container bg-white p-4 md:p-8 rounded-lg shadow-sm border border-slate-200 print:shadow-none print:border-none print:p-0">
                                 
                                 {/* RESTRUCTURED HEADER */}
                                 <div className="mb-8 border-b-2 border-blue-950 pb-4 print:mb-2 print:pb-2">
@@ -472,8 +491,8 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                                 <SchoolLogo variant="header" />
                                             </div>
                                             <div>
-                                                <h2 className="text-2xl font-extrabold text-blue-950 uppercase tracking-wide print:text-lg">EXPANSIVO REDE DE ENSINO</h2>
-                                                <h3 className="text-lg font-bold text-gray-700 uppercase print:text-sm">UNIDADE: {getUnitLabel(student.unit)}</h3>
+                                                <h2 className="text-xl md:text-2xl font-extrabold text-blue-950 uppercase tracking-wide print:text-lg">EXPANSIVO REDE DE ENSINO</h2>
+                                                <h3 className="text-base md:text-lg font-bold text-gray-700 uppercase print:text-sm">UNIDADE: {getUnitLabel(student.unit)}</h3>
 
 
                                             </div>
@@ -506,7 +525,7 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
 
                                 {/* Grades Table */}
                                 {!isEarlyChildhood ? (
-                                    <div className="overflow-x-auto">
+                                    <div className="overflow-x-auto w-full pb-4">
                                         {/* Action Button above table */}
                                         <div className="mb-4 flex justify-end print:hidden">
                                             <Button onClick={handleDownloadPDF} variant="outline" className="flex items-center gap-2 bg-white shadow-sm border-slate-200 hover:bg-slate-50 text-blue-950 font-bold px-4 py-2 rounded-lg transition-all active:scale-95">
@@ -740,20 +759,21 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                 )}
 
                                 {/* SIGNATURES */}
-                                <div className="mt-16 grid grid-cols-2 gap-20 print:mt-24">
+                                <div className="mt-8 md:mt-16 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-20 print:grid-cols-2 print:gap-20 print:mt-8">
                                     <div className="text-center">
-                                        <div className="border-t-2 border-black mx-auto w-96 pt-3">
+                                        <div className="border-t-2 border-black mx-auto w-full max-w-[280px] md:max-w-96 print:max-w-96 pt-3">
                                             <p className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Coordenação Pedagógica</p>
                                             <p className="text-[9px] text-slate-400 mt-1 uppercase">Assinatura e Carimbo</p>
                                         </div>
                                     </div>
                                     <div className="text-center">
-                                        <div className="border-t-2 border-black mx-auto w-96 pt-3">
+                                        <div className="border-t-2 border-black mx-auto w-full max-w-[280px] md:max-w-96 print:max-w-96 pt-3">
                                             <p className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Direção Escolar</p>
                                             <p className="text-[9px] text-slate-400 mt-1 uppercase">Assinatura e Carimbo</p>
                                         </div>
                                     </div>
                                 </div>
+                            </div>
                             </div>
                         </div>
                     )}
