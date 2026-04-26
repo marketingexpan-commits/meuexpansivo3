@@ -530,8 +530,10 @@ export interface Ticket {
   id: string;
   studentId: string;
   studentName: string;
-  gradeLevel: string; // Série
+  gradeLevel: string; // Série (Display Name)
+  gradeId?: string;   // ID Técnico Canônico (ex: grade_6_ano)
   schoolClass: string; // Turma
+  shift?: SchoolShift; // Turno Canônico
   unit: SchoolUnit;
   subject: string;
   message: string;

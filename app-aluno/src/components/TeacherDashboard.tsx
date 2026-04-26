@@ -174,18 +174,70 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
     const tickets = useMemo(() => {
         if (!propsTickets) return [];
+        // Helper to normalize strings for robust matching (lowercase, no accents)
+        const normalize = (s: string) => (s || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
         const filtered = propsTickets.filter(t => {
             if (t.unit !== teacher.unit) return false;
 
-            // 1. Match by Subject (Default)
-            if (teacher.subjects.includes(t.subject as any)) return true;
+            const isLegacyTicket = !t.gradeId;
 
-            // 2. Early Childhood / No Subjects Fallback
-            // If the teacher has no specific subjects assigned (common in Early Childhood),
-            // show tickets that match their assigned grade levels OR the generic fallback subject.
+            // ID RESOLUTION: Map legacy string gradeLevel to canonical gradeId
+            const ticketGradeId = t.gradeId || academicGrades.find(g => {
+                const normName = normalize(g.name);
+                const normTicketLevel = normalize(t.gradeLevel);
+                const normId = normalize(g.id);
+                
+                return normName === normTicketLevel || 
+                       normId === normTicketLevel ||
+                       (isLegacyTicket && normTicketLevel && (normName.includes(normTicketLevel) || normTicketLevel.includes(normName)));
+            })?.id;
+
+            // 1. Strict ID Matching for Grade AND Shift AND Class (Assignments)
+            if (teacher.assignments && teacher.assignments.length > 0) {
+                return teacher.assignments.some(asgn => {
+                    // Match by ID (preferred)
+                    const matchesGradeId = (asgn.gradeId && ticketGradeId) && asgn.gradeId === ticketGradeId;
+                    
+                    // Fallback for legacy (loose string matching)
+                    const matchesGradeLevel = isLegacyTicket && t.gradeLevel
+                        ? (normalize(asgn.gradeLevel).includes(normalize(t.gradeLevel)) || normalize(t.gradeLevel).includes(normalize(asgn.gradeLevel)))
+                        : (asgn.gradeLevel === t.gradeLevel);
+                        
+                    const matchesGrade = matchesGradeId || matchesGradeLevel;
+                    const matchesSubject = asgn.subjects.includes(t.subject);
+                    const matchesShift = !asgn.shift || !t.shift || asgn.shift === t.shift;
+                    const matchesClass = !asgn.class || normalizeClass(asgn.class) === normalizeClass(t.schoolClass);
+                    
+                    return matchesGrade && matchesSubject && matchesShift && matchesClass;
+                });
+            }
+
+            // 2. Fallback for legacy teachers/tickets (Matching by Subject)
+            if (teacher.subjects.includes(t.subject as any)) {
+                // If they have the subject, check if they have grade restriction
+                if (teacher.gradeIds || teacher.gradeLevels) {
+                    const hasMatchById = ticketGradeId && teacher.gradeIds?.includes(ticketGradeId);
+                    const hasMatchByLevel = teacher.gradeLevels?.some(gl => 
+                        isLegacyTicket 
+                            ? (normalize(gl).includes(normalize(t.gradeLevel)) || normalize(t.gradeLevel).includes(normalize(gl)))
+                            : gl === t.gradeLevel
+                    );
+                    return hasMatchById || hasMatchByLevel;
+                }
+                return true; // No grade restriction defined
+            }
+
+            // 3. Early Childhood Fallback
             if (teacher.subjects.length === 0) {
                 if (t.subject === 'general_early_childhood') return true;
-                if (teacher.gradeLevels?.includes(t.gradeLevel)) return true;
+                const matchesLevel = teacher.gradeLevels?.some(gl => 
+                    isLegacyTicket 
+                        ? (normalize(gl).includes(normalize(t.gradeLevel)) || normalize(t.gradeLevel).includes(normalize(gl)))
+                        : gl === t.gradeLevel
+                );
+                const matchesId = ticketGradeId && teacher.gradeIds?.includes(ticketGradeId);
+                return matchesLevel || matchesId;
             }
 
             return false;

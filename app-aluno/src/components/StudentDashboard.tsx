@@ -1023,7 +1023,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 studentId: student.id,
                 studentName: student.name,
                 gradeLevel: student.gradeLevel,
+                gradeId: student.gradeId, // Canonical Grade ID
                 schoolClass: student.schoolClass,
+                shift: student.shift as SchoolShift, // Canonical Shift
                 unit: student.unit,
                 subject: selectedTicketSubject,
                 message: ticketMessage,
@@ -1036,7 +1038,33 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
             // Notify Teachers
             if (onCreateNotification && (teachers || []).length > 0) {
-                const teachersToNotify = (teachers || []).filter(t => t.subjects.includes(selectedTicketSubject as any) && t.unit === student.unit);
+                const teachersToNotify = (teachers || []).filter(t => {
+                    // 1. Basic subject and unit check (Canonical IDs)
+                    const hasSubject = t.subjects.includes(selectedTicketSubject as any);
+                    const sameUnit = t.unit === student.unit;
+                    if (!hasSubject || !sameUnit) return false;
+
+                    // 2. Strict ID Matching for Grade AND Shift (Logic from getTeacherPhone)
+                    if (t.assignments && t.assignments.length > 0) {
+                        return t.assignments.some(a =>
+                            (a.gradeId === student.gradeId || a.gradeLevel === student.gradeLevel) &&
+                            a.subjects.includes(selectedTicketSubject) &&
+                            (a.shift === student.shift || !a.shift) &&
+                            (!a.class || normalizeClass(a.class) === normalizeClass(student.schoolClass))
+                        );
+                    }
+
+                    // 3. Fallback for legacy teachers without assignments
+                    const matchesGrade = (t.gradeIds && t.gradeIds.includes(student.gradeId!)) || 
+                                         (t.gradeLevels && t.gradeLevels.includes(student.gradeLevel));
+                    
+                    if (t.gradeIds || t.gradeLevels) {
+                        return matchesGrade;
+                    }
+
+                    return true; // No restrictions defined
+                });
+
                 for (const t of teachersToNotify) {
                     await onCreateNotification(
                         `Nova Dúvida: ${student.name}`,
