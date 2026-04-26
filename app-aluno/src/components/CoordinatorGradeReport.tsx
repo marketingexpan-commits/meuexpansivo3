@@ -6,7 +6,7 @@ import { Printer, FileSpreadsheet } from 'lucide-react';
 
 const A4_W = 794;
 const A4_H = 1123;
-const ROWS_PER_PAGE = 44;
+const ROWS_PER_PAGE = 46;
 
 interface CoordinatorGradeReportProps {
     students: Student[]; grades: GradeEntry[]; selectedBimester: number;
@@ -24,7 +24,8 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
     useEffect(() => {
         const update = () => {
             if (containerRef.current) {
-                setScale(Math.min(1, (containerRef.current.clientWidth - 60) / A4_W));
+                const margin = window.innerWidth < 768 ? 0 : 60;
+                setScale(Math.min(1, (containerRef.current.clientWidth - margin) / A4_W));
             }
         };
         update();
@@ -79,11 +80,6 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
     for (let i = 0; i < sortedStudents.length; i += ROWS_PER_PAGE) pages.push(sortedStudents.slice(i, i + ROWS_PER_PAGE));
 
     const handlePrint = () => {
-        const unitLabel = UNIT_LABELS[unit as SchoolUnit] || unit;
-        const shiftLabel = SHIFT_LABELS[selectedShift as SchoolShift] || selectedShift;
-        const pages: Student[][] = [];
-        for (let i = 0; i < sortedStudents.length; i += ROWS_PER_PAGE) pages.push(sortedStudents.slice(i, i + ROWS_PER_PAGE));
-
         const pagesHtml = pages.map((pg, pi) => {
             const rows = pg.map((s, idx) => {
                 const sg = grades.filter(g => g.studentId === s.id);
@@ -93,79 +89,89 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
                     const hasLaunched = bData?.nota !== undefined && bData?.nota !== null;
                     const val = hasLaunched ? (notaValue !== undefined ? notaValue.toFixed(1) : '0.0') : '-';
                     const red = hasLaunched && notaValue !== undefined && notaValue < 7;
-                    return `<td style="color:${red?'#dc2626':'#000'};${si===subjectsToShow.length-1?'border-right:none':''};font-weight:700;font-size:8.5pt">${val}</td>`;
+                    return `<td class="td-subj ${red?'red':''}" style="${si===subjectsToShow.length-1?'border-right:none':''}">${val}</td>`;
                 }).join('');
                 return `<tr class="${idx%2===0?'row-even':'row-odd'}"><td class="col-code">${s.code}</td><td class="col-name">${s.name.toUpperCase()}</td>${cells}</tr>`;
             }).join('');
             const footer = `<div class="page-footer"><span>MeuExpansivo</span><span style="text-transform:uppercase">Página ${pi + 1} de ${pages.length}</span></div>`;
-            return `<div class="page">
+            return `<div class="print-page">
                 <div class="page-header">
-                    <div style="display:flex;align-items:center;gap:12pt">
-                        <img src="${SCHOOL_LOGO_URL}" style="width:44pt;height:44pt;object-fit:contain" />
-                        <div class="school-info"><strong>EXPANSIVO REDE DE ENSINO</strong><br><span>Unidade: ${unitLabel}</span></div>
+                    <div style="display:flex;align-items:center;gap:12px">
+                        <img src="${SCHOOL_LOGO_URL}" style="width:44px;height:44px;object-fit:contain" />
+                        <div class="school-info"><strong>EXPANSIVO REDE DE ENSINO</strong><span>Unidade: ${unitLabel}</span></div>
                     </div>
                     <div class="page-meta">
-                        <div style="font-size:13pt;font-weight:900;text-transform:uppercase;letter-spacing:0.5pt">Relatório de Notas</div>
-                        <div style="font-size:8.5pt;font-weight:700;margin-top:3pt">${selectedGrade} &nbsp;|&nbsp; Turma: <b>${selectedClass}</b> &nbsp;|&nbsp; Turno: <b>${shiftLabel}</b> &nbsp;|&nbsp; <b>${selectedBimester}º Bimestre</b></div>
+                        <div style="font-size:13px;font-weight:900;color:#111;letter-spacing:-0.3px;text-transform:uppercase">Relatório de Notas</div>
+                        <div style="font-size:8px;font-weight:700;color:#334155;margin-top:3px;text-transform:uppercase"><b>${selectedGrade}</b> &nbsp;|&nbsp; <span style="color:#94a3b8">Turma:</span> <b>${selectedClass}</b> &nbsp;|&nbsp; <span style="color:#94a3b8">Turno:</span> <b>${shiftLabel}</b> &nbsp;|&nbsp; <b>${selectedBimester}º Bimestre</b></div>
                     </div>
                 </div>
-                <table><thead><tr><th class="col-code">Cód.</th><th class="col-name">Aluno(a)</th>${subjectsToShow.map((id, idx) => `<th class="subj-th" style="${idx===subjectsToShow.length-1?'border-right:none':''}"><div class="subj-label">${SUBJECT_SHORT_LABELS[id]}</div></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
+                <table><thead><tr><th class="th-code">Cód.</th><th class="th-name">Aluno(a)</th>${subjectsToShow.map((id, idx) => `<th class="subj-th" style="${idx===subjectsToShow.length-1?'border-right:none':''}"><div class="subj-label"><span>${SUBJECT_SHORT_LABELS[id]}</span></div></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
                 ${footer}
             </div>`;
         }).join('');
 
-        const htmlContent = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Relatório de Notas</title><style>
-            @page{size:A4 portrait;margin:0}
-            html,body{width:210mm;margin:0;padding:0;font-family:Arial,sans-serif;background:white;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-            .page{width:210mm;height:297mm;padding:10mm 12mm;overflow:hidden;box-sizing:border-box;margin:0;background:white;display:flex;flex-direction:column;position:relative}
+        const styleId = 'temp-print-style';
+        const containerId = 'temp-print-container';
+
+        document.getElementById(styleId)?.remove();
+        document.getElementById(containerId)?.remove();
+
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.innerHTML = `
             @media print {
-                body { width: 210mm }
-                .page { width: 210mm; height: 297mm; margin: 0; padding: 10mm 12mm; page-break-after: always !important; break-after: page !important }
-                .page:last-child { page-break-after: avoid !important; break-after: avoid !important }
+                body > *:not(#${containerId}) { display: none !important; }
+                body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                #${containerId} { display: block !important; width: 210mm; margin: 0 auto; background: white; font-family: Arial, sans-serif; }
+                
+                @page { size: A4 portrait; margin: 0; }
+                .print-page { width: 210mm; height: auto; margin: 0; padding: 20px 24px 10px 24px; box-sizing: border-box; page-break-after: always !important; break-after: page !important; }
+                .print-page:last-child { page-break-after: avoid !important; break-after: avoid !important; }
+                
+                .page-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 2.5px solid #111; }
+                .school-info strong { font-size: 13px; font-weight: 900; text-transform: uppercase; color: #111; letter-spacing: -0.5px; display: block; }
+                .school-info span { font-size: 8px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; display: block; margin-top: 2px; }
+                .page-meta { text-align: right; }
+                table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 9px; border: 1px solid #000; }
+                thead tr { background: #f1f5f9; border-bottom: 1px solid #000; }
+                .th-code { width: 40px; padding: 4px 2px; text-align: center; font-size: 7.5px; font-weight: 900; text-transform: uppercase; color: #64748b; border-right: 1px solid #000; }
+                .th-name { width: auto; padding: 4px 6px; text-align: left; font-size: 8px; font-weight: 900; text-transform: uppercase; color: #0f172a; border-right: 1px solid #000; }
+                .subj-th { width: 30px; padding: 0; background: #f8fafc; border-right: 1px solid #000; }
+                .subj-label { height: 48px; display: flex; align-items: center; justify-content: center; }
+                .subj-label span { display: inline-block; transform: rotate(-90deg); white-space: nowrap; font-size: 8.5px; font-weight: 900; text-transform: uppercase; color: #1e293b; letter-spacing: -0.3px; }
+                tbody tr { border-bottom: 1px solid #000; }
+                .row-even { background: #fff; }
+                .row-odd { background: #f8fafc; }
+                .col-code { padding: 3px 2px; text-align: center; font-size: 7.5px; font-weight: 700; color: #94a3b8; font-family: monospace; border-right: 1px solid #000; }
+                .col-name { padding: 3px 6px; font-size: 8px; font-weight: 700; color: #0f172a; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-right: 1px solid #000; }
+                .td-subj { padding: 3px 2px; text-align: center; font-size: 8.5px; font-weight: 700; color: #334155; border-right: 1px solid #000; }
+                .td-subj.red { color: #dc2626; }
+                .page-footer { margin-top: auto; padding-top: 8px; border-top: 0.5px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; font-size: 7.5px; font-weight: 700; color: #94a3b8; letter-spacing: 0.5px; }
             }
-            .page-header{display:flex;justify-content:space-between;align-items:center;padding-bottom:10pt;margin-bottom:10pt;border-bottom:2.5pt solid #000}
-            .school-info strong{font-size:13pt;font-weight:900;text-transform:uppercase}
-            .school-info span{font-size:8.5pt;color:#444;text-transform:uppercase;letter-spacing:0.5pt}
-            .page-meta{text-align:right;text-transform:uppercase}
-            table{width:100%;border-collapse:collapse;table-layout:fixed}
-            th,td{padding:4pt 4.5pt;border-right:0.5pt solid #999;border-bottom:0.5pt solid #ccc}
-            thead tr{background:#eee;border-bottom:1.5pt solid #000}
-            .subj-th{width:24pt;padding:0;text-align:center;background:#f5f5f5}
-            .subj-label{height:45pt;display:flex;align-items:center;justify-content:center;writing-mode:vertical-rl;transform:rotate(180deg);font-weight:900;font-size:9pt;text-transform:uppercase}
-            .col-code{width:35pt;text-align:center;font-family:monospace;font-size:8.5pt;font-weight:700}
-            .col-name{font-weight:700;font-size:9pt;color:#000;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-            .row-even{background:#fff}.row-odd{background:#f9f9f9}
-            .page-footer{margin-top:auto;padding-top:10pt;display:flex;justify-content:space-between;align-items:center;font-size:8.5pt;color:#666;font-weight:700;border-top:1pt solid #000}
-        </style></head><body>${pagesHtml}</body></html>`;
-
-        const blob = new Blob([htmlContent], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'fixed';
-        iframe.style.width = '100%';
-        iframe.style.height = '100%';
-        iframe.style.top = '0';
-        iframe.style.left = '0';
-        iframe.style.opacity = '0';
-        iframe.style.zIndex = '-1';
-        iframe.style.pointerEvents = 'none';
-        iframe.src = url;
+            @media screen {
+                #${containerId} { display: none !important; }
+            }
+        `;
         
-        document.body.appendChild(iframe);
+        const container = document.createElement('div');
+        container.id = containerId;
+        container.innerHTML = pagesHtml;
 
-        iframe.onload = () => {
-            setTimeout(() => {
-                const win = iframe.contentWindow;
-                if (win) {
-                    win.focus();
-                    win.print();
-                }
-                setTimeout(() => {
-                    document.body.removeChild(iframe);
-                    URL.revokeObjectURL(url);
-                }, 3000);
-            }, 500);
-        };
+        document.head.appendChild(style);
+        document.body.appendChild(container);
+
+        // Força um reflow síncrono para garantir que os estilos CSS sejam aplicados
+        // antes do navegador "bater a foto" para a impressão.
+        container.offsetHeight; 
+
+        // Dispara a impressão de forma síncrona para não ser bloqueado por sistemas anti-popup do celular
+        window.print();
+
+        // Removemos o relatório e voltamos a tela normal logo após o diálogo de impressão abrir/fechar
+        setTimeout(() => {
+            document.head.removeChild(style);
+            document.body.removeChild(container);
+        }, 1000);
     };
 
     if (students.length === 0) {
@@ -179,16 +185,16 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
     }
 
     return (
-        <div id="coordinator-grade-report" ref={containerRef} className="w-full overflow-x-hidden">
+        <div id="coordinator-grade-report" ref={containerRef} className="w-full overflow-visible">
             <div className="flex justify-end mb-4">
                 <button onClick={handlePrint} className="flex items-center gap-2 px-6 py-2.5 bg-blue-950 text-white rounded-xl font-bold text-sm hover:bg-black transition-all shadow-lg hover:scale-105 active:scale-95 no-print">
                     <Printer className="w-4 h-4" /> Imprimir Relatório (A4)
                 </button>
             </div>
 
-            <div className="flex flex-col items-center gap-6 no-print">
+            <div className="flex flex-col items-center gap-6 no-print w-full">
                 {pages.map((pageStudents, pageIdx) => (
-                    <div key={pageIdx} style={{ width: A4_W * scale, height: A4_H * scale, overflow: 'hidden', boxShadow: '0 4px 32px rgba(0,0,0,0.12)', border: '1px solid #e2e8f0', background: 'white', flexShrink: 0 }}>
+                    <div key={pageIdx} style={{ width: A4_W * scale, height: A4_H * scale, overflow: 'hidden', boxShadow: '0 4px 32px rgba(0,0,0,0.12)', border: '1px solid #000', background: 'white', flexShrink: 0 }}>
                         <div style={{ width: A4_W, height: A4_H, transform: `scale(${scale})`, transformOrigin: 'top left', padding: '20px 24px 10px 24px', boxSizing: 'border-box', background: 'white', display: 'flex', flexDirection: 'column' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10, marginBottom: 10, borderBottom: '2.5px solid #111' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -205,13 +211,13 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
                                     </div>
                                 </div>
                             </div>
-                            <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed', fontSize: 9 }}>
+                            <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed', fontSize: 9, border: '1px solid #000' }}>
                                 <thead>
-                                    <tr style={{ background: '#f1f5f9', borderBottom: '1.5px solid #94a3b8' }}>
-                                        <th style={{ width: 40, padding: '4px 2px', textAlign: 'center', fontSize: 7.5, fontWeight: 900, textTransform: 'uppercase', color: '#64748b', borderRight: '1px solid #cbd5e1' }}>Cód.</th>
-                                        <th style={{ width: 'auto', padding: '4px 6px', textAlign: 'left', fontSize: 8, fontWeight: 900, textTransform: 'uppercase', color: '#0f172a', borderRight: '1px solid #cbd5e1' }}>Aluno(a)</th>
+                                    <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #000' }}>
+                                        <th style={{ width: 40, padding: '4px 2px', textAlign: 'center', fontSize: 7.5, fontWeight: 900, textTransform: 'uppercase', color: '#64748b', borderRight: '1px solid #000' }}>Cód.</th>
+                                        <th style={{ width: 'auto', padding: '4px 6px', textAlign: 'left', fontSize: 8, fontWeight: 900, textTransform: 'uppercase', color: '#0f172a', borderRight: '1px solid #000' }}>Aluno(a)</th>
                                         {subjectsToShow.map((id, si) => (
-                                            <th key={id} style={{ width: 30, padding: 0, background: '#f8fafc', borderRight: si < subjectsToShow.length - 1 ? '1px solid #cbd5e1' : 'none' }}>
+                                            <th key={id} style={{ width: 30, padding: 0, background: '#f8fafc', borderRight: si < subjectsToShow.length - 1 ? '1px solid #000' : 'none' }}>
                                                 <div style={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                     <span style={{ display: 'inline-block', transform: 'rotate(-90deg)', whiteSpace: 'nowrap', fontSize: 8.5, fontWeight: 900, textTransform: 'uppercase', color: '#1e293b', letterSpacing: '-0.3px' }}>
                                                         {SUBJECT_SHORT_LABELS[id]}
@@ -225,16 +231,16 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
                                     {pageStudents.map((student, idx) => {
                                         const sg = grades.filter(g => g.studentId === student.id);
                                         return (
-                                            <tr key={student.id} style={{ background: idx % 2 === 0 ? '#fff' : '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                                                <td style={{ padding: '3px 2px', textAlign: 'center', fontSize: 7.5, fontWeight: 700, color: '#94a3b8', fontFamily: 'monospace', borderRight: '1px solid #e2e8f0', width: 40 }}>{student.code}</td>
-                                                <td style={{ padding: '3px 6px', fontSize: 8, fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', borderRight: '1px solid #e2e8f0', width: 'auto' }}>{student.name.toUpperCase()}</td>
+                                            <tr key={student.id} style={{ background: idx % 2 === 0 ? '#fff' : '#f8fafc', borderBottom: '1px solid #000' }}>
+                                                <td style={{ padding: '3px 2px', textAlign: 'center', fontSize: 7.5, fontWeight: 700, color: '#94a3b8', fontFamily: 'monospace', borderRight: '1px solid #000', width: 40 }}>{student.code}</td>
+                                                <td style={{ padding: '3px 6px', fontSize: 8, fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', borderRight: '1px solid #000', width: 'auto' }}>{student.name.toUpperCase()}</td>
                                                 {subjectsToShow.map((id, si) => {
                                                     const bData = sg.find(g => g.subject === id)?.bimesters?.[bimesterKey];
                                                     const notaValue = bData?.media;
                                                     const hasLaunched = bData?.nota !== undefined && bData?.nota !== null;
                                                     const display = hasLaunched ? (notaValue !== undefined ? notaValue.toFixed(1) : '0.0') : '-';
                                                     return (
-                                                        <td key={id} style={{ padding: '3px 2px', textAlign: 'center', fontSize: 8.5, fontWeight: 700, color: (hasLaunched && notaValue !== undefined && notaValue < 7) ? '#dc2626' : '#334155', borderRight: si < subjectsToShow.length - 1 ? '1px solid #e2e8f0' : 'none', width: 30 }}>
+                                                        <td key={id} style={{ padding: '3px 2px', textAlign: 'center', fontSize: 8.5, fontWeight: 700, color: (hasLaunched && notaValue !== undefined && notaValue < 7) ? '#dc2626' : '#334155', borderRight: si < subjectsToShow.length - 1 ? '1px solid #000' : 'none', width: 30 }}>
                                                             {display}
                                                         </td>
                                                     );
