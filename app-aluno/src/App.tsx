@@ -270,6 +270,13 @@ const AppContent: React.FC = () => {
     const userUnit = normalizeUnit((session.user as any).unit);
     const userId = session.user.id;
 
+    // --- SHARED DATA SUBSCRIPTIONS (ALL ROLES) ---
+    // Subscribe to Academic Settings (Bimesters, Current Bimester, etc)
+    unsubs.push(subscribeToAcademicSettings(2026, (settings) => {
+      setAcademicSettings(settings);
+      setInitialLoad(prev => ({ ...prev, academicSettings: true }));
+    }, userUnit));
+
     if (session.role === UserRole.STUDENT) {
       // Student Data Scoping
       unsubs.push(db.collection('grades').where('studentId', '==', userId).onSnapshot(snap => {
@@ -337,11 +344,6 @@ const AppContent: React.FC = () => {
           setInitialLoad(prev => ({ ...prev, attendance: true }));
         }));
 
-      // Subscribe to Academic Settings
-      unsubs.push(subscribeToAcademicSettings(2026, (settings) => {
-        setAcademicSettings(settings);
-        setInitialLoad(prev => ({ ...prev, academicSettings: true }));
-      }, userUnit));
 
       // Real-time Support Tickets
       unsubs.push(db.collection('tickets_pedagogicos').where('studentId', '==', userId).onSnapshot(snap => {
@@ -550,7 +552,7 @@ const AppContent: React.FC = () => {
         setInitialLoad(prev => ({ ...prev, announcements: true }));
       }));
 
-      setInitialLoad(prev => ({ ...prev, teachers: true, admins: true, messages: true, mensalidades: true, academicSettings: true }));
+      setInitialLoad(prev => ({ ...prev, teachers: true, admins: true, messages: true, mensalidades: true }));
 
     } else if (session.role === UserRole.COORDINATOR) {
       // Coordinator manages their own data fetch in the dashboard or doesn't need global data pre-loaded
@@ -624,7 +626,6 @@ const AppContent: React.FC = () => {
         notifications: true,
         mensalidades: true,
         eventosFinanceiros: true,
-        academicSettings: true,
         materials: true,
         agenda: true,
         examGuides: true,

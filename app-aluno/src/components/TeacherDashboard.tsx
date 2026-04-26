@@ -154,6 +154,16 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     // New State for Bimester Filter - Default to current bimester
     const [selectedFilterBimester, setSelectedFilterBimester] = useState<number>(() => getDynamicBimester(new Date().toLocaleDateString('en-CA'), academicSettings));
 
+    // Synchronize bimester filter when settings are loaded/changed
+    useEffect(() => {
+        if (academicSettings?.currentBimester) {
+            setSelectedFilterBimester(academicSettings.currentBimester);
+        } else {
+            // Re-calculate if settings changed but currentBimester is missing (fallback)
+            setSelectedFilterBimester(getDynamicBimester(new Date().toLocaleDateString('en-CA'), academicSettings));
+        }
+    }, [academicSettings]);
+
     // Estados para Zoom da Foto do Aluno
     const [zoomedPhoto, setZoomedPhoto] = useState<{ url: string, name: string } | null>(null);
 
