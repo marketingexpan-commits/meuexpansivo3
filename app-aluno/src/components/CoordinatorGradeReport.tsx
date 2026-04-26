@@ -24,8 +24,11 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
     useEffect(() => {
         const update = () => {
             if (containerRef.current) {
-                const margin = window.innerWidth < 768 ? 0 : 60;
-                setScale(Math.min(1, (containerRef.current.clientWidth - margin) / A4_W));
+                // On mobile, use a smaller margin and prioritize window width to avoid container expansion issues
+                const isMobile = window.innerWidth < 768;
+                const margin = isMobile ? 20 : 60;
+                const availableWidth = isMobile ? window.innerWidth : (containerRef.current.parentElement?.clientWidth || containerRef.current.clientWidth);
+                setScale(Math.min(1, (availableWidth - margin) / A4_W));
             }
         };
         update();
@@ -185,9 +188,9 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
     }
 
     return (
-        <div id="coordinator-grade-report" ref={containerRef} className="w-full overflow-visible">
-            <div className="flex justify-end mb-4">
-                <button onClick={handlePrint} className="flex items-center gap-2 px-6 py-2.5 bg-blue-950 text-white rounded-xl font-bold text-sm hover:bg-black transition-all shadow-lg hover:scale-105 active:scale-95 no-print">
+        <div id="coordinator-grade-report" ref={containerRef} className="w-full overflow-hidden flex flex-col items-center">
+            <div className="flex justify-center sm:justify-end mb-6 w-full px-4">
+                <button onClick={handlePrint} className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 bg-blue-950 text-white rounded-xl font-bold text-sm hover:bg-black transition-all shadow-lg hover:scale-105 active:scale-95 no-print">
                     <Printer className="w-4 h-4" /> Imprimir Relatório (A4)
                 </button>
             </div>
