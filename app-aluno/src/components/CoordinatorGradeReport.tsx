@@ -101,7 +101,7 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
             return `<div class="print-page">
                 <div class="page-header">
                     <div style="display:flex;align-items:center;gap:12px">
-                        <img src="${SCHOOL_LOGO_URL}" style="width:44px;height:44px;object-fit:contain" />
+                        <img src="${SCHOOL_LOGO_URL}" style="width:44px;height:44px;object-fit:contain" crossorigin="anonymous" />
                         <div class="school-info"><strong>EXPANSIVO REDE DE ENSINO</strong><span>Unidade: ${unitLabel}</span></div>
                     </div>
                     <div class="page-meta">
@@ -114,59 +114,123 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
             </div>`;
         }).join('');
 
-        const styleId = 'temp-print-style';
-        const containerId = 'temp-print-container';
+        const isMobile = window.innerWidth < 768;
 
-        document.getElementById(styleId)?.remove();
-        document.getElementById(containerId)?.remove();
-
-        const style = document.createElement('style');
-        style.id = styleId;
-        style.innerHTML = `
-            @media print {
-                body > *:not(#${containerId}) { display: none !important; }
-                body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                #${containerId} { display: block !important; width: 210mm; margin: 0 auto; background: white; font-family: Arial, sans-serif; }
-                @page { size: A4 portrait; margin: 0; }
-                .print-page { width: 210mm; height: auto; margin: 0; padding: 20px 24px 10px 24px; box-sizing: border-box; page-break-after: always !important; break-after: page !important; }
-                .print-page:last-child { page-break-after: avoid !important; break-after: avoid !important; }
-                .page-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 2.5px solid #111; }
-                .school-info strong { font-size: 13px; font-weight: 900; text-transform: uppercase; color: #111; letter-spacing: -0.5px; display: block; }
-                .school-info span { font-size: 8px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; display: block; margin-top: 2px; }
-                .page-meta { text-align: right; }
-                table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 9px; border: 1px solid #000; }
-                thead tr { background: #f1f5f9; border-bottom: 1px solid #000; }
-                .th-code { width: 40px; padding: 4px 2px; text-align: center; font-size: 7.5px; font-weight: 900; text-transform: uppercase; color: #64748b; border-right: 1px solid #000; }
-                .th-name { width: auto; padding: 4px 6px; text-align: left; font-size: 8px; font-weight: 900; text-transform: uppercase; color: #0f172a; border-right: 1px solid #000; }
-                .subj-th { width: 30px; padding: 0; background: #f8fafc; border-right: 1px solid #000; }
-                .subj-label { height: 48px; display: flex; align-items: center; justify-content: center; }
-                .subj-label span { display: inline-block; transform: rotate(-90deg); white-space: nowrap; font-size: 8.5px; font-weight: 900; text-transform: uppercase; color: #1e293b; letter-spacing: -0.3px; }
-                tbody tr { border-bottom: 1px solid #000; }
-                .row-even { background: #fff; }
-                .row-odd { background: #f8fafc; }
-                .col-code { padding: 3px 2px; text-align: center; font-size: 7.5px; font-weight: 700; color: #94a3b8; font-family: monospace; border-right: 1px solid #000; }
-                .col-name { padding: 3px 6px; font-size: 8px; font-weight: 700; color: #0f172a; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-right: 1px solid #000; }
-                .td-subj { padding: 3px 2px; text-align: center; font-size: 8.5px; font-weight: 700; color: #334155; border-right: 1px solid #000; }
-                .td-subj.red { color: #dc2626; }
-                .page-footer { margin-top: auto; padding-top: 8px; border-top: 0.5px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; font-size: 7.5px; font-weight: 700; color: #94a3b8; letter-spacing: 0.5px; }
+        if (isMobile) {
+            // --- MOBILE: Open a fresh self-contained window ---
+            // This avoids iOS/Android capturing app UI elements in the print dialog
+            // and ensures A4 dimensions render correctly on mobile browsers.
+            const mobileHtml = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Relatório de Notas — ${selectedGrade} ${selectedClass} ${selectedBimester}º Bim</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; background: #f1f5f9; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        @page { size: A4 portrait; margin: 0; }
+        .screen-toolbar { display: flex; justify-content: flex-end; gap: 10px; padding: 12px 16px; background: #1e3a8a; position: sticky; top: 0; z-index: 10; }
+        .btn-close { background: white; color: #1e3a8a; border: none; padding: 8px 20px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; }
+        .btn-print { background: #f97316; color: white; border: none; padding: 8px 20px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; }
+        .print-page { width: 210mm; padding: 20px 24px 10px 24px; box-sizing: border-box; page-break-after: always; break-after: page; display: flex; flex-direction: column; background: white; margin: 16px auto; box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
+        .print-page:last-child { page-break-after: avoid; break-after: avoid; margin-bottom: 32px; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 2.5px solid #111; }
+        .school-info strong { font-size: 13px; font-weight: 900; text-transform: uppercase; color: #111; letter-spacing: -0.5px; display: block; }
+        .school-info span { font-size: 8px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; display: block; margin-top: 2px; }
+        .page-meta { text-align: right; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 9px; border: 1px solid #000; }
+        thead tr { background: #f1f5f9; border-bottom: 1px solid #000; }
+        .th-code { width: 40px; padding: 4px 2px; text-align: center; font-size: 7.5px; font-weight: 900; text-transform: uppercase; color: #64748b; border-right: 1px solid #000; }
+        .th-name { width: auto; padding: 4px 6px; text-align: left; font-size: 8px; font-weight: 900; text-transform: uppercase; color: #0f172a; border-right: 1px solid #000; }
+        .subj-th { width: 30px; padding: 0; background: #f8fafc; border-right: 1px solid #000; }
+        .subj-label { height: 48px; display: flex; align-items: center; justify-content: center; }
+        .subj-label span { display: inline-block; transform: rotate(-90deg); white-space: nowrap; font-size: 8.5px; font-weight: 900; text-transform: uppercase; color: #1e293b; letter-spacing: -0.3px; }
+        tbody tr { border-bottom: 1px solid #000; }
+        .row-even { background: #fff; }
+        .row-odd { background: #f8fafc; }
+        .col-code { padding: 3px 2px; text-align: center; font-size: 7.5px; font-weight: 700; color: #94a3b8; font-family: monospace; border-right: 1px solid #000; }
+        .col-name { padding: 3px 6px; font-size: 8px; font-weight: 700; color: #0f172a; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-right: 1px solid #000; }
+        .td-subj { padding: 3px 2px; text-align: center; font-size: 8.5px; font-weight: 700; color: #334155; border-right: 1px solid #000; }
+        .td-subj.red { color: #dc2626; }
+        .page-footer { padding-top: 8px; border-top: 0.5px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; font-size: 7.5px; font-weight: 700; color: #94a3b8; letter-spacing: 0.5px; margin-top: 8px; }
+        @media print {
+            body { background: white; }
+            .screen-toolbar { display: none !important; }
+            .print-page { margin: 0; box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="screen-toolbar">
+        <button class="btn-close" onclick="window.close()">✕ Fechar</button>
+        <button class="btn-print" onclick="window.print()">🖨 Imprimir</button>
+    </div>
+    ${pagesHtml}
+</body>
+</html>`;
+            const printWindow = window.open('', '_blank');
+            if (printWindow) {
+                printWindow.document.open();
+                printWindow.document.write(mobileHtml);
+                printWindow.document.close();
             }
-            @media screen {
-                #${containerId} { display: none !important; }
-            }
-        `;
+        } else {
+            // --- DESKTOP: Original behavior (works perfectly on desktop) ---
+            const styleId = 'temp-print-style';
+            const containerId = 'temp-print-container';
 
-        const container = document.createElement('div');
-        container.id = containerId;
-        container.innerHTML = pagesHtml;
+            document.getElementById(styleId)?.remove();
+            document.getElementById(containerId)?.remove();
 
-        document.head.appendChild(style);
-        document.body.appendChild(container);
-        container.offsetHeight;
-        window.print();
-        setTimeout(() => {
-            document.head.removeChild(style);
-            document.body.removeChild(container);
-        }, 1000);
+            const style = document.createElement('style');
+            style.id = styleId;
+            style.innerHTML = `
+                @media print {
+                    body > *:not(#${containerId}) { display: none !important; }
+                    body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    #${containerId} { display: block !important; width: 210mm; margin: 0 auto; background: white; font-family: Arial, sans-serif; }
+                    @page { size: A4 portrait; margin: 0; }
+                    .print-page { width: 210mm; height: auto; margin: 0; padding: 20px 24px 10px 24px; box-sizing: border-box; page-break-after: always !important; break-after: page !important; }
+                    .print-page:last-child { page-break-after: avoid !important; break-after: avoid !important; }
+                    .page-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 2.5px solid #111; }
+                    .school-info strong { font-size: 13px; font-weight: 900; text-transform: uppercase; color: #111; letter-spacing: -0.5px; display: block; }
+                    .school-info span { font-size: 8px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; display: block; margin-top: 2px; }
+                    .page-meta { text-align: right; }
+                    table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 9px; border: 1px solid #000; }
+                    thead tr { background: #f1f5f9; border-bottom: 1px solid #000; }
+                    .th-code { width: 40px; padding: 4px 2px; text-align: center; font-size: 7.5px; font-weight: 900; text-transform: uppercase; color: #64748b; border-right: 1px solid #000; }
+                    .th-name { width: auto; padding: 4px 6px; text-align: left; font-size: 8px; font-weight: 900; text-transform: uppercase; color: #0f172a; border-right: 1px solid #000; }
+                    .subj-th { width: 30px; padding: 0; background: #f8fafc; border-right: 1px solid #000; }
+                    .subj-label { height: 48px; display: flex; align-items: center; justify-content: center; }
+                    .subj-label span { display: inline-block; transform: rotate(-90deg); white-space: nowrap; font-size: 8.5px; font-weight: 900; text-transform: uppercase; color: #1e293b; letter-spacing: -0.3px; }
+                    tbody tr { border-bottom: 1px solid #000; }
+                    .row-even { background: #fff; }
+                    .row-odd { background: #f8fafc; }
+                    .col-code { padding: 3px 2px; text-align: center; font-size: 7.5px; font-weight: 700; color: #94a3b8; font-family: monospace; border-right: 1px solid #000; }
+                    .col-name { padding: 3px 6px; font-size: 8px; font-weight: 700; color: #0f172a; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-right: 1px solid #000; }
+                    .td-subj { padding: 3px 2px; text-align: center; font-size: 8.5px; font-weight: 700; color: #334155; border-right: 1px solid #000; }
+                    .td-subj.red { color: #dc2626; }
+                    .page-footer { margin-top: auto; padding-top: 8px; border-top: 0.5px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; font-size: 7.5px; font-weight: 700; color: #94a3b8; letter-spacing: 0.5px; }
+                }
+                @media screen {
+                    #${containerId} { display: none !important; }
+                }
+            `;
+
+            const container = document.createElement('div');
+            container.id = containerId;
+            container.innerHTML = pagesHtml;
+
+            document.head.appendChild(style);
+            document.body.appendChild(container);
+            container.offsetHeight;
+            window.print();
+            setTimeout(() => {
+                document.head.removeChild(style);
+                document.body.removeChild(container);
+            }, 1000);
+        }
     };
 
     if (students.length === 0) {
