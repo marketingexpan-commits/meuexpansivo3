@@ -619,39 +619,76 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         return Array.from(shifts);
     }, [teacher.assignments, teacher.shift]);
 
-    const getFilteredSubjects = useCallback((gradeLevel: string, shift?: string) => {
+    const getFilteredSubjects = useCallback((gradeLevel: string, shift?: string, schoolClass?: string) => {
+        if (!gradeLevel) return [];
+
         if (isEarlyChildhoodTeacher && parseGradeLevel(gradeLevel).segmentId === 'seg_infantil') {
             return ['general_early_childhood'];
         }
-        if (!teacher.assignments || teacher.assignments.length === 0) return teacher.subjects;
 
-        if (shift) {
-            const assignment = teacher.assignments.find(a => a.gradeLevel === gradeLevel && a.shift === shift);
-            if (assignment) return assignment.subjects;
+        // 1. Obter disciplinas do professor
+        let teacherSubs: string[] = [];
+        if (!teacher.assignments || teacher.assignments.length === 0) {
+            teacherSubs = (teacher.subjects as string[]) || [];
+        } else {
+            const gradeAssignments = teacher.assignments.filter(a => a.gradeLevel === gradeLevel);
+            const allSubs = new Set<string>();
+            gradeAssignments.forEach(a => {
+                if (a.subjects) a.subjects.forEach(sub => allSubs.add(sub as string));
+            });
+            teacherSubs = Array.from(allSubs);
+            if (teacherSubs.length === 0) teacherSubs = (teacher.subjects as string[]) || [];
         }
 
-        const gradeAssignments = teacher.assignments.filter(a => a.gradeLevel === gradeLevel);
-        if (gradeAssignments.length === 0) return teacher.subjects;
+        // 2. FILTRO ESTRITO PELA GRADE HORÁRIA
+        if (classSchedules && classSchedules.length > 0) {
+            // Conversão robusta de Nome (ex: "9º Ano") para ID (ex: "grade_9_ano")
+            const gradeEntry = Object.values(ACADEMIC_GRADES).find(g => 
+                gradeLevel === g.label || gradeLevel.includes(g.label) || g.label.includes(gradeLevel)
+            );
+            const gradeId = gradeEntry ? gradeEntry.id : '';
 
-        const allSubjects = new Set<string>();
-        gradeAssignments.forEach(a => {
-            if (a.subjects) {
-                a.subjects.forEach(sub => allSubjects.add(sub as string));
+            const matchingSchedules = classSchedules.filter(s => {
+                const isGradeMatch = s.grade === gradeLevel || s.grade === gradeId;
+                const isClassMatch = !schoolClass || s.class === schoolClass;
+                const isUnitMatch = s.schoolId === activeUnit;
+                const isShiftMatch = !shift || s.shift === shift;
+
+                return isGradeMatch && isClassMatch && isUnitMatch && isShiftMatch;
+            });
+
+            if (matchingSchedules.length > 0) {
+                const scheduledSubjects = new Set<string>();
+                matchingSchedules.forEach(s => {
+                    if (s.items) {
+                        s.items.forEach(item => {
+                            if (!item.isBreak && item.subject) {
+                                scheduledSubjects.add(item.subject);
+                            }
+                        });
+                    }
+                });
+
+                // Interseção: O que o professor tem VS O que a grade horária diz
+                return teacherSubs.filter(sub => scheduledSubjects.has(sub));
             }
-        });
+        }
 
-        return Array.from(allSubjects);
-    }, [teacher.assignments, teacher.subjects, isEarlyChildhoodTeacher]);
+        // 3. REGRA ESTRITA: Se não tem grade horária, NÃO MOSTRA NADA.
+        // Isso impede que o professor lance notas em turmas não configuradas.
+        return [];
+    }, [teacher.assignments, teacher.subjects, isEarlyChildhoodTeacher, classSchedules, activeUnit]);
 
     const filteredSubjectsForGrades = useMemo(() => {
         const grade = selectedStudent?.gradeLevel || filterGrade;
         const shift = selectedStudent ? selectedStudent.shift : filterShift;
-        return getFilteredSubjects(grade, shift);
-    }, [selectedStudent, filterGrade, filterShift, getFilteredSubjects]);
+        const sClass = selectedStudent ? selectedStudent.schoolClass : filterClass;
+        return getFilteredSubjects(grade, shift, sClass);
+    }, [selectedStudent, filterGrade, filterShift, filterClass, getFilteredSubjects]);
 
     const filteredSubjectsForAttendance = useMemo(() => {
-        return getFilteredSubjects(attendanceGrade, attendanceShift);
-    }, [attendanceGrade, attendanceShift, getFilteredSubjects]);
+        return getFilteredSubjects(attendanceGrade, attendanceShift, attendanceClass);
+    }, [attendanceGrade, attendanceShift, attendanceClass, getFilteredSubjects]);
 
     const scheduleConflict = useMemo(() => {
         if (!attendanceDate || !attendanceGrade || !attendanceClass || !attendanceSubject || !classSchedules || classSchedules.length === 0) return false;
@@ -669,9 +706,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         return !scheduled;
     }, [attendanceDate, attendanceGrade, attendanceClass, attendanceSubject, classSchedules, activeUnit, calendarEvents]);
 
-    const filteredSubjectsForAgenda = useMemo(() => getFilteredSubjects(agendaGrade, agendaShift), [agendaGrade, agendaShift, getFilteredSubjects]);
-    const filteredSubjectsForMaterials = useMemo(() => getFilteredSubjects(materialGrade, materialShift), [materialGrade, materialShift, getFilteredSubjects]);
-    const filteredSubjectsForExams = useMemo(() => getFilteredSubjects(examGrade, examShift), [examGrade, examShift, getFilteredSubjects]);
+    const filteredSubjectsForAgenda = useMemo(() => getFilteredSubjects(agendaGrade, agendaShift, agendaClass), [agendaGrade, agendaShift, agendaClass, getFilteredSubjects]);
+    const filteredSubjectsForMaterials = useMemo(() => getFilteredSubjects(materialGrade, materialShift, materialClass), [materialGrade, materialShift, materialClass, getFilteredSubjects]);
+    const filteredSubjectsForExams = useMemo(() => getFilteredSubjects(examGrade, examShift, examClass), [examGrade, examShift, examClass, getFilteredSubjects]);
 
     const isEarlyChildhoodStudent = useMemo(() => {
         if (!selectedStudent) return false;
