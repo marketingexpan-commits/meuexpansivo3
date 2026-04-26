@@ -18,44 +18,46 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
     students, grades, selectedBimester, selectedGrade, selectedClass, selectedShift, unit, academicSubjects, matrices
 }) => {
     const bimesterKey = `bimester${selectedBimester}` as keyof GradeEntry['bimesters'];
-    const containerRef = useRef<HTMLDivElement>(null);
+    // wrapperRef is on the outer container whose width is constrained by the layout (w-full + overflow-hidden on parent).
+    // Crucially, it does NOT contain the 794px A4 div yet when the first measurement runs.
+    const wrapperRef = useRef<HTMLDivElement>(null);
     const [scale, setScale] = useState(1);
 
     useEffect(() => {
         const update = () => {
-            if (containerRef.current) {
-                // On mobile, use a smaller margin and prioritize window width to avoid container expansion issues
-                const isMobile = window.innerWidth < 768;
-                const margin = isMobile ? 20 : 60;
-                const availableWidth = isMobile ? window.innerWidth : (containerRef.current.parentElement?.clientWidth || containerRef.current.clientWidth);
-                setScale(Math.min(1, (availableWidth - margin) / A4_W));
+            if (wrapperRef.current) {
+                // offsetWidth gives the element's rendered width, capped by its own CSS constraints (w-full / max-w-full).
+                // Because we set overflow-hidden on the parent and w-full here, this will never exceed the viewport.
+                const available = wrapperRef.current.offsetWidth;
+                if (available > 0) {
+                    setScale(Math.min(1, available / A4_W));
+                }
             }
         };
+
+        // Run immediately and after a short paint delay to be safe
         update();
-        const ro = new ResizeObserver(update);
-        if (containerRef.current) ro.observe(containerRef.current);
+        const timer = setTimeout(update, 100);
         window.addEventListener('resize', update);
         return () => {
-            ro.disconnect();
+            clearTimeout(timer);
             window.removeEventListener('resize', update);
         };
-    }, []);
+    }, [students]); // Re-run when report data changes
 
     const sortedStudents = useMemo(() => [...students].sort((a, b) => a.name.localeCompare(b.name)), [students]);
 
     const subjectsToShow = useMemo(() => {
         if (students.length === 0) return [];
-        
+
         const matrixSubjects = getCurriculumSubjects(selectedGrade, academicSubjects, matrices, unit, selectedShift);
         const allActiveCount = (academicSubjects || []).filter(s => s.isActive !== false).length;
-        
+
         let subjects: string[] = [];
-        
-        // 1. Se temos uma matriz definida (e não é o fallback de "todas"), usamos ela como prioridade
+
         if (matrixSubjects.length > 0 && matrixSubjects.length < allActiveCount) {
             subjects = matrixSubjects;
         } else {
-            // 2. Fallback: Mostra apenas disciplinas que possuem notas realmente lançadas
             const subjectSet = new Set<string>();
             grades.forEach(g => {
                 const bData = g.bimesters?.[bimesterKey];
@@ -67,7 +69,6 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
             subjects = Array.from(subjectSet);
         }
 
-        // 3. Exclusão pontual solicitada pelo usuário (Sociologia no 9º ano foi erro de lançamento)
         if (selectedGrade.includes('9º Ano')) {
             subjects = subjects.filter(id => id !== 'disc_sociologia');
         }
@@ -92,9 +93,9 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
                     const hasLaunched = bData?.nota !== undefined && bData?.nota !== null;
                     const val = hasLaunched ? (notaValue !== undefined ? notaValue.toFixed(1) : '0.0') : '-';
                     const red = hasLaunched && notaValue !== undefined && notaValue < 7;
-                    return `<td class="td-subj ${red?'red':''}" style="${si===subjectsToShow.length-1?'border-right:none':''}">${val}</td>`;
+                    return `<td class="td-subj ${red ? 'red' : ''}" style="${si === subjectsToShow.length - 1 ? 'border-right:none' : ''}">${val}</td>`;
                 }).join('');
-                return `<tr class="${idx%2===0?'row-even':'row-odd'}"><td class="col-code">${s.code}</td><td class="col-name">${s.name.toUpperCase()}</td>${cells}</tr>`;
+                return `<tr class="${idx % 2 === 0 ? 'row-even' : 'row-odd'}"><td class="col-code">${s.code}</td><td class="col-name">${s.name.toUpperCase()}</td>${cells}</tr>`;
             }).join('');
             const footer = `<div class="page-footer"><span>MeuExpansivo</span><span style="text-transform:uppercase">Página ${pi + 1} de ${pages.length}</span></div>`;
             return `<div class="print-page">
@@ -108,7 +109,7 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
                         <div style="font-size:8px;font-weight:700;color:#334155;margin-top:3px;text-transform:uppercase"><b>${selectedGrade}</b> &nbsp;|&nbsp; <span style="color:#94a3b8">Turma:</span> <b>${selectedClass}</b> &nbsp;|&nbsp; <span style="color:#94a3b8">Turno:</span> <b>${shiftLabel}</b> &nbsp;|&nbsp; <b>${selectedBimester}º Bimestre</b></div>
                     </div>
                 </div>
-                <table><thead><tr><th class="th-code">Cód.</th><th class="th-name">Aluno(a)</th>${subjectsToShow.map((id, idx) => `<th class="subj-th" style="${idx===subjectsToShow.length-1?'border-right:none':''}"><div class="subj-label"><span>${SUBJECT_SHORT_LABELS[id]}</span></div></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
+                <table><thead><tr><th class="th-code">Cód.</th><th class="th-name">Aluno(a)</th>${subjectsToShow.map((id, idx) => `<th class="subj-th" style="${idx === subjectsToShow.length - 1 ? 'border-right:none' : ''}"><div class="subj-label"><span>${SUBJECT_SHORT_LABELS[id]}</span></div></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
                 ${footer}
             </div>`;
         }).join('');
@@ -126,11 +127,9 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
                 body > *:not(#${containerId}) { display: none !important; }
                 body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 #${containerId} { display: block !important; width: 210mm; margin: 0 auto; background: white; font-family: Arial, sans-serif; }
-                
                 @page { size: A4 portrait; margin: 0; }
                 .print-page { width: 210mm; height: auto; margin: 0; padding: 20px 24px 10px 24px; box-sizing: border-box; page-break-after: always !important; break-after: page !important; }
                 .print-page:last-child { page-break-after: avoid !important; break-after: avoid !important; }
-                
                 .page-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 2.5px solid #111; }
                 .school-info strong { font-size: 13px; font-weight: 900; text-transform: uppercase; color: #111; letter-spacing: -0.5px; display: block; }
                 .school-info span { font-size: 8px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; display: block; margin-top: 2px; }
@@ -155,22 +154,15 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
                 #${containerId} { display: none !important; }
             }
         `;
-        
+
         const container = document.createElement('div');
         container.id = containerId;
         container.innerHTML = pagesHtml;
 
         document.head.appendChild(style);
         document.body.appendChild(container);
-
-        // Força um reflow síncrono para garantir que os estilos CSS sejam aplicados
-        // antes do navegador "bater a foto" para a impressão.
-        container.offsetHeight; 
-
-        // Dispara a impressão de forma síncrona para não ser bloqueado por sistemas anti-popup do celular
+        container.offsetHeight;
         window.print();
-
-        // Removemos o relatório e voltamos a tela normal logo após o diálogo de impressão abrir/fechar
         setTimeout(() => {
             document.head.removeChild(style);
             document.body.removeChild(container);
@@ -188,17 +180,55 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
     }
 
     return (
-        <div id="coordinator-grade-report" ref={containerRef} className="w-full overflow-hidden flex flex-col items-center">
-            <div className="flex justify-center sm:justify-end mb-6 w-full px-4">
-                <button onClick={handlePrint} className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 bg-blue-950 text-white rounded-xl font-bold text-sm hover:bg-black transition-all shadow-lg hover:scale-105 active:scale-95 no-print">
+        // This outer wrapper is constrained by the layout (w-full + overflow-hidden).
+        // Its offsetWidth reliably reflects the available screen space, never inflated by inner A4 content.
+        <div ref={wrapperRef} id="coordinator-grade-report" className="w-full max-w-full overflow-hidden pb-10">
+            {/* Print button */}
+            <div className="flex justify-center sm:justify-end mb-6 w-full px-2 no-print">
+                <button
+                    onClick={handlePrint}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 bg-blue-950 text-white rounded-xl font-bold text-sm hover:bg-black transition-all shadow-lg hover:scale-105 active:scale-95"
+                >
                     <Printer className="w-4 h-4" /> Imprimir Relatório (A4)
                 </button>
             </div>
 
-            <div className="flex flex-col items-center gap-6 no-print w-full">
+            {/* Pages */}
+            <div className="flex flex-col items-center gap-8 w-full">
                 {pages.map((pageStudents, pageIdx) => (
-                    <div key={pageIdx} style={{ width: A4_W * scale, height: A4_H * scale, overflow: 'hidden', boxShadow: '0 4px 32px rgba(0,0,0,0.12)', border: '1px solid #000', background: 'white', flexShrink: 0 }}>
-                        <div style={{ width: A4_W, height: A4_H, transform: `scale(${scale})`, transformOrigin: 'top left', padding: '20px 24px 10px 24px', boxSizing: 'border-box', background: 'white', display: 'flex', flexDirection: 'column' }}>
+                    // Outer shell: clips to scaled dimensions
+                    <div
+                        key={pageIdx}
+                        style={{
+                            width: Math.round(A4_W * scale),
+                            height: Math.round(A4_H * scale),
+                            overflow: 'hidden',
+                            position: 'relative',
+                            flexShrink: 0,
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.13)',
+                            borderRadius: 8,
+                            border: '1px solid #e2e8f0',
+                            background: 'white',
+                        }}
+                    >
+                        {/* Inner shell: full A4 size, scaled via CSS transform */}
+                        <div
+                            style={{
+                                width: A4_W,
+                                height: A4_H,
+                                transform: `scale(${scale})`,
+                                transformOrigin: 'top left',
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                padding: '20px 24px 10px 24px',
+                                boxSizing: 'border-box',
+                                background: 'white',
+                                display: 'flex',
+                                flexDirection: 'column',
+                            }}
+                        >
+                            {/* Header */}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10, marginBottom: 10, borderBottom: '2.5px solid #111' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                     <div style={{ width: 44, height: 44 }}><SchoolLogo variant="header" /></div>
@@ -214,6 +244,8 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Table */}
                             <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed', fontSize: 9, border: '1px solid #000' }}>
                                 <thead>
                                     <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #000' }}>
@@ -253,6 +285,8 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
                                     })}
                                 </tbody>
                             </table>
+
+                            {/* Footer */}
                             <div style={{ marginTop: 'auto', paddingTop: 8, borderTop: '0.5px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 7.5, fontWeight: 700, color: '#94a3b8', letterSpacing: 0.5 }}>
                                 <span>MeuExpansivo</span>
                                 <span style={{ textTransform: 'uppercase' }}>Página {pageIdx + 1} de {pages.length}</span>
