@@ -3461,17 +3461,6 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                 </div>
                                 <h3 className="font-bold text-gray-800 text-sm text-center">Relatório de Agendas</h3>
                             </button>
-
-                            {/* GRADE REPORT CARD */}
-                            <button
-                                onClick={() => setActiveTab('grade_report')}
-                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square relative"
-                            >
-                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                                    <FileSpreadsheet className="w-6 h-6 text-blue-950" />
-                                </div>
-                                <h3 className="font-bold text-gray-800 text-sm text-center">Relatório por Série</h3>
-                            </button>
                         </div>
                     )}
 
