@@ -2,10 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { db, storage } from '../firebaseConfig';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { UnitContact, SchoolUnit, UNIT_LABELS, SHIFT_LABELS, CoordinationSegment, Subject, SUBJECT_LABELS, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket, SchoolMessage, MessageRecipient, CalendarEvent, ClassSchedule, PedagogicalAttendance, BimesterData, PhotographerDemand, Announcement, AnnouncementRecipient, AppNotification } from '../types';
+import { UnitContact, SchoolUnit, UNIT_LABELS, SHIFT_LABELS, CoordinationSegment, Subject, SUBJECT_LABELS, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket, SchoolMessage, MessageRecipient, CalendarEvent, ClassSchedule, PedagogicalAttendance, BimesterData, GradeEntry, PhotographerDemand, Announcement, AnnouncementRecipient, AppNotification } from '../types';
 import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, CURRICULUM_MATRIX, getCurriculumSubjects, calculateBimesterMedia, calculateFinalData, SCHOOL_CLASSES_OPTIONS, ACADEMIC_GRADES } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency, calculateTaughtClasses, calculateBimesterGeneralFrequency } from '../utils/frequency';
-import { getDynamicBimester, isClassScheduled, normalizeClass, parseGradeLevel, safeParseDate, calculateSchoolDays, getSubjectDurationForDay, normalizeUnit, resolveGradeId } from '../utils/academicUtils';
+import { getDynamicBimester, isClassScheduled, normalizeClass, normalizeShift, parseGradeLevel, safeParseDate, calculateSchoolDays, getSubjectDurationForDay, normalizeUnit, resolveGradeId } from '../utils/academicUtils';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 import { SchoolCalendar } from './SchoolCalendar';
@@ -51,7 +51,9 @@ import {
     ListOrdered as ListOrderedIcon,
     Smile as SmileIcon,
     Undo as UndoIcon,
-    Redo as RedoIcon
+    Redo as RedoIcon,
+    FileSpreadsheet,
+    TableProperties
 } from 'lucide-react';
 
 // Tiptap Imports
@@ -195,6 +197,7 @@ import { Dialog } from './Dialog';
 
 import { getAttendanceBreakdown } from '../utils/attendanceUtils'; // Import helper
 import { ScheduleTimeline } from './ScheduleTimeline';
+import { CoordinatorGradeReport } from './CoordinatorGradeReport';
 
 
 
@@ -1635,8 +1638,89 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     }, []);
 
     // NEW: Navigation State
-    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages' | 'attendance' | 'crm' | 'schedule' | 'access_control' | 'lost_found' | 'photographer_demands' | 'agenda_report' | 'announcements'>('menu');
+    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages' | 'attendance' | 'crm' | 'schedule' | 'access_control' | 'lost_found' | 'photographer_demands' | 'agenda_report' | 'announcements' | 'grade_report'>('menu');
     const [zoomedPhoto, setZoomedPhoto] = useState<{ url: string, name: string, title: string } | null>(null);
+
+    // --- GRADE REPORT STATE ---
+    const [reportGradeFilter, setReportGradeFilter] = useState('');
+    const [reportClassFilter, setReportClassFilter] = useState('');
+    const [reportShiftFilter, setReportShiftFilter] = useState('');
+    const [reportBimesterFilter, setReportBimesterFilter] = useState<number>(academicSettings?.currentBimester || 1);
+    const [reportStudents, setReportStudents] = useState<Student[]>([]);
+    const [reportGrades, setReportGrades] = useState<GradeEntry[]>([]);
+    const [reportLoading, setReportLoading] = useState(false);
+
+    const handleFetchGradeReport = async () => {
+        if (!reportGradeFilter || !reportClassFilter || !reportShiftFilter) {
+            alert("Por favor, selecione Série, Turma e Turno.");
+            return;
+        }
+
+        setReportLoading(true);
+        try {
+            const searchUnit = coordinator.unit === 'all' || coordinator.role === 'admin_geral' ? currentUnit : coordinator.unit;
+            const searchYear = academicSettings?.year || new Date().getFullYear();
+
+            // Fetch Students
+            const studentsSnap = await db.collection('students')
+                .where('unit', '==', searchUnit)
+                .where('enrolledYears', 'array-contains', String(searchYear))
+                .get();
+
+            const allStudents = studentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
+            
+            const studentsList = allStudents.filter(s => {
+                if (s.situacao && s.situacao !== 'Ativo') return false;
+                if (s.status && s.status === 'CANCELADO') return false;
+
+                const sGrade = parseGradeLevel(s.gradeLevel || '').grade;
+                const fGrade = parseGradeLevel(reportGradeFilter).grade;
+                const sClass = normalizeClass(s.schoolClass);
+                const fClass = normalizeClass(reportClassFilter);
+                const sShift = normalizeShift(s.shift);
+                const fShift = normalizeShift(reportShiftFilter);
+                
+                return sGrade === fGrade && sClass === fClass && sShift === fShift;
+            });
+
+            if (studentsList.length > 0) {
+                // Fetch Grades
+                const studentIds = studentsList.map(s => s.id);
+                const chunkedIds = [];
+                for (let i = 0; i < studentIds.length; i += 30) {
+                    chunkedIds.push(studentIds.slice(i, i + 30));
+                }
+
+                let allGrades: GradeEntry[] = [];
+                for (const ids of chunkedIds) {
+                    const gradesSnap = await db.collection('grades')
+                        .where('studentId', 'in', ids)
+                        .get();
+                    allGrades = [...allGrades, ...gradesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as GradeEntry))];
+                }
+
+                // IMPORTANT: Set data and loading state with a slight delay to avoid UI blocking
+                setReportStudents(studentsList);
+                setReportGrades(allGrades);
+                
+                setTimeout(() => {
+                    setReportLoading(false);
+                    const reportElement = document.getElementById('coordinator-grade-report');
+                    if (reportElement) {
+                        reportElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }, 100);
+            } else {
+                setReportStudents([]);
+                setReportGrades([]);
+                setReportLoading(false);
+            }
+        } catch (error) {
+            console.error("Error fetching grade report data:", error);
+            alert("Erro ao buscar dados do relatório.");
+            setReportLoading(false);
+        }
+    };
     const TabTypes = ['classes', 'students', 'occurrences', 'attendance', 'lost_found', 'messages', 'releases', 'crm', 'calendar', 'photographer_demands', 'agenda_report'] as const;
     // --- SCHEDULE STATE ---
     const [scheduleGrade, setScheduleGrade] = useState('');
@@ -3132,25 +3216,35 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                 </div>
 
                                 {/* SEARCH BAR */}
-                                <div className="relative w-full md:w-auto md:min-w-[320px] md:max-w-sm md:flex-1 md:self-end">
-                                    <div className="relative group">
-                                        <input
-                                            type="text"
-                                            placeholder="Buscar boletim por código ou nome"
-                                            value={reportSearchTerm}
-                                            onChange={(e) => {
-                                                setReportSearchTerm(e.target.value);
-                                                setReportSearchDropdownOpen(true);
-                                            }}
-                                            onFocus={() => setReportSearchDropdownOpen(true)}
-                                            className="w-full pl-11 pr-11 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 transition-all focus:bg-white shadow-sm group-hover:border-gray-300"
-                                        />
-                                        <svg className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                                        {reportSearchTerm && (
-                                            <button onClick={() => setReportSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1">
-                                                <X className="w-4 h-4" />
-                                            </button>
-                                        )}
+                                <div className="relative w-full md:w-auto md:min-w-[420px] md:max-w-2xl md:flex-1 md:self-end">
+                                    <div className="relative group flex flex-col sm:flex-row gap-3">
+                                        <div className="relative flex-1">
+                                            <input
+                                                type="text"
+                                                placeholder="Buscar boletim por código ou nome"
+                                                value={reportSearchTerm}
+                                                onChange={(e) => {
+                                                    setReportSearchTerm(e.target.value);
+                                                    setReportSearchDropdownOpen(true);
+                                                }}
+                                                onFocus={() => setReportSearchDropdownOpen(true)}
+                                                className="w-full pl-11 pr-11 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 transition-all focus:bg-white shadow-sm group-hover:border-gray-300"
+                                            />
+                                            <svg className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                            {reportSearchTerm && (
+                                                <button onClick={() => setReportSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1">
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
+                                        <button 
+                                            onClick={() => setActiveTab('grade_report')}
+                                            className="p-3.5 px-6 bg-blue-950 text-white rounded-2xl hover:bg-black transition-all shadow-sm flex items-center justify-center gap-3 group/btn flex-shrink-0 w-full sm:w-auto"
+                                            title="Relatório de Notas por Série"
+                                        >
+                                            <ClipboardList className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
+                                            <span className="text-[10px] font-bold uppercase tracking-wider">Relatório de Notas</span>
+                                        </button>
                                     </div>
 
                                     {/* Dropdown Resultados */}
@@ -3366,6 +3460,17 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                     <BookCheck className="w-6 h-6 text-blue-950" />
                                 </div>
                                 <h3 className="font-bold text-gray-800 text-sm text-center">Relatório de Agendas</h3>
+                            </button>
+
+                            {/* GRADE REPORT CARD */}
+                            <button
+                                onClick={() => setActiveTab('grade_report')}
+                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square relative"
+                            >
+                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                    <FileSpreadsheet className="w-6 h-6 text-blue-950" />
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-sm text-center">Relatório por Série</h3>
                             </button>
                         </div>
                     )}
@@ -5325,6 +5430,114 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                     </div>
                                 )}
                             </div>
+                        </div>
+                    )}
+
+                    {/* GRADE REPORT VIEW */}
+                    {activeTab === 'grade_report' && (
+                        <div className="animate-fade-in-up">
+                            <h3 className="text-xl font-bold mb-4 text-gray-800 border-b border-gray-200 pb-2 flex items-center gap-2 print:hidden">
+                                <FileSpreadsheet className="w-6 h-6 text-blue-950" />
+                                Relatório de Notas por Série
+                            </h3>
+
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8 print:hidden">
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                                    {/* GRADE FILTER */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Série</label>
+                                        <select
+                                            value={reportGradeFilter}
+                                            onChange={(e) => setReportGradeFilter(e.target.value)}
+                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
+                                        >
+                                            <option value="">-- Selecione --</option>
+                                            {academicGrades
+                                                .filter(g => g.isActive)
+                                                .filter(g => {
+                                                    // Filter based on coordinator competence
+                                                    if (coordinator.segment === CoordinationSegment.GERAL || !coordinator.segment) return true;
+                                                    const infantilFund1 = ['seg_infantil', 'seg_fund_1'];
+                                                    const fund2Medio = ['seg_fund_2', 'seg_medio'];
+                                                    if (coordinator.segment === CoordinationSegment.INFANTIL_FUND1) return infantilFund1.includes(g.segmentId);
+                                                    return fund2Medio.includes(g.segmentId);
+                                                })
+                                                .sort((a, b) => a.order - b.order)
+                                                .map(g => (
+                                                    <option key={g.id} value={g.name || (g as any).label}>{g.name || (g as any).label}</option>
+                                                ))
+                                            }
+                                        </select>
+                                    </div>
+
+                                    {/* CLASS FILTER */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turma</label>
+                                        <select
+                                            value={reportClassFilter}
+                                            onChange={(e) => setReportClassFilter(e.target.value)}
+                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
+                                        >
+                                            <option value="">-- Selecione --</option>
+                                            {SCHOOL_CLASSES_OPTIONS.map(c => (
+                                                <option key={c.value} value={c.value}>{c.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* SHIFT FILTER */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turno</label>
+                                        <select
+                                            value={reportShiftFilter}
+                                            onChange={(e) => setReportShiftFilter(e.target.value)}
+                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
+                                        >
+                                            <option value="">-- Selecione --</option>
+                                            {SCHOOL_SHIFTS_LIST.map(s => (
+                                                <option key={s} value={s}>{SHIFT_LABELS[s as SchoolShift] || s}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* BIMESTER FILTER */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Bimestre</label>
+                                        <select
+                                            value={reportBimesterFilter}
+                                            onChange={(e) => setReportBimesterFilter(Number(e.target.value))}
+                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
+                                        >
+                                            {[1, 2, 3, 4].map(num => (
+                                                <option key={num} value={num}>{num}º Bimestre</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="md:col-span-4 mt-2">
+                                        <Button
+                                            onClick={handleFetchGradeReport}
+                                            disabled={reportLoading}
+                                            className="w-full py-3 !bg-blue-950 hover:!bg-black text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+                                        >
+                                            {reportLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+                                            {reportLoading ? 'Gerando Relatório...' : 'Gerar Relatório de Notas'}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <CoordinatorGradeReport
+                                students={reportStudents}
+                                grades={reportGrades}
+                                selectedBimester={reportBimesterFilter}
+                                selectedGrade={reportGradeFilter}
+                                selectedClass={reportClassFilter}
+                                selectedShift={reportShiftFilter}
+                                unit={currentUnit}
+                                academicSubjects={academicSubjects}
+                                matrices={matrices}
+                            />
                         </div>
                     )}
 

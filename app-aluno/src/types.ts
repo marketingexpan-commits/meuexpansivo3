@@ -393,6 +393,7 @@ export interface Student {
   unit: SchoolUnit;
   isBlocked: boolean;
   metodo_pagamento?: 'Isaac' | 'Interno';
+  status?: string; // NEW: To handle active/cancelled status
 
   // --- CAMPOS DE LEGADO / FICHA COMPLETA ---
   numero_inscricao?: string;
