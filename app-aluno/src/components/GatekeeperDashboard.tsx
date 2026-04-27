@@ -393,12 +393,25 @@ const LostFoundView: React.FC<{ unit: SchoolUnit }> = ({ unit }) => {
 
 export const GatekeeperDashboard: React.FC = () => {
     // --- STATE ---
-    const [activeTab, setActiveTab] = useState<'menu' | 'scanner' | 'manual' | 'calendar' | 'lost_found'>('menu');
+    const [activeTab, setActiveTab] = useState<'menu' | 'scanner' | 'manual' | 'calendar' | 'lost_found' | 'late_arrival'>('menu');
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
     const [academicSubjects, setAcademicSubjects] = useState<AcademicSubject[]>([]);
     const [releases, setReleases] = useState<AuthorizedRelease[]>([]);
 
     const [scanning, setScanning] = useState(false);
+    const [lateArrivalStudent, setLateArrivalStudent] = useState<any>(null);
+    const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
+
+    const LATE_REASONS = [
+        { id: 'transito', label: 'Trânsito' },
+        { id: 'transporte', label: 'Atraso do transporte' },
+        { id: 'chuva', label: 'Chuva / Condições climáticas' },
+        { id: 'saude', label: 'Problema de saúde' },
+        { id: 'consulta', label: 'Consulta médica' },
+        { id: 'familiar', label: 'Problema familiar' },
+        { id: 'imprevistos', label: 'Imprevisto doméstico' },
+        { id: 'outros', label: 'Outros' }
+    ];
     const scannerRef = useRef<Html5Qrcode | null>(null);
     const isProcessingRef = useRef(false); // Lock to prevent multiple scans
     const [searchQuery, setSearchQuery] = useState('');
@@ -457,8 +470,11 @@ export const GatekeeperDashboard: React.FC = () => {
             setReleases(list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
         });
 
-        // Fetch School Calendar Events
-        const eventsRef = collection(db, 'calendar_events');
+        // Fetch School Calendar Events - Filtered by Unit
+        const eventsRef = query(
+            collection(db, 'calendar_events'),
+            where('units', 'array-contains-any', [unit, 'all'])
+        );
         const unsubscribeEvents = onSnapshot(eventsRef, (snapshot) => {
             const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CalendarEvent));
             setCalendarEvents(list);
@@ -570,45 +586,111 @@ export const GatekeeperDashboard: React.FC = () => {
         }
 
         const studentId = decodedText.trim();
+
+        if (activeTab === 'late_arrival' && !lateArrivalStudent) {
+            // Handle late arrival scan
+            setLoading(true);
+            try {
+                const studentRef = doc(db, 'students', studentId);
+                let studentSnap = await getDoc(studentRef);
+                let studentData: any = null;
+                let finalId = studentId;
+
+                if (studentSnap.exists()) {
+                    studentData = studentSnap.data();
+                } else {
+                    // Try code lookup
+                    const qCode = query(
+                        collection(db, 'students'),
+                        where('unit', '==', unit),
+                        where('code', '==', studentId)
+                    );
+                    const snapCode = await getDocs(qCode);
+                    if (!snapCode.empty) {
+                        finalId = snapCode.docs[0].id;
+                        studentData = snapCode.docs[0].data();
+                    }
+                }
+
+                if (studentData && studentData.unit === unit) {
+                    setLateArrivalStudent({ id: finalId, ...studentData });
+                    setSelectedReasons([]);
+                } else {
+                    showDialog({
+                        type: 'alert',
+                        title: 'Atenção',
+                        message: "Aluno não encontrado nesta unidade."
+                    });
+                    // Resume scanner
+                    if (scannerRef.current && activeTab === 'late_arrival') {
+                        scannerRef.current.resume();
+                    }
+                }
+            } catch (err) {
+                console.error("Error verifying late arrival:", err);
+            } finally {
+                setLoading(false);
+                isProcessingRef.current = false;
+            }
+            return;
+        }
+
+        // Default flow (Exits)
         await handleVerifyStudent(studentId);
 
         // Resume after processing
-        // We might not want to resume if we switched tabs or released successfully, 
-        // but typically for continuous scanning we do. 
-        // However, if we just released, maybe we want to stay paused until the user is ready? 
-        // For now, let's resume to allow next student.
-
-        // Small delay to prevent accidental double-scan of same code if user hasn't moved it
         setTimeout(() => {
-            if (scannerRef.current && activeTab === 'scanner') {
+            if (scannerRef.current && (activeTab === 'scanner' || activeTab === 'late_arrival')) {
                 try {
                     scannerRef.current.resume();
                 } catch (e) {
-                    // If resume fails (e.g. was stopped), ignore
                     console.log("Scanner resume skipped/failed", e);
                 }
             }
             isProcessingRef.current = false;
         }, 1500);
 
-    }, [handleVerifyStudent, activeTab]);
+    }, [handleVerifyStudent, activeTab, lateArrivalStudent, unit]);
+
+    // Use refs for callbacks to keep the scanner useEffect stable
+    const onScanSuccessRef = useRef(onScanSuccess);
+    const onScanFailureRef = useRef(onScanFailure);
+    
+    useEffect(() => {
+        onScanSuccessRef.current = onScanSuccess;
+        onScanFailureRef.current = onScanFailure;
+    }, [onScanSuccess, onScanFailure]);
 
     useEffect(() => {
-        if (activeTab === 'scanner') {
+        // Only run if we are in a scanner tab AND the reader div is expected to be present
+        const shouldBeScanning = (activeTab === 'scanner' || (activeTab === 'late_arrival' && !lateArrivalStudent));
+        
+        if (shouldBeScanning) {
+            let html5QrCode: Html5Qrcode | null = null;
+            
             const startScanner = async () => {
                 try {
-                    // Small delay to ensure the DOM element 'reader' is mounted
-                    const html5QrCode = new Html5Qrcode("reader");
+                    // Wait a bit for React to render the 'reader' div
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    const element = document.getElementById('reader');
+                    if (!element) return;
+
+                    html5QrCode = new Html5Qrcode("reader");
                     scannerRef.current = html5QrCode;
 
+                    // Use front camera (user) for late arrival if mounted on wall, 
+                    // and back camera (environment) for student release.
+                    const facingMode = activeTab === 'late_arrival' ? "user" : "environment";
+
                     await html5QrCode.start(
-                        { facingMode: "environment" },
+                        { facingMode: facingMode },
                         {
                             fps: 10,
                             qrbox: { width: 250, height: 250 },
                         },
-                        onScanSuccess,
-                        onScanFailure
+                        (text) => onScanSuccessRef.current(text),
+                        (err) => onScanFailureRef.current(err)
                     );
                     setScanning(true);
                 } catch (err) {
@@ -617,29 +699,75 @@ export const GatekeeperDashboard: React.FC = () => {
                 }
             };
 
-            const timer = setTimeout(startScanner, 300);
+            startScanner();
 
             return () => {
-                clearTimeout(timer);
-                if (scannerRef.current) {
-                    if (scannerRef.current.isScanning) {
-                        scannerRef.current.stop().catch(err => console.error("Erro ao parar scanner:", err));
+                if (html5QrCode) {
+                    if (html5QrCode.isScanning) {
+                        html5QrCode.stop().catch(err => console.error("Erro ao parar scanner:", err));
                     }
                     scannerRef.current = null;
                     setScanning(false);
                 }
             };
-        } else {
-            // Cleanup when leaving scanner tab
-            if (scannerRef.current) {
-                if (scannerRef.current.isScanning) {
-                    scannerRef.current.stop().catch(err => console.error("Erro ao parar scanner:", err));
-                }
-                scannerRef.current = null;
-                setScanning(false);
-            }
         }
-    }, [activeTab, onScanSuccess, onScanFailure]);
+    }, [activeTab, !!lateArrivalStudent]); // Only restart if tab changes or lateArrivalStudent toggles null/truthy
+
+    const handleConfirmLateArrival = async () => {
+        if (!lateArrivalStudent || !unit) return;
+        setLoading(true);
+        try {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            const accessId = `acc-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+            
+            const accessRecord = {
+                id: accessId,
+                studentId: lateArrivalStudent.id,
+                studentName: lateArrivalStudent.name,
+                unit: unit,
+                timestamp: now.toISOString(),
+                lateArrival: true,
+                arrivalTime: timeStr,
+                reasons: selectedReasons,
+                confirmedBy: gatekeeperName,
+                gradeLevel: lateArrivalStudent.gradeLevel || '',
+                schoolClass: lateArrivalStudent.schoolClass || '',
+                shift: lateArrivalStudent.shift || ''
+            };
+
+            await setDoc(doc(db, 'accessRecords', accessId), accessRecord);
+
+            showDialog({
+                type: 'alert',
+                title: 'Sucesso',
+                message: "Entrada com atraso registrada!",
+                variant: 'success'
+            });
+            
+            setLateArrivalStudent(null);
+            setSelectedReasons([]);
+            // Dynamically return to scanner instead of menu for speed
+            setActiveTab('late_arrival'); 
+        } catch (error) {
+            console.error("Error saving late arrival:", error);
+            showDialog({
+                type: 'alert',
+                title: 'Erro',
+                message: "Não foi possível registrar o atraso."
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const toggleReason = (reasonId: string) => {
+        setSelectedReasons(prev => 
+            prev.includes(reasonId) 
+                ? prev.filter(id => id !== reasonId) 
+                : [...prev, reasonId]
+        );
+    };
 
     const handleManualSearch = async () => {
         const queryText = searchQuery.trim();
@@ -754,7 +882,7 @@ export const GatekeeperDashboard: React.FC = () => {
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans transition-all duration-500 ease-in-out">
             {/* Professional Dialog Modal moved to end */}
-            <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${(activeTab === 'calendar' || activeTab === 'lost_found') ? 'max-w-5xl' : 'max-w-2xl'}`}>
+            <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${(activeTab === 'calendar' || activeTab === 'lost_found' || activeTab === 'late_arrival') ? 'max-w-5xl' : 'max-w-2xl'}`}>
 
                 {/* MAIN CONTENT */}
                 <main className="flex-1 w-full p-4 md:p-8 bg-gray-50/50 overflow-y-auto">
@@ -766,7 +894,10 @@ export const GatekeeperDashboard: React.FC = () => {
                             <div className="flex items-center gap-2 text-base text-gray-600">
                                 {activeTab !== 'menu' && (
                                     <button
-                                        onClick={() => setActiveTab('menu')}
+                                        onClick={() => {
+                                            setActiveTab('menu');
+                                            setLateArrivalStudent(null);
+                                        }}
                                         className="p-1.5 hover:bg-gray-100 rounded-full transition-colors text-gray-600 -ml-1 mr-1"
                                         title="Voltar ao Menu"
                                     >
@@ -796,7 +927,7 @@ export const GatekeeperDashboard: React.FC = () => {
                         </div>
 
                         {/* Logo & Description */}
-                        <div className="flex flex-col items-start text-left">
+                        <div className={`flex flex-col transition-all duration-300 ${activeTab === 'late_arrival' && !lateArrivalStudent ? 'items-center text-center' : 'items-start text-left'}`}>
                             {activeTab === 'menu' && (
                                 <div className="flex items-center gap-2 mt-4 mb-6 pl-1">
                                     <div className="h-10 w-auto shrink-0">
@@ -809,18 +940,28 @@ export const GatekeeperDashboard: React.FC = () => {
                                     </div>
                                 </div>
                             )}
+                                                            <h2 className="text-xl font-black text-blue-950 uppercase tracking-tight">
+                                    {activeTab === 'menu' ? 'Menu Principal' :
+                                     activeTab === 'late_arrival' ? (lateArrivalStudent ? 'Confirmar Dados' : 'Bem-vindo ao Expansivo!') :
+                                     activeTab === 'scanner' ? 'Saída Antecipada - Leitor QR' :
+                                     activeTab === 'manual' ? 'Busca Manual' :
+                                     activeTab === 'calendar' ? 'Calendário' :
+                                     'Achados e Perdidos'}
+                                </h2>
                             <p className="text-gray-600 max-w-lg">
                                 {activeTab === 'menu'
                                     ? "Selecione uma opção para gerenciar o controle de acesso e saídas da unidade."
                                     : activeTab === 'scanner'
                                         ? "Aponte a câmera para o QR Code do aluno para verificar a autorização."
-                                        : activeTab === 'manual'
-                                            ? "Busque o aluno pelo nome para verificar autorizações manualmente."
-                                            : activeTab === 'calendar'
-                                                ? "Acompanhe o calendário escolar, feriados e eventos da unidade."
-                                                : activeTab === 'lost_found'
-                                                    ? "Gerencie os itens achados e perdidos na unidade escolar."
-                                                    : ""
+                                        : activeTab === 'late_arrival'
+                                            ? (lateArrivalStudent ? "Confirme os dados e o motivo do atraso." : "")
+                                            : activeTab === 'manual'
+                                                ? "Busque o aluno pelo nome para verificar autorizações manualmente."
+                                                : activeTab === 'calendar'
+                                                    ? "Acompanhe o calendário escolar, feriados e eventos da unidade."
+                                                    : activeTab === 'lost_found'
+                                                        ? "Gerencie os itens achados e perdidos na unidade escolar."
+                                                        : ""
                                 }
                             </p>
                         </div>
@@ -830,13 +971,25 @@ export const GatekeeperDashboard: React.FC = () => {
                     {activeTab === 'menu' && (
                         <div className="grid grid-cols-2 gap-4 mb-8 animate-fade-in-up">
                             <button
+                                onClick={() => {
+                                    setActiveTab('late_arrival');
+                                    setLateArrivalStudent(null);
+                                }}
+                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                            >
+                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                    <Clock className="w-6 h-6 text-blue-950" />
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-base text-center">Entrada Atrasada</h3>
+                            </button>
+                            <button
                                 onClick={() => setActiveTab('scanner')}
                                 className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
                             >
                                 <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
                                     <QrCode className="w-6 h-6 text-blue-950" />
                                 </div>
-                                <h3 className="font-bold text-gray-800 text-base text-center">Leitor QR</h3>
+                                <h3 className="font-bold text-gray-800 text-base text-center leading-tight">Saída Antecipada - Leitor QR</h3>
                             </button>
 
                             <button
@@ -879,7 +1032,7 @@ export const GatekeeperDashboard: React.FC = () => {
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col items-center">
                                 <h3 className="text-sm font-bold text-gray-800 mb-6 uppercase tracking-wider flex items-center gap-2">
                                     <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                                    Aponte para o QR Code
+                                    Aponte para o QR Code (Saída)
                                 </h3>
                                 {/* Container styling for the scanner */}
                                 <div className="rounded-2xl overflow-hidden bg-gray-100 border-2 border-gray-200 aspect-square relative w-full max-w-[300px]">
@@ -890,6 +1043,101 @@ export const GatekeeperDashboard: React.FC = () => {
                                     Mantenha o código centralizado na moldura.
                                 </p>
                             </div>
+                        </div>
+                    )}
+
+                    {/* LATE ARRIVAL VIEW */}
+                    {activeTab === 'late_arrival' && (
+                        <div className="animate-in slide-in-from-bottom-4 fade-in duration-300">
+                            {!lateArrivalStudent ? (
+                                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col items-center">
+                                    <h3 className="text-sm font-bold text-gray-800 mb-6 uppercase tracking-wider flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                                        Aproxime o QR da sua carteirinha
+                                    </h3>
+                                    <div className="rounded-2xl overflow-hidden bg-gray-100 border-2 border-blue-200 aspect-square relative w-full max-w-[300px]">
+                                        <div id="reader" className="w-full h-full"></div>
+                                        <div className="absolute inset-0 border-[30px] border-slate-900/5 pointer-events-none rounded-2xl"></div>
+                                    </div>
+                                    <p className="mt-6 text-xs text-gray-400 font-medium text-center">
+                                        Seu registro de entrada será processado automaticamente.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden flex flex-col md:flex-row">
+                                    {/* Student Info Sidebar */}
+                                    <div className="w-full md:w-80 bg-gray-50 border-r border-gray-100 p-8 flex flex-col items-center text-center">
+                                        <div className="w-32 h-44 rounded-2xl overflow-hidden shadow-lg border-2 border-white mb-6">
+                                            {lateArrivalStudent.photoUrl ? (
+                                                <img src={lateArrivalStudent.photoUrl} alt={lateArrivalStudent.name} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400">
+                                                    <User size={64} />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <h3 className="text-lg font-black text-blue-950 uppercase leading-tight mb-2">{lateArrivalStudent.name}</h3>
+                                        <div className="space-y-1.5">
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{lateArrivalStudent.gradeLevel}</p>
+                                            <p className="text-xs font-bold text-gray-600">Turma {lateArrivalStudent.schoolClass} • {SHIFT_LABELS[lateArrivalStudent.shift as SchoolShift] || lateArrivalStudent.shift}</p>
+                                        </div>
+                                        
+                                        <div className="mt-8 pt-6 border-t border-gray-200 w-full">
+                                            <div className="flex items-center justify-center gap-2 text-blue-600 mb-1">
+                                                <Clock size={16} className="animate-pulse" />
+                                                <span className="text-[10px] font-black uppercase tracking-widest">Hora de Chegada</span>
+                                            </div>
+                                            <p className="text-3xl font-black text-blue-950 tracking-tighter">
+                                                {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Reasons Selection Area */}
+                                    <div className="flex-1 p-8 bg-white flex flex-col">
+                                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Selecione o motivo do atraso:</h4>
+                                        
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
+                                            {LATE_REASONS.map(reason => (
+                                                <button
+                                                    key={reason.id}
+                                                    onClick={() => toggleReason(reason.id)}
+                                                    className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all text-left group ${
+                                                        selectedReasons.includes(reason.id)
+                                                            ? 'bg-blue-950 border-blue-950 text-white shadow-lg shadow-blue-950/20'
+                                                            : 'bg-white border-gray-100 text-gray-600 hover:border-gray-200'
+                                                    }`}
+                                                >
+                                                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
+                                                        selectedReasons.includes(reason.id)
+                                                            ? 'bg-white border-white text-blue-950'
+                                                            : 'border-gray-200'
+                                                    }`}>
+                                                        {selectedReasons.includes(reason.id) && <CheckCircle size={14} />}
+                                                    </div>
+                                                    <span className="text-xs font-bold uppercase tracking-tight">{reason.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        <div className="flex gap-4 mt-auto">
+                                            <button
+                                                onClick={() => setLateArrivalStudent(null)}
+                                                className="flex-1 h-14 rounded-2xl border-2 border-gray-200 text-gray-400 font-black uppercase tracking-widest hover:bg-gray-50 transition-all active:scale-95"
+                                            >
+                                                Cancelar
+                                            </button>
+                                            <button
+                                                onClick={handleConfirmLateArrival}
+                                                className="flex-[2] h-14 rounded-2xl bg-green-600 text-white font-black uppercase tracking-widest shadow-xl shadow-green-600/20 hover:bg-green-700 transition-all active:scale-95 flex items-center justify-center gap-3"
+                                            >
+                                                <CheckCircle size={20} />
+                                                Confirmar Entrada
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
