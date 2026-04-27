@@ -1566,7 +1566,81 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    window.print();
+                                                    const printContent = document.getElementById('digital-id-card');
+                                                    if (!printContent) return;
+
+                                                    const iframe = document.createElement('iframe');
+                                                    iframe.style.position = 'fixed';
+                                                    iframe.style.right = '0';
+                                                    iframe.style.bottom = '0';
+                                                    iframe.style.width = '0';
+                                                    iframe.style.height = '0';
+                                                    iframe.style.border = '0';
+                                                    document.body.appendChild(iframe);
+
+                                                    const doc = iframe.contentWindow?.document;
+                                                    if (!doc) return;
+
+                                                    const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+                                                        .map(el => el.outerHTML)
+                                                        .join('');
+
+                                                    doc.open();
+                                                    doc.write(`
+                                                        <!DOCTYPE html>
+                                                        <html>
+                                                        <head>
+                                                            <meta charset="utf-8">
+                                                            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+                                                            <title>Carteirinha Digital</title>
+                                                            ${styles}
+                                                            <style>
+                                                                @page { margin: 0; size: auto; }
+                                                                html {
+                                                                    -webkit-text-size-adjust: 100%;
+                                                                    text-size-adjust: 100%;
+                                                                }
+                                                                body { 
+                                                                    margin: 0; 
+                                                                    padding: 0;
+                                                                    display: flex; 
+                                                                    justify-content: center; 
+                                                                    background: white;
+                                                                    -webkit-text-size-adjust: 100%;
+                                                                }
+                                                                #digital-id-card {
+                                                                    margin-top: 10mm;
+                                                                    transform: none !important;
+                                                                    position: static !important;
+                                                                    width: 105mm;
+                                                                    height: max-content;
+                                                                    zoom: 0.7;
+                                                                    border: 2px solid #1e3a8a !important;
+                                                                    box-shadow: none !important;
+                                                                    background: white !important;
+                                                                }
+                                                                .print\\:hidden { display: none !important; }
+                                                            </style>
+                                                        </head>
+                                                        <body>
+                                                            ${printContent.outerHTML}
+                                                            <script>
+                                                                // Trigger print immediately to avoid waiting for slow network requests
+                                                                setTimeout(() => {
+                                                                    window.focus();
+                                                                    window.print();
+                                                                }, 250);
+                                                            </script>
+                                                        </body>
+                                                        </html>
+                                                    `);
+                                                    doc.close();
+
+                                                    setTimeout(() => {
+                                                        if (document.body.contains(iframe)) {
+                                                            document.body.removeChild(iframe);
+                                                        }
+                                                    }, 5000);
                                                 }}
                                                 className="absolute top-4 left-4 p-2 bg-blue-950 text-white rounded-full shadow-lg hover:bg-black transition-all hover:scale-110 active:scale-95 print:hidden"
                                                 title="Imprimir Carteirinha"
@@ -1628,45 +1702,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     <p className="text-gray-500 text-sm">Selecione uma opção para visualizar.</p>
                                 </div>
 
-                                <style>
-                                    {`
-                                        @media print {
-                                            @page {
-                                                size: auto;
-                                                margin: 0;
-                                            }
-                                            html, body {
-                                                height: 100%;
-                                                overflow: hidden;
-                                                margin: 0;
-                                                padding: 0;
-                                            }
-                                            body * {
-                                                visibility: hidden;
-                                            }
-                                            #digital-id-card, #digital-id-card * {
-                                                visibility: visible;
-                                            }
-                                            #digital-id-card {
-                                                position: absolute;
-                                                left: 50%;
-                                                top: 10mm;
-                                                transform: translateX(-50%);
-                                                width: 105mm;
-                                                height: max-content;
-                                                zoom: 0.7;
-                                                border: 2px solid #1e3a8a !important;
-                                                box-shadow: none !important;
-                                                background: white !important;
-                                                break-inside: avoid;
-                                                page-break-inside: avoid;
-                                            }
-                                            .print\\:hidden {
-                                                display: none !important;
-                                            }
-                                        }
-                                    `}
-                                </style>
                                 <div className="grid grid-cols-2 gap-4">
                                     <button
                                         onClick={() => setCurrentView(isEarlyChildhood ? 'early_childhood' : 'grades')}
