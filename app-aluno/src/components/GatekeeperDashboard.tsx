@@ -27,7 +27,9 @@ import {
     Package,
     Camera,
     Trash2,
-    Plus
+    Plus,
+    Maximize,
+    Minimize
 } from 'lucide-react';
 import { useLostAndFound } from '../hooks/useLostAndFound';
 import { Dialog } from './Dialog';
@@ -423,6 +425,22 @@ export const GatekeeperDashboard: React.FC = () => {
     const [unit, setUnit] = useState(localStorage.getItem('userUnit') || '');
     const gatekeeperName = localStorage.getItem('gatekeeperName') || 'Portaria';
     const [showNotifications, setShowNotifications] = useState(false); // Placeholder for uniformity
+    const [isFullScreen, setIsFullScreen] = useState(false);
+
+    const toggleFullScreen = () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch((e) => {
+                console.error(`Error attempting to enable full-screen mode: ${e.message} (${e.name})`);
+            });
+            setIsFullScreen(true);
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+                setIsFullScreen(false);
+            }
+        }
+    };
+
     const [dialogConfig, setDialogConfig] = useState<{
         isOpen: boolean;
         type: 'alert' | 'confirm';
@@ -441,6 +459,14 @@ export const GatekeeperDashboard: React.FC = () => {
     const closeDialog = () => setDialogConfig(prev => ({ ...prev, isOpen: false }));
 
     // --- EFFECTS ---
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullScreen(!!document.fullscreenElement);
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+
     useEffect(() => {
         // Redirect to login if no session data found
         const savedUnit = localStorage.getItem('userUnit');
@@ -954,6 +980,9 @@ export const GatekeeperDashboard: React.FC = () => {
                                         onClick={() => {
                                             setActiveTab('menu');
                                             setLateArrivalStudent(null);
+                                            if (document.fullscreenElement) {
+                                                document.exitFullscreen().catch(() => {});
+                                            }
                                         }}
                                         className="p-1.5 hover:bg-gray-100 rounded-full transition-colors text-gray-600 -ml-1 mr-1"
                                         title="Voltar ao Menu"
@@ -961,25 +990,42 @@ export const GatekeeperDashboard: React.FC = () => {
                                         <ArrowLeft className="w-5 h-5" />
                                     </button>
                                 )}
-                                <span className="font-bold text-gray-800">{gatekeeperName}</span>
-                                <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
-                                <span className="text-gray-500">{UNIT_LABELS[unit as SchoolUnit] || unit}</span>
+                                {!(isFullScreen && activeTab === 'late_arrival') && (
+                                    <>
+                                        <span className="font-bold text-gray-800">{gatekeeperName}</span>
+                                        <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+                                        <span className="text-gray-500">{UNIT_LABELS[unit as SchoolUnit] || unit}</span>
+                                    </>
+                                )}
                             </div>
 
                             <div className="flex items-center gap-3">
-                                <button
-                                    className="p-2 text-gray-400 hover:text-blue-950 hover:bg-blue-50 transition-colors relative rounded-full"
-                                    title="Notificações"
-                                >
-                                    <Bell className="w-5 h-5" />
-                                </button>
-                                <Button
-                                    variant="secondary"
-                                    onClick={handleLogout}
-                                    className="text-sm font-semibold py-1.5 px-4"
-                                >
-                                    Sair
-                                </Button>
+                                {activeTab === 'late_arrival' && (
+                                    <button
+                                        onClick={toggleFullScreen}
+                                        className="p-2 text-gray-400 hover:text-blue-950 hover:bg-blue-50 transition-colors relative rounded-full"
+                                        title={isFullScreen ? "Sair da Tela Cheia" : "Tela Cheia"}
+                                    >
+                                        {isFullScreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+                                    </button>
+                                )}
+                                {!(isFullScreen && activeTab === 'late_arrival') && (
+                                    <>
+                                        <button
+                                            className="p-2 text-gray-400 hover:text-blue-950 hover:bg-blue-50 transition-colors relative rounded-full"
+                                            title="Notificações"
+                                        >
+                                            <Bell className="w-5 h-5" />
+                                        </button>
+                                        <Button
+                                            variant="secondary"
+                                            onClick={handleLogout}
+                                            className="text-sm font-semibold py-1.5 px-4"
+                                        >
+                                            Sair
+                                        </Button>
+                                    </>
+                                )}
                             </div>
                         </div>
 
