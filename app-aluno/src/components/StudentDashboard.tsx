@@ -1134,8 +1134,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     exitTime: d.data().exitTime,
                     gatekeeperName: d.data().gatekeeperName,
                     title: d.data().type,
-                    description: `Motivo: ${d.data().reason}\nAutorizado por: ${d.data().authorizer} (${d.data().authorizerRelation})`,
+                    description: `Motivo: ${d.data().reason}\n${d.data().authorizerRelation === 'Porteiro' ? 'Registrado por' : 'Autorizado por'}: ${d.data().authorizer} (${d.data().authorizerRelation})`,
                     authorName: d.data().coordinatorName || 'Coordenação',
+                    authorId: d.data().authorId || d.data().coordinatorId,
                     category: 'Acesso'
                 }));
                 setAccessEvents(data);
@@ -3285,7 +3286,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                         <div className="flex items-center gap-3">
                                                             <div className="text-right">
                                                                 <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider block">
-                                                                    {isAccess ? 'Registrado por' : 'Coordenador Pedagógico'}
+                                                                    {isAccess ? 'Autorizado por' : 'Coordenador Pedagógico'}
                                                                 </span>
                                                                 <span className="text-xs font-bold text-gray-600 block">
                                                                     {(() => {

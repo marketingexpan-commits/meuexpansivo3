@@ -6,7 +6,7 @@ import { Button } from './Button';
 import { Input } from './Input';
 import { SchoolLogo } from './SchoolLogo';
 import { SchoolCalendar } from './SchoolCalendar';
-import { UNIT_LABELS, SchoolUnit, CalendarEvent, AcademicSubject, SHIFT_LABELS, SchoolShift } from '../types';
+import { UNIT_LABELS, SchoolUnit, CalendarEvent, AcademicSubject, SHIFT_LABELS, SchoolShift, UnitContact, ContactRole } from '../types';
 import {
     Search,
     QrCode,
@@ -401,6 +401,8 @@ export const GatekeeperDashboard: React.FC = () => {
     const [scanning, setScanning] = useState(false);
     const [lateArrivalStudent, setLateArrivalStudent] = useState<any>(null);
     const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
+    const [coordinators, setCoordinators] = useState<UnitContact[]>([]);
+    const [selectedCoordinatorId, setSelectedCoordinatorId] = useState<string>('');
 
     const LATE_REASONS = [
         { id: 'transito', label: 'Trânsito' },
@@ -487,10 +489,26 @@ export const GatekeeperDashboard: React.FC = () => {
             setAcademicSubjects(list);
         });
 
+        // Fetch Coordinators for the unit
+        const contactsRef = query(
+            collection(db, 'unitContacts'),
+            where('unit', '==', unit)
+        );
+        const unsubscribeCoordinators = onSnapshot(contactsRef, (snapshot) => {
+            const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UnitContact));
+            const filtered = list.filter(c => 
+                c.role === ContactRole.COORDINATOR || 
+                c.role === 'COORDENADOR' || 
+                c.role?.toLowerCase().includes('coord')
+            );
+            setCoordinators(filtered);
+        });
+
         return () => {
             unsubscribe();
             unsubscribeEvents();
             unsubscribeSubjects();
+            unsubscribeCoordinators();
         };
     }, [unit]);
 
@@ -725,6 +743,9 @@ export const GatekeeperDashboard: React.FC = () => {
                 ? selectedReasons.map(id => LATE_REASONS.find(r => r.id === id)?.label || id).join(', ')
                 : 'Não informado';
             
+            const coordinator = coordinators.find(c => c.id === selectedCoordinatorId);
+            const authorName = coordinator ? coordinator.name : 'Coordenação';
+
             const accessRecord = {
                 id: accessId,
                 studentId: lateArrivalStudent.id,
@@ -740,6 +761,10 @@ export const GatekeeperDashboard: React.FC = () => {
                 authorizerRelation: 'Porteiro',
                 confirmedBy: gatekeeperName,
                 gatekeeperName: gatekeeperName,
+                coordinatorId: selectedCoordinatorId,
+                coordinatorName: authorName,
+                authorId: selectedCoordinatorId,
+                authorName: authorName,
                 gradeLevel: lateArrivalStudent.gradeLevel || '',
                 schoolClass: lateArrivalStudent.schoolClass || '',
                 shift: lateArrivalStudent.shift || ''
@@ -1104,7 +1129,56 @@ export const GatekeeperDashboard: React.FC = () => {
 
                                     {/* Reasons Selection Area */}
                                     <div className="flex-1 p-8 bg-white flex flex-col">
-                                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Selecione o motivo do atraso:</h4>
+                                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Autorizado por (Coordenação):</h4>
+                                         
+                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
+                                             {coordinators.map(coord => (
+                                                 <button
+                                                     key={coord.id}
+                                                     onClick={() => setSelectedCoordinatorId(coord.id)}
+                                                     className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
+                                                         selectedCoordinatorId === coord.id
+                                                             ? 'bg-blue-900 border-blue-900 text-white shadow-md'
+                                                             : 'bg-white border-gray-100 text-gray-600 hover:border-gray-200'
+                                                     }`}
+                                                 >
+                                                     <div className="w-8 h-8 rounded-full bg-gray-100 overflow-hidden flex-shrink-0 border border-white/20">
+                                                         {coord.photoUrl ? (
+                                                             <img src={coord.photoUrl} alt={coord.name} className="w-full h-full object-cover" />
+                                                         ) : (
+                                                             <div className="w-full h-full flex items-center justify-center text-gray-400 bg-gray-50">
+                                                                 <User size={16} />
+                                                             </div>
+                                                         )}
+                                                     </div>
+                                                     <div className="overflow-hidden">
+                                                         <p className="text-xs font-bold truncate">{coord.name}</p>
+                                                         <p className={`text-[10px] truncate capitalize ${selectedCoordinatorId === coord.id ? 'text-blue-100' : 'text-gray-400'}`}>
+                                                             {coord.gender === 'F' ? 'Coordenadora' : 'Coordenador'}
+                                                         </p>
+                                                     </div>
+                                                 </button>
+                                             ))}
+                                             
+                                             <button
+                                                 onClick={() => setSelectedCoordinatorId('generic_coord')}
+                                                 className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
+                                                     selectedCoordinatorId === 'generic_coord'
+                                                         ? 'bg-blue-900 border-blue-900 text-white shadow-md'
+                                                         : 'bg-white border-gray-100 text-gray-600 hover:border-gray-200'
+                                                 }`}
+                                             >
+                                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${selectedCoordinatorId === 'generic_coord' ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-300'}`}>
+                                                     <ShieldAlert size={16} />
+                                                 </div>
+                                                 <div className="overflow-hidden">
+                                                     <p className="text-xs font-bold truncate">Coordenação Geral</p>
+                                                     <p className={`text-[10px] truncate ${selectedCoordinatorId === 'generic_coord' ? 'text-blue-100' : 'text-gray-400'}`}>Plantão / Outros</p>
+                                                 </div>
+                                             </button>
+                                         </div>
+
+                                         <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Motivo do atraso:</h4>
                                         
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
                                             {LATE_REASONS.map(reason => (
