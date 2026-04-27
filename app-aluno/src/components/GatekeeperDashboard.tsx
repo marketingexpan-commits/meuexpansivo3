@@ -979,7 +979,7 @@ export const GatekeeperDashboard: React.FC = () => {
                                 </div>
                             )}
                                                             <h2 className="text-xl font-black text-blue-950 uppercase tracking-tight">
-                                    {activeTab === 'menu' ? 'Menu Principal' :
+                                    {activeTab === 'menu' ? '' :
                                      activeTab === 'late_arrival' ? (lateArrivalStudent ? 'Confirmar Dados' : 'Bem-vindo ao Expansivo!') :
                                      activeTab === 'scanner' ? 'Saída Antecipada - Leitor QR' :
                                      activeTab === 'manual' ? 'Busca Manual' :
