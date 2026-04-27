@@ -721,6 +721,10 @@ export const GatekeeperDashboard: React.FC = () => {
             const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             const accessId = `acc-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
             
+            const reasonLabels = selectedReasons.length > 0 
+                ? selectedReasons.map(id => LATE_REASONS.find(r => r.id === id)?.label || id).join(', ')
+                : 'Não informado';
+            
             const accessRecord = {
                 id: accessId,
                 studentId: lateArrivalStudent.id,
@@ -729,8 +733,13 @@ export const GatekeeperDashboard: React.FC = () => {
                 timestamp: now.toISOString(),
                 lateArrival: true,
                 arrivalTime: timeStr,
+                type: 'Entrada Tardia',
+                reason: reasonLabels,
                 reasons: selectedReasons,
+                authorizer: gatekeeperName,
+                authorizerRelation: 'Porteiro',
                 confirmedBy: gatekeeperName,
+                gatekeeperName: gatekeeperName,
                 gradeLevel: lateArrivalStudent.gradeLevel || '',
                 schoolClass: lateArrivalStudent.schoolClass || '',
                 shift: lateArrivalStudent.shift || ''
