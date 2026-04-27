@@ -47,7 +47,8 @@ import {
     X,
     PenTool,
     Music,
-    Bell
+    Bell,
+    Printer
 } from 'lucide-react';
 import { db } from '../firebaseConfig';
 import StudentMediaGallery from './StudentMediaGallery';
@@ -504,6 +505,19 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         if (hours === 0) return '-';
         const rounded = Math.round(hours * 10) / 10;
         return `${rounded.toString().replace('.', ',')} h`;
+    };
+
+    // Standardize Name for ID Card (Abbreviate middle names if > 2 parts)
+    const formatCardName = (fullName: string) => {
+        if (!fullName) return '';
+        const parts = fullName.trim().split(/\s+/);
+        if (parts.length <= 2) return fullName;
+
+        const first = parts[0];
+        const last = parts[parts.length - 1];
+        const middle = parts.slice(1, -1).map(p => p.length > 2 ? `${p[0]}.` : p).join(' ');
+        
+        return `${first} ${middle} ${last}`;
     };
 
     const { subjects: academicSubjects, matrices, grades: allGrades, loading: loadingAcademic } = useAcademicData();
@@ -1477,7 +1491,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 {/* ALERT: Reposições e Aulas Extras - FIM */}
 
                                 {/* Student Info Card / Carteirinha Digital Toggle */}
-                                <div className={`relative transition-all duration-500 overflow-hidden mb-4 rounded-xl border ${showIdCard ? 'bg-white border-blue-900 shadow-xl' : 'bg-blue-50/50 border-blue-100'}`}>
+                                <div id="digital-id-card" className={`relative transition-all duration-500 overflow-hidden mb-4 rounded-xl border ${showIdCard ? 'bg-white border-blue-900 shadow-xl' : 'bg-blue-50/50 border-blue-100'} print:shadow-none print:border-blue-900 print:rounded-3xl`}>
                                     {showIdCard ? (
                                         // --- ID CARD VIEW ---
                                         <div
@@ -1505,7 +1519,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             </div>
 
                                             {/* 2. Student Data */}
-                                            <h2 className="text-xl font-black text-blue-900 uppercase leading-none text-center mb-1">{student.name}</h2>
+                                            <h2 className="text-xl font-black text-blue-900 uppercase leading-none text-center mb-1 whitespace-nowrap overflow-hidden text-ellipsis px-2 w-full" title={student.name}>
+                                                {formatCardName(student.name)}
+                                            </h2>
                                             <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 text-center">{student.gradeLevel || 'Aluno(a) Regular'}</p>
 
                                             {/* 3. Data Card with Logo in Middle */}
@@ -1540,11 +1556,23 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                             </div>
 
                                             {/* Back/Return Icon */}
-                                            <div className="absolute top-4 right-4 text-blue-300 animate-pulse">
+                                            <div className="absolute top-4 right-4 text-blue-300 animate-pulse group print:hidden">
                                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-8 h-8">
                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
                                                 </svg>
                                             </div>
+
+                                            {/* Print Button (Floating) */}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    window.print();
+                                                }}
+                                                className="absolute top-4 left-4 p-2 bg-blue-950 text-white rounded-full shadow-lg hover:bg-black transition-all hover:scale-110 active:scale-95 print:hidden"
+                                                title="Imprimir Carteirinha"
+                                            >
+                                                <Printer className="w-5 h-5" />
+                                            </button>
 
                                             <div className="mt-4 flex flex-col items-center gap-1">
                                                 <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
@@ -1596,9 +1624,49 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 </div>
 
 
-                                <div className="text-left pb-4">
+                                <div className="text-left pb-4 print:hidden">
                                     <p className="text-gray-500 text-sm">Selecione uma opção para visualizar.</p>
                                 </div>
+
+                                <style>
+                                    {`
+                                        @media print {
+                                            @page {
+                                                size: auto;
+                                                margin: 0;
+                                            }
+                                            html, body {
+                                                height: 100%;
+                                                overflow: hidden;
+                                                margin: 0;
+                                                padding: 0;
+                                            }
+                                            body * {
+                                                visibility: hidden;
+                                            }
+                                            #digital-id-card, #digital-id-card * {
+                                                visibility: visible;
+                                            }
+                                            #digital-id-card {
+                                                position: absolute;
+                                                left: 50%;
+                                                top: 10mm;
+                                                transform: translateX(-50%);
+                                                width: 105mm;
+                                                height: max-content;
+                                                zoom: 0.7;
+                                                border: 2px solid #1e3a8a !important;
+                                                box-shadow: none !important;
+                                                background: white !important;
+                                                break-inside: avoid;
+                                                page-break-inside: avoid;
+                                            }
+                                            .print\\:hidden {
+                                                display: none !important;
+                                            }
+                                        }
+                                    `}
+                                </style>
                                 <div className="grid grid-cols-2 gap-4">
                                     <button
                                         onClick={() => setCurrentView(isEarlyChildhood ? 'early_childhood' : 'grades')}

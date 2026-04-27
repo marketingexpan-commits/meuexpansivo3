@@ -1164,22 +1164,6 @@ export const GatekeeperDashboard: React.FC = () => {
                                                  </button>
                                              ))}
                                              
-                                             <button
-                                                 onClick={() => setSelectedCoordinatorId('generic_coord')}
-                                                 className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
-                                                     selectedCoordinatorId === 'generic_coord'
-                                                         ? 'bg-blue-900 border-blue-900 text-white shadow-md'
-                                                         : 'bg-white border-gray-100 text-gray-600 hover:border-gray-200'
-                                                 }`}
-                                             >
-                                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${selectedCoordinatorId === 'generic_coord' ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-300'}`}>
-                                                     <ShieldAlert size={16} />
-                                                 </div>
-                                                 <div className="overflow-hidden">
-                                                     <p className="text-xs font-bold truncate">Coordenação Geral</p>
-                                                     <p className={`text-[10px] truncate ${selectedCoordinatorId === 'generic_coord' ? 'text-blue-100' : 'text-gray-400'}`}>Plantão / Outros</p>
-                                                 </div>
-                                             </button>
                                          </div>
 
                                          <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Motivo do atraso:</h4>
