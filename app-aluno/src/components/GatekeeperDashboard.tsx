@@ -733,6 +733,25 @@ export const GatekeeperDashboard: React.FC = () => {
 
     const handleConfirmLateArrival = async () => {
         if (!lateArrivalStudent || !unit) return;
+
+        if (!selectedCoordinatorId) {
+            showDialog({
+                type: 'alert',
+                title: 'Atenção',
+                message: "Por favor, selecione o coordenador que autorizou a entrada."
+            });
+            return;
+        }
+
+        if (selectedReasons.length === 0) {
+            showDialog({
+                type: 'alert',
+                title: 'Atenção',
+                message: "Por favor, selecione pelo menos um motivo para o atraso."
+            });
+            return;
+        }
+
         setLoading(true);
         try {
             const now = new Date();
@@ -1200,7 +1219,12 @@ export const GatekeeperDashboard: React.FC = () => {
                                             </button>
                                             <button
                                                 onClick={handleConfirmLateArrival}
-                                                className="flex-[2] h-14 rounded-2xl bg-green-600 text-white font-black uppercase tracking-widest shadow-xl shadow-green-600/20 hover:bg-green-700 transition-all active:scale-95 flex items-center justify-center gap-3"
+                                                disabled={!selectedCoordinatorId || selectedReasons.length === 0}
+                                                className={`flex-[2] h-14 rounded-2xl font-black uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-3 ${
+                                                    (!selectedCoordinatorId || selectedReasons.length === 0)
+                                                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                                                        : 'bg-green-600 text-white shadow-xl shadow-green-600/20 hover:bg-green-700'
+                                                }`}
                                             >
                                                 <CheckCircle size={20} />
                                                 Confirmar Entrada
