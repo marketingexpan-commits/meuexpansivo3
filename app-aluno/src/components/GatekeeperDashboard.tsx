@@ -968,12 +968,12 @@ export const GatekeeperDashboard: React.FC = () => {
             <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${(activeTab === 'calendar' || activeTab === 'lost_found' || activeTab === 'late_arrival') ? 'max-w-5xl' : 'max-w-2xl'}`}>
 
                 {/* MAIN CONTENT */}
-                <main className="flex-1 w-full p-4 md:p-8 bg-gray-50/50 overflow-y-auto">
+                <main className="flex-1 w-full p-2 sm:p-4 md:p-8 bg-gray-50/50 overflow-y-auto">
 
                     {/* Welcome Card / Header */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-6">
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-5 mb-3 sm:mb-6">
                         {/* Top Bar */}
-                        <div className="flex justify-between items-center mb-3 pb-2 border-b border-gray-100">
+                        <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-100">
                             <div className="flex items-center gap-2 text-base text-gray-600">
                                 {activeTab !== 'menu' && (
                                     <button
@@ -1032,7 +1032,7 @@ export const GatekeeperDashboard: React.FC = () => {
                         {/* Logo & Description */}
                         <div className={`flex flex-col transition-all duration-300 ${activeTab === 'late_arrival' && !lateArrivalStudent ? 'items-center text-center' : 'items-start text-left'}`}>
                             {activeTab === 'menu' && (
-                                <div className="flex items-center gap-2 mt-4 mb-6 pl-1">
+                                <div className="flex items-center gap-2 mt-2 mb-4 pl-1">
                                     <div className="h-10 w-auto shrink-0">
                                         <SchoolLogo className="!h-full w-auto" />
                                     </div>
@@ -1132,16 +1132,21 @@ export const GatekeeperDashboard: React.FC = () => {
                     {/* SCANNER VIEW */}
                     {activeTab === 'scanner' && (
                         <div className="animate-in fade-in zoom-in-95 duration-300">
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col items-center">
-                                <h3 className="text-sm font-bold text-gray-800 mb-6 uppercase tracking-wider flex items-center gap-2">
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-10 flex flex-col items-center justify-center min-h-[500px]">
+                                <h3 className="text-sm font-bold text-gray-800 mb-8 uppercase tracking-wider flex items-center gap-2">
                                     <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                                     Aponte para o QR Code (Saída)
                                 </h3>
                                 {/* Container styling for the scanner */}
-                                <div className="rounded-2xl overflow-hidden bg-gray-100 border-2 border-gray-200 aspect-square relative w-full max-w-[300px]">
+                                <div className="rounded-2xl overflow-hidden bg-gray-100 border-2 border-gray-200 aspect-square relative w-full max-w-[400px]">
                                     <div id="reader" className="w-full h-full"></div>
-                                    <div className="absolute inset-0 border-[30px] border-slate-900/5 pointer-events-none rounded-2xl"></div>
+                                    <div className="absolute inset-0 border-[40px] border-slate-900/5 pointer-events-none rounded-2xl"></div>
                                 </div>
+
+                                    <div className="mt-8 flex justify-center items-center h-12 overflow-hidden">
+                                        <SchoolLogo className="!h-12 !w-auto object-contain" />
+                                    </div>
+
                                 <p className="mt-6 text-xs text-gray-400 font-medium text-center">
                                     Mantenha o código centralizado na moldura.
                                 </p>
@@ -1153,15 +1158,20 @@ export const GatekeeperDashboard: React.FC = () => {
                     {activeTab === 'late_arrival' && (
                         <div className="animate-in slide-in-from-bottom-4 fade-in duration-300">
                             {!lateArrivalStudent ? (
-                                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col items-center">
-                                    <h3 className="text-sm font-bold text-gray-800 mb-6 uppercase tracking-wider flex items-center gap-2">
+                                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-10 flex flex-col items-center justify-center min-h-[500px]">
+                                    <h3 className="text-sm font-bold text-gray-800 mb-8 uppercase tracking-wider flex items-center gap-2">
                                         <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
                                         Aproxime o QR da sua carteirinha
                                     </h3>
-                                    <div className="rounded-2xl overflow-hidden bg-gray-100 border-2 border-blue-200 aspect-square relative w-full max-w-[300px]">
+                                    <div className="rounded-2xl overflow-hidden bg-gray-100 border-2 border-blue-200 aspect-square relative w-full max-w-[400px]">
                                         <div id="reader" className="w-full h-full"></div>
-                                        <div className="absolute inset-0 border-[30px] border-slate-900/5 pointer-events-none rounded-2xl"></div>
+                                        <div className="absolute inset-0 border-[40px] border-slate-900/5 pointer-events-none rounded-2xl"></div>
                                     </div>
+                                    
+                                    <div className="mt-8 flex justify-center items-center h-12 overflow-hidden">
+                                        <SchoolLogo className="!h-12 !w-auto object-contain" />
+                                    </div>
+
                                     <p className="mt-6 text-xs text-gray-400 font-medium text-center">
                                         Seu registro de entrada será processado automaticamente.
                                     </p>
