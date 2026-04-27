@@ -5087,7 +5087,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                             <td className="px-6 py-4">
                                                                 <div className="text-sm font-bold text-gray-800">{record.studentName}</div>
                                                                 <div className="text-[10px] text-gray-500 uppercase font-bold tracking-tight">
-                                                                    <span className="text-blue-600">COD: {record.studentCode || '---'}</span> • {record.studentGrade} • Turma {record.studentClass} • {SHIFT_LABELS[record.studentShift as SchoolShift] || record.studentShift}
+                                                                    <span className="text-blue-600">COD: {record.studentCode || record.code || '---'}</span> • {record.studentGrade || record.gradeLevel || '---'} • Turma {record.studentClass || record.schoolClass || '---'} • {SHIFT_LABELS[(record.studentShift || record.shift) as SchoolShift] || (record.studentShift || record.shift) || '---'}
                                                                 </div>
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap">
@@ -5101,7 +5101,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                             <td className="px-6 py-4">
                                                                 <div className="text-sm text-gray-700 font-bold mb-0.5">{record.reason}</div>
                                                                 <div className="text-[10px] text-gray-500 font-medium italic">
-                                                                    {record.type === 'Entrada Tardia' ? 'Informado por: ' : 'Autorizado por: '}<span className="text-gray-700 not-italic font-bold">{record.authorizer}</span> ({record.authorizerRelation})
+                                                                    {record.type === 'Entrada Tardia' ? 'Registrado por: ' : 'Autorizado por: '}<span className="text-gray-700 not-italic font-bold">{record.authorizer}</span> ({record.authorizerRelation})
                                                                 </div>
                                                                 {record.type === 'Entrada Tardia' && record.hasProof && (
                                                                     <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-green-50 text-green-800 border border-green-200 rounded-full text-[9px] font-bold uppercase tracking-wide">

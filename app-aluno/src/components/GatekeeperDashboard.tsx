@@ -765,6 +765,10 @@ export const GatekeeperDashboard: React.FC = () => {
                 coordinatorName: authorName,
                 authorId: selectedCoordinatorId,
                 authorName: authorName,
+                studentGrade: lateArrivalStudent.gradeLevel || '',
+                studentClass: lateArrivalStudent.schoolClass || '',
+                studentShift: lateArrivalStudent.shift || '',
+                studentCode: lateArrivalStudent.code || '',
                 gradeLevel: lateArrivalStudent.gradeLevel || '',
                 schoolClass: lateArrivalStudent.schoolClass || '',
                 shift: lateArrivalStudent.shift || ''
