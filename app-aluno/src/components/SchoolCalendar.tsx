@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { CalendarEvent } from '../types';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Info, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Info, Sparkles, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const stripHtml = (html: string) => {
@@ -338,8 +338,9 @@ export const SchoolCalendar: React.FC<SchoolCalendarProps> = ({ events, academic
                                                     {getEventLabel(ev.type)}
                                                 </span>
                                                 {ev.description && (
-                                                    <span className="flex items-center gap-0.5 text-[9px] font-black text-blue-900 bg-blue-50 px-1.5 py-0.5 rounded uppercase tracking-tighter">
-                                                        <Sparkles className="w-2.5 h-2.5" /> Detalhes
+                                                    <span className={`flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter transition-colors ${expandedEventId === ev.id ? 'bg-blue-100 text-blue-950' : 'bg-blue-50 text-blue-900'}`}>
+                                                        <ChevronDown className={`w-3 h-3 transition-transform duration-300 ${expandedEventId === ev.id ? 'rotate-180' : ''}`} />
+                                                        {expandedEventId === ev.id ? 'Recolher detalhes' : 'Expandir detalhes'}
                                                     </span>
                                                 )}
                                             </div>
