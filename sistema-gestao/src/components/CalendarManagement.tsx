@@ -21,6 +21,14 @@ import { MOCK_CALENDAR_EVENTS, SCHOOL_UNITS_LIST } from '../constants';
 import { Button } from './Button';
 import { X, Plus, Trash2, Calendar as CalendarIcon, Clock, Database, Globe, Edit2, Settings, Save, AlertCircle, Printer } from 'lucide-react';
 import { generateSchoolCalendar } from '../utils/calendarGenerator';
+import { RichTextEditor } from './RichTextEditor';
+
+const stripHtml = (html: string) => {
+    if (!html) return '';
+    const tmp = document.createElement('DIV');
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || '';
+};
 
 interface CalendarManagementProps {
     isOpen: boolean;
@@ -419,7 +427,7 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                                                 Substitui: {event.substituteDayLabel}
                                                             </p>
                                                         )}
-                                                        {event.description && <p className="text-xs text-gray-500 mt-1 line-clamp-1">{event.description}</p>}
+                                                        {event.description && <p className="text-xs text-gray-500 mt-1 line-clamp-1">{stripHtml(event.description)}</p>}
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -711,13 +719,10 @@ export const CalendarManagement: React.FC<CalendarManagementProps> = ({ isOpen, 
                                         )}
 
                                         <div>
-                                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Descrição (Op.)</label>
-                                            <textarea
-                                                rows={3}
-                                                placeholder="Detalhes adicionais..."
-                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-950 resize-none"
-                                                value={editingEvent?.description || ''}
-                                                onChange={e => setEditingEvent({ ...editingEvent, description: e.target.value })}
+                                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Descrição / Detalhes (Op.)</label>
+                                            <RichTextEditor
+                                                content={editingEvent?.description || ''}
+                                                onChange={html => setEditingEvent({ ...editingEvent, description: html })}
                                             />
                                         </div>
 

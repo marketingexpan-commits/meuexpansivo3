@@ -1,6 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { CalendarEvent } from '../types';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Info } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Info, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const stripHtml = (html: string) => {
+    if (!html) return '';
+    const tmp = document.createElement('DIV');
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || '';
+};
 
 interface SchoolCalendarProps {
     events: CalendarEvent[];
@@ -17,6 +25,7 @@ const WEEK_DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 export const SchoolCalendar: React.FC<SchoolCalendarProps> = ({ events, academicSubjects }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<string | null>(new Date().toISOString().split('T')[0]);
+    const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
 
     // Navigation Helpers
     const prevMonth = () => {
@@ -312,40 +321,77 @@ export const SchoolCalendar: React.FC<SchoolCalendarProps> = ({ events, academic
                     <div className="flex-1 overflow-y-auto space-y-3 pr-2">
                         {filteredEvents.length > 0 ? (
                             filteredEvents.map(ev => (
-                                <div key={ev.id} className="group p-4 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all bg-gray-50/50">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <span
-                                            className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded text-white"
-                                            style={{ backgroundColor: getEventColor(ev.type) }}
-                                        >
-                                            {getEventLabel(ev.type)}
-                                        </span>
-                                        {!selectedDate && (
-                                            <span className="text-xs font-bold text-gray-500">
-                                                {new Date(ev.startDate + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                                            </span>
+                                    <div 
+                                        key={ev.id} 
+                                        className={`
+                                            group p-4 rounded-xl border transition-all bg-gray-50/50 cursor-pointer
+                                            ${expandedEventId === ev.id ? 'border-blue-200 shadow-md ring-1 ring-blue-50 bg-white' : 'border-gray-100 hover:border-gray-200 hover:shadow-md'}
+                                        `}
+                                        onClick={() => setExpandedEventId(expandedEventId === ev.id ? null : ev.id)}
+                                    >
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <span
+                                                    className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded text-white"
+                                                    style={{ backgroundColor: getEventColor(ev.type) }}
+                                                >
+                                                    {getEventLabel(ev.type)}
+                                                </span>
+                                                {ev.description && (
+                                                    <span className="flex items-center gap-0.5 text-[9px] font-black text-blue-900 bg-blue-50 px-1.5 py-0.5 rounded uppercase tracking-tighter">
+                                                        <Sparkles className="w-2.5 h-2.5" /> Detalhes
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {!selectedDate && (
+                                                <span className="text-xs font-bold text-gray-500">
+                                                    {new Date(ev.startDate + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <h4 className="font-bold text-gray-800 text-sm mb-1">{ev.title}</h4>
+                                        {ev.targetSubjectIds && ev.targetSubjectIds.length > 0 && academicSubjects && (
+                                            <div className="mb-2">
+                                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-0.5">Disciplina(s):</span>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {ev.targetSubjectIds.map(sid => {
+                                                        const subName = academicSubjects.find(s => s.id === sid)?.name || 'Desconhecida';
+                                                        return (
+                                                            <span key={sid} className="text-[10px] bg-white border border-gray-200 px-1.5 py-0.5 rounded text-gray-600 font-semibold">
+                                                                {subName}
+                                                            </span>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {ev.description && (
+                                            <div className="relative">
+                                                {expandedEventId !== ev.id && (
+                                                    <p className="text-xs text-gray-500 leading-relaxed line-clamp-1 italic">
+                                                        {stripHtml(ev.description)}
+                                                    </p>
+                                                )}
+                                                
+                                                <AnimatePresence>
+                                                    {expandedEventId === ev.id && (
+                                                        <motion.div
+                                                            initial={{ height: 0, opacity: 0 }}
+                                                            animate={{ height: 'auto', opacity: 1 }}
+                                                            exit={{ height: 0, opacity: 0 }}
+                                                            transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                                            className="overflow-hidden"
+                                                        >
+                                                            <div 
+                                                                className="pt-3 mt-3 border-t border-gray-100/50 prose prose-sm max-w-none text-xs text-gray-700 leading-relaxed"
+                                                                dangerouslySetInnerHTML={{ __html: ev.description }}
+                                                            />
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
                                         )}
                                     </div>
-                                    <h4 className="font-bold text-gray-800 text-sm mb-1">{ev.title}</h4>
-                                    {ev.targetSubjectIds && ev.targetSubjectIds.length > 0 && academicSubjects && (
-                                        <div className="mb-2">
-                                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-0.5">Disciplina(s):</span>
-                                            <div className="flex flex-wrap gap-1">
-                                                {ev.targetSubjectIds.map(sid => {
-                                                    const subName = academicSubjects.find(s => s.id === sid)?.name || 'Desconhecida';
-                                                    return (
-                                                        <span key={sid} className="text-[10px] bg-white border border-gray-200 px-1.5 py-0.5 rounded text-gray-600 font-semibold">
-                                                            {subName}
-                                                        </span>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    )}
-                                    {ev.description && (
-                                        <p className="text-xs text-gray-600 leading-relaxed">{ev.description}</p>
-                                    )}
-                                </div>
                             ))
                         ) : (
                             <div className="text-center py-10 text-gray-400">
@@ -364,6 +410,22 @@ export const SchoolCalendar: React.FC<SchoolCalendarProps> = ({ events, academic
                     )}
                 </div>
             </div>
+
+            <style dangerouslySetInnerHTML={{ __html: `
+                .prose p {
+                    margin-top: 0.25em !important;
+                    margin-bottom: 0.25em !important;
+                    line-height: 1.4;
+                }
+                .prose ul, .prose ol {
+                    margin-top: 0.25em !important;
+                    margin-bottom: 0.25em !important;
+                }
+                .prose li p {
+                    margin-top: 0 !important;
+                    margin-bottom: 0 !important;
+                }
+            `}} />
         </div>
     );
 };
