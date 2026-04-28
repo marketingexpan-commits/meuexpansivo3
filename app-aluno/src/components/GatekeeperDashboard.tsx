@@ -29,7 +29,8 @@ import {
     Trash2,
     Plus,
     Maximize,
-    Minimize
+    Minimize,
+    RefreshCw
 } from 'lucide-react';
 import { useLostAndFound } from '../hooks/useLostAndFound';
 import { Dialog } from './Dialog';
@@ -426,6 +427,11 @@ export const GatekeeperDashboard: React.FC = () => {
     const gatekeeperName = localStorage.getItem('gatekeeperName') || 'Portaria';
     const [showNotifications, setShowNotifications] = useState(false); // Placeholder for uniformity
     const [isFullScreen, setIsFullScreen] = useState(false);
+    const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
+
+    const toggleCamera = () => {
+        setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+    };
 
     const toggleFullScreen = () => {
         if (!document.fullscreenElement) {
@@ -723,12 +729,11 @@ export const GatekeeperDashboard: React.FC = () => {
                     html5QrCode = new Html5Qrcode("reader");
                     scannerRef.current = html5QrCode;
 
-                    // Use front camera (user) for late arrival if mounted on wall, 
-                    // and back camera (environment) for student release.
-                    const facingMode = activeTab === 'late_arrival' ? "user" : "environment";
+                    // For late arrival, use the state. For other scanner modes (student release), always use environment.
+                    const selectedFacingMode = activeTab === 'late_arrival' ? facingMode : "environment";
 
                     await html5QrCode.start(
-                        { facingMode: facingMode },
+                        { facingMode: selectedFacingMode },
                         {
                             fps: 10,
                             qrbox: { width: 250, height: 250 },
@@ -755,7 +760,7 @@ export const GatekeeperDashboard: React.FC = () => {
                 }
             };
         }
-    }, [activeTab, !!lateArrivalStudent]); // Only restart if tab changes or lateArrivalStudent toggles null/truthy
+    }, [activeTab, !!lateArrivalStudent, facingMode]); // Only restart if tab changes, lateArrivalStudent toggles null/truthy, or camera changes
 
     const handleConfirmLateArrival = async () => {
         if (!lateArrivalStudent || !unit) return;
@@ -1166,6 +1171,15 @@ export const GatekeeperDashboard: React.FC = () => {
                                     <div className="rounded-2xl overflow-hidden bg-gray-100 border-2 border-blue-200 aspect-square relative w-full max-w-[400px]">
                                         <div id="reader" className="w-full h-full"></div>
                                         <div className="absolute inset-0 border-[40px] border-slate-900/5 pointer-events-none rounded-2xl"></div>
+
+                                        {/* Camera Toggle Button */}
+                                        <button
+                                            onClick={toggleCamera}
+                                            className="absolute bottom-4 right-4 p-3 bg-white/90 backdrop-blur-sm rounded-full text-blue-950 shadow-lg hover:bg-white transition-all active:scale-95 z-10"
+                                            title="Alternar Câmera"
+                                        >
+                                            <RefreshCw className={`w-6 h-6 transition-transform duration-500 ${facingMode === 'user' ? 'rotate-180' : 'rotate-0'}`} />
+                                        </button>
                                     </div>
                                     
                                     <div className="mt-8 flex justify-center items-center h-12 overflow-hidden">
