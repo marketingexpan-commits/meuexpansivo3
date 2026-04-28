@@ -1506,7 +1506,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                         <img
                                                             src={student.photoUrl}
                                                             alt={student.name}
-                                                            className="w-full h-full object-cover"
+                                                            className="w-full h-full object-cover cursor-zoom-in hover:brightness-95 transition-all"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation(); // Evita fechar a carteirinha ao clicar na foto
+                                                                setZoomedPhoto({ url: student.photoUrl!, name: student.name, title: '' });
+                                                            }}
                                                         />
                                                     ) : (
                                                         <div className="w-full h-full flex items-center justify-center text-gray-300">
@@ -1663,7 +1667,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                     <img
                                                         src={student.photoUrl}
                                                         alt={student.name}
-                                                        className="w-16 h-20 object-cover rounded shadow-sm border border-blue-200"
+                                                        className="w-16 h-20 object-cover rounded shadow-sm border border-blue-200 cursor-zoom-in hover:brightness-95 active:scale-95 transition-all"
+                                                        onClick={() => setZoomedPhoto({ url: student.photoUrl!, name: student.name, title: '' })}
                                                     />
                                                 ) : (
                                                     <div className="w-16 h-20 rounded bg-blue-100 flex items-center justify-center text-blue-300 shadow-sm border border-blue-200">
@@ -3523,10 +3528,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 />
                             </div>
 
-                            {/* Informações do Coordenador */}
+                            {/* Informações do Coordenador ou Aluno */}
                             <div className="mt-4 pb-6 px-4 text-center">
                                 <h4 className="font-bold text-gray-800 text-lg leading-tight uppercase tracking-tight">{zoomedPhoto.name}</h4>
-                                <p className="text-xs text-blue-900/60 font-bold uppercase mt-1 tracking-widest">{zoomedPhoto.title}</p>
+                                {zoomedPhoto.title && (
+                                    <p className="text-xs text-blue-900/60 font-bold uppercase mt-1 tracking-widest">{zoomedPhoto.title}</p>
+                                )}
                             </div>
                         </div>
                     </div>
