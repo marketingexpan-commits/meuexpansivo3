@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { Student, GradeEntry, AcademicSubject, CurriculumMatrix, SUBJECT_SHORT_LABELS, UNIT_LABELS, SchoolUnit, SchoolShift, SHIFT_LABELS } from '../types';
 import { SchoolLogo } from './SchoolLogo';
 import { getCurriculumSubjects, SCHOOL_LOGO_URL } from '../constants';
+import { getSubjectShortLabel } from '../utils/subjectUtils';
 import { Printer, FileSpreadsheet } from 'lucide-react';
 
 const A4_W = 794;
@@ -50,32 +51,35 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
     const subjectsToShow = useMemo(() => {
         if (students.length === 0) return [];
 
-        const matrixSubjects = getCurriculumSubjects(selectedGrade, academicSubjects, matrices, unit, selectedShift);
-        const allActiveCount = (academicSubjects || []).filter(s => s.isActive !== false).length;
-
-        let subjects: string[] = [];
-
-        if (matrixSubjects.length > 0 && matrixSubjects.length < allActiveCount) {
-            subjects = matrixSubjects;
-        } else {
-            const subjectSet = new Set<string>();
-            grades.forEach(g => {
-                const bData = g.bimesters?.[bimesterKey];
-                const hasRealNota = bData?.nota !== undefined && bData?.nota !== null;
-                if (g.subject?.startsWith('disc_') && SUBJECT_SHORT_LABELS[g.subject] && hasRealNota) {
-                    subjectSet.add(g.subject);
-                }
-            });
-            subjects = Array.from(subjectSet);
-        }
+        const subjectSet = new Set<string>();
+        grades.forEach(g => {
+            const bData = g.bimesters?.[bimesterKey];
+            const hasRealNota = bData?.nota !== undefined && bData?.nota !== null;
+            if (g.subject && g.subject !== 'general_early_childhood' && g.subject !== 'general_activity' && hasRealNota) {
+                subjectSet.add(g.subject);
+            }
+        });
+        
+        let subjects = Array.from(subjectSet);
 
         if (selectedGrade.includes('9º Ano')) {
             subjects = subjects.filter(id => id !== 'disc_sociologia');
         }
 
         return subjects
-            .filter(id => id.startsWith('disc_') && SUBJECT_SHORT_LABELS[id])
-            .sort((a, b) => Object.keys(SUBJECT_SHORT_LABELS).indexOf(a) - Object.keys(SUBJECT_SHORT_LABELS).indexOf(b));
+            .sort((a, b) => {
+                const sA = academicSubjects?.find(s => s.id === a);
+                const sB = academicSubjects?.find(s => s.id === b);
+                if (sA?.order !== undefined && sB?.order !== undefined) {
+                    return sA.order - sB.order;
+                }
+                const indexA = Object.keys(SUBJECT_SHORT_LABELS).indexOf(a);
+                const indexB = Object.keys(SUBJECT_SHORT_LABELS).indexOf(b);
+                if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                if (indexA !== -1) return -1;
+                if (indexB !== -1) return 1;
+                return a.localeCompare(b);
+            });
     }, [selectedGrade, selectedBimester, academicSubjects, matrices, unit, selectedShift, students, grades, bimesterKey]);
 
     const unitLabel = UNIT_LABELS[unit as SchoolUnit] || unit;
@@ -109,7 +113,7 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
                         <div style="font-size:8px;font-weight:700;color:#334155;margin-top:3px;text-transform:uppercase"><b>${selectedGrade}</b> &nbsp;|&nbsp; <span style="color:#94a3b8">Turma:</span> <b>${selectedClass}</b> &nbsp;|&nbsp; <span style="color:#94a3b8">Turno:</span> <b>${shiftLabel}</b> &nbsp;|&nbsp; <b>${selectedBimester}º Bimestre</b></div>
                     </div>
                 </div>
-                <table><thead><tr><th class="th-code">Cód.</th><th class="th-name">Aluno(a)</th>${subjectsToShow.map((id, idx) => `<th class="subj-th" style="${idx === subjectsToShow.length - 1 ? 'border-right:none' : ''}"><div class="subj-label"><span>${SUBJECT_SHORT_LABELS[id]}</span></div></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
+                <table><thead><tr><th class="th-code">Cód.</th><th class="th-name">Aluno(a)</th>${subjectsToShow.map((id, idx) => `<th class="subj-th" style="${idx === subjectsToShow.length - 1 ? 'border-right:none' : ''}"><div class="subj-label"><span>${getSubjectShortLabel(id, academicSubjects)}</span></div></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
                 ${footer}
             </div>`;
         }).join('');
@@ -319,7 +323,7 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
                                             <th key={id} style={{ width: 30, padding: 0, background: '#f8fafc', borderRight: si < subjectsToShow.length - 1 ? '1px solid #000' : 'none' }}>
                                                 <div style={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                     <span style={{ display: 'inline-block', transform: 'rotate(-90deg)', whiteSpace: 'nowrap', fontSize: 8.5, fontWeight: 900, textTransform: 'uppercase', color: '#1e293b', letterSpacing: '-0.3px' }}>
-                                                        {SUBJECT_SHORT_LABELS[id]}
+                                                        {getSubjectShortLabel(id, academicSubjects)}
                                                     </span>
                                                 </div>
                                             </th>
