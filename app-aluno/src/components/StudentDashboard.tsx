@@ -47,6 +47,9 @@ import {
     X,
     PenTool,
     Music,
+    Trophy,
+    Camera,
+    BookOpen,
     Bell,
     Printer
 } from 'lucide-react';
@@ -54,6 +57,8 @@ import { db } from '../firebaseConfig';
 import StudentMediaGallery from './StudentMediaGallery';
 import { useLostAndFound } from '../hooks/useLostAndFound';
 import { Dialog } from './Dialog';
+import EBooksListView from './EBooksListView';
+import BookReader from './BookReader';
 
 // Simple Info Icon Component for the Modal
 const InfoIcon = ({ className }: { className?: string }) => (
@@ -524,17 +529,20 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState({ title: '', tip: '' });
     const [isLoadingAI, setIsLoadingAI] = useState(false);
-    const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro' | 'tickets' | 'materials' | 'occurrences' | 'calendar' | 'schedule' | 'lost_found' | 'authorizations' | 'music_gallery' | 'announcements'>('menu');
+    const [currentView, setCurrentView] = useState<'menu' | 'grades' | 'attendance' | 'support' | 'messages' | 'early_childhood' | 'financeiro' | 'tickets' | 'materials' | 'occurrences' | 'calendar' | 'schedule' | 'lost_found' | 'authorizations' | 'music_gallery' | 'announcements' | 'e_books' | 'book_reader'>('menu');
     const [zoomedPhoto, setZoomedPhoto] = useState<{ url: string, name: string, title: string } | null>(null);
     const [showIdCard, setShowIdCard] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
 
     // Estado para o sistema de Dúvidas (Tickets) - UI ONLY
     const [ticketModalOpen, setTicketModalOpen] = useState(false);
-    const [selectedTicketSubject, setSelectedTicketSubject] = useState<string>('');
+    const [selectedTicketSubject, setSelectedTicketSubject] = useState<string | null>(null);
     const [ticketMessage, setTicketMessage] = useState('');
     const [isTicketSending, setIsTicketSending] = useState(false);
     const [ticketSuccess, setTicketSuccess] = useState(false);
+
+    // E-Books States
+    const [selectedBook, setSelectedBook] = useState<string | null>(null);
 
     // Occurrences Filter
     const [selectedOccurrenceFilter, setSelectedOccurrenceFilter] = useState<'all' | 'occurrence' | 'access'>('all');
@@ -1799,6 +1807,17 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                     </button>
 
                                     <button
+                                        onClick={() => setCurrentView('e_books')}
+                                        className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                                    >
+                                        <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors">
+                                            <BookOpen className="w-6 h-6 text-blue-950" />
+                                        </div>
+                                        <h3 className="font-bold text-gray-800 text-sm leading-tight text-center">e-Livros Digitais</h3>
+                                        <span className="text-[8px] bg-blue-950 text-white px-1.5 py-0.5 rounded-full font-black uppercase mt-1">Novo</span>
+                                    </button>
+
+                                    <button
                                         onClick={() => setCurrentView('calendar')}
                                         className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
                                     >
@@ -1873,6 +1892,24 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     {currentView === 'music_gallery' && isMediaAuthorized && (
                         <StudentMediaGallery 
                             student={student}
+                        />
+                    )}
+
+                    {currentView === 'e_books' && (
+                        <EBooksListView 
+                            student={student} 
+                            onOpenBook={(bookId) => {
+                                setSelectedBook(bookId);
+                                setCurrentView('book_reader');
+                            }} 
+                        />
+                    )}
+
+                    {currentView === 'book_reader' && selectedBook && (
+                        <BookReader 
+                            bookId={selectedBook} 
+                            student={student}
+                            onBack={() => setCurrentView('e_books')} 
                         />
                     )}
 

@@ -24,7 +24,8 @@ import {
     Globe,
     MessageSquareReply,
     Trophy,
-    Camera
+    Camera,
+    BookOpen
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -308,6 +309,7 @@ function SidebarContent({
             <SidebarItem icon={Database} label="Tabelas" collapsed={collapsed} />
             <SidebarItem icon={Briefcase} label="Utilitários" collapsed={collapsed} />
             <SidebarItem icon={Layers} label="Extras" collapsed={collapsed} />
+            {isAdmin && <SidebarItem icon={BookOpen} label="e-Livros Digitais" path="/config/e-livros" collapsed={collapsed} />}
 
             <div className="my-6 border-t border-slate-100 mx-2"></div>
 

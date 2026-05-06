@@ -17,7 +17,8 @@ service firebase.storage {
           || request.resource.contentType.matches('image/.*')
           || request.resource.contentType.matches('application/vnd.openxmlformats-officedocument.*')
           || request.resource.contentType.matches('application/msword')
-          || request.resource.contentType.matches('text/plain');
+          || request.resource.contentType.matches('text/plain')
+          || request.resource.contentType.matches('audio/.*');
     }
     
     // Materials folder - Allow read/write with size and type validation
@@ -72,6 +73,12 @@ service firebase.storage {
     match /coordinators/photos/{allPaths=**} {
       allow read: if true;
       allow write: if isValidSize();
+    }
+
+    // E-Books folder - Allow read/write with size and type validation
+    match /e_books/{allPaths=**} {
+      allow read: if true;
+      allow write: if isValidSize() && isValidFileType();
     }
 
     // Default rule - deny all other access

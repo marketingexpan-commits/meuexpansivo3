@@ -19,6 +19,7 @@ import { DirectorMessages } from './pages/DirectorMessages';
 import { Porteiros } from './pages/Porteiros';
 import { Fotografos } from './pages/Fotografos';
 import RankingConfig from './pages/RankingConfig';
+import { ELivros } from './pages/ELivros';
 
 
 
@@ -51,6 +52,10 @@ function App() {
           <Route path="/config/porteiros" element={<Porteiros />} />
           <Route path="/config/fotografos" element={<Fotografos />} />
           <Route path="/config/ranking" element={<RankingConfig />} />
+          <Route 
+            path="/config/e-livros" 
+            element={localStorage.getItem('userUnit') === 'admin_geral' ? <ELivros /> : <Navigate to="/dashboard" replace />} 
+          />
 
         </Route>
 
