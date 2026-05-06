@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { BookOpen, Plus, CreditCard, Save, Trash2, Edit3, Image as ImageIcon, CheckCircle2, X, Upload, Loader2, Volume2 } from 'lucide-react';
+import { BookOpen, Plus, CreditCard, Save, Trash2, Edit3, Image as ImageIcon, CheckCircle2, X, Upload, Loader2, Volume2, Eye, EyeOff } from 'lucide-react';
 import { db, storage } from '../firebaseConfig';
 import { collection, addDoc, updateDoc, doc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
@@ -142,7 +142,7 @@ export function ELivros() {
                 title: bookTitle,
                 segment: bookSegment,
                 price: parseFloat(bookPrice) || 0,
-                status: 'Ativo',
+                status: editingBook?.status || 'Ativo',
                 coverUrl: finalCoverUrl,
                 pages: finalPages,
                 updatedAt: serverTimestamp()
@@ -180,6 +180,19 @@ export function ELivros() {
                 console.error("Erro ao excluir livro:", error);
                 alert("Erro ao excluir o livro.");
             }
+        }
+    };
+
+    const handleToggleStatus = async (book: any) => {
+        const newStatus = book.status === 'Ativo' ? 'Inativo' : 'Ativo';
+        try {
+            await updateDoc(doc(db, 'e_books', book.id), {
+                status: newStatus,
+                updatedAt: serverTimestamp()
+            });
+        } catch (error) {
+            console.error("Erro ao alterar status:", error);
+            alert("Erro ao alterar a visibilidade do livro.");
         }
     };
 
@@ -239,13 +252,23 @@ export function ELivros() {
                                 {/* Thumbnail (Proporção Real 3:4) */}
                                 <div className="aspect-[3/4] bg-slate-100 relative overflow-hidden shrink-0 border-b border-slate-100">
                                     {book.coverUrl ? (
-                                        <img src={book.coverUrl} alt={book.title} className="w-full h-full object-cover" />
+                                        <img src={book.coverUrl} alt={book.title} className={`w-full h-full object-cover transition-all duration-500 ${book.status === 'Inativo' ? 'grayscale opacity-50' : ''}`} />
                                     ) : (
                                         <div className="absolute inset-0 flex items-center justify-center text-slate-300">
                                             <ImageIcon size={48} />
                                         </div>
                                     )}
-                                    <div className="absolute top-3 left-3 bg-green-500 text-white text-[10px] font-black px-2.5 py-1 rounded uppercase shadow-sm">Ativo</div>
+                                    <div className={`absolute top-3 left-3 text-white text-[10px] font-black px-2.5 py-1 rounded uppercase shadow-sm z-10 ${book.status === 'Ativo' ? 'bg-green-500' : 'bg-slate-500'}`}>
+                                        {book.status === 'Ativo' ? 'Visível' : 'Oculto'}
+                                    </div>
+                                    
+                                    <button 
+                                        onClick={() => handleToggleStatus(book)}
+                                        className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-md transition-all shadow-lg z-20 ${book.status === 'Ativo' ? 'bg-white/90 text-blue-600 hover:bg-white' : 'bg-slate-900/90 text-white hover:bg-slate-900'}`}
+                                        title={book.status === 'Ativo' ? 'Tornar Invisível para Alunos' : 'Tornar Visível para Alunos'}
+                                    >
+                                        {book.status === 'Ativo' ? <Eye size={16} /> : <EyeOff size={16} />}
+                                    </button>
                                 </div>
                                 
                                 {/* Info (Sem cortes) */}
