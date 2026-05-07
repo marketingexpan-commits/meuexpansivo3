@@ -5,7 +5,7 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Select } from '../components/Select';
 import { StudentForm } from '../components/StudentForm';
-import { Search, Filter, Loader2, Printer, Barcode, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { Search, Filter, Loader2, Printer, Barcode, ShieldAlert, ShieldCheck, User, X } from 'lucide-react';
 import { studentService } from '../services/studentService';
 import type { Student } from '../types';
 import { SCHOOL_SHIFTS, SCHOOL_CLASSES_OPTIONS } from '../utils/academicDefaults';
@@ -39,6 +39,7 @@ export function Matriculas() {
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [zoomedPhoto, setZoomedPhoto] = useState<{ url: string, name: string } | null>(null);
 
 
     // Effect to handle URL actions
@@ -793,9 +794,25 @@ export function Matriculas() {
                                                     {studentsInGroup.sort((a, b) => a.name.localeCompare(b.name)).map((student) => (
                                                         <tr key={student.id} className="bg-white hover:bg-slate-50 transition-colors">
                                                             <td className="px-6 py-3 font-medium text-slate-900 whitespace-nowrap">
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-sm font-semibold">{student.name}</span>
-                                                                    <span className="text-[11px] text-slate-400">{student.cpf_aluno || 'CPF não inf.'}</span>
+                                                                <div className="flex items-center gap-3">
+                                                                    <div 
+                                                                        className="w-10 h-[50px] rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center cursor-pointer hover:border-blue-300 hover:shadow-sm transition-all group"
+                                                                        onClick={() => student.photoUrl && setZoomedPhoto({ url: student.photoUrl, name: student.name })}
+                                                                    >
+                                                                        {student.photoUrl ? (
+                                                                            <img 
+                                                                                src={student.photoUrl} 
+                                                                                alt={student.name} 
+                                                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" 
+                                                                            />
+                                                                        ) : (
+                                                                            <User className="w-5 h-5 text-slate-300" />
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex flex-col">
+                                                                        <span className="text-sm font-semibold">{student.name}</span>
+                                                                        <span className="text-[11px] text-slate-400">{student.cpf_aluno || 'CPF não inf.'}</span>
+                                                                    </div>
                                                                 </div>
                                                             </td>
                                                             <td className="px-6 py-3 text-xs font-mono text-slate-600">{student.code || '-'}</td>
@@ -891,6 +908,42 @@ export function Matriculas() {
                     </div>
                 )
             }
+
+            {/* Modal de Zoom da Foto */}
+            {zoomedPhoto && (
+                <div 
+                    className="fixed inset-0 z-[999] flex items-center justify-center p-4 animate-in fade-in duration-200"
+                    onClick={() => setZoomedPhoto(null)}
+                >
+                    <div className="absolute inset-0 bg-blue-950/40 backdrop-blur-sm"></div>
+                    
+                    <div 
+                        className="relative bg-white rounded-3xl shadow-2xl overflow-hidden max-w-[400px] w-full animate-in zoom-in-95 duration-200"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="absolute top-4 right-4 z-10">
+                            <button 
+                                onClick={() => setZoomedPhoto(null)}
+                                className="w-10 h-10 rounded-full bg-white/90 backdrop-blur shadow-lg flex items-center justify-center text-slate-800 hover:bg-white hover:scale-110 transition-all"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        <div className="aspect-[3/4] w-full bg-slate-50 flex items-center justify-center">
+                            <img 
+                                src={zoomedPhoto.url} 
+                                alt={zoomedPhoto.name}
+                                className="w-full h-full object-cover"
+                            />
+                        </div>
+                        
+                        <div className="p-6 bg-white border-t border-slate-100 text-center">
+                            <h4 className="font-bold text-blue-950 text-lg leading-tight uppercase tracking-tight">{zoomedPhoto.name}</h4>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 }
