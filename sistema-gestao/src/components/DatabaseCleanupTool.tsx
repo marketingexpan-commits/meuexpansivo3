@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { db } from '../firebaseConfig';
 import { collection, getDocs, query, where, doc as firebaseDoc, setDoc, getDoc, limit, deleteDoc } from 'firebase/firestore';
 import { Button } from './Button';
+import { Input } from './Input';
 import { pedagogicalService } from '../services/pedagogicalService';
 import { studentService } from '../services/studentService';
 import { Loader2, ShieldCheck, Search, X, Trash2, AlertTriangle, Database, Zap, Calendar, Bug, Layers } from 'lucide-react';
@@ -55,7 +56,7 @@ interface DuplicateGrade {
     }[];
 }
 
-type Mode = 'SYNC_ABSENCES' | 'GHOST_GRADES' | 'GHOST_SCHEDULES' | 'GLOBAL_RESET' | 'NORMALIZE_IDS' | 'MIGRATE_UNITS' | 'DEBUG_INSPECTOR' | 'DEDUPLICATE_SUBJECTS' | 'MIGRATE_MATRIX';
+type Mode = 'SYNC_ABSENCES' | 'GHOST_GRADES' | 'GHOST_SCHEDULES' | 'GLOBAL_RESET' | 'NORMALIZE_IDS' | 'MIGRATE_UNITS' | 'DEBUG_INSPECTOR' | 'DEDUPLICATE_SUBJECTS' | 'MIGRATE_MATRIX' | 'MANUAL_FIX';
 
 
 export const DatabaseCleanupTool = () => {
@@ -77,6 +78,8 @@ export const DatabaseCleanupTool = () => {
     const [unitMigrationStats, setUnitMigrationStats] = useState<{ collection: string; count: number }[]>([]);
     const [duplicateGrades, setDuplicateGrades] = useState<DuplicateGrade[]>([]);
     const [selectedDuplicates, setSelectedDuplicates] = useState<string[]>([]);
+    const [manualSearchTerm, setManualSearchTerm] = useState('');
+    const [foundGrades, setFoundGrades] = useState<any[]>([]);
 
     // Filters & Context
     const { grades: allGradesList, subjects, matrices } = useAcademicData();
@@ -207,6 +210,57 @@ export const DatabaseCleanupTool = () => {
 
         if (shiftStr.startsWith('shift_')) return shiftStr;
         return `ACIONE O SUPORTE (${shiftStr})`;
+    };
+
+    const searchStudentGrades = async () => {
+        if (!manualSearchTerm) return;
+        setLoading(true);
+        setFoundGrades([]);
+        try {
+            // Find Student first
+            const sq = query(collection(db, 'students'), where('code', '==', manualSearchTerm));
+            const sSnap = await getDocs(sq);
+            
+            let studentId = '';
+            if (!sSnap.empty) {
+                studentId = sSnap.docs[0].id;
+            } else {
+                // Try search by name
+                const sq2 = query(collection(db, 'students'), where('name', '>=', manualSearchTerm.toUpperCase()), limit(10));
+                const sSnap2 = await getDocs(sq2);
+                if (sSnap2.empty) {
+                    alert("Aluno não encontrado.");
+                    setLoading(false);
+                    return;
+                }
+                studentId = sSnap2.docs[0].id; // Take first match
+            }
+
+            const q = query(collection(db, 'grades'), where('studentId', '==', studentId));
+            const snap = await getDocs(q);
+            const results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            setFoundGrades(results);
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao buscar notas.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const deleteSpecificGrade = async (gradeId: string, subject: string) => {
+        if (!confirm(`TEM CERTEZA que deseja apagar permanentemente o registro de nota da disciplina ${subject}?\n\nEsta ação não pode ser desfeita.`)) return;
+        setLoading(true);
+        try {
+            await deleteDoc(firebaseDoc(db, 'grades', gradeId));
+            setFoundGrades(prev => prev.filter(g => g.id !== gradeId));
+            alert("Nota excluída com sucesso!");
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao excluir nota.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     if (!isAdminGeral) return null;
@@ -1359,6 +1413,7 @@ export const DatabaseCleanupTool = () => {
                 <div className="px-6 py-2 bg-slate-50 border-b border-slate-100 flex gap-2 overflow-x-auto shrink-0 no-scrollbar">
                     {[
                         { id: 'SYNC_ABSENCES', label: 'Sincronizar Faltas', icon: ShieldCheck },
+                        { id: 'MANUAL_FIX', label: 'Correção Manual', icon: Trash2 },
                         { id: 'MIGRATE_UNITS', label: 'Migrar Unidades', icon: Database },
                         { id: 'MIGRATE_MATRIX', label: 'Migrar Matriz', icon: Layers },
                         { id: 'NORMALIZE_IDS', label: 'Normalizar IDs', icon: Zap },
@@ -2276,6 +2331,68 @@ export const DatabaseCleanupTool = () => {
                                     {loading ? <Loader2 className="animate-spin mr-2" /> : <Database className="mr-2" />}
                                     Zerar Todo o Banco de Dados
                                 </Button>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'MANUAL_FIX' && (
+                        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-6">
+                                <h4 className="font-bold text-slate-800 mb-2">Remoção de Notas Específicas</h4>
+                                <p className="text-sm text-slate-500 mb-6 font-medium">Use esta ferramenta para localizar e apagar notas de um aluno específico, como no caso de "notas fantasmas".</p>
+                                
+                                <div className="flex gap-3 mb-6">
+                                    <Input 
+                                        placeholder="Digite o CÓDIGO ou NOME do aluno..."
+                                        value={manualSearchTerm}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setManualSearchTerm(e.target.value)}
+                                        className="flex-1"
+                                    />
+                                    <Button onClick={searchStudentGrades} disabled={loading} className="bg-blue-950">
+                                        {loading ? <Loader2 className="animate-spin" /> : <Search className="w-4 h-4" />}
+                                        Buscar
+                                    </Button>
+                                </div>
+
+                                {foundGrades.length > 0 && (
+                                    <div className="border rounded-xl overflow-hidden">
+                                        <table className="w-full text-left text-xs">
+                                            <thead className="bg-slate-50">
+                                                <tr>
+                                                    <th className="p-3">Disciplina</th>
+                                                    <th className="p-3">Ano</th>
+                                                    <th className="p-3 text-center">B1</th>
+                                                    <th className="p-3 text-center">B2</th>
+                                                    <th className="p-3 text-center">B3</th>
+                                                    <th className="p-3 text-center">B4</th>
+                                                    <th className="p-3 text-right">Ação</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y">
+                                                {foundGrades.sort((a, b) => a.subject.localeCompare(b.subject)).map(g => (
+                                                    <tr key={g.id} className="hover:bg-slate-50">
+                                                        <td className="p-3 font-bold text-slate-700">{SUBJECT_LABELS[g.subject as Subject] || g.subject}</td>
+                                                        <td className="p-3 text-slate-500 font-mono">{g.year}</td>
+                                                        <td className="p-3 text-center font-bold">{g.bimesters?.bimester1?.nota ?? '-'}</td>
+                                                        <td className="p-3 text-center font-bold">{g.bimesters?.bimester2?.nota ?? '-'}</td>
+                                                        <td className="p-3 text-center font-bold">{g.bimesters?.bimester3?.nota ?? '-'}</td>
+                                                        <td className="p-3 text-center font-bold">{g.bimesters?.bimester4?.nota ?? '-'}</td>
+                                                        <td className="p-3 text-right">
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="sm" 
+                                                                onClick={() => deleteSpecificGrade(g.id, g.subject)}
+                                                                className="text-red-500 hover:bg-red-50 h-8 w-8 p-0"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </Button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
