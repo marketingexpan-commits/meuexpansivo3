@@ -98,7 +98,7 @@ export function ELivros() {
         const loadedPages = (book?.pages || []).map((p: any) => ({
             ...p,
             audioUrl: p.audioUrl || '',
-            question: p.question || { text: '', options: ['', '', ''], correctIndex: 0, position: { x: 50, y: 50 }, style: 'card' }
+            question: p.question || { text: '', options: ['', '', '', ''], correctIndex: 0, position: { x: 50, y: 50 }, style: 'card' }
         }));
         
         setPages(loadedPages);
@@ -139,7 +139,7 @@ export function ELivros() {
             pdfDescription: '',
             question: {
                 text: '',
-                options: ['', '', ''],
+                options: ['', '', '', ''],
                 correctIndex: 0
             }
         };
@@ -149,7 +149,7 @@ export function ELivros() {
     const updatePageQuestion = (pageId: number, field: string, value: any) => {
         setPages(pages.map(p => {
             if (p.id !== pageId) return p;
-            const q = p.question || { text: '', options: ['', '', ''], correctIndex: 0, position: { x: 50, y: 50 }, style: 'card' };
+            const q = p.question || { text: '', options: ['', '', '', ''], correctIndex: 0, position: { x: 50, y: 50 }, style: 'card' };
             if (field === 'text') q.text = value;
             if (field === 'correctIndex') q.correctIndex = value;
             if (field === 'position') q.position = value;
@@ -1142,7 +1142,7 @@ export function ELivros() {
                                                                     </div>
 
                                                                     <div className="space-y-3">
-                                                                        {[0, 1, 2].map(optIdx => (
+                                                                        {[0, 1, 2, 3].map(optIdx => (
                                                                             <div key={optIdx} className="relative">
                                                                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Opção {optIdx + 1}</label>
                                                                                 <div className="flex items-center gap-2">
