@@ -1357,7 +1357,7 @@ export function ELivros() {
                                                                                                 >
                                                                                                     {['A', 'B', 'C', 'D'][optIdx]}
                                                                                                 </div>
-                                                                                                <div className="truncate flex-1 font-bold">{q.options[optIdx] || '...'}</div>
+                                                                                                <div className="line-clamp-2 flex-1 font-bold whitespace-normal leading-none break-words">{q.options[optIdx] || '...'}</div>
                                                                                                 {isAc && <div className="absolute inset-0 border border-orange-500 rounded-[3px] animate-pulse" />}
                                                                                             </div>
                                                                                         );
