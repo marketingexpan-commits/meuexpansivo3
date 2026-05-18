@@ -155,6 +155,7 @@ const BookReader: React.FC<BookReaderProps> = ({ bookId, student, onBack }) => {
                     studentId,
                     studentName: studentName || 'Estudante',
                     studentGrade: student.gradeLevel || 'Série Não Informada',
+                    studentUnit: student.unit || 'unit_zn',
                     bookId,
                     bookTitle: book.title,
                     pagesRead: Array.from(pagesRead),

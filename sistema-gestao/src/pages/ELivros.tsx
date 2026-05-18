@@ -4,6 +4,7 @@ import { db, storage } from '../firebaseConfig';
 import { collection, addDoc, updateDoc, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { ACADEMIC_SEGMENTS } from '../utils/academicDefaults';
+import { UNIT_LABELS, SchoolUnit } from '../types';
 
 export function ELivros() {
     const [activeTab, setActiveTab] = useState<'books' | 'config' | 'dashboard'>('books');
@@ -23,6 +24,8 @@ export function ELivros() {
     const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [segmentFilter, setSegmentFilter] = useState('all');
+    const [unitFilter, setUnitFilter] = useState('all');
+    const [studentsMap, setStudentsMap] = useState<Record<string, any>>({});
     const [dashboardSubTab, setDashboardSubTab] = useState<'accesses' | 'purchases'>('accesses');
 
     // Asaas Config States
@@ -75,9 +78,21 @@ export function ELivros() {
             setIsLoadingDashboard(false);
         });
 
+        // Fetch students data from Firestore to match units
+        const unsubscribeStudents = onSnapshot(collection(db, 'students'), (snapshot) => {
+            const map: Record<string, any> = {};
+            snapshot.docs.forEach(doc => {
+                map[doc.id] = doc.data();
+            });
+            setStudentsMap(map);
+        }, (error) => {
+            console.error("Erro ao carregar alunos:", error);
+        });
+
         return () => {
             unsubscribeProgress();
             unsubscribePurchases();
+            unsubscribeStudents();
         };
     }, [activeTab]);
 
@@ -367,8 +382,11 @@ export function ELivros() {
                               bookTitle.toLowerCase().includes(searchQuery.toLowerCase());
                               
         const matchesSegment = matchesSegmentFilter(p.studentGrade || '');
+        
+        const studentUnit = p.studentUnit || studentsMap[p.studentId]?.unit || '';
+        const matchesUnit = unitFilter === 'all' || studentUnit === unitFilter;
             
-        return matchesSearch && matchesSegment;
+        return matchesSearch && matchesSegment && matchesUnit;
     });
 
     const filteredPurchases = purchasesList.filter(p => {
@@ -378,8 +396,11 @@ export function ELivros() {
                               bookTitle.toLowerCase().includes(searchQuery.toLowerCase());
                               
         const matchesSegment = matchesSegmentFilter(p.studentGrade || '');
+        
+        const studentUnit = p.studentUnit || studentsMap[p.studentId]?.unit || '';
+        const matchesUnit = unitFilter === 'all' || studentUnit === unitFilter;
             
-        return matchesSearch && matchesSegment;
+        return matchesSearch && matchesSegment && matchesUnit;
     });
 
     return (
@@ -675,6 +696,21 @@ export function ELivros() {
                                             />
                                         </div>
 
+                                        {/* Unit Filter */}
+                                        <div className="relative flex items-center">
+                                            <span className="absolute left-3 text-slate-400 pointer-events-none"><Filter size={14} /></span>
+                                            <select 
+                                                value={unitFilter}
+                                                onChange={(e) => setUnitFilter(e.target.value)}
+                                                className="pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="all">Todas as Unidades</option>
+                                                {Object.entries(UNIT_LABELS).map(([code, label]) => (
+                                                    <option key={code} value={code}>Unidade {label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
                                         {/* Segment Filter */}
                                         <div className="relative flex items-center">
                                             <span className="absolute left-3 text-slate-400 pointer-events-none"><Filter size={14} /></span>
@@ -701,6 +737,7 @@ export function ELivros() {
                                                 <tr className="bg-slate-50 border-b border-slate-100">
                                                     <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px]">Aluno</th>
                                                     <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px]">Série / Segmento</th>
+                                                    <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px]">Unidade</th>
                                                     <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px]">e-Livro Lido</th>
                                                     <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px] text-center">Progresso</th>
                                                     <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px] text-center">Status</th>
@@ -710,7 +747,7 @@ export function ELivros() {
                                             <tbody className="divide-y divide-slate-100 bg-white">
                                                 {filteredProgress.length === 0 ? (
                                                     <tr>
-                                                        <td colSpan={6} className="p-8 text-center text-slate-400 italic">
+                                                        <td colSpan={7} className="p-8 text-center text-slate-400 italic">
                                                             Nenhum registro de leitura encontrado com os filtros selecionados.
                                                         </td>
                                                     </tr>
@@ -725,6 +762,14 @@ export function ELivros() {
                                                         <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
                                                             <td className="p-4 font-bold text-slate-800">{p.studentName || 'Estudante'}</td>
                                                             <td className="p-4 font-medium text-slate-500">{p.studentGrade || 'Série Não Informada'}</td>
+                                                            <td className="p-4">
+                                                                <span className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded uppercase tracking-wider">
+                                                                    {(() => {
+                                                                        const studentUnit = p.studentUnit || studentsMap[p.studentId]?.unit;
+                                                                        return studentUnit ? (UNIT_LABELS[studentUnit as SchoolUnit] || studentUnit) : 'Zona Norte';
+                                                                    })()}
+                                                                </span>
+                                                            </td>
                                                             <td className="p-4 font-bold text-slate-900">{p.bookTitle}</td>
                                                             <td className="p-4">
                                                                 <div className="flex items-center justify-center gap-3">
@@ -764,6 +809,7 @@ export function ELivros() {
                                                 <tr className="bg-slate-50 border-b border-slate-100">
                                                     <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px]">Aluno</th>
                                                     <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px]">Série / Segmento</th>
+                                                    <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px]">Unidade</th>
                                                     <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px]">e-Livro Adquirido</th>
                                                     <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px] text-center">Valor Pago</th>
                                                     <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px] text-center">Método</th>
@@ -774,7 +820,7 @@ export function ELivros() {
                                             <tbody className="divide-y divide-slate-100 bg-white">
                                                 {filteredPurchases.length === 0 ? (
                                                     <tr>
-                                                        <td colSpan={7} className="p-8 text-center text-slate-400 italic">
+                                                        <td colSpan={8} className="p-8 text-center text-slate-400 italic">
                                                             Nenhum registro de venda encontrado com os filtros selecionados.
                                                         </td>
                                                     </tr>
@@ -789,6 +835,14 @@ export function ELivros() {
                                                         <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
                                                             <td className="p-4 font-bold text-slate-800">{p.studentName || 'Estudante'}</td>
                                                             <td className="p-4 font-medium text-slate-500">{p.studentGrade || 'Série Não Informada'}</td>
+                                                            <td className="p-4">
+                                                                <span className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded uppercase tracking-wider">
+                                                                    {(() => {
+                                                                        const studentUnit = p.studentUnit || studentsMap[p.studentId]?.unit;
+                                                                        return studentUnit ? (UNIT_LABELS[studentUnit as SchoolUnit] || studentUnit) : 'Zona Norte';
+                                                                    })()}
+                                                                </span>
+                                                            </td>
                                                             <td className="p-4 font-bold text-slate-900">{p.bookTitle}</td>
                                                             <td className="p-4 text-center font-extrabold text-orange-500">
                                                                 R$ {(p.price || 0).toFixed(2)}
