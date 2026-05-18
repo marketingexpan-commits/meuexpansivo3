@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Lock, ChevronRight, Loader2, ShoppingCart, Trash2, X, QrCode, Award } from 'lucide-react';
+import { BookOpen, Lock, ChevronRight, Loader2, ShoppingCart, Trash2, X, QrCode, Award, Check, Copy } from 'lucide-react';
 import { Student } from '../types';
 import { db } from '../firebaseConfig';
 import { ACADEMIC_GRADES, ACADEMIC_SEGMENTS } from '../utils/academicDefaults';
@@ -23,6 +23,15 @@ const EBooksListView: React.FC<EBooksListViewProps> = ({ student, onOpenBook }) 
         }
     });
     const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
+    const [purchasedBookIds, setPurchasedBookIds] = useState<Set<string>>(new Set());
+    const [showPixSimulator, setShowPixSimulator] = useState(false);
+    const [isPaying, setIsPaying] = useState(false);
+    const [paymentSuccess, setPaymentSuccess] = useState(false);
+    const [copiedKey, setCopiedKey] = useState(false);
+    const [pixPayload, setPixPayload] = useState<string | null>(null);
+    const [pixEncodedImage, setPixEncodedImage] = useState<string | null>(null);
+    const [isGeneratingPix, setIsGeneratingPix] = useState(false);
+    const [pixError, setPixError] = useState<string | null>(null);
 
     // Sincroniza o carrinho com o localStorage sempre que mudar
     useEffect(() => {
@@ -30,6 +39,92 @@ const EBooksListView: React.FC<EBooksListViewProps> = ({ student, onOpenBook }) 
             localStorage.setItem(`expansivo_cart_${student.id}`, JSON.stringify(cartItems));
         }
     }, [cartItems, student?.id]);
+
+    useEffect(() => {
+        if (!student?.id) return;
+
+        const unsubscribePurchases = db.collection('ebook_purchases')
+            .where('studentId', '==', student.id)
+            .onSnapshot((snapshot) => {
+                const ids = new Set<string>();
+                snapshot.docs.forEach(doc => {
+                    ids.add(doc.data().bookId);
+                });
+                setPurchasedBookIds(ids);
+            }, (error) => {
+                console.error("Erro ao carregar compras:", error);
+            });
+
+        return () => unsubscribePurchases();
+    }, [student?.id]);
+
+    // Monitora a liberação dos livros no Firestore para confirmar o pagamento em tempo real
+    useEffect(() => {
+        if (showPixSimulator && cartItems.length > 0) {
+            const allItemsPurchased = cartItems.every(item => purchasedBookIds.has(item.id));
+            if (allItemsPurchased) {
+                setPaymentSuccess(true);
+                setCartItems([]);
+                
+                // Fecha o modal e limpa o estado de sucesso após 3 segundos
+                const timer = setTimeout(() => {
+                    setShowPixSimulator(false);
+                    setIsCheckoutModalOpen(false);
+                    setPaymentSuccess(false);
+                    setPixPayload(null);
+                    setPixEncodedImage(null);
+                }, 3000);
+
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [purchasedBookIds, showPixSimulator, cartItems]);
+
+    const handleGeneratePixPayment = async () => {
+        setIsGeneratingPix(true);
+        setPixError(null);
+        setPixPayload(null);
+        setPixEncodedImage(null);
+        setShowPixSimulator(true);
+
+        try {
+            const bookIds = cartItems.map(item => item.id).join('-');
+            const bookTitle = cartItems.map(item => item.title).join(', ');
+
+            const response = await fetch('https://us-central1-meu-expansivo-app.cloudfunctions.net/criarCobrancaPixEbook', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    studentId: student.id,
+                    studentName: student.name,
+                    studentGrade: student.gradeLevel || '',
+                    bookId: bookIds,
+                    bookTitle: bookTitle,
+                    price: cartTotal
+                })
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error || 'Erro ao gerar cobrança PIX');
+            }
+
+            const data = await response.json();
+            if (data.success) {
+                setPixPayload(data.payload);
+                setPixEncodedImage(data.encodedImage);
+            } else {
+                throw new Error('Falha ao processar resposta do Asaas');
+            }
+        } catch (e: any) {
+            console.error("Erro ao gerar PIX do Asaas:", e);
+            setPixError(e.message || "Não foi possível gerar o código PIX. Verifique se o Asaas está configurado no painel de Gestão.");
+        } finally {
+            setIsGeneratingPix(false);
+        }
+    };
 
     useEffect(() => {
         if (!student?.id) return;
@@ -117,21 +212,24 @@ const EBooksListView: React.FC<EBooksListViewProps> = ({ student, onOpenBook }) 
                     </div>
                 ) : books.map((book) => {
                     const isFree = book.price === 0;
+                    const isPurchased = purchasedBookIds.has(book.id);
+                    const hasAccess = isFree || isPurchased;
                     const isInCart = cartItems.some(item => item.id === book.id);
 
                     return (
-                        <div key={book.id} className={`bg-white rounded-2xl shadow-lg overflow-hidden border-2 group hover:shadow-xl transition-all ${isFree ? 'cursor-pointer' : ''} flex flex-col ${isInCart ? 'border-blue-600 ring-4 ring-blue-600/20' : 'border-gray-100'}`} 
+                        <div key={book.id} className={`bg-white rounded-2xl shadow-lg overflow-hidden border-2 group hover:shadow-xl transition-all ${hasAccess ? 'cursor-pointer' : ''} flex flex-col ${isInCart ? 'border-blue-600 ring-4 ring-blue-600/20' : 'border-gray-100'}`} 
                             onClick={() => {
-                                if (isFree) {
+                                if (hasAccess) {
                                     onOpenBook(book.id);
                                 }
                             }}
-                        >                            <div className="aspect-[3/4] bg-slate-100 relative overflow-hidden shrink-0">
+                        >
+                            <div className="aspect-[3/4] bg-slate-100 relative overflow-hidden shrink-0">
                                 {book.coverUrl ? (
                                     <img src={book.coverUrl} alt={book.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                                 ) : (
                                     <div className="absolute inset-0 flex items-center justify-center">
-                                        {isFree ? <BookOpen size={48} className="text-blue-200" /> : <Lock size={48} className="text-blue-200" />}
+                                        {hasAccess ? <BookOpen size={48} className="text-blue-200" /> : <Lock size={48} className="text-blue-200" />}
                                     </div>
                                 )}
                                 {isInCart && (
@@ -170,21 +268,28 @@ const EBooksListView: React.FC<EBooksListViewProps> = ({ student, onOpenBook }) 
                                 <p className="text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-2">
                                     {Object.values(ACADEMIC_SEGMENTS).find(s => s.id === book.segment)?.label || book.segment}
                                 </p>
-                                <span className="text-sm font-black text-blue-900 italic mb-4">{isFree ? 'Grátis' : `R$ ${book.price.toFixed(2)}`}</span>
+                                
+                                {isFree ? (
+                                    <span className="text-sm font-black text-blue-900 italic mb-4">Grátis</span>
+                                ) : isPurchased ? (
+                                    <span className="text-xs font-black text-green-600 bg-green-50 px-2.5 py-1 rounded-lg border border-green-200/50 mb-4 self-start">Adquirido</span>
+                                ) : (
+                                    <span className="text-sm font-black text-orange-500 italic mb-4">R$ {book.price.toFixed(2)}</span>
+                                )}
                                 
                                 <button 
                                     onClick={(e) => {
-                                        if (!isFree) {
+                                        if (!hasAccess) {
                                             e.stopPropagation();
                                             toggleCartItem(book);
                                         }
                                     }}
                                     className={`mt-auto w-full py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2
-                                    ${isFree ? 'bg-blue-900 text-white hover:bg-black shadow-md shadow-blue-900/20' : 
+                                    ${hasAccess ? 'bg-blue-900 text-white hover:bg-black shadow-md shadow-blue-900/20' : 
                                       isInCart ? 'bg-white text-blue-900 hover:bg-blue-50 border border-blue-400 shadow-sm' : 
                                       'bg-blue-900 text-white hover:bg-black shadow-md shadow-blue-900/20'}`}
                                 >
-                                    {isFree ? (
+                                    {hasAccess ? (
                                         progressData[book.id]?.completed ? <><BookOpen size={16} /> Reler</> : <><BookOpen size={16} /> Ler Agora</>
                                     ) : isInCart ? (
                                         <><Trash2 size={16} /> Remover</>
@@ -230,8 +335,6 @@ const EBooksListView: React.FC<EBooksListViewProps> = ({ student, onOpenBook }) 
                     </div>
                 </div>
             )}
-
-
 
             {/* Checkout Modal */}
             {isCheckoutModalOpen && (
@@ -300,15 +403,138 @@ const EBooksListView: React.FC<EBooksListViewProps> = ({ student, onOpenBook }) 
                                 <span className="text-3xl font-black text-gray-900">R$ {cartTotal.toFixed(2)}</span>
                             </div>
                             <button 
-                                onClick={() => {
-                                    alert("Integração de Pagamento Asaas em andamento.\n\nUm PIX no valor de R$ " + cartTotal.toFixed(2) + " será gerado para liberar o acesso aos livros selecionados.\n\nNota: O carrinho só será esvaziado quando o sistema confirmar o pagamento.");
-                                    setIsCheckoutModalOpen(false);
-                                }}
+                                onClick={handleGeneratePixPayment}
                                 className="w-full bg-blue-900 hover:bg-blue-950 text-white py-4 rounded-xl font-black transition-colors flex items-center justify-center gap-3 shadow-xl shadow-blue-900/20 active:scale-[0.98] text-lg"
                             >
                                 <QrCode size={24} />
                                 Gerar PIX e Comprar
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* PIX Payment Modal */}
+            {showPixSimulator && (
+                <div className="fixed inset-0 z-[130] bg-black/70 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+                    <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-zoom-in border border-slate-100">
+                        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                                <QrCode size={20} className="text-blue-900" />
+                                Pagamento via PIX
+                            </h2>
+                            <button 
+                                onClick={() => {
+                                    if (!isPaying && !paymentSuccess) {
+                                        setShowPixSimulator(false);
+                                    }
+                                }} 
+                                disabled={isPaying || paymentSuccess}
+                                className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400 disabled:opacity-30"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 text-center flex-1 space-y-6">
+                            {paymentSuccess ? (
+                                <div className="py-8 flex flex-col items-center justify-center space-y-4 animate-in zoom-in-95 duration-500">
+                                    <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center shadow-lg shadow-green-100/50 border-4 border-green-200 animate-bounce">
+                                        <Award size={40} className="stroke-[2.5]" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-black text-green-700">Pagamento Aprovado!</h3>
+                                        <p className="text-xs text-slate-500 mt-1.5 font-medium max-w-[280px] mx-auto leading-relaxed">
+                                            Seu pagamento foi compensado pelo Asaas e seus livros digitais já estão disponíveis para leitura.
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Valor do PIX</p>
+                                        <p className="text-4xl font-black text-slate-800">R$ {cartTotal.toFixed(2)}</p>
+                                    </div>
+
+                                    {isGeneratingPix ? (
+                                        <div className="py-12 flex flex-col items-center justify-center space-y-3">
+                                            <Loader2 size={40} className="animate-spin text-blue-900" />
+                                            <span className="text-xs font-bold text-slate-500">Gerando cobrança PIX no Asaas...</span>
+                                        </div>
+                                    ) : pixError ? (
+                                        <div className="p-5 bg-red-50 border border-red-100 rounded-2xl text-left space-y-2">
+                                            <p className="text-xs font-bold text-red-800 flex items-center gap-2">
+                                                Ocorreu um erro
+                                            </p>
+                                            <p className="text-[11px] text-red-600 leading-relaxed">{pixError}</p>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {/* Real QR Code */}
+                                            <div className="relative w-48 h-48 mx-auto bg-slate-50 rounded-3xl p-4 border-2 border-slate-100 shadow-inner flex items-center justify-center overflow-hidden group">
+                                                {pixEncodedImage ? (
+                                                     <img 
+                                                         src={`data:image/png;base64,${pixEncodedImage}`} 
+                                                         alt="QR Code PIX Asaas" 
+                                                         className="w-full h-full object-contain animate-in zoom-in duration-300"
+                                                     />
+                                                ) : (
+                                                    <QrCode size={140} className="text-slate-300" />
+                                                )}
+                                                <div className="absolute inset-0 border-2 border-dashed border-blue-600/30 rounded-[1.25rem] animate-spin [animation-duration:15s] pointer-events-none" />
+                                            </div>
+
+                                            {/* Copy & Paste Code */}
+                                            <div className="space-y-1.5 text-left">
+                                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">PIX Copia e Cola</label>
+                                                <div className="flex gap-2">
+                                                    <input 
+                                                        type="text" 
+                                                        readOnly 
+                                                        value={pixPayload || 'Carregando chave PIX...'}
+                                                        className="flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 font-mono text-[9px] focus:outline-none overflow-x-auto whitespace-nowrap"
+                                                    />
+                                                    <button 
+                                                        disabled={!pixPayload}
+                                                        onClick={() => {
+                                                            if (pixPayload) {
+                                                                navigator.clipboard.writeText(pixPayload);
+                                                                setCopiedKey(true);
+                                                                setTimeout(() => setCopiedKey(false), 2000);
+                                                            }
+                                                        }}
+                                                        className={`px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1 transition-all ${copiedKey ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 disabled:opacity-50'}`}
+                                                    >
+                                                        {copiedKey ? <><Check size={12} /> Copiado</> : <><Copy size={12} /> Copiar</>}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Real-time sync message */}
+                                            <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-2xl text-left flex gap-3">
+                                                <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 shrink-0 mt-0.5 animate-pulse">
+                                                    <Loader2 size={12} className="animate-spin animate-infinite" />
+                                                </div>
+                                                <p className="text-[10px] text-blue-800 leading-relaxed font-medium">
+                                                    <strong>Aguardando Pagamento:</strong> Assim que pagar no seu banco, o sistema identificará a compensação automaticamente e liberará a leitura. Não é necessário enviar comprovante.
+                                                </p>
+                                            </div>
+                                        </>
+                                    )}
+                                </>
+                            )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-3 shrink-0">
+                            {!paymentSuccess && (
+                                <button 
+                                    onClick={() => setShowPixSimulator(false)} 
+                                    className="w-full py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-all text-center"
+                                >
+                                    Voltar para o Carrinho
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

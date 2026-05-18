@@ -484,3 +484,220 @@ async function processBatch(codes, res) {
 
     res.json({ success: true, sent: sentCount, details: results });
 }
+
+// --------------------------------------------------------
+// ASAAS E-BOOKS INTEGRATION
+// --------------------------------------------------------
+
+async function getOrCreateAsaasCustomer(apiKey, baseUrl, student) {
+    const email = student.email || `${student.id}@meuexpansivo.com.br`;
+    const name = student.name || 'Estudante Sem Nome';
+    const cpfCnpj = student.cpf || '00000000000';
+
+    // 1. Search for existing customer
+    const searchUrl = `${baseUrl}/customers?email=${encodeURIComponent(email)}`;
+    const searchRes = await fetch(searchUrl, {
+        method: 'GET',
+        headers: {
+            'access_token': apiKey,
+            'Content-Type': 'application/json'
+        }
+    });
+
+    if (searchRes.ok) {
+        const searchData = await searchRes.json();
+        if (searchData.data && searchData.data.length > 0) {
+            return searchData.data[0].id;
+        }
+    }
+
+    // 2. Create customer if not found
+    const createUrl = `${baseUrl}/customers`;
+    const customerPayload = {
+        name: name,
+        email: email,
+        externalReference: student.id
+    };
+    
+    const cleanCpf = cpfCnpj.replace(/\D/g, '');
+    if (cleanCpf && cleanCpf.length === 11) {
+        customerPayload.cpfCnpj = cleanCpf;
+    }
+
+    const createRes = await fetch(createUrl, {
+        method: 'POST',
+        headers: {
+            'access_token': apiKey,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(customerPayload)
+    });
+
+    if (!createRes.ok) {
+        const errText = await createRes.text();
+        console.error("Erro ao criar cliente no Asaas:", errText);
+        throw new Error(`Falha ao criar cliente no Asaas: ${errText}`);
+    }
+
+    const newCustomer = await createRes.json();
+    return newCustomer.id;
+}
+
+exports.criarCobrancaPixEbook = functions.https.onRequest((req, res) => {
+    cors(req, res, async () => {
+        try {
+            const { studentId, bookId, bookTitle, price, studentName, studentGrade } = req.body;
+
+            if (!studentId || !bookId || !price) {
+                return res.status(400).json({ error: "Parâmetros obrigatórios ausentes (studentId, bookId, price)" });
+            }
+
+            // 1. Fetch Asaas API Configuration from Firestore
+            const configDoc = await db.collection('config').doc('asaas_config').get();
+            if (!configDoc.exists) {
+                return res.status(400).json({ error: "Asaas não configurado no painel administrativo." });
+            }
+
+            const { apiKey, environment } = configDoc.data();
+            if (!apiKey) {
+                return res.status(400).json({ error: "Chave de API do Asaas não configurada." });
+            }
+
+            const baseUrl = environment === 'production' 
+                ? 'https://api.asaas.com/v3' 
+                : 'https://sandbox.asaas.com/v3';
+
+            // 2. Fetch student details from Firestore
+            const studentDoc = await db.collection('students').doc(studentId).get();
+            const studentData = studentDoc.exists ? studentDoc.data() : {};
+            const studentInfo = {
+                id: studentId,
+                name: studentName || studentData.name || 'Aluno',
+                email: studentData.email || studentData.contactEmail || `${studentId}@meuexpansivo.com.br`,
+                cpf: studentData.cpf || studentData.responsavelCpf || ''
+            };
+
+            // 3. Get or Create Customer ID in Asaas
+            const asaasCustomerId = await getOrCreateAsaasCustomer(apiKey, baseUrl, studentInfo);
+
+            // 4. Create Payment Charge
+            const paymentPayload = {
+                customer: asaasCustomerId,
+                billingType: 'PIX',
+                value: Number(price),
+                dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                description: `Compra do e-Livro: ${bookTitle}`,
+                externalReference: `${studentId}_${bookId}`
+            };
+
+            console.log("Criando cobrança PIX no Asaas para cliente:", asaasCustomerId);
+            const createPaymentRes = await fetch(`${baseUrl}/payments`, {
+                method: 'POST',
+                headers: {
+                    'access_token': apiKey,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(paymentPayload)
+            });
+
+            if (!createPaymentRes.ok) {
+                const errText = await createPaymentRes.text();
+                console.error("Erro ao criar cobrança no Asaas:", errText);
+                return res.status(500).json({ error: `Erro do Asaas: ${errText}` });
+            }
+
+            const paymentData = await createPaymentRes.json();
+            const paymentId = paymentData.id;
+
+            // 5. Get PIX QR Code & Copy-Paste Key from Asaas
+            console.log("Buscando QRCode PIX para pagamento:", paymentId);
+            const qrCodeRes = await fetch(`${baseUrl}/payments/${paymentId}/pixQrCode`, {
+                method: 'GET',
+                headers: {
+                    'access_token': apiKey
+                }
+            });
+
+            if (!qrCodeRes.ok) {
+                const errText = await qrCodeRes.text();
+                console.error("Erro ao buscar QRCode PIX:", errText);
+                return res.status(500).json({ error: `Erro ao buscar QRCode do Asaas: ${errText}` });
+            }
+
+            const qrCodeData = await qrCodeRes.json();
+
+            res.json({
+                success: true,
+                paymentId: paymentId,
+                payload: qrCodeData.payload,
+                encodedImage: qrCodeData.encodedImage,
+                expirationDate: qrCodeData.expirationDate
+            });
+
+        } catch (error) {
+            console.error("Erro no criarCobrancaPixEbook:", error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+});
+
+exports.webhookAsaasEbooks = functions.https.onRequest(async (req, res) => {
+    try {
+        const { event, payment } = req.body;
+        console.log(`🔔 Webhook Asaas recebido. Evento: ${event}, Pagamento: ${payment?.id}`);
+
+        if (event === 'PAYMENT_RECEIVED' || event === 'PAYMENT_CONFIRMED') {
+            const externalReference = payment.externalReference;
+            if (externalReference && externalReference.includes('_')) {
+                const parts = externalReference.split('_');
+                const studentId = parts[0];
+                const rawBookId = parts[1];
+
+                // Separa múltiplos IDs de livros caso tenham sido comprados juntos
+                const bookIds = rawBookId.includes('-') ? rawBookId.split('-') : [rawBookId];
+
+                for (const bookId of bookIds) {
+                    console.log(`💰 Compra confirmada para Aluno: ${studentId}, Livro: ${bookId}`);
+
+                    const purchaseSnapshot = await db.collection('ebook_purchases')
+                        .where('studentId', '==', studentId)
+                        .where('bookId', '==', bookId)
+                        .get();
+
+                    if (purchaseSnapshot.empty) {
+                        const studentDoc = await db.collection('students').doc(studentId).get();
+                        const studentData = studentDoc.exists ? studentDoc.data() : {};
+                        const studentName = studentData.name || 'Estudante';
+                        const studentGrade = studentData.grade || studentData.gradeLevel || studentData.serie || 'Série Não Informada';
+
+                        const bookDoc = await db.collection('e_books').doc(bookId).get();
+                        const bookData = bookDoc.exists ? bookDoc.data() : {};
+                        const bookTitle = bookData.title || 'Livro Digital';
+
+                        await db.collection('ebook_purchases').add({
+                            studentId: studentId,
+                            studentName: studentName,
+                            studentGrade: studentGrade,
+                            bookId: bookId,
+                            bookTitle: bookTitle,
+                            price: Number(bookData.price || 0),
+                            paymentId: payment.id,
+                            paymentMethod: 'PIX',
+                            status: 'Aprovado',
+                            purchasedAt: admin.firestore.FieldValue.serverTimestamp()
+                        });
+
+                        console.log(`✅ Registro de compra do e-Book ${bookId} criado com sucesso no Firestore!`);
+                    } else {
+                        console.log(`⚠️ Compra do aluno ${studentId} para o livro ${bookId} já havia sido registrada.`);
+                    }
+                }
+            }
+        }
+
+        res.status(200).send("OK");
+    } catch (error) {
+        console.error("❌ Erro no webhookAsaasEbooks:", error);
+        res.status(500).send("Internal Server Error");
+    }
+});

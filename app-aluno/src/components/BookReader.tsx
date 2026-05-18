@@ -153,6 +153,8 @@ const BookReader: React.FC<BookReaderProps> = ({ bookId, student, onBack }) => {
 
                 await db.collection('ebook_progress').doc(`${studentId}_${bookId}`).set({
                     studentId,
+                    studentName: studentName || 'Estudante',
+                    studentGrade: student.gradeLevel || 'Série Não Informada',
                     bookId,
                     bookTitle: book.title,
                     pagesRead: Array.from(pagesRead),

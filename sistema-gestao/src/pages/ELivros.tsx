@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
-import { BookOpen, Plus, CreditCard, Save, Trash2, Edit3, Image as ImageIcon, CheckCircle2, X, Upload, Loader2, Volume2, Eye, EyeOff } from 'lucide-react';
+import { BookOpen, Plus, CreditCard, Save, Trash2, Edit3, Image as ImageIcon, CheckCircle2, X, Upload, Loader2, Volume2, Eye, EyeOff, Award, ShoppingCart, Search, Filter } from 'lucide-react';
 import { db, storage } from '../firebaseConfig';
-import { collection, addDoc, updateDoc, doc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { ACADEMIC_SEGMENTS } from '../utils/academicDefaults';
 
 export function ELivros() {
-    const [activeTab, setActiveTab] = useState<'books' | 'config'>('books');
+    const [activeTab, setActiveTab] = useState<'books' | 'config' | 'dashboard'>('books');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingBook, setEditingBook] = useState<any>(null);
     const [modalStep, setModalStep] = useState(1);
@@ -16,6 +16,19 @@ export function ELivros() {
     const [isLoadingBooks, setIsLoadingBooks] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
+    // Dashboard States
+    const [progressList, setProgressList] = useState<any[]>([]);
+    const [purchasesList, setPurchasesList] = useState<any[]>([]);
+    const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [segmentFilter, setSegmentFilter] = useState('all');
+    const [dashboardSubTab, setDashboardSubTab] = useState<'accesses' | 'purchases'>('accesses');
+
+    // Asaas Config States
+    const [asaasApiKey, setAsaasApiKey] = useState('');
+    const [asaasEnv, setAsaasEnv] = useState<'sandbox' | 'production'>('sandbox');
+    const [isSavingConfig, setIsSavingConfig] = useState(false);
+
     useEffect(() => {
         const unsubscribe = onSnapshot(collection(db, 'e_books'), (snapshot) => {
             const booksData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -24,6 +37,48 @@ export function ELivros() {
         });
         return () => unsubscribe();
     }, []);
+
+    useEffect(() => {
+        // Carrega configurações do Asaas do Firestore
+        const configDocRef = doc(db, 'config', 'asaas_config');
+        const unsubscribe = onSnapshot(configDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                setAsaasApiKey(data.apiKey || '');
+                setAsaasEnv(data.environment || 'sandbox');
+            }
+        });
+        return () => unsubscribe();
+    }, []);
+
+    useEffect(() => {
+        if (activeTab !== 'dashboard') return;
+
+        setIsLoadingDashboard(true);
+
+        // Fetch progress data from Firestore
+        const unsubscribeProgress = onSnapshot(collection(db, 'ebook_progress'), (snapshot) => {
+            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setProgressList(data);
+        }, (error) => {
+            console.error("Erro ao carregar progresso:", error);
+        });
+
+        // Fetch purchases data from Firestore
+        const unsubscribePurchases = onSnapshot(collection(db, 'ebook_purchases'), (snapshot) => {
+            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setPurchasesList(data);
+            setIsLoadingDashboard(false);
+        }, (error) => {
+            console.error("Erro ao carregar compras:", error);
+            setIsLoadingDashboard(false);
+        });
+
+        return () => {
+            unsubscribeProgress();
+            unsubscribePurchases();
+        };
+    }, [activeTab]);
 
     // Form States
     const [bookTitle, setBookTitle] = useState('');
@@ -196,6 +251,85 @@ export function ELivros() {
         }
     };
 
+    const handleSaveAsaasConfig = async () => {
+        setIsSavingConfig(true);
+        try {
+            await setDoc(doc(db, 'config', 'asaas_config'), {
+                apiKey: asaasApiKey,
+                environment: asaasEnv,
+                updatedAt: serverTimestamp()
+            });
+            alert("Configurações do Asaas salvas com sucesso!");
+        } catch (error) {
+            console.error("Erro ao salvar configuração do Asaas:", error);
+            alert("Erro ao salvar as configurações.");
+        } finally {
+            setIsSavingConfig(false);
+        }
+    };
+
+    // Dashboard KPI Calculations
+    const uniqueReaders = new Set(progressList.map(p => p.studentId)).size;
+    const totalSales = purchasesList.length;
+    const totalRevenue = purchasesList.reduce((acc, p) => acc + (p.price || 0), 0);
+    const completionRate = progressList.length > 0 
+        ? Math.round((progressList.filter(p => p.completed).length / progressList.length) * 100) 
+        : 0;
+
+    const bookPerformance = books.map(book => {
+        const bookProgress = progressList.filter(p => p.bookId === book.id);
+        const bookPurchases = purchasesList.filter(p => p.bookId === book.id);
+        
+        const accesses = bookProgress.length;
+        const sales = bookPurchases.length;
+        const revenue = bookPurchases.reduce((acc, p) => acc + (p.price || 0), 0);
+        const completions = bookProgress.filter(p => p.completed).length;
+        const rate = accesses > 0 ? Math.round((completions / accesses) * 100) : 0;
+        
+        return {
+            ...book,
+            accesses,
+            sales,
+            revenue,
+            rate
+        };
+    });
+
+    const matchesSegmentFilter = (gradeLevel: string) => {
+        if (segmentFilter === 'all') return true;
+        if (!gradeLevel) return false;
+        const level = gradeLevel.toLowerCase();
+        
+        if (segmentFilter === 'seg_infantil') return level.includes('infantil') || level.includes('nível') || level.includes('maternal') || level.includes('jardim');
+        if (segmentFilter === 'seg_fund_1') return level.includes('fundamental i') || level.includes('f.1') || level.includes('1º') || level.includes('2º') || level.includes('3º') || level.includes('4º') || level.includes('5º');
+        if (segmentFilter === 'seg_fund_2') return level.includes('fundamental ii') || level.includes('f.2') || level.includes('6º') || level.includes('7º') || level.includes('8º') || level.includes('9º');
+        if (segmentFilter === 'seg_medio') return level.includes('médio') || level.includes('e.m') || level.includes('série');
+        
+        return true;
+    };
+
+    const filteredProgress = progressList.filter(p => {
+        const studentName = p.studentName || 'Estudante';
+        const bookTitle = p.bookTitle || '';
+        const matchesSearch = studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                              bookTitle.toLowerCase().includes(searchQuery.toLowerCase());
+                              
+        const matchesSegment = matchesSegmentFilter(p.studentGrade || '');
+            
+        return matchesSearch && matchesSegment;
+    });
+
+    const filteredPurchases = purchasesList.filter(p => {
+        const studentName = p.studentName || 'Estudante';
+        const bookTitle = p.bookTitle || '';
+        const matchesSearch = studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                              bookTitle.toLowerCase().includes(searchQuery.toLowerCase());
+                              
+        const matchesSegment = matchesSegmentFilter(p.studentGrade || '');
+            
+        return matchesSearch && matchesSegment;
+    });
+
     return (
         <div className="p-6 max-w-7xl mx-auto">
             <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -204,7 +338,7 @@ export function ELivros() {
                         <BookOpen className="w-8 h-8 text-orange-500" />
                         e-Livros Digitais
                     </h1>
-                    <p className="text-slate-500">Gerencie sua biblioteca digital e configurações de pagamento.</p>
+                    <p className="text-slate-500">Gerencie sua biblioteca digital, veja indicadores de acessos e configure pagamentos.</p>
                 </div>
 
                 <div className="flex bg-slate-100 p-1 rounded-xl">
@@ -215,6 +349,12 @@ export function ELivros() {
                         Livros
                     </button>
                     <button 
+                        onClick={() => setActiveTab('dashboard')}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'dashboard' ? 'bg-white text-blue-950 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        Vendas e Acessos
+                    </button>
+                    <button 
                         onClick={() => setActiveTab('config')}
                         className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'config' ? 'bg-white text-blue-950 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                     >
@@ -223,7 +363,7 @@ export function ELivros() {
                 </div>
             </header>
 
-            {activeTab === 'books' ? (
+            {activeTab === 'books' && (
                 <div className="space-y-6">
                     <div className="flex justify-end">
                         <button 
@@ -309,7 +449,318 @@ export function ELivros() {
                         ))}
                     </div>
                 </div>
-            ) : (
+            )}
+
+            {activeTab === 'dashboard' && (
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    {isLoadingDashboard ? (
+                        <div className="py-32 flex flex-col items-center justify-center text-slate-400">
+                            <Loader2 size={40} className="animate-spin mb-4 text-orange-500" />
+                            <p className="text-sm font-bold uppercase tracking-widest">Carregando painel de estatísticas...</p>
+                        </div>
+                    ) : (
+                        <>
+                            {/* KPI Metrics Row */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                {/* Leitores Únicos */}
+                                <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex items-center gap-5 hover:shadow-md hover:-translate-y-0.5 transition-all">
+                                    <div className="w-14 h-14 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0 shadow-inner">
+                                        <Eye size={28} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Leitores Únicos</p>
+                                        <p className="text-2xl font-black text-slate-800 mt-1">{uniqueReaders}</p>
+                                        <p className="text-[10px] text-slate-500 font-medium mt-0.5">Alunos ativos na leitura</p>
+                                    </div>
+                                </div>
+
+                                {/* Livros Comprados */}
+                                <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex items-center gap-5 hover:shadow-md hover:-translate-y-0.5 transition-all">
+                                    <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 shadow-inner">
+                                        <ShoppingCart size={28} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Livros Comprados</p>
+                                        <p className="text-2xl font-black text-slate-800 mt-1">{totalSales}</p>
+                                        <p className="text-[10px] text-slate-500 font-medium mt-0.5">Unidades adquiridas</p>
+                                    </div>
+                                </div>
+
+                                {/* Faturamento Total */}
+                                <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex items-center gap-5 hover:shadow-md hover:-translate-y-0.5 transition-all">
+                                    <div className="w-14 h-14 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center shrink-0 shadow-inner">
+                                        <CreditCard size={28} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Receita Acumulada</p>
+                                        <p className="text-2xl font-black text-slate-800 mt-1">R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                        <p className="text-[10px] text-slate-500 font-medium mt-0.5 font-semibold">Vendas via PIX aprovadas</p>
+                                    </div>
+                                </div>
+
+                                {/* Média de Conclusão */}
+                                <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex items-center gap-5 hover:shadow-md hover:-translate-y-0.5 transition-all">
+                                    <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 shadow-inner">
+                                        <Award size={28} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Taxa de Conclusão</p>
+                                        <p className="text-2xl font-black text-slate-800 mt-1">{completionRate}%</p>
+                                        <p className="text-[10px] text-slate-500 font-medium mt-0.5">Média de livros terminados</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Desempenho por Livro Table */}
+                            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
+                                <div>
+                                    <h2 className="text-lg font-bold text-slate-900">Desempenho por Livro</h2>
+                                    <p className="text-xs text-slate-500">Métricas consolidadas de leitura e compras para cada obra da biblioteca.</p>
+                                </div>
+
+                                <div className="overflow-x-auto rounded-2xl border border-slate-100 shadow-inner bg-slate-50/20">
+                                    <table className="w-full text-left border-collapse text-sm">
+                                        <thead>
+                                            <tr className="bg-slate-50 border-b border-slate-100">
+                                                <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px]">Livro</th>
+                                                <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px]">Segmento</th>
+                                                <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px] text-center">Preço</th>
+                                                <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px] text-center">Acessos</th>
+                                                <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px] text-center">Vendas</th>
+                                                <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px] text-right">Faturamento</th>
+                                                <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px] text-right">Conclusão</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 bg-white">
+                                            {bookPerformance.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={7} className="p-8 text-center text-slate-400 italic">
+                                                        Nenhum livro cadastrado para exibir estatísticas.
+                                                    </td>
+                                                </tr>
+                                            ) : bookPerformance.map((bp) => (
+                                                <tr key={bp.id} className="hover:bg-slate-50/50 transition-colors">
+                                                    <td className="p-4 flex items-center gap-3">
+                                                        <div className="w-9 h-12 bg-slate-100 border border-slate-100 rounded overflow-hidden shrink-0">
+                                                            {bp.coverUrl ? (
+                                                                <img src={bp.coverUrl} alt={bp.title} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center"><BookOpen size={16} className="text-slate-300" /></div>
+                                                            )}
+                                                        </div>
+                                                        <span className="font-bold text-slate-800 leading-tight block max-w-xs truncate" title={bp.title}>{bp.title}</span>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <span className="text-[10px] font-bold text-slate-400 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded">
+                                                            {Object.values(ACADEMIC_SEGMENTS).find(s => s.id === bp.segment)?.label || bp.segment}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 text-center font-bold text-slate-600">
+                                                        {bp.price === 0 ? 'Grátis' : `R$ ${bp.price.toFixed(2)}`}
+                                                    </td>
+                                                    <td className="p-4 text-center font-extrabold text-slate-800">
+                                                        {bp.accesses}
+                                                    </td>
+                                                    <td className="p-4 text-center font-extrabold text-slate-800">
+                                                        {bp.price === 0 ? '-' : bp.sales}
+                                                    </td>
+                                                    <td className="p-4 text-right font-black text-green-600">
+                                                        {bp.price === 0 ? '-' : `R$ ${bp.revenue.toFixed(2)}`}
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        <div className="flex flex-col items-end">
+                                                            <span className="font-black text-slate-800 text-xs">{bp.rate}%</span>
+                                                            <div className="w-16 h-1 bg-slate-100 rounded-full overflow-hidden mt-1 border border-slate-200/50">
+                                                                <div 
+                                                                    className="h-full bg-purple-600 rounded-full" 
+                                                                    style={{ width: `${bp.rate}%` }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Detailed Logs Panel */}
+                            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                                    <div className="flex bg-slate-100 p-1 rounded-xl self-start">
+                                        <button 
+                                            onClick={() => setDashboardSubTab('accesses')}
+                                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${dashboardSubTab === 'accesses' ? 'bg-white text-blue-950 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                        >
+                                            Histórico de Leitura ({filteredProgress.length})
+                                        </button>
+                                        <button 
+                                            onClick={() => setDashboardSubTab('purchases')}
+                                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${dashboardSubTab === 'purchases' ? 'bg-white text-blue-950 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                        >
+                                            Vendas Realizadas ({filteredPurchases.length})
+                                        </button>
+                                    </div>
+
+                                    {/* Search & Filters */}
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        {/* Search Input */}
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Search size={16} /></span>
+                                            <input 
+                                                type="text" 
+                                                placeholder="Buscar aluno ou livro..." 
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-60 transition-all font-semibold"
+                                            />
+                                        </div>
+
+                                        {/* Segment Filter */}
+                                        <div className="relative flex items-center">
+                                            <span className="absolute left-3 text-slate-400 pointer-events-none"><Filter size={14} /></span>
+                                            <select 
+                                                value={segmentFilter}
+                                                onChange={(e) => setSegmentFilter(e.target.value)}
+                                                className="pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="all">Todos os Segmentos</option>
+                                                <option value="seg_infantil">Infantil</option>
+                                                <option value="seg_fund_1">Fundamental I</option>
+                                                <option value="seg_fund_2">Fundamental II</option>
+                                                <option value="seg_medio">Ensino Médio</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Table contents depending on dashboardSubTab */}
+                                {dashboardSubTab === 'accesses' ? (
+                                    <div className="overflow-x-auto rounded-2xl border border-slate-100 shadow-inner bg-slate-50/20">
+                                        <table className="w-full text-left border-collapse text-sm">
+                                            <thead>
+                                                <tr className="bg-slate-50 border-b border-slate-100">
+                                                    <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px]">Aluno</th>
+                                                    <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px]">Série / Segmento</th>
+                                                    <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px]">e-Livro Lido</th>
+                                                    <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px] text-center">Progresso</th>
+                                                    <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px] text-center">Status</th>
+                                                    <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px] text-right">Última Atividade</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100 bg-white">
+                                                {filteredProgress.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={6} className="p-8 text-center text-slate-400 italic">
+                                                            Nenhum registro de leitura encontrado com os filtros selecionados.
+                                                        </td>
+                                                    </tr>
+                                                ) : filteredProgress.map((p) => {
+                                                    const formattedDate = p.updatedAt?.seconds 
+                                                        ? new Date(p.updatedAt.seconds * 1000).toLocaleString('pt-BR') 
+                                                        : p.updatedAt instanceof Date 
+                                                            ? p.updatedAt.toLocaleString('pt-BR') 
+                                                            : 'Data indisponível';
+                                                            
+                                                    return (
+                                                        <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
+                                                            <td className="p-4 font-bold text-slate-800">{p.studentName || 'Estudante'}</td>
+                                                            <td className="p-4 font-medium text-slate-500">{p.studentGrade || 'Série Não Informada'}</td>
+                                                            <td className="p-4 font-bold text-slate-900">{p.bookTitle}</td>
+                                                            <td className="p-4">
+                                                                <div className="flex items-center justify-center gap-3">
+                                                                    <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50 shrink-0">
+                                                                        <div 
+                                                                            className="h-full bg-blue-600 rounded-full" 
+                                                                            style={{ width: `${p.progressPercent || 0}%` }}
+                                                                        />
+                                                                    </div>
+                                                                    <span className="font-extrabold text-slate-700 text-xs w-8 text-right">{p.progressPercent || 0}%</span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="p-4 text-center">
+                                                                {p.completed ? (
+                                                                    <span className="inline-flex items-center gap-1 text-[10px] font-black text-green-700 bg-green-50 px-2.5 py-1 rounded-full border border-green-200/50 uppercase tracking-wide">
+                                                                        <CheckCircle2 size={12} className="stroke-[2.5]" />
+                                                                        Concluído
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="inline-flex items-center gap-1.5 text-[10px] font-black text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100 uppercase tracking-wide">
+                                                                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse" />
+                                                                        Lendo
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                            <td className="p-4 text-right font-medium text-slate-500">{formattedDate}</td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto rounded-2xl border border-slate-100 shadow-inner bg-slate-50/20">
+                                        <table className="w-full text-left border-collapse text-sm">
+                                            <thead>
+                                                <tr className="bg-slate-50 border-b border-slate-100">
+                                                    <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px]">Aluno</th>
+                                                    <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px]">Série / Segmento</th>
+                                                    <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px]">e-Livro Adquirido</th>
+                                                    <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px] text-center">Valor Pago</th>
+                                                    <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px] text-center">Método</th>
+                                                    <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px] text-center">Status</th>
+                                                    <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px] text-right">Data da Compra</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100 bg-white">
+                                                {filteredPurchases.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={7} className="p-8 text-center text-slate-400 italic">
+                                                            Nenhum registro de venda encontrado com os filtros selecionados.
+                                                        </td>
+                                                    </tr>
+                                                ) : filteredPurchases.map((p) => {
+                                                    const formattedDate = p.purchasedAt?.seconds 
+                                                        ? new Date(p.purchasedAt.seconds * 1000).toLocaleString('pt-BR') 
+                                                        : p.purchasedAt instanceof Date 
+                                                            ? p.purchasedAt.toLocaleString('pt-BR') 
+                                                            : 'Data indisponível';
+                                                            
+                                                    return (
+                                                        <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
+                                                            <td className="p-4 font-bold text-slate-800">{p.studentName || 'Estudante'}</td>
+                                                            <td className="p-4 font-medium text-slate-500">{p.studentGrade || 'Série Não Informada'}</td>
+                                                            <td className="p-4 font-bold text-slate-900">{p.bookTitle}</td>
+                                                            <td className="p-4 text-center font-extrabold text-orange-500">
+                                                                R$ {(p.price || 0).toFixed(2)}
+                                                            </td>
+                                                            <td className="p-4 text-center">
+                                                                <span className="inline-flex items-center text-[10px] font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 uppercase tracking-widest">
+                                                                    {p.paymentMethod || 'PIX'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="p-4 text-center">
+                                                                <span className="inline-flex items-center gap-1 text-[10px] font-black text-green-700 bg-green-50 px-2.5 py-1 rounded-full border border-green-200/50 uppercase tracking-wide">
+                                                                    <CheckCircle2 size={12} className="stroke-[2.5]" />
+                                                                    Aprovado
+                                                                </span>
+                                                            </td>
+                                                            <td className="p-4 text-right font-medium text-slate-500">{formattedDate}</td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
+                </div>
+            )}
+
+            {activeTab === 'config' && (
                 <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
                     <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm">
                         <div className="flex items-center gap-3 mb-6">
@@ -324,9 +775,31 @@ export function ELivros() {
 
                         <div className="space-y-4">
                             <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Ambiente de Transação</label>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button 
+                                        onClick={() => setAsaasEnv('sandbox')}
+                                        type="button"
+                                        className={`py-3 rounded-xl font-bold border transition-all text-xs ${asaasEnv === 'sandbox' ? 'bg-orange-50 border-orange-200 text-orange-700 shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`}
+                                    >
+                                        Homologação / Sandbox
+                                    </button>
+                                    <button 
+                                        onClick={() => setAsaasEnv('production')}
+                                        type="button"
+                                        className={`py-3 rounded-xl font-bold border transition-all text-xs ${asaasEnv === 'production' ? 'bg-green-50 border-green-200 text-green-700 shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`}
+                                    >
+                                        Produção / Real
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">API Key (Access Token)</label>
                                 <input 
                                     type="password" 
+                                    value={asaasApiKey}
+                                    onChange={(e) => setAsaasApiKey(e.target.value)}
                                     placeholder="$a..." 
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-mono text-sm"
                                 />
@@ -335,13 +808,17 @@ export function ELivros() {
                             <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100 flex gap-3">
                                 <CheckCircle2 className="text-blue-500 shrink-0" size={20} />
                                 <div className="text-xs text-blue-700 leading-relaxed">
-                                    <strong>Dica:</strong> Você encontra sua chave de API no menu <b>Configurações de Conta &gt; Integrações</b> no painel do Asaas.
+                                    <strong>Dica:</strong> Você encontra sua chave de API no menu <b>Configurações de Conta &gt; Integrações</b> no painel do Asaas. {asaasEnv === 'sandbox' ? 'Use a chave obtida no painel de Sandbox (sandbox.asaas.com).' : 'Use a chave obtida no painel de Produção.'}
                                 </div>
                             </div>
 
-                            <button className="w-full mt-6 py-4 bg-blue-950 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg shadow-blue-900/10">
-                                <Save size={20} />
-                                Salvar Configurações
+                            <button 
+                                onClick={handleSaveAsaasConfig}
+                                disabled={isSavingConfig}
+                                className="w-full mt-6 py-4 bg-blue-950 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg shadow-blue-900/10 disabled:opacity-50"
+                            >
+                                {isSavingConfig ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
+                                {isSavingConfig ? 'Salvando...' : 'Salvar Configurações'}
                             </button>
                         </div>
                     </div>
