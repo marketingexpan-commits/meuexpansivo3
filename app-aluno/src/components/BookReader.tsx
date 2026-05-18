@@ -585,7 +585,7 @@ const BookReader: React.FC<BookReaderProps> = ({ bookId, student, onBack }) => {
                                                 >
                                                     {['A', 'B', 'C', 'D'][i]}
                                                 </span>
-                                                <span className="text-left flex-1 line-clamp-2 whitespace-normal break-words leading-tight">{opt}</span>
+                                                <span className="text-left flex-1 whitespace-normal break-words leading-tight">{opt}</span>
                                             </button>
                                         );
                                     })}
