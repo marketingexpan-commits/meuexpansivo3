@@ -532,14 +532,14 @@ const BookReader: React.FC<BookReaderProps> = ({ bookId, student, onBack }) => {
                                                     width: `${config.width}%`,
                                                     transform: 'translate(-50%, -50%)',
                                                 }}
-                                                className={`animate-in zoom-in duration-500 p-2 sm:p-2.5 rounded-xl border text-xs sm:text-sm font-bold transition-all flex items-center gap-3 ${btnClass} ${isAnswered ? 'cursor-default' : 'cursor-pointer active:scale-[0.98] shadow-lg'} ${
+                                                className={`animate-in zoom-in duration-500 p-1.5 sm:p-2 md:p-2.5 rounded-xl border text-[10px] sm:text-xs md:text-sm font-bold transition-all flex items-center gap-1.5 sm:gap-2 overflow-hidden ${btnClass} ${isAnswered ? 'cursor-default' : 'cursor-pointer active:scale-[0.98] shadow-lg'} ${
                                                     (pages[idx].question.style === 'glass') ? 'backdrop-blur-xl bg-white/80' : ''
                                                 }`}
                                             >
-                                                <span className="w-6 h-6 shrink-0 rounded-full border border-current flex items-center justify-center text-[10px] bg-white/50">
+                                                <span className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 shrink-0 rounded-full border border-current flex items-center justify-center text-[8px] sm:text-[10px] bg-white/50">
                                                     {['A', 'B', 'C', 'D'][i]}
                                                 </span>
-                                                <span className="text-left flex-1">{opt}</span>
+                                                <span className="text-left flex-1 truncate">{opt}</span>
                                             </button>
                                         );
                                     })}
