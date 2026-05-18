@@ -1277,17 +1277,33 @@ export function ELivros() {
                                                                                     {[0, 1, 2, 3].map(optIdx => {
                                                                                         if (!q.optionsConfig[optIdx]) return null;
                                                                                         const isAc = activePositionElement === `opt_${optIdx}`;
+                                                                                        const style = q.style || 'card';
+                                                                                        
+                                                                                        let previewClass = "";
+                                                                                        let circleClass = "";
+                                                                                        
+                                                                                        if (style === 'glass') {
+                                                                                            previewClass = "bg-white/20 border-white/30 text-white backdrop-blur-[1px]";
+                                                                                            circleClass = "bg-white/30 border-white/40 text-white";
+                                                                                        } else if (style === 'minimal') {
+                                                                                            previewClass = "bg-white/70 border-slate-200/50 text-slate-700 backdrop-blur-[1px]";
+                                                                                            circleClass = "bg-white/50 border-slate-300 text-slate-600";
+                                                                                        } else {
+                                                                                            previewClass = "bg-white border-slate-200 text-slate-600";
+                                                                                            circleClass = "bg-slate-100 border-slate-200 text-slate-500";
+                                                                                        }
+                                                                                        
                                                                                         return (
                                                                                             <div 
                                                                                                 key={optIdx}
-                                                                                                className="absolute bg-white border border-slate-200 rounded text-[6px] flex items-center gap-1 p-0.5 -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-all shadow-sm overflow-hidden"
+                                                                                                className={`absolute border rounded-[3px] text-[5px] flex items-center gap-0.5 p-0.5 -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-all shadow-sm overflow-hidden ${previewClass}`}
                                                                                                 style={{ left: `${q.optionsConfig[optIdx].position.x}%`, top: `${q.optionsConfig[optIdx].position.y}%`, width: `${q.optionsConfig[optIdx].width}%`, zIndex: isAc ? 10 : 1 }}
                                                                                             >
-                                                                                                <div className="w-2.5 h-2.5 shrink-0 rounded-full border flex items-center justify-center text-[5px]">
+                                                                                                <div className={`w-2 h-2 shrink-0 rounded-full border flex items-center justify-center text-[4px] ${circleClass}`}>
                                                                                                     {['A', 'B', 'C', 'D'][optIdx]}
                                                                                                 </div>
-                                                                                                <div className="truncate flex-1">{q.options[optIdx] || '...'}</div>
-                                                                                                {isAc && <div className="absolute inset-0 border border-orange-500 rounded animate-pulse" />}
+                                                                                                <div className="truncate flex-1 font-bold">{q.options[optIdx] || '...'}</div>
+                                                                                                {isAc && <div className="absolute inset-0 border border-orange-500 rounded-[3px] animate-pulse" />}
                                                                                             </div>
                                                                                         );
                                                                                     })}

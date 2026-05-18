@@ -505,17 +505,46 @@ const BookReader: React.FC<BookReaderProps> = ({ bookId, student, onBack }) => {
                                         const isAnswered = answeredState[idx] !== undefined;
                                         const isSelected = answeredState[idx] === i;
                                         const isCorrect = i === pages[idx].question.correctIndex;
+                                        const style = pages[idx].question.style || 'card';
                                         
-                                        let btnClass = "bg-white border-slate-200 text-slate-600 hover:border-orange-500 hover:bg-orange-50";
+                                        let btnClass = "";
+                                        let circleClass = "";
+                                        
+                                        if (style === 'glass') {
+                                            btnClass = "bg-white/20 border-white/30 text-white hover:bg-white/35 hover:border-white/50 backdrop-blur-md shadow-lg";
+                                            circleClass = "bg-white/30 border-white/40 text-white";
+                                        } else if (style === 'minimal') {
+                                            btnClass = "bg-white/70 border-slate-200/50 text-slate-700 hover:bg-white/90 shadow-sm backdrop-blur-sm";
+                                            circleClass = "bg-white/50 border-slate-300 text-slate-600";
+                                        } else {
+                                            // card
+                                            btnClass = "bg-white border-slate-200 text-slate-600 hover:border-orange-500 hover:bg-orange-50 shadow-md";
+                                            circleClass = "bg-slate-100 border-slate-200 text-slate-500";
+                                        }
+                                        
                                         if (isAnswered) {
                                             if (isSelected) {
-                                                btnClass = isCorrect ? "bg-green-500 text-white border-green-600" : "bg-red-500 text-white border-red-600";
+                                                btnClass = isCorrect ? "bg-green-500 text-white border-green-600 shadow-none" : "bg-red-500 text-white border-red-600 shadow-none";
+                                                circleClass = "bg-white/25 border-white/45 text-white";
                                             } else if (isCorrect) {
-                                                btnClass = "bg-green-100 text-green-700 border-green-200";
+                                                btnClass = style === 'glass' ? "bg-green-500/80 text-white border-green-400 backdrop-blur-md" : "bg-green-100 text-green-700 border-green-200";
+                                                circleClass = "bg-white/25 border-white/45 text-white";
                                             } else {
-                                                btnClass = "bg-slate-50 text-slate-400 border-slate-200 opacity-50";
+                                                btnClass = style === 'glass' 
+                                                    ? "bg-white/10 text-white/40 border-white/20 opacity-30 shadow-none" 
+                                                    : "bg-slate-50 text-slate-400 border-slate-200 opacity-50 shadow-none";
+                                                circleClass = "bg-slate-100/50 border-slate-200 text-slate-400";
                                             }
                                         }
+                                        
+                                        // Dynamic Sizing based on page width
+                                        const baseScale = dimensions.width / 400; // Normalizing around 400px width
+                                        const fontSize = Math.max(8, Math.min(15, 11 * baseScale));
+                                        const paddingY = Math.max(4, Math.min(10, 7 * baseScale));
+                                        const paddingX = Math.max(6, Math.min(14, 9 * baseScale));
+                                        const borderRadius = Math.max(6, Math.min(12, 9 * baseScale));
+                                        const gap = Math.max(4, Math.min(10, 6 * baseScale));
+                                        const iconSize = Math.max(14, Math.min(24, 18 * baseScale));
                                         
                                         return (
                                             <button 
@@ -531,12 +560,21 @@ const BookReader: React.FC<BookReaderProps> = ({ bookId, student, onBack }) => {
                                                     top: `${config.position.y}%`,
                                                     width: `${config.width}%`,
                                                     transform: 'translate(-50%, -50%)',
+                                                    fontSize: `${fontSize}px`,
+                                                    padding: `${paddingY}px ${paddingX}px`,
+                                                    borderRadius: `${borderRadius}px`,
+                                                    gap: `${gap}px`,
                                                 }}
-                                                className={`animate-in zoom-in duration-500 p-1.5 sm:p-2 md:p-2.5 rounded-xl border text-[10px] sm:text-xs md:text-sm font-bold transition-all flex items-center gap-1.5 sm:gap-2 overflow-hidden ${btnClass} ${isAnswered ? 'cursor-default' : 'cursor-pointer active:scale-[0.98] shadow-lg'} ${
-                                                    (pages[idx].question.style === 'glass') ? 'backdrop-blur-xl bg-white/80' : ''
-                                                }`}
+                                                className={`animate-in zoom-in duration-500 border font-bold transition-all flex items-center overflow-hidden ${btnClass} ${isAnswered ? 'cursor-default' : 'cursor-pointer active:scale-[0.98]'}`}
                                             >
-                                                <span className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 shrink-0 rounded-full border border-current flex items-center justify-center text-[8px] sm:text-[10px] bg-white/50">
+                                                <span 
+                                                    style={{
+                                                        width: `${iconSize}px`,
+                                                        height: `${iconSize}px`,
+                                                        fontSize: `${iconSize * 0.45}px`,
+                                                    }}
+                                                    className={`shrink-0 rounded-full border flex items-center justify-center ${circleClass}`}
+                                                >
                                                     {['A', 'B', 'C', 'D'][i]}
                                                 </span>
                                                 <span className="text-left flex-1 truncate">{opt}</span>
