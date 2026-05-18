@@ -542,15 +542,6 @@ const BookReader: React.FC<BookReaderProps> = ({ bookId, student, onBack }) => {
                                             }
                                         }
                                         
-                                        // Dynamic Sizing based on page width
-                                        const baseScale = dimensions.width / 400; // Normalizing around 400px width
-                                        const fontSize = Math.max(8, Math.min(15, 11 * baseScale));
-                                        const paddingY = Math.max(4, Math.min(10, 7 * baseScale));
-                                        const paddingX = Math.max(6, Math.min(14, 9 * baseScale));
-                                        const borderRadius = Math.max(6, Math.min(12, 9 * baseScale));
-                                        const gap = Math.max(4, Math.min(10, 6 * baseScale));
-                                        const iconSize = Math.max(14, Math.min(24, 18 * baseScale));
-                                        
                                         return (
                                             <button 
                                                 key={i}
@@ -559,25 +550,37 @@ const BookReader: React.FC<BookReaderProps> = ({ bookId, student, onBack }) => {
                                                     handleAnswerClick(idx, i, pages[idx].question.correctIndex);
                                                 }}
                                                 disabled={isAnswered}
+                                                // Dynamic Sizing based on page width
                                                 style={{
                                                     position: 'absolute',
                                                     left: `${config.position.x}%`,
                                                     top: `${config.position.y}%`,
                                                     width: `${config.width}%`,
                                                     transform: 'translate(-50%, -50%)',
-                                                    fontSize: `${fontSize}px`,
-                                                    padding: `${paddingY}px ${paddingX}px`,
-                                                    borderRadius: `${borderRadius}px`,
-                                                    gap: `${gap}px`,
+                                                    fontSize: (() => {
+                                                        const baseScale = dimensions.width / 400;
+                                                        const widthFactor = Math.min(1, (config.width || 80) / 45);
+                                                        const targetBaseFont = 8.5 + (widthFactor * 2.5);
+                                                        let size = Math.max(7, Math.min(14, targetBaseFont * baseScale));
+                                                        return opt.length > 15 ? Math.max(6.5, size * 0.85) : size;
+                                                    })() + 'px',
+                                                    padding: (() => {
+                                                        const baseScale = dimensions.width / 400;
+                                                        const py = Math.max(3, Math.min(10, (opt.length > 15 ? 4.5 : 6) * baseScale));
+                                                        const px = Math.max(4, Math.min(14, (opt.length > 15 ? 6.5 : 8.5) * baseScale));
+                                                        return `${py}px ${px}px`;
+                                                    })(),
+                                                    borderRadius: Math.max(6, Math.min(12, 9 * (dimensions.width / 400))) + 'px',
+                                                    gap: Math.max(2.5, Math.min(10, (opt.length > 15 ? 3.5 : 5.5) * (dimensions.width / 400))) + 'px',
                                                     color: !isAnswered ? textColor : undefined
                                                 }}
                                                 className={`animate-in zoom-in duration-500 border font-bold transition-all flex items-center overflow-hidden ${btnClass} ${isAnswered ? 'cursor-default' : 'cursor-pointer active:scale-[0.98]'}`}
                                             >
                                                 <span 
                                                     style={{
-                                                        width: `${iconSize}px`,
-                                                        height: `${iconSize}px`,
-                                                        fontSize: `${iconSize * 0.45}px`,
+                                                        width: Math.max(12, Math.min(22, (config.width < 30 ? 14 : 17) * (dimensions.width / 400))) + 'px',
+                                                        height: Math.max(12, Math.min(22, (config.width < 30 ? 14 : 17) * (dimensions.width / 400))) + 'px',
+                                                        fontSize: (Math.max(12, Math.min(22, (config.width < 30 ? 14 : 17) * (dimensions.width / 400))) * 0.45) + 'px',
                                                         color: !isAnswered ? textColor : undefined,
                                                         borderColor: !isAnswered ? textColor : undefined
                                                     }}
