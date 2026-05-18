@@ -488,13 +488,16 @@ const BookReader: React.FC<BookReaderProps> = ({ bookId, student, onBack }) => {
                                                         : "p-1"
                                             }`}
                                         >
-                                            <h4 className={`font-bold text-xs sm:text-sm text-center leading-snug m-0 ${
-                                                (pages[idx].question.style || 'card') === 'card'
-                                                    ? "text-slate-800"
-                                                    : (pages[idx].question.style === 'glass')
-                                                        ? "text-white drop-shadow-md"
-                                                        : "text-slate-900 bg-white/80 backdrop-blur px-3 py-2 rounded-xl inline-block drop-shadow-sm"
-                                            }`}>
+                                            <h4 
+                                                className={`font-bold text-xs sm:text-sm text-center leading-snug m-0 ${
+                                                    (pages[idx].question.style || 'card') === 'card'
+                                                        ? ""
+                                                        : (pages[idx].question.style === 'glass')
+                                                            ? "drop-shadow-md"
+                                                            : "bg-white/80 backdrop-blur px-3 py-2 rounded-xl inline-block drop-shadow-sm"
+                                                }`}
+                                                style={{ color: pages[idx].question.textColor || (pages[idx].question.style === 'glass' ? '#ffffff' : '#1e293b') }}
+                                            >
                                                 {pages[idx].question.text}
                                             </h4>
                                         </div>
@@ -507,19 +510,21 @@ const BookReader: React.FC<BookReaderProps> = ({ bookId, student, onBack }) => {
                                         const isCorrect = i === pages[idx].question.correctIndex;
                                         const style = pages[idx].question.style || 'card';
                                         
+                                        const textColor = pages[idx].question.textColor || (style === 'glass' ? '#ffffff' : '#475569');
+                                        
                                         let btnClass = "";
                                         let circleClass = "";
                                         
                                         if (style === 'glass') {
-                                            btnClass = "bg-white/20 border-white/30 text-white hover:bg-white/35 hover:border-white/50 backdrop-blur-md shadow-lg";
-                                            circleClass = "bg-white/30 border-white/40 text-white";
+                                            btnClass = "bg-white/20 border-white/30 hover:bg-white/35 hover:border-white/50 backdrop-blur-md shadow-lg";
+                                            circleClass = "bg-white/30 border-white/40";
                                         } else if (style === 'minimal') {
-                                            btnClass = "bg-white/70 border-slate-200/50 text-slate-700 hover:bg-white/90 shadow-sm backdrop-blur-sm";
-                                            circleClass = "bg-white/50 border-slate-300 text-slate-600";
+                                            btnClass = "bg-white/70 border-slate-200/50 hover:bg-white/90 shadow-sm backdrop-blur-sm";
+                                            circleClass = "bg-white/50 border-slate-300";
                                         } else {
                                             // card
-                                            btnClass = "bg-white border-slate-200 text-slate-600 hover:border-orange-500 hover:bg-orange-50 shadow-md";
-                                            circleClass = "bg-slate-100 border-slate-200 text-slate-500";
+                                            btnClass = "bg-white border-slate-200 hover:border-orange-500 hover:bg-orange-50 shadow-md";
+                                            circleClass = "bg-slate-100 border-slate-200";
                                         }
                                         
                                         if (isAnswered) {
@@ -564,6 +569,7 @@ const BookReader: React.FC<BookReaderProps> = ({ bookId, student, onBack }) => {
                                                     padding: `${paddingY}px ${paddingX}px`,
                                                     borderRadius: `${borderRadius}px`,
                                                     gap: `${gap}px`,
+                                                    color: !isAnswered ? textColor : undefined
                                                 }}
                                                 className={`animate-in zoom-in duration-500 border font-bold transition-all flex items-center overflow-hidden ${btnClass} ${isAnswered ? 'cursor-default' : 'cursor-pointer active:scale-[0.98]'}`}
                                             >
@@ -572,6 +578,8 @@ const BookReader: React.FC<BookReaderProps> = ({ bookId, student, onBack }) => {
                                                         width: `${iconSize}px`,
                                                         height: `${iconSize}px`,
                                                         fontSize: `${iconSize * 0.45}px`,
+                                                        color: !isAnswered ? textColor : undefined,
+                                                        borderColor: !isAnswered ? textColor : undefined
                                                     }}
                                                     className={`shrink-0 rounded-full border flex items-center justify-center ${circleClass}`}
                                                 >

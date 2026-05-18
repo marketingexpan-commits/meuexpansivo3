@@ -99,7 +99,7 @@ export function ELivros() {
         const loadedPages = (book?.pages || []).map((p: any) => ({
             ...p,
             audioUrl: p.audioUrl || '',
-            question: p.question || { text: '', options: ['', '', '', ''], correctIndex: 0, position: { x: 50, y: 50 }, style: 'card' }
+            question: p.question || { text: '', options: ['', '', '', ''], correctIndex: 0, position: { x: 50, y: 50 }, style: 'card', textColor: 'dark' }
         }));
         
         setPages(loadedPages);
@@ -155,6 +155,7 @@ export function ELivros() {
             if (field === 'correctIndex') q.correctIndex = value;
             if (field === 'position') q.position = value;
             if (field === 'style') q.style = value;
+            if (field === 'textColor') q.textColor = value;
             if (field === 'optionsConfig') q.optionsConfig = value;
             if (field.startsWith('option_')) {
                 const idx = parseInt(field.split('_')[1]);
@@ -1140,17 +1141,38 @@ export function ELivros() {
                                                                                 className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-sm shadow-sm" 
                                                                             />
                                                                         </div>
-                                                                        <div className="w-32 shrink-0">
+                                                                        <div className="w-28 shrink-0">
                                                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Estilo Visual</label>
                                                                             <select
                                                                                 value={q.style || 'card'}
                                                                                 onChange={(e) => updatePageQuestion(page.id, 'style', e.target.value)}
-                                                                                className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-sm shadow-sm font-bold text-slate-600"
+                                                                                className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-xs shadow-sm font-bold text-slate-600"
                                                                             >
                                                                                 <option value="card">Cartão</option>
                                                                                 <option value="glass">Vidro</option>
                                                                                 <option value="minimal">Minimalista</option>
                                                                             </select>
+                                                                        </div>
+                                                                        <div className="w-28 shrink-0">
+                                                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Cor do Texto</label>
+                                                                            <div className="flex items-center gap-1.5 p-1.5 bg-white border border-slate-200 rounded-xl shadow-sm h-[42px]">
+                                                                                <input 
+                                                                                    type="color" 
+                                                                                    value={q.textColor || '#1e293b'} 
+                                                                                    onChange={(e) => updatePageQuestion(page.id, 'textColor', e.target.value)}
+                                                                                    className="w-6 h-6 border-0 rounded-lg cursor-pointer bg-transparent outline-none overflow-hidden shrink-0" 
+                                                                                    style={{ padding: 0 }}
+                                                                                    title="Escolher Cor"
+                                                                                />
+                                                                                <input 
+                                                                                    type="text" 
+                                                                                    maxLength={7}
+                                                                                    value={q.textColor || '#1e293b'} 
+                                                                                    onChange={(e) => updatePageQuestion(page.id, 'textColor', e.target.value)}
+                                                                                    className="w-full text-[10px] font-bold text-slate-600 outline-none uppercase bg-transparent text-center"
+                                                                                    placeholder="#1e293b"
+                                                                                />
+                                                                            </div>
                                                                         </div>
                                                                     </div>
 
@@ -1268,8 +1290,13 @@ export function ELivros() {
                                                                             ) : (
                                                                                 <>
                                                                                     <div 
-                                                                                        className="absolute px-2 py-0.5 bg-white/90 backdrop-blur rounded border border-white shadow text-[6px] font-bold text-center -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-all"
-                                                                                        style={{ left: `${q.position?.x ?? 50}%`, top: `${q.position?.y ?? 50}%`, zIndex: activePositionElement === 'question' ? 10 : 1 }}
+                                                                                        className="absolute px-2 py-0.5 bg-white/95 backdrop-blur rounded border border-white shadow text-[6px] font-bold text-center -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-all"
+                                                                                        style={{ 
+                                                                                            left: `${q.position?.x ?? 50}%`, 
+                                                                                            top: `${q.position?.y ?? 50}%`, 
+                                                                                            zIndex: activePositionElement === 'question' ? 10 : 1,
+                                                                                            color: q.textColor || '#1e293b'
+                                                                                        }}
                                                                                     >
                                                                                         Título
                                                                                         {activePositionElement === 'question' && <div className="absolute inset-0 border border-orange-500 rounded animate-pulse" />}
@@ -1279,27 +1306,38 @@ export function ELivros() {
                                                                                         const isAc = activePositionElement === `opt_${optIdx}`;
                                                                                         const style = q.style || 'card';
                                                                                         
+                                                                                        const customColor = q.textColor || '#475569';
+                                                                                        
                                                                                         let previewClass = "";
                                                                                         let circleClass = "";
                                                                                         
                                                                                         if (style === 'glass') {
-                                                                                            previewClass = "bg-white/20 border-white/30 text-white backdrop-blur-[1px]";
-                                                                                            circleClass = "bg-white/30 border-white/40 text-white";
+                                                                                            previewClass = "bg-white/20 border-white/30 backdrop-blur-[1px]";
+                                                                                            circleClass = "bg-white/30 border-white/40";
                                                                                         } else if (style === 'minimal') {
-                                                                                            previewClass = "bg-white/70 border-slate-200/50 text-slate-700 backdrop-blur-[1px]";
-                                                                                            circleClass = "bg-white/50 border-slate-300 text-slate-600";
+                                                                                            previewClass = "bg-white/70 border-slate-200/50 backdrop-blur-[1px]";
+                                                                                            circleClass = "bg-white/50 border-slate-300";
                                                                                         } else {
-                                                                                            previewClass = "bg-white border-slate-200 text-slate-600";
-                                                                                            circleClass = "bg-slate-100 border-slate-200 text-slate-500";
+                                                                                            previewClass = "bg-white border-slate-200";
+                                                                                            circleClass = "bg-slate-100 border-slate-200";
                                                                                         }
                                                                                         
                                                                                         return (
                                                                                             <div 
                                                                                                 key={optIdx}
                                                                                                 className={`absolute border rounded-[3px] text-[5px] flex items-center gap-0.5 p-0.5 -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-all shadow-sm overflow-hidden ${previewClass}`}
-                                                                                                style={{ left: `${q.optionsConfig[optIdx].position.x}%`, top: `${q.optionsConfig[optIdx].position.y}%`, width: `${q.optionsConfig[optIdx].width}%`, zIndex: isAc ? 10 : 1 }}
+                                                                                                style={{ 
+                                                                                                    left: `${q.optionsConfig[optIdx].position.x}%`, 
+                                                                                                    top: `${q.optionsConfig[optIdx].position.y}%`, 
+                                                                                                    width: `${q.optionsConfig[optIdx].width}%`, 
+                                                                                                    zIndex: isAc ? 10 : 1,
+                                                                                                    color: customColor
+                                                                                                }}
                                                                                             >
-                                                                                                <div className={`w-2 h-2 shrink-0 rounded-full border flex items-center justify-center text-[4px] ${circleClass}`}>
+                                                                                                <div 
+                                                                                                    className={`w-2 h-2 shrink-0 rounded-full border flex items-center justify-center text-[4px] ${circleClass}`}
+                                                                                                    style={{ borderColor: customColor, color: customColor }}
+                                                                                                >
                                                                                                     {['A', 'B', 'C', 'D'][optIdx]}
                                                                                                 </div>
                                                                                                 <div className="truncate flex-1 font-bold">{q.options[optIdx] || '...'}</div>
