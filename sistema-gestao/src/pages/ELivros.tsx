@@ -15,6 +15,7 @@ export function ELivros() {
     const [books, setBooks] = useState<any[]>([]);
     const [isLoadingBooks, setIsLoadingBooks] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [activePositionElement, setActivePositionElement] = useState<string>('question');
 
     // Dashboard States
     const [progressList, setProgressList] = useState<any[]>([]);
@@ -154,9 +155,21 @@ export function ELivros() {
             if (field === 'correctIndex') q.correctIndex = value;
             if (field === 'position') q.position = value;
             if (field === 'style') q.style = value;
+            if (field === 'optionsConfig') q.optionsConfig = value;
             if (field.startsWith('option_')) {
                 const idx = parseInt(field.split('_')[1]);
                 q.options[idx] = value;
+            }
+            if (field.startsWith('optPos_') || field.startsWith('optWidth_')) {
+                const idx = parseInt(field.split('_')[1]);
+                if (!q.optionsConfig) q.optionsConfig = [
+                    { position: { x: 50, y: 60 }, width: 80 },
+                    { position: { x: 50, y: 70 }, width: 80 },
+                    { position: { x: 50, y: 80 }, width: 80 },
+                    { position: { x: 50, y: 90 }, width: 80 }
+                ];
+                if (field.startsWith('optPos_')) q.optionsConfig[idx].position = value;
+                if (field.startsWith('optWidth_')) q.optionsConfig[idx].width = value;
             }
             return { ...p, question: q };
         }));
@@ -1144,7 +1157,38 @@ export function ELivros() {
                                                                     <div className="space-y-3">
                                                                         {[0, 1, 2, 3].map(optIdx => (
                                                                             <div key={optIdx} className="relative">
-                                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Opção {optIdx + 1}</label>
+                                                                                <div className="flex items-center justify-between mb-1.5 ml-1">
+                                                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Opção {['A', 'B', 'C', 'D'][optIdx]}</label>
+                                                                                    {q.optionsConfig && (
+                                                                                        <label className="text-[9px] font-bold text-slate-400 flex items-center gap-1">
+                                                                                            Tamanho:
+                                                                                            <input 
+                                                                                                type="range" 
+                                                                                                min="10" max="100" 
+                                                                                                value={q.optionsConfig[optIdx]?.width || 80}
+                                                                                                onChange={(e) => updatePageQuestion(page.id, `optWidth_${optIdx}`, parseInt(e.target.value))}
+                                                                                                className="w-16 accent-orange-500"
+                                                                                                title="Ajustar largura da opção"
+                                                                                            />
+                                                                                            <div className="flex items-center gap-0.5 ml-1">
+                                                                                                <input 
+                                                                                                    type="number" 
+                                                                                                    min="10" max="100"
+                                                                                                    value={q.optionsConfig[optIdx]?.width || 80}
+                                                                                                    onChange={(e) => {
+                                                                                                        let val = parseInt(e.target.value);
+                                                                                                        if (isNaN(val)) val = 10;
+                                                                                                        if (val > 100) val = 100;
+                                                                                                        if (val < 10) val = 10;
+                                                                                                        updatePageQuestion(page.id, `optWidth_${optIdx}`, val);
+                                                                                                    }}
+                                                                                                    className="w-8 text-center border border-slate-200 rounded p-0.5 outline-none focus:border-orange-500"
+                                                                                                />
+                                                                                                <span>%</span>
+                                                                                            </div>
+                                                                                        </label>
+                                                                                    )}
+                                                                                </div>
                                                                                 <div className="flex items-center gap-2">
                                                                                     <input 
                                                                                         type="text" 
@@ -1168,33 +1212,91 @@ export function ELivros() {
                                                                 </div>
 
                                                                 {page.imageUrl ? (
-                                                                    <div className="w-full md:w-48 shrink-0 flex flex-col gap-2 items-center">
-                                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Posição do Quiz</label>
+                                                                    <div className="w-full md:w-56 shrink-0 flex flex-col gap-2 items-center">
+                                                                        <div className="flex flex-col w-full gap-2">
+                                                                            <div className="flex items-center justify-between">
+                                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Layout do Quiz</label>
+                                                                                <button
+                                                                                    onClick={() => updatePageQuestion(page.id, 'optionsConfig', q.optionsConfig ? undefined : [
+                                                                                        { position: { x: 50, y: 60 }, width: 80 },
+                                                                                        { position: { x: 50, y: 70 }, width: 80 },
+                                                                                        { position: { x: 50, y: 80 }, width: 80 },
+                                                                                        { position: { x: 50, y: 90 }, width: 80 }
+                                                                                    ])}
+                                                                                    className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-colors ${q.optionsConfig ? 'bg-orange-50 text-orange-600 border-orange-200' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'}`}
+                                                                                >
+                                                                                    {q.optionsConfig ? 'Separado' : 'Agrupado'}
+                                                                                </button>
+                                                                            </div>
+                                                                            
+                                                                            {q.optionsConfig && (
+                                                                                <div className="grid grid-cols-5 gap-1 bg-slate-100 p-1 rounded-lg">
+                                                                                    <button onClick={() => setActivePositionElement('question')} className={`text-[9px] py-1 rounded font-bold transition-colors ${activePositionElement === 'question' ? 'bg-white shadow text-orange-600' : 'text-slate-500 hover:bg-white/50'}`}>Tit</button>
+                                                                                    <button onClick={() => setActivePositionElement('opt_0')} className={`text-[9px] py-1 rounded font-bold transition-colors ${activePositionElement === 'opt_0' ? 'bg-white shadow text-orange-600' : 'text-slate-500 hover:bg-white/50'}`}>A</button>
+                                                                                    <button onClick={() => setActivePositionElement('opt_1')} className={`text-[9px] py-1 rounded font-bold transition-colors ${activePositionElement === 'opt_1' ? 'bg-white shadow text-orange-600' : 'text-slate-500 hover:bg-white/50'}`}>B</button>
+                                                                                    <button onClick={() => setActivePositionElement('opt_2')} className={`text-[9px] py-1 rounded font-bold transition-colors ${activePositionElement === 'opt_2' ? 'bg-white shadow text-orange-600' : 'text-slate-500 hover:bg-white/50'}`}>C</button>
+                                                                                    <button onClick={() => setActivePositionElement('opt_3')} className={`text-[9px] py-1 rounded font-bold transition-colors ${activePositionElement === 'opt_3' ? 'bg-white shadow text-orange-600' : 'text-slate-500 hover:bg-white/50'}`}>D</button>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
                                                                         <div 
                                                                             className="relative aspect-[3/4] w-full bg-slate-200 rounded-xl overflow-hidden cursor-crosshair border-2 border-transparent hover:border-orange-500 transition-colors group"
                                                                             onClick={(e) => {
                                                                                 const rect = e.currentTarget.getBoundingClientRect();
                                                                                 const x = ((e.clientX - rect.left) / rect.width) * 100;
                                                                                 const y = ((e.clientY - rect.top) / rect.height) * 100;
-                                                                                updatePageQuestion(page.id, 'position', {x, y});
+                                                                                if (!q.optionsConfig || activePositionElement === 'question') {
+                                                                                    updatePageQuestion(page.id, 'position', {x, y});
+                                                                                } else {
+                                                                                    const idx = parseInt(activePositionElement.split('_')[1]);
+                                                                                    updatePageQuestion(page.id, `optPos_${idx}`, {x, y});
+                                                                                }
                                                                             }}
                                                                         >
                                                                             <img src={page.imageUrl} alt="Página" className="w-full h-full object-cover" />
                                                                             <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors pointer-events-none" />
                                                                             
-                                                                            {/* Position Marker */}
-                                                                            <div 
-                                                                                className="absolute w-8 h-8 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none transition-all duration-300"
-                                                                                style={{ 
-                                                                                    left: `${q.position?.x ?? 50}%`, 
-                                                                                    top: `${q.position?.y ?? 50}%` 
-                                                                                }}
-                                                                            >
-                                                                                <div className="w-3 h-3 bg-orange-500 rounded-full shadow-[0_0_0_2px_white,0_4px_8px_rgba(0,0,0,0.5)] animate-pulse" />
-                                                                                <div className="absolute w-12 h-12 border border-orange-500/50 rounded-full animate-ping" />
-                                                                            </div>
+                                                                            {/* Position Markers */}
+                                                                            {(!q.optionsConfig) ? (
+                                                                                <div 
+                                                                                    className="absolute w-8 h-8 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none transition-all duration-300"
+                                                                                    style={{ left: `${q.position?.x ?? 50}%`, top: `${q.position?.y ?? 50}%` }}
+                                                                                >
+                                                                                    <div className="w-3 h-3 bg-orange-500 rounded-full shadow-[0_0_0_2px_white,0_4px_8px_rgba(0,0,0,0.5)] animate-pulse" />
+                                                                                    <div className="absolute w-12 h-12 border border-orange-500/50 rounded-full animate-ping" />
+                                                                                </div>
+                                                                            ) : (
+                                                                                <>
+                                                                                    <div 
+                                                                                        className="absolute px-2 py-0.5 bg-white/90 backdrop-blur rounded border border-white shadow text-[6px] font-bold text-center -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-all"
+                                                                                        style={{ left: `${q.position?.x ?? 50}%`, top: `${q.position?.y ?? 50}%`, zIndex: activePositionElement === 'question' ? 10 : 1 }}
+                                                                                    >
+                                                                                        Título
+                                                                                        {activePositionElement === 'question' && <div className="absolute inset-0 border border-orange-500 rounded animate-pulse" />}
+                                                                                    </div>
+                                                                                    {[0, 1, 2, 3].map(optIdx => {
+                                                                                        if (!q.optionsConfig[optIdx]) return null;
+                                                                                        const isAc = activePositionElement === `opt_${optIdx}`;
+                                                                                        return (
+                                                                                            <div 
+                                                                                                key={optIdx}
+                                                                                                className="absolute bg-white border border-slate-200 rounded text-[6px] flex items-center gap-1 p-0.5 -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-all shadow-sm overflow-hidden"
+                                                                                                style={{ left: `${q.optionsConfig[optIdx].position.x}%`, top: `${q.optionsConfig[optIdx].position.y}%`, width: `${q.optionsConfig[optIdx].width}%`, zIndex: isAc ? 10 : 1 }}
+                                                                                            >
+                                                                                                <div className="w-2.5 h-2.5 shrink-0 rounded-full border flex items-center justify-center text-[5px]">
+                                                                                                    {['A', 'B', 'C', 'D'][optIdx]}
+                                                                                                </div>
+                                                                                                <div className="truncate flex-1">{q.options[optIdx] || '...'}</div>
+                                                                                                {isAc && <div className="absolute inset-0 border border-orange-500 rounded animate-pulse" />}
+                                                                                            </div>
+                                                                                        );
+                                                                                    })}
+                                                                                </>
+                                                                            )}
                                                                         </div>
-                                                                        <p className="text-[9px] text-slate-400 text-center px-4">Clique na imagem para mover o ponto laranja.</p>
+                                                                        <p className="text-[9px] text-slate-400 text-center px-4">
+                                                                            {q.optionsConfig ? 'Selecione acima e clique na imagem para mover.' : 'Clique na imagem para mover o ponto laranja.'}
+                                                                        </p>
                                                                     </div>
                                                                 ) : (
                                                                     <div className="w-full md:w-48 shrink-0 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl p-4 text-center aspect-[3/4]">

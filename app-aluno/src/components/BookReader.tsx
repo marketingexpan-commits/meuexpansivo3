@@ -401,69 +401,151 @@ const BookReader: React.FC<BookReaderProps> = ({ bookId, student, onBack }) => {
 
                     {/* Interactive Quiz Overlay */}
                     {pages[idx]?.type === 'activity' && pages[idx]?.question && (
-                        <div 
-                            style={{
-                                position: 'absolute',
-                                left: `${pages[idx].question.position?.x ?? 50}%`,
-                                top: `${pages[idx].question.position?.y ?? 50}%`,
-                                transform: 'translate(-50%, -50%)',
-                            }}
-                            className={`w-11/12 max-w-[280px] animate-in zoom-in duration-500 rounded-2xl ${
-                                (pages[idx].question.style || 'card') === 'card' 
-                                    ? "bg-white/95 backdrop-blur-md p-3 sm:p-4 shadow-xl border border-white/50" 
-                                    : (pages[idx].question.style === 'glass')
-                                        ? "bg-white/20 backdrop-blur-xl p-3 sm:p-4 shadow-2xl border border-white/40"
-                                        : "p-1"
-                            }`}
-                        >
-                            <div className="text-center">
-                                <h4 className={`font-bold text-xs sm:text-sm mb-3 text-center leading-snug ${
-                                    (pages[idx].question.style || 'card') === 'card'
-                                        ? "text-slate-800"
-                                        : (pages[idx].question.style === 'glass')
-                                            ? "text-white drop-shadow-md"
-                                            : "text-slate-900 bg-white/80 backdrop-blur px-3 py-2 rounded-xl inline-block drop-shadow-sm"
-                                }`}>
-                                    {pages[idx].question.text}
-                                </h4>
-                            </div>
-                            <div className="space-y-2">
-                                {pages[idx].question.options.map((opt: string, i: number) => {
-                                    if (!opt) return null;
-                                    const isAnswered = answeredState[idx] !== undefined;
-                                    const isSelected = answeredState[idx] === i;
-                                    const isCorrect = i === pages[idx].question.correctIndex;
-                                    
-                                    let btnClass = "bg-white border-slate-200 text-slate-600 hover:border-orange-500 hover:bg-orange-50";
-                                    if (isAnswered) {
-                                        if (isSelected) {
-                                            btnClass = isCorrect ? "bg-green-500 text-white border-green-600" : "bg-red-500 text-white border-red-600";
-                                        } else if (isCorrect) {
-                                            btnClass = "bg-green-100 text-green-700 border-green-200";
-                                        } else {
-                                            btnClass = "bg-slate-50 text-slate-400 border-slate-200 opacity-50";
-                                        }
-                                    }
-                                    
-                                    return (
-                                        <button 
-                                            key={i}
-                                            onClick={(e) => {
-                                                e.stopPropagation(); // Prevent page flip if clicked
-                                                handleAnswerClick(idx, i, pages[idx].question.correctIndex);
+                        <>
+                            {/* If there is no optionsConfig, render as a single grouped card */}
+                            {!pages[idx].question.optionsConfig ? (
+                                <div 
+                                    style={{
+                                        position: 'absolute',
+                                        left: `${pages[idx].question.position?.x ?? 50}%`,
+                                        top: `${pages[idx].question.position?.y ?? 50}%`,
+                                        transform: 'translate(-50%, -50%)',
+                                    }}
+                                    className={`w-11/12 max-w-[280px] animate-in zoom-in duration-500 rounded-2xl ${
+                                        (pages[idx].question.style || 'card') === 'card' 
+                                            ? "bg-white/95 backdrop-blur-md p-3 sm:p-4 shadow-xl border border-white/50" 
+                                            : (pages[idx].question.style === 'glass')
+                                                ? "bg-white/20 backdrop-blur-xl p-3 sm:p-4 shadow-2xl border border-white/40"
+                                                : "p-1"
+                                    }`}
+                                >
+                                    {pages[idx].question.text && (
+                                        <div className="text-center">
+                                            <h4 className={`font-bold text-xs sm:text-sm mb-3 text-center leading-snug ${
+                                                (pages[idx].question.style || 'card') === 'card'
+                                                    ? "text-slate-800"
+                                                    : (pages[idx].question.style === 'glass')
+                                                        ? "text-white drop-shadow-md"
+                                                        : "text-slate-900 bg-white/80 backdrop-blur px-3 py-2 rounded-xl inline-block drop-shadow-sm"
+                                            }`}>
+                                                {pages[idx].question.text}
+                                            </h4>
+                                        </div>
+                                    )}
+                                    <div className="space-y-2">
+                                        {pages[idx].question.options.map((opt: string, i: number) => {
+                                            if (!opt) return null;
+                                            const isAnswered = answeredState[idx] !== undefined;
+                                            const isSelected = answeredState[idx] === i;
+                                            const isCorrect = i === pages[idx].question.correctIndex;
+                                            
+                                            let btnClass = "bg-white border-slate-200 text-slate-600 hover:border-orange-500 hover:bg-orange-50";
+                                            if (isAnswered) {
+                                                if (isSelected) {
+                                                    btnClass = isCorrect ? "bg-green-500 text-white border-green-600" : "bg-red-500 text-white border-red-600";
+                                                } else if (isCorrect) {
+                                                    btnClass = "bg-green-100 text-green-700 border-green-200";
+                                                } else {
+                                                    btnClass = "bg-slate-50 text-slate-400 border-slate-200 opacity-50";
+                                                }
+                                            }
+                                            
+                                            return (
+                                                <button 
+                                                    key={i}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); // Prevent page flip if clicked
+                                                        handleAnswerClick(idx, i, pages[idx].question.correctIndex);
+                                                    }}
+                                                    disabled={isAnswered}
+                                                    className={`w-full p-2 sm:p-2.5 rounded-xl border text-xs sm:text-sm font-bold transition-all flex items-center gap-3 ${btnClass} ${isAnswered ? 'cursor-default' : 'cursor-pointer active:scale-[0.98]'}`}
+                                                >
+                                                    <span className="w-6 h-6 shrink-0 rounded-full border border-current flex items-center justify-center text-[10px]">
+                                                        {['A', 'B', 'C', 'D'][i]}
+                                                    </span>
+                                                    <span className="text-left flex-1">{opt}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ) : (
+                                /* If there is optionsConfig, render independently */
+                                <>
+                                    {pages[idx].question.text && (
+                                        <div 
+                                            style={{
+                                                position: 'absolute',
+                                                left: `${pages[idx].question.position?.x ?? 50}%`,
+                                                top: `${pages[idx].question.position?.y ?? 50}%`,
+                                                transform: 'translate(-50%, -50%)',
                                             }}
-                                            disabled={isAnswered}
-                                            className={`w-full p-2 sm:p-2.5 rounded-xl border text-xs sm:text-sm font-bold transition-all flex items-center gap-3 ${btnClass} ${isAnswered ? 'cursor-default' : 'cursor-pointer active:scale-[0.98]'}`}
+                                            className={`animate-in zoom-in duration-500 rounded-2xl ${
+                                                (pages[idx].question.style || 'card') === 'card' 
+                                                    ? "bg-white/95 backdrop-blur-md p-3 sm:p-4 shadow-xl border border-white/50" 
+                                                    : (pages[idx].question.style === 'glass')
+                                                        ? "bg-white/20 backdrop-blur-xl p-3 sm:p-4 shadow-2xl border border-white/40"
+                                                        : "p-1"
+                                            }`}
                                         >
-                                            <span className="w-6 h-6 shrink-0 rounded-full border border-current flex items-center justify-center text-[10px]">
-                                                {['A', 'B', 'C'][i]}
-                                            </span>
-                                            <span className="text-left flex-1">{opt}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
+                                            <h4 className={`font-bold text-xs sm:text-sm text-center leading-snug m-0 ${
+                                                (pages[idx].question.style || 'card') === 'card'
+                                                    ? "text-slate-800"
+                                                    : (pages[idx].question.style === 'glass')
+                                                        ? "text-white drop-shadow-md"
+                                                        : "text-slate-900 bg-white/80 backdrop-blur px-3 py-2 rounded-xl inline-block drop-shadow-sm"
+                                            }`}>
+                                                {pages[idx].question.text}
+                                            </h4>
+                                        </div>
+                                    )}
+                                    {pages[idx].question.options.map((opt: string, i: number) => {
+                                        if (!opt || !pages[idx].question.optionsConfig?.[i]) return null;
+                                        const config = pages[idx].question.optionsConfig[i];
+                                        const isAnswered = answeredState[idx] !== undefined;
+                                        const isSelected = answeredState[idx] === i;
+                                        const isCorrect = i === pages[idx].question.correctIndex;
+                                        
+                                        let btnClass = "bg-white border-slate-200 text-slate-600 hover:border-orange-500 hover:bg-orange-50";
+                                        if (isAnswered) {
+                                            if (isSelected) {
+                                                btnClass = isCorrect ? "bg-green-500 text-white border-green-600" : "bg-red-500 text-white border-red-600";
+                                            } else if (isCorrect) {
+                                                btnClass = "bg-green-100 text-green-700 border-green-200";
+                                            } else {
+                                                btnClass = "bg-slate-50 text-slate-400 border-slate-200 opacity-50";
+                                            }
+                                        }
+                                        
+                                        return (
+                                            <button 
+                                                key={i}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleAnswerClick(idx, i, pages[idx].question.correctIndex);
+                                                }}
+                                                disabled={isAnswered}
+                                                style={{
+                                                    position: 'absolute',
+                                                    left: `${config.position.x}%`,
+                                                    top: `${config.position.y}%`,
+                                                    width: `${config.width}%`,
+                                                    transform: 'translate(-50%, -50%)',
+                                                }}
+                                                className={`animate-in zoom-in duration-500 p-2 sm:p-2.5 rounded-xl border text-xs sm:text-sm font-bold transition-all flex items-center gap-3 ${btnClass} ${isAnswered ? 'cursor-default' : 'cursor-pointer active:scale-[0.98] shadow-lg'} ${
+                                                    (pages[idx].question.style === 'glass') ? 'backdrop-blur-xl bg-white/80' : ''
+                                                }`}
+                                            >
+                                                <span className="w-6 h-6 shrink-0 rounded-full border border-current flex items-center justify-center text-[10px] bg-white/50">
+                                                    {['A', 'B', 'C', 'D'][i]}
+                                                </span>
+                                                <span className="text-left flex-1">{opt}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </>
+                            )}
+                        </>
                     )}
                 </div>
             </div>
