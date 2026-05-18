@@ -379,24 +379,28 @@ const BookReader: React.FC<BookReaderProps> = ({ bookId, student, onBack }) => {
                         </button>
                     )}
 
-                    {/* PDF Download Button */}
+                    {/* PDF Download Button with animated glowing border outline */}
                     {pages[idx]?.pdfUrl && (
-                        <button
+                        <div 
+                            style={{ zIndex: 100 }}
+                            className={`absolute bottom-4 ${isLeft ? 'right-4' : 'left-4'} p-[2px] rounded-xl overflow-hidden flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.12)] cursor-pointer group hover:scale-105 active:scale-95 transition-all`}
                             onClick={(e) => {
                                 e.stopPropagation();
                                 window.open(pages[idx].pdfUrl, '_blank');
                             }}
-                            style={{ zIndex: 100 }}
-                            className={`absolute top-4 ${isLeft ? 'right-4' : 'left-4'} p-2.5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.15)] transition-all transform hover:scale-105 active:scale-95 flex flex-col items-center justify-center bg-white/95 text-blue-500 backdrop-blur-md border border-blue-100 group`}
-                            title={pages[idx].pdfDescription || "Baixar Desenho"}
+                            title={pages[idx].pdfDescription || "Imprimir Desenhos para Colorir"}
                         >
-                            <div className="flex items-center gap-1.5">
-                                <Download size={18} className="group-hover:-translate-y-0.5 transition-transform" />
+                            {/* Animated spinning laser border light */}
+                            <div className="absolute inset-[-1000%] bg-[conic-gradient(from_0deg,transparent_0%,transparent_43%,#3b82f6_47%,#ffffff_50%,#3b82f6_53%,transparent_57%,transparent_100%)] laser-glowing-border opacity-80 group-hover:opacity-100 transition-opacity" />
+                            
+                            {/* The inner button content */}
+                            <div className="relative z-10 px-3 py-2 rounded-[10px] flex items-center justify-center bg-white text-blue-600 hover:text-blue-700 gap-2 w-full h-full">
+                                <Download size={16} className="group-hover:-translate-y-0.5 transition-transform shrink-0" />
+                                <span className="text-[9px] font-black uppercase tracking-wider text-slate-700 leading-none">
+                                    {pages[idx].pdfDescription || "Imprimir Desenhos para Colorir"}
+                                </span>
                             </div>
-                            <span className="text-[7px] font-black uppercase tracking-widest mt-1 max-w-[60px] text-center leading-tight text-slate-600 line-clamp-2">
-                                {pages[idx].pdfDescription || "Desenho"}
-                            </span>
-                        </button>
+                        </div>
                     )}
 
                     {/* Interactive Quiz Overlay */}
@@ -606,7 +610,12 @@ const BookReader: React.FC<BookReaderProps> = ({ bookId, student, onBack }) => {
 
     const bookWidth = isDualPage ? dimensions.width * 2 : dimensions.width;
     const isCoverSpread = spreadIndex === 0 && isDualPage;
-    const coverOffset = isCoverSpread ? -dimensions.width / 2 : 0;
+    const isLastSingleSpread = isDualPage && spreadIndex === totalSpreads - 1 && leftPageIdx !== null && rightPageIdx === null;
+    const coverOffset = isCoverSpread 
+        ? -dimensions.width / 2 
+        : isLastSingleSpread 
+            ? dimensions.width / 2 
+            : 0;
 
     // ── Spine shadow: Sharp dark crease mimicking a tightly bound book ──
     const SpineShadow = () => {
@@ -865,6 +874,20 @@ const BookReader: React.FC<BookReaderProps> = ({ bookId, student, onBack }) => {
                     80%  { opacity: 0.6; }
                     100% { opacity: 0; }
                 }
+
+                /* ── Glowing Laser Spinning Border ── */
+                @keyframes borderRotate {
+                    0% {
+                        transform: rotate(0deg);
+                    }
+                    100% {
+                        transform: rotate(360deg);
+                    }
+                }
+                .laser-glowing-border {
+                    animation: borderRotate 4s linear infinite !important;
+                }
+
             `}</style>
         </div>
     );
