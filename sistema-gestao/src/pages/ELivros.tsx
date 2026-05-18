@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { BookOpen, Plus, CreditCard, Save, Trash2, Edit3, Image as ImageIcon, CheckCircle2, X, Upload, Loader2, Volume2, Eye, EyeOff, Award, ShoppingCart, Search, Filter } from 'lucide-react';
 import { db, storage } from '../firebaseConfig';
 import { collection, addDoc, updateDoc, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { ACADEMIC_SEGMENTS } from '../utils/academicDefaults';
 
 export function ELivros() {
@@ -106,7 +106,7 @@ export function ELivros() {
         setIsModalOpen(true);
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, isCover: boolean, pageId?: number, isAudio?: boolean) => {
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, isCover: boolean, pageId?: number, isAudio?: boolean, isPdf?: boolean) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -118,6 +118,8 @@ export function ELivros() {
             } else if (pageId) {
                 if (isAudio) {
                     setPages(pages.map(p => p.id === pageId ? { ...p, audioUrl: url } : p));
+                } else if (isPdf) {
+                    setPages(pages.map(p => p.id === pageId ? { ...p, pdfUrl: url } : p));
                 } else {
                     setPages(pages.map(p => p.id === pageId ? { ...p, imageUrl: url } : p));
                 }
@@ -133,6 +135,8 @@ export function ELivros() {
             type: 'story',
             imageUrl: '',
             audioUrl: '',
+            pdfUrl: '',
+            pdfDescription: '',
             question: {
                 text: '',
                 options: ['', '', ''],
@@ -177,6 +181,7 @@ export function ELivros() {
             const finalPages = await Promise.all(pages.map(async (page, index) => {
                 let pageImageUrl = page.imageUrl;
                 let pageAudioUrl = page.audioUrl;
+                let pagePdfUrl = page.pdfUrl;
                 
                 if (pageImageUrl && pageImageUrl.startsWith('data:image')) {
                     const pageRef = ref(storage, `e_books/${bookIdStr}/page_${index}_${Date.now()}`);
@@ -189,8 +194,14 @@ export function ELivros() {
                     await uploadString(audioRef, pageAudioUrl, 'data_url');
                     pageAudioUrl = await getDownloadURL(audioRef);
                 }
+
+                if (pagePdfUrl && pagePdfUrl.startsWith('data:application/pdf')) {
+                    const pdfRef = ref(storage, `e_books/${bookIdStr}/pdf_${index}_${Date.now()}.pdf`);
+                    await uploadString(pdfRef, pagePdfUrl, 'data_url');
+                    pagePdfUrl = await getDownloadURL(pdfRef);
+                }
                 
-                return { ...page, imageUrl: pageImageUrl, audioUrl: pageAudioUrl };
+                return { ...page, imageUrl: pageImageUrl, audioUrl: pageAudioUrl, pdfUrl: pagePdfUrl, pdfDescription: page.pdfDescription || '' };
             }));
 
             const bookData = {
@@ -229,8 +240,31 @@ export function ELivros() {
     };
 
     const handleDelete = async (bookId: string) => {
-        if (confirm("Tem certeza que deseja excluir este livro?")) {
+        if (confirm("Tem certeza que deseja excluir este livro? Todos os arquivos (PDFs, imagens e áudios) anexados a ele também serão excluídos permanentemente do servidor.")) {
             try {
+                // Encontra o livro na lista atual para resgatar as URLs de arquivos
+                const bookToDelete = books.find(b => b.id === bookId);
+                if (bookToDelete) {
+                    const filesToDelete: string[] = [];
+                    if (bookToDelete.coverUrl && !bookToDelete.coverUrl.startsWith('data:')) filesToDelete.push(bookToDelete.coverUrl);
+                    
+                    (bookToDelete.pages || []).forEach((page: any) => {
+                        if (page.imageUrl && !page.imageUrl.startsWith('data:')) filesToDelete.push(page.imageUrl);
+                        if (page.audioUrl && !page.audioUrl.startsWith('data:')) filesToDelete.push(page.audioUrl);
+                        if (page.pdfUrl && !page.pdfUrl.startsWith('data:')) filesToDelete.push(page.pdfUrl);
+                    });
+
+                    // Exclui fisicamente todos os arquivos anexados no Firebase Storage
+                    await Promise.all(filesToDelete.map(async (url) => {
+                        try {
+                            const fileRef = ref(storage, url);
+                            await deleteObject(fileRef);
+                        } catch (err) {
+                            console.error("Aviso: Falha ao deletar arquivo (talvez já tenha sido removido):", url, err);
+                        }
+                    }));
+                }
+
                 await deleteDoc(doc(db, 'e_books', bookId));
             } catch (error) {
                 console.error("Erro ao excluir livro:", error);
@@ -962,44 +996,67 @@ export function ELivros() {
 
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                         {pages.map((page, idx) => (
-                                            <div key={page.id} className="relative aspect-[3/4] bg-slate-50 border border-slate-200 rounded-xl overflow-hidden group">
-                                                {page.imageUrl ? (
-                                                    <img src={page.imageUrl} alt={`Pág ${idx+1}`} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <div className="absolute inset-0 flex items-center justify-center text-slate-300">
-                                                        <ImageIcon size={24} />
+                                            <div key={page.id} className="relative bg-slate-50 border border-slate-200 rounded-xl overflow-hidden flex flex-col">
+                                                <div className="relative aspect-[3/4] w-full group">
+                                                    {page.imageUrl ? (
+                                                        <img src={page.imageUrl} alt={`Pág ${idx+1}`} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="absolute inset-0 flex items-center justify-center text-slate-300">
+                                                            <ImageIcon size={24} />
+                                                        </div>
+                                                    )}
+                                                    <div className="absolute top-1 left-1 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] font-bold text-slate-600 shadow-sm flex items-center gap-1">
+                                                        Pág {idx + 1}
+                                                        {page.audioUrl && <span className="w-2 h-2 rounded-full bg-green-500" title="Áudio incluído"></span>}
                                                     </div>
-                                                )}
-                                                <div className="absolute top-1 left-1 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] font-bold text-slate-600 shadow-sm flex items-center gap-1">
-                                                    Pág {idx + 1}
-                                                    {page.audioUrl && <span className="w-2 h-2 rounded-full bg-green-500" title="Áudio incluído"></span>}
+                                                    <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                                                        <label className="p-2 bg-white rounded-full text-slate-600 hover:text-orange-500 shadow-lg cursor-pointer flex items-center gap-2 text-[10px] font-bold uppercase w-24 justify-center">
+                                                            <Upload size={14} /> Imagem
+                                                            <input 
+                                                                type="file" 
+                                                                className="hidden" 
+                                                                accept="image/*"
+                                                                onChange={(e) => handleFileChange(e, false, page.id)}
+                                                            />
+                                                        </label>
+                                                        <label className={`p-2 rounded-full shadow-lg cursor-pointer flex items-center gap-2 text-[10px] font-bold uppercase w-24 justify-center ${page.audioUrl ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-white text-slate-600 hover:text-blue-500'}`}>
+                                                            <Upload size={14} /> Áudio
+                                                            <input 
+                                                                type="file" 
+                                                                className="hidden" 
+                                                                accept="audio/*"
+                                                                onChange={(e) => handleFileChange(e, false, page.id, true)}
+                                                            />
+                                                        </label>
+                                                        <button 
+                                                            onClick={() => setPages(pages.filter(p => p.id !== page.id))}
+                                                            className="p-2 bg-white rounded-full text-slate-600 hover:text-red-500 shadow-lg absolute top-2 right-2"
+                                                            title="Excluir Página"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                                <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
-                                                    <label className="p-2 bg-white rounded-full text-slate-600 hover:text-orange-500 shadow-lg cursor-pointer flex items-center gap-2 text-[10px] font-bold uppercase w-24 justify-center">
-                                                        <Upload size={14} /> Imagem
+                                                <div className="p-2.5 bg-white border-t border-slate-200 flex flex-col gap-2 flex-1">
+                                                    <label className={`p-1.5 rounded-lg border border-dashed flex flex-col items-center justify-center gap-0.5 text-[9px] font-bold uppercase transition-all cursor-pointer ${page.pdfUrl ? 'bg-orange-50 border-orange-300 text-orange-700' : 'bg-slate-50 border-slate-300 text-slate-500 hover:border-orange-400 hover:text-orange-600'}`}>
+                                                        <div className="flex items-center gap-1"><Upload size={10} /> {page.pdfUrl ? 'PDF Anexado' : 'Anexar PDF (Colorir)'}</div>
                                                         <input 
                                                             type="file" 
                                                             className="hidden" 
-                                                            accept="image/*"
-                                                            onChange={(e) => handleFileChange(e, false, page.id)}
+                                                            accept="application/pdf"
+                                                            onChange={(e) => handleFileChange(e, false, page.id, false, true)}
                                                         />
                                                     </label>
-                                                    <label className={`p-2 rounded-full shadow-lg cursor-pointer flex items-center gap-2 text-[10px] font-bold uppercase w-24 justify-center ${page.audioUrl ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-white text-slate-600 hover:text-blue-500'}`}>
-                                                        <Upload size={14} /> Áudio
+                                                    {page.pdfUrl && (
                                                         <input 
-                                                            type="file" 
-                                                            className="hidden" 
-                                                            accept="audio/*"
-                                                            onChange={(e) => handleFileChange(e, false, page.id, true)}
+                                                            type="text"
+                                                            placeholder="Descrição (ex: Baixar Desenho)"
+                                                            value={page.pdfDescription || ''}
+                                                            onChange={(e) => setPages(pages.map(p => p.id === page.id ? { ...p, pdfDescription: e.target.value } : p))}
+                                                            className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded text-[9px] focus:ring-1 focus:ring-orange-500 outline-none"
                                                         />
-                                                    </label>
-                                                    <button 
-                                                        onClick={() => setPages(pages.filter(p => p.id !== page.id))}
-                                                        className="p-2 bg-white rounded-full text-slate-600 hover:text-red-500 shadow-lg absolute top-2 right-2"
-                                                        title="Excluir Página"
-                                                    >
-                                                        <Trash2 size={14} />
-                                                    </button>
+                                                    )}
+                                                    <span className="text-[7px] text-slate-400 text-center leading-tight mt-auto">Recomendado: A4, Horizontal, Margem 3mm</span>
                                                 </div>
                                             </div>
                                         ))}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, X, Loader2, Maximize2, Minimize2, Volume2, Play, Pause, Award } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Loader2, Maximize2, Minimize2, Volume2, Play, Pause, Award, Download } from 'lucide-react';
 import { db } from '../firebaseConfig';
 import confetti from 'canvas-confetti';
 import BookCertificate from './BookCertificate';
@@ -379,7 +379,26 @@ const BookReader: React.FC<BookReaderProps> = ({ bookId, student, onBack }) => {
                         </button>
                     )}
 
-                    {/* Interactive Quiz Overlay */}
+                    {/* PDF Download Button */}
+                    {pages[idx]?.pdfUrl && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(pages[idx].pdfUrl, '_blank');
+                            }}
+                            style={{ zIndex: 100 }}
+                            className={`absolute top-4 ${isLeft ? 'right-4' : 'left-4'} p-2.5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.15)] transition-all transform hover:scale-105 active:scale-95 flex flex-col items-center justify-center bg-white/95 text-blue-500 backdrop-blur-md border border-blue-100 group`}
+                            title={pages[idx].pdfDescription || "Baixar Desenho"}
+                        >
+                            <div className="flex items-center gap-1.5">
+                                <Download size={18} className="group-hover:-translate-y-0.5 transition-transform" />
+                            </div>
+                            <span className="text-[7px] font-black uppercase tracking-widest mt-1 max-w-[60px] text-center leading-tight text-slate-600 line-clamp-2">
+                                {pages[idx].pdfDescription || "Desenho"}
+                            </span>
+                        </button>
+                    )}
+
                     {/* Interactive Quiz Overlay */}
                     {pages[idx]?.type === 'activity' && pages[idx]?.question && (
                         <div 
