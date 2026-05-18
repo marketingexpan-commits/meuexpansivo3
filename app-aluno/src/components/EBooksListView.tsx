@@ -160,11 +160,14 @@ const EBooksListView: React.FC<EBooksListViewProps> = ({ student, onOpenBook }) 
 
                 const filteredBooks = booksData.filter((book: any) => {
                     if (!book.segment) return true;
-                    return book.segment === studentSegmentId || 
-                           book.segment === 'all' || 
-                           book.segment === 'Educação Infantil' && studentSegmentId === 'seg_infantil' ||
-                           book.segment === 'Fundamental I' && studentSegmentId === 'seg_fund_1' ||
-                           book.segment === 'Fundamental II' && studentSegmentId === 'seg_fund_2';
+                    const segments = Array.isArray(book.segment) ? book.segment : [book.segment];
+                    return segments.includes(studentSegmentId) || 
+                           segments.includes('all') || 
+                           segments.some(seg => 
+                               seg === 'Educação Infantil' && studentSegmentId === 'seg_infantil' ||
+                               seg === 'Fundamental I' && studentSegmentId === 'seg_fund_1' ||
+                               seg === 'Fundamental II' && studentSegmentId === 'seg_fund_2'
+                           );
                 });
 
                 setBooks(filteredBooks);
@@ -266,7 +269,10 @@ const EBooksListView: React.FC<EBooksListViewProps> = ({ student, onOpenBook }) 
                             <div className="p-4 flex flex-col flex-1">
                                 <h4 className="font-bold text-gray-800 mb-1 line-clamp-2 leading-tight" title={book.title}>{book.title}</h4>
                                 <p className="text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-2">
-                                    {Object.values(ACADEMIC_SEGMENTS).find(s => s.id === book.segment)?.label || book.segment}
+                                    {(Array.isArray(book.segment) ? book.segment : (book.segment ? [book.segment] : [])).map((segId: string) => {
+                                        const segObj = Object.values(ACADEMIC_SEGMENTS).find(s => s.id === segId);
+                                        return segObj?.label || segId;
+                                    }).join(' / ')}
                                 </p>
                                 
                                 {isFree ? (

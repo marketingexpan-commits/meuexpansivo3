@@ -82,7 +82,7 @@ export function ELivros() {
 
     // Form States
     const [bookTitle, setBookTitle] = useState('');
-    const [bookSegment, setBookSegment] = useState('seg_infantil');
+    const [bookSegments, setBookSegments] = useState<string[]>(['seg_infantil']);
     const [bookPrice, setBookPrice] = useState('0');
     
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -90,7 +90,7 @@ export function ELivros() {
     const handleOpenModal = (book: any = null) => {
         setEditingBook(book);
         setBookTitle(book?.title || '');
-        setBookSegment(book?.segment || 'seg_infantil');
+        setBookSegments(Array.isArray(book?.segment) ? book.segment : (book?.segment ? [book.segment] : ['seg_infantil']));
         setBookPrice(book?.price?.toString() || '0');
         setCoverPreview(book?.coverUrl || null);
         
@@ -195,7 +195,7 @@ export function ELivros() {
 
             const bookData = {
                 title: bookTitle,
-                segment: bookSegment,
+                segment: bookSegments,
                 price: parseFloat(bookPrice) || 0,
                 status: editingBook?.status || 'Ativo',
                 coverUrl: finalCoverUrl,
@@ -217,6 +217,7 @@ export function ELivros() {
             setPages([]);
             setCoverPreview(null);
             setBookTitle('');
+            setBookSegments(['seg_infantil']);
             setBookPrice('0');
             setEditingBook(null);
         } catch (error) {
@@ -417,7 +418,10 @@ export function ELivros() {
                                         {/* Título livre para quebrar em quantas linhas precisar */}
                                         <h3 className="font-bold text-slate-900 text-base leading-tight break-words w-full">{book.title}</h3>
                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                            {Object.values(ACADEMIC_SEGMENTS).find(s => s.id === book.segment)?.label || book.segment}
+                                            {(Array.isArray(book.segment) ? book.segment : (book.segment ? [book.segment] : [])).map((segId: string) => {
+                                                const segObj = Object.values(ACADEMIC_SEGMENTS).find(s => s.id === segId);
+                                                return segObj?.label || segId;
+                                            }).join(' / ')}
                                         </span>
                                         <span className="text-sm font-black text-orange-500 italic mt-1">{book.price === 0 ? 'Grátis' : `R$ ${book.price.toFixed(2)}`}</span>
                                     </div>
@@ -427,7 +431,7 @@ export function ELivros() {
                                         <button 
                                             onClick={() => {
                                                 setBookTitle(book.title);
-                                                setBookSegment(book.segment);
+                                                setBookSegments(Array.isArray(book.segment) ? book.segment : (book.segment ? [book.segment] : ['seg_infantil']));
                                                 setBookPrice(book.price.toString());
                                                 handleOpenModal(book);
                                             }}
@@ -552,7 +556,10 @@ export function ELivros() {
                                                     </td>
                                                     <td className="p-4">
                                                         <span className="text-[10px] font-bold text-slate-400 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded">
-                                                            {Object.values(ACADEMIC_SEGMENTS).find(s => s.id === bp.segment)?.label || bp.segment}
+                                                            {(Array.isArray(bp.segment) ? bp.segment : (bp.segment ? [bp.segment] : [])).map((segId: string) => {
+                                                                const segObj = Object.values(ACADEMIC_SEGMENTS).find(s => s.id === segId);
+                                                                return segObj?.label || segId;
+                                                            }).join(' / ')}
                                                         </span>
                                                     </td>
                                                     <td className="p-4 text-center font-bold text-slate-600">
@@ -866,16 +873,28 @@ export function ELivros() {
                                             />
                                         </div>
                                         <div>
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Segmento Escolar</label>
-                                            <select 
-                                                value={bookSegment}
-                                                onChange={(e) => setBookSegment(e.target.value)}
-                                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none transition-all text-sm appearance-none"
-                                            >
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Segmento Escolar (Selecione um ou mais)</label>
+                                            <div className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl flex flex-col gap-2">
                                                 {Object.values(ACADEMIC_SEGMENTS).map(seg => (
-                                                    <option key={seg.id} value={seg.id}>{seg.label}</option>
+                                                    <label key={seg.id} className="flex items-center gap-2 cursor-pointer">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={bookSegments.includes(seg.id)}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setBookSegments([...bookSegments, seg.id]);
+                                                                } else {
+                                                                    if (bookSegments.length > 1) {
+                                                                        setBookSegments(bookSegments.filter(id => id !== seg.id));
+                                                                    }
+                                                                }
+                                                            }}
+                                                            className="w-4 h-4 text-orange-500 rounded border-slate-300 focus:ring-orange-500"
+                                                        />
+                                                        <span className="text-sm text-slate-700">{seg.label}</span>
+                                                    </label>
                                                 ))}
-                                            </select>
+                                            </div>
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Preço (R$)</label>
