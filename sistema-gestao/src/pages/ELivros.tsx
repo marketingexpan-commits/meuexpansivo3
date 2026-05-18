@@ -25,6 +25,7 @@ export function ELivros() {
     const [searchQuery, setSearchQuery] = useState('');
     const [segmentFilter, setSegmentFilter] = useState('all');
     const [unitFilter, setUnitFilter] = useState('all');
+    const [bookFilter, setBookFilter] = useState('all');
     const [studentsMap, setStudentsMap] = useState<Record<string, any>>({});
     const [dashboardSubTab, setDashboardSubTab] = useState<'accesses' | 'purchases'>('accesses');
 
@@ -396,8 +397,10 @@ export function ELivros() {
         
         const studentUnit = p.studentUnit || studentsMap[p.studentId]?.unit || '';
         const matchesUnit = unitFilter === 'all' || studentUnit === unitFilter;
+        
+        const matchesBook = bookFilter === 'all' || p.bookId === bookFilter;
             
-        return matchesSearch && matchesSegment && matchesUnit;
+        return matchesSearch && matchesSegment && matchesUnit && matchesBook;
     });
 
     const filteredPurchases = purchasesList.filter(p => {
@@ -410,8 +413,10 @@ export function ELivros() {
         
         const studentUnit = p.studentUnit || studentsMap[p.studentId]?.unit || '';
         const matchesUnit = unitFilter === 'all' || studentUnit === unitFilter;
+        
+        const matchesBook = bookFilter === 'all' || p.bookId === bookFilter;
             
-        return matchesSearch && matchesSegment && matchesUnit;
+        return matchesSearch && matchesSegment && matchesUnit && matchesBook;
     });
 
     return (
@@ -550,50 +555,50 @@ export function ELivros() {
                             {/* KPI Metrics Row */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                 {/* Leitores Únicos */}
-                                <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex items-center gap-5 hover:shadow-md hover:-translate-y-0.5 transition-all">
-                                    <div className="w-14 h-14 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0 shadow-inner">
-                                        <Eye size={28} />
+                                <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm flex items-center gap-3.5 hover:shadow-md hover:-translate-y-0.5 transition-all">
+                                    <div className="w-11 h-11 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0 shadow-inner">
+                                        <Eye size={20} />
                                     </div>
-                                    <div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Leitores Únicos</p>
-                                        <p className="text-2xl font-black text-slate-800 mt-1">{uniqueReaders}</p>
-                                        <p className="text-[10px] text-slate-500 font-medium mt-0.5">Alunos ativos na leitura</p>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-xl font-black text-slate-800 whitespace-nowrap">{uniqueReaders}</p>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest truncate mt-0.5">Leitores Únicos</p>
+                                        <p className="text-[10px] text-slate-500 font-medium mt-0.5 truncate">Alunos ativos na leitura</p>
                                     </div>
                                 </div>
 
                                 {/* Livros Comprados */}
-                                <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex items-center gap-5 hover:shadow-md hover:-translate-y-0.5 transition-all">
-                                    <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 shadow-inner">
-                                        <ShoppingCart size={28} />
+                                <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm flex items-center gap-3.5 hover:shadow-md hover:-translate-y-0.5 transition-all">
+                                    <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 shadow-inner">
+                                        <ShoppingCart size={20} />
                                     </div>
-                                    <div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Livros Comprados</p>
-                                        <p className="text-2xl font-black text-slate-800 mt-1">{totalSales}</p>
-                                        <p className="text-[10px] text-slate-500 font-medium mt-0.5">Unidades adquiridas</p>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-xl font-black text-slate-800 whitespace-nowrap">{totalSales}</p>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest truncate mt-0.5">Livros Comprados</p>
+                                        <p className="text-[10px] text-slate-500 font-medium mt-0.5 truncate">Unidades adquiridas</p>
                                     </div>
                                 </div>
 
                                 {/* Faturamento Total */}
-                                <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex items-center gap-5 hover:shadow-md hover:-translate-y-0.5 transition-all">
-                                    <div className="w-14 h-14 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center shrink-0 shadow-inner">
-                                        <CreditCard size={28} />
+                                <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm flex items-center gap-3.5 hover:shadow-md hover:-translate-y-0.5 transition-all">
+                                    <div className="w-11 h-11 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shrink-0 shadow-inner">
+                                        <CreditCard size={20} />
                                     </div>
-                                    <div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Receita Acumulada</p>
-                                        <p className="text-2xl font-black text-slate-800 mt-1">R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                                        <p className="text-[10px] text-slate-500 font-medium mt-0.5 font-semibold">Vendas via PIX aprovadas</p>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-xl font-black text-slate-800 whitespace-nowrap">R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest truncate mt-0.5">Receita Acumulada</p>
+                                        <p className="text-[10px] text-slate-500 font-medium mt-0.5 truncate font-semibold">Vendas via PIX aprovadas</p>
                                     </div>
                                 </div>
 
                                 {/* Média de Conclusão */}
-                                <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex items-center gap-5 hover:shadow-md hover:-translate-y-0.5 transition-all">
-                                    <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 shadow-inner">
-                                        <Award size={28} />
+                                <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm flex items-center gap-3.5 hover:shadow-md hover:-translate-y-0.5 transition-all">
+                                    <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 shadow-inner">
+                                        <Award size={20} />
                                     </div>
-                                    <div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Taxa de Conclusão</p>
-                                        <p className="text-2xl font-black text-slate-800 mt-1">{completionRate}%</p>
-                                        <p className="text-[10px] text-slate-500 font-medium mt-0.5">Média de livros terminados</p>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-xl font-black text-slate-800 whitespace-nowrap">{completionRate}%</p>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest truncate mt-0.5">Taxa de Conclusão</p>
+                                        <p className="text-[10px] text-slate-500 font-medium mt-0.5 truncate">Média de livros terminados</p>
                                     </div>
                                 </div>
                             </div>
@@ -677,43 +682,51 @@ export function ELivros() {
 
                             {/* Detailed Logs Panel */}
                             <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-                                    <div className="flex bg-slate-100 p-1 rounded-xl self-start">
-                                        <button 
-                                            onClick={() => setDashboardSubTab('accesses')}
-                                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${dashboardSubTab === 'accesses' ? 'bg-white text-blue-950 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                                        >
-                                            Histórico de Leitura ({filteredProgress.length})
-                                        </button>
-                                        <button 
-                                            onClick={() => setDashboardSubTab('purchases')}
-                                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${dashboardSubTab === 'purchases' ? 'bg-white text-blue-950 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                                        >
-                                            Vendas Realizadas ({filteredPurchases.length})
-                                        </button>
+                                <div className="space-y-4 pb-4 border-b border-slate-100">
+                                    {/* Row 1: Sub-Tabs & Counter */}
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div className="flex bg-slate-100 p-1 rounded-xl self-start">
+                                            <button 
+                                                onClick={() => setDashboardSubTab('accesses')}
+                                                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${dashboardSubTab === 'accesses' ? 'bg-white text-blue-950 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                            >
+                                                Histórico de Leitura ({filteredProgress.length})
+                                            </button>
+                                            <button 
+                                                onClick={() => setDashboardSubTab('purchases')}
+                                                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${dashboardSubTab === 'purchases' ? 'bg-white text-blue-950 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                            >
+                                                Vendas Realizadas ({filteredPurchases.length})
+                                            </button>
+                                        </div>
+                                        
+                                        {/* Dynamic badge indicator */}
+                                        <span className="text-[10px] font-black text-slate-400 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl uppercase tracking-wider self-start sm:self-center">
+                                            {dashboardSubTab === 'accesses' ? `${filteredProgress.length} acessos encontrados` : `${filteredPurchases.length} vendas encontradas`}
+                                        </span>
                                     </div>
 
-                                    {/* Search & Filters */}
-                                    <div className="flex flex-wrap items-center gap-3">
+                                    {/* Row 2: Search & Filters (Premium CSS Grid Layout) */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
                                         {/* Search Input */}
-                                        <div className="relative">
-                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Search size={16} /></span>
+                                        <div className="relative w-full">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><Search size={16} /></span>
                                             <input 
                                                 type="text" 
                                                 placeholder="Buscar aluno ou livro..." 
                                                 value={searchQuery}
                                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-60 transition-all font-semibold"
+                                                className="pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500 w-full transition-all font-semibold"
                                             />
                                         </div>
 
                                         {/* Unit Filter */}
-                                        <div className="relative flex items-center">
-                                            <span className="absolute left-3 text-slate-400 pointer-events-none"><Filter size={14} /></span>
+                                        <div className="relative w-full">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><Filter size={14} /></span>
                                             <select 
                                                 value={unitFilter}
                                                 onChange={(e) => setUnitFilter(e.target.value)}
-                                                className="pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer focus:ring-2 focus:ring-blue-500"
+                                                className="pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer focus:ring-2 focus:ring-blue-500 w-full"
                                             >
                                                 <option value="all">Todas as Unidades</option>
                                                 {Object.entries(UNIT_LABELS).map(([code, label]) => (
@@ -723,18 +736,33 @@ export function ELivros() {
                                         </div>
 
                                         {/* Segment Filter */}
-                                        <div className="relative flex items-center">
-                                            <span className="absolute left-3 text-slate-400 pointer-events-none"><Filter size={14} /></span>
+                                        <div className="relative w-full">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><Filter size={14} /></span>
                                             <select 
                                                 value={segmentFilter}
                                                 onChange={(e) => setSegmentFilter(e.target.value)}
-                                                className="pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer focus:ring-2 focus:ring-blue-500"
+                                                className="pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer focus:ring-2 focus:ring-blue-500 w-full"
                                             >
                                                 <option value="all">Todos os Segmentos</option>
                                                 <option value="seg_infantil">Infantil</option>
                                                 <option value="seg_fund_1">Fundamental I</option>
                                                 <option value="seg_fund_2">Fundamental II</option>
                                                 <option value="seg_medio">Ensino Médio</option>
+                                            </select>
+                                        </div>
+
+                                        {/* Book Filter */}
+                                        <div className="relative w-full">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><Filter size={14} /></span>
+                                            <select 
+                                                value={bookFilter}
+                                                onChange={(e) => setBookFilter(e.target.value)}
+                                                className="pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 outline-none appearance-none cursor-pointer focus:ring-2 focus:ring-blue-500 w-full truncate"
+                                            >
+                                                <option value="all">Todos os Livros</option>
+                                                {books.map((book) => (
+                                                    <option key={book.id} value={book.id}>{book.title}</option>
+                                                ))}
                                             </select>
                                         </div>
                                     </div>
