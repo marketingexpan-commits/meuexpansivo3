@@ -224,7 +224,7 @@ const BookReader: React.FC<BookReaderProps> = ({ bookId, student, onBack }) => {
     );
 
     const rawPages: any[] = book.pages || [];
-    const pages: any[] = book.coverUrl ? [{ imageUrl: book.coverUrl, isCover: true }, ...rawPages] : rawPages;
+    const pages: any[] = book.coverUrl ? [{ imageUrl: book.coverUrl, audioUrl: book.coverAudioUrl || '', isCover: true }, ...rawPages] : rawPages;
     const totalPages = pages.length;
 
     const totalSpreads = isDualPage

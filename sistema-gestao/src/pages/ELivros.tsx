@@ -13,6 +13,7 @@ export function ELivros() {
     const [modalStep, setModalStep] = useState(1);
     const [pages, setPages] = useState<any[]>([]);
     const [coverPreview, setCoverPreview] = useState<string | null>(null);
+    const [coverAudioPreview, setCoverAudioPreview] = useState<string | null>(null);
     const [books, setBooks] = useState<any[]>([]);
     const [isLoadingBooks, setIsLoadingBooks] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -111,6 +112,7 @@ export function ELivros() {
         setBookPrice(book?.price?.toString() || '0');
         setHidePageNumbers(book?.hidePageNumbers || false);
         setCoverPreview(book?.coverUrl || null);
+        setCoverAudioPreview(book?.coverAudioUrl || null);
         
         // Garante que cada página carregada tenha a estrutura completa
         const loadedPages = (book?.pages || []).map((p: any) => ({
@@ -199,6 +201,7 @@ export function ELivros() {
         
         try {
             let finalCoverUrl = coverPreview;
+            let finalCoverAudioUrl = coverAudioPreview;
             const bookIdStr = editingBook?.id || Date.now().toString();
 
             // Upload cover if it's a new local file (data URL)
@@ -206,6 +209,13 @@ export function ELivros() {
                 const coverRef = ref(storage, `e_books/${bookIdStr}/cover_${Date.now()}`);
                 await uploadString(coverRef, coverPreview, 'data_url');
                 finalCoverUrl = await getDownloadURL(coverRef);
+            }
+
+            // Upload cover audio if it's a new local file (data URL)
+            if (coverAudioPreview && coverAudioPreview.startsWith('data:audio')) {
+                const coverAudioRef = ref(storage, `e_books/${bookIdStr}/cover_audio_${Date.now()}`);
+                await uploadString(coverAudioRef, coverAudioPreview, 'data_url');
+                finalCoverAudioUrl = await getDownloadURL(coverAudioRef);
             }
 
             // Upload pages if they are new local files
@@ -241,6 +251,7 @@ export function ELivros() {
                 price: parseFloat(bookPrice) || 0,
                 status: editingBook?.status || 'Ativo',
                 coverUrl: finalCoverUrl,
+                coverAudioUrl: finalCoverAudioUrl || '',
                 pages: finalPages,
                 hidePageNumbers: hidePageNumbers,
                 updatedAt: serverTimestamp()
@@ -259,6 +270,7 @@ export function ELivros() {
             setModalStep(1);
             setPages([]);
             setCoverPreview(null);
+            setCoverAudioPreview(null);
             setBookTitle('');
             setBookSegments(['seg_infantil']);
             setBookPrice('0');
@@ -280,6 +292,7 @@ export function ELivros() {
                 if (bookToDelete) {
                     const filesToDelete: string[] = [];
                     if (bookToDelete.coverUrl && !bookToDelete.coverUrl.startsWith('data:')) filesToDelete.push(bookToDelete.coverUrl);
+                    if (bookToDelete.coverAudioUrl && !bookToDelete.coverAudioUrl.startsWith('data:')) filesToDelete.push(bookToDelete.coverAudioUrl);
                     
                     (bookToDelete.pages || []).forEach((page: any) => {
                         if (page.imageUrl && !page.imageUrl.startsWith('data:')) filesToDelete.push(page.imageUrl);
@@ -1110,6 +1123,49 @@ export function ELivros() {
                                                     </div>
                                                 </>
                                             )}
+                                        </div>
+
+                                        {/* Cover Audio Upload Component */}
+                                        <div className="bg-slate-50 border border-slate-200/60 p-3.5 rounded-2xl space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Áudio da Capa (Opcional)</span>
+                                                {coverAudioPreview && (
+                                                    <span className="w-2.5 h-2.5 rounded-full bg-green-500" title="Áudio incluído"></span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <label className={`flex-1 p-2.5 rounded-xl shadow-sm cursor-pointer flex items-center gap-2 text-[10px] font-bold uppercase justify-center transition-all ${coverAudioPreview ? 'bg-green-100 text-green-700 border border-green-200 hover:bg-green-200/80' : 'bg-white border border-slate-200 text-slate-600 hover:text-blue-500 hover:border-blue-200'}`}>
+                                                    <Volume2 size={14} className={coverAudioPreview ? 'animate-bounce' : ''} />
+                                                    {coverAudioPreview ? 'Alterar Áudio' : 'Inserir Áudio'}
+                                                    <input 
+                                                        type="file"
+                                                        className="hidden"
+                                                        accept="audio/*"
+                                                        onChange={(e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (!file) return;
+                                                            const reader = new FileReader();
+                                                            reader.onloadend = () => {
+                                                                setCoverAudioPreview(reader.result as string);
+                                                            };
+                                                            reader.readAsDataURL(file);
+                                                        }}
+                                                    />
+                                                </label>
+                                                {coverAudioPreview && (
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => setCoverAudioPreview(null)}
+                                                        className="p-2.5 rounded-xl bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 hover:text-red-700 transition-colors"
+                                                        title="Remover áudio"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <p className="text-[9px] text-slate-400 font-medium leading-normal">
+                                                Suba um arquivo de áudio para ser tocado na visualização da capa do e-livro.
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
