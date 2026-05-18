@@ -148,14 +148,12 @@ const EBooksListView: React.FC<EBooksListViewProps> = ({ student, onOpenBook }) 
                 
                 // --- FILTRAGEM POR SEGMENTO ---
                 let studentSegmentId = '';
-                if (student?.gradeId && ACADEMIC_GRADES[student.gradeId as keyof typeof ACADEMIC_GRADES]) {
-                    studentSegmentId = ACADEMIC_GRADES[student.gradeId as keyof typeof ACADEMIC_GRADES].segmentId;
-                } else if (student?.gradeLevel) {
-                    const level = student.gradeLevel.toLowerCase();
-                    if (level.includes('infantil') || level.includes('nível')) studentSegmentId = 'seg_infantil';
-                    else if (level.includes('f.1') || (level.includes('fundamental') && (level.includes(' i') || level.includes(' 1')))) studentSegmentId = 'seg_fund_1';
-                    else if (level.includes('f.2') || (level.includes('fundamental') && (level.includes(' ii') || level.includes(' 2')))) studentSegmentId = 'seg_fund_2';
-                    else if (level.includes('médio') || level.includes('e.m') || level.includes('série')) studentSegmentId = 'seg_medio';
+                const officialGrade = Object.values(ACADEMIC_GRADES).find(g => 
+                    g.id === student?.gradeId || 
+                    g.label === student?.gradeLevel
+                );
+                if (officialGrade) {
+                    studentSegmentId = officialGrade.segmentId;
                 }
 
                 const filteredBooks = booksData.filter((book: any) => {
