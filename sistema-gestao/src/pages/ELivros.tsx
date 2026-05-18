@@ -81,10 +81,10 @@ export function ELivros() {
         };
     }, [activeTab]);
 
-    // Form States
     const [bookTitle, setBookTitle] = useState('');
     const [bookSegments, setBookSegments] = useState<string[]>(['seg_infantil']);
     const [bookPrice, setBookPrice] = useState('0');
+    const [hidePageNumbers, setHidePageNumbers] = useState(false);
     
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -93,6 +93,7 @@ export function ELivros() {
         setBookTitle(book?.title || '');
         setBookSegments(Array.isArray(book?.segment) ? book.segment : (book?.segment ? [book.segment] : ['seg_infantil']));
         setBookPrice(book?.price?.toString() || '0');
+        setHidePageNumbers(book?.hidePageNumbers || false);
         setCoverPreview(book?.coverUrl || null);
         
         // Garante que cada página carregada tenha a estrutura completa
@@ -225,6 +226,7 @@ export function ELivros() {
                 status: editingBook?.status || 'Ativo',
                 coverUrl: finalCoverUrl,
                 pages: finalPages,
+                hidePageNumbers: hidePageNumbers,
                 updatedAt: serverTimestamp()
             };
 
@@ -244,6 +246,7 @@ export function ELivros() {
             setBookTitle('');
             setBookSegments(['seg_infantil']);
             setBookPrice('0');
+            setHidePageNumbers(false);
             setEditingBook(null);
         } catch (error) {
             console.error("Erro ao salvar livro:", error);
@@ -956,6 +959,20 @@ export function ELivros() {
                                                     className="w-full p-3 pl-10 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none transition-all text-sm" 
                                                 />
                                             </div>
+                                        </div>
+                                        <div className="pt-2">
+                                            <label className="flex items-center gap-2.5 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-100/50 transition-colors">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={hidePageNumbers}
+                                                    onChange={(e) => setHidePageNumbers(e.target.checked)}
+                                                    className="w-4.5 h-4.5 text-orange-500 rounded border-slate-300 focus:ring-orange-500"
+                                                />
+                                                <div>
+                                                    <span className="text-xs font-black text-slate-700 block uppercase tracking-wider">Ocultar Paginação</span>
+                                                    <span className="text-[10px] text-slate-400 font-medium">Remove os balões com número de página no app do aluno</span>
+                                                </div>
+                                            </label>
                                         </div>
                                     </div>
 

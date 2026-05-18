@@ -341,7 +341,7 @@ const BookReader: React.FC<BookReaderProps> = ({ bookId, student, onBack }) => {
                         )
                     )}
                     {/* Page number badge (Don't show on cover) */}
-                    {!pages[idx]?.isCover && (
+                    {!pages[idx]?.isCover && !book?.hidePageNumbers && (
                         <div style={{
                             position: 'absolute', bottom: 12,
                             [isLeft ? 'left' : 'right']: 16,
