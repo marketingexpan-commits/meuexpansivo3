@@ -335,6 +335,17 @@ export function ELivros() {
         }
     };
 
+    const handleDeletePurchase = async (purchaseId: string) => {
+        if (!window.confirm("Deseja realmente apagar o registro desta venda? Esta ação é irreversível e atualizará imediatamente todas as métricas do painel.")) return;
+        
+        try {
+            await deleteDoc(doc(db, 'ebook_purchases', purchaseId));
+        } catch (error) {
+            console.error("Erro ao apagar venda:", error);
+            alert("Erro ao excluir o registro de venda.");
+        }
+    };
+
     // Dashboard KPI Calculations
     const uniqueReaders = new Set(progressList.map(p => p.studentId)).size;
     const totalSales = purchasesList.length;
@@ -815,12 +826,13 @@ export function ELivros() {
                                                     <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px] text-center">Método</th>
                                                     <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px] text-center">Status</th>
                                                     <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px] text-right">Data da Compra</th>
+                                                    <th className="p-4 font-black text-slate-500 uppercase tracking-widest text-[9px] text-right">Ações</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100 bg-white">
                                                 {filteredPurchases.length === 0 ? (
                                                     <tr>
-                                                        <td colSpan={8} className="p-8 text-center text-slate-400 italic">
+                                                        <td colSpan={9} className="p-8 text-center text-slate-400 italic">
                                                             Nenhum registro de venda encontrado com os filtros selecionados.
                                                         </td>
                                                     </tr>
@@ -859,6 +871,15 @@ export function ELivros() {
                                                                 </span>
                                                             </td>
                                                             <td className="p-4 text-right font-medium text-slate-500">{formattedDate}</td>
+                                                            <td className="p-4 text-right">
+                                                                <button
+                                                                    onClick={() => handleDeletePurchase(p.id)}
+                                                                    className="text-slate-400 hover:text-red-500 transition-colors p-1"
+                                                                    title="Apagar venda"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </td>
                                                         </tr>
                                                     );
                                                 })}
