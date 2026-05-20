@@ -1378,16 +1378,24 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
     const getBimesterDataDisplay = () => { if (!currentGradeData || selectedStage === 'recuperacaoFinal') return null; const key = selectedStage.replace('_rec', '') as keyof GradeEntry['bimesters']; return currentGradeData.bimesters[key]; }
     const getAnnualMediaValue = () => {
-        if (!currentGradeData) return 0;
-        const getBimMedia = (b: any) => (b && b.media !== undefined && b.media !== null && b.media >= 0) ? b.media : 0;
-        return (
-            getBimMedia(currentGradeData.bimesters.bimester1) +
-            getBimMedia(currentGradeData.bimesters.bimester2) +
-            getBimMedia(currentGradeData.bimesters.bimester3) +
-            getBimMedia(currentGradeData.bimesters.bimester4)
-        ) / 4;
+        if (!currentGradeData) return -1;
+        const bimesters = currentGradeData.bimesters;
+        const bimesterMedias = [
+            bimesters.bimester1.media,
+            bimesters.bimester2.media,
+            bimesters.bimester3.media,
+            bimesters.bimester4.media,
+        ];
+        const validMedias = bimesterMedias.filter(m => m !== undefined && m !== null && m >= 0) as number[];
+        
+        if (validMedias.length === 0) {
+            return -1;
+        }
+        
+        const totalMedias = validMedias.reduce((sum, current) => sum + current, 0);
+        return parseFloat((totalMedias / 4).toFixed(1));
     };
-    const getAnnualMediaDisplay = () => !currentGradeData ? '-' : getAnnualMediaValue().toFixed(1);
+    const getAnnualMediaDisplay = () => !currentGradeData ? '-' : formatGrade(getAnnualMediaValue());
     const isRecoveryMode = selectedStage.includes('_rec') && selectedStage !== 'recuperacaoFinal';
     const isAnnualMediaPassing = getAnnualMediaValue() >= 7;
 
@@ -2861,8 +2869,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                             <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-6">
                                                                 <div className="flex flex-col items-center mb-3 pb-2 border-b border-blue-200 gap-2">
                                                                     <h3 className="font-bold text-lg text-blue-950 whitespace-nowrap">{getStageDisplay(selectedStage).replace('Recuperação ', '')}</h3>
-                                                                    <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${isAnnualMediaPassing ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                                                                        {currentGradeData ? (isAnnualMediaPassing ? 'NA MÉDIA' : 'ABAIXO DA MÉDIA') : 'SEM REGISTRO'}
+                                                                    <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${!currentGradeData || getAnnualMediaValue() < 0 ? 'bg-gray-100 text-gray-800' : (isAnnualMediaPassing ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800')}`}>
+                                                                        {currentGradeData && getAnnualMediaValue() >= 0 ? (isAnnualMediaPassing ? 'NA MÉDIA' : 'ABAIXO DA MÉDIA') : 'SEM REGISTRO'}
                                                                     </span>
                                                                 </div>
                                                                 <div className="grid grid-cols-3 gap-2 md:gap-4 text-center divide-x divide-blue-200">
