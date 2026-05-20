@@ -33,6 +33,7 @@ import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, parseGra
 import { calculateBimesterMedia, calculateFinalData, getCurriculumSubjects, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST, EARLY_CHILDHOOD_REPORT_TEMPLATE, CURRICULUM_MATRIX, ACADEMIC_GRADES } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateTaughtClasses } from '../utils/frequency';
 import { getSubjectLabel } from '../utils/subjectUtils';
+import { SUBJECTS_DATA } from '../utils/academicDefaults';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
 import { TableSkeleton } from './Skeleton';
@@ -690,28 +691,49 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
         // 1. Obter disciplinas do professor
         let teacherSubs: string[] = [];
+        
+        const normGradeLevelForSearch = (gradeLevel || '').toLowerCase().trim();
+        
+        // Conversão robusta de Nome para ID para usar nas comparações (suporta "3º Ano - Fundamental I")
+        const gradeEntry = Object.values(ACADEMIC_GRADES).find(g => {
+            const gLabel = g.label.toLowerCase();
+            return gLabel === normGradeLevelForSearch || 
+                   normGradeLevelForSearch.includes(gLabel) || 
+                   gLabel.includes(normGradeLevelForSearch) || 
+                   g.id === gradeLevel;
+        });
+        const gradeId = gradeEntry ? gradeEntry.id : '';
+
         if (!teacher.assignments || teacher.assignments.length === 0) {
             teacherSubs = (teacher.subjects as string[]) || [];
         } else {
-            const gradeAssignments = teacher.assignments.filter(a => a.gradeLevel === gradeLevel);
+            const gradeAssignments = teacher.assignments.filter(a => {
+                const normALevel = (a.gradeLevel || '').toLowerCase().trim();
+                
+                const isGradeMatch = (a.gradeId && a.gradeId === gradeId) || 
+                                     normALevel === normGradeLevelForSearch || 
+                                     normGradeLevelForSearch.includes(normALevel) ||
+                                     normALevel.includes(normGradeLevelForSearch) ||
+                                     (gradeEntry && normALevel === gradeEntry.label.toLowerCase().trim());
+                
+                return isGradeMatch;
+            });
+            
             const allSubs = new Set<string>();
             gradeAssignments.forEach(a => {
-                if (a.subjects) a.subjects.forEach(sub => allSubs.add(sub as string));
+                if (a.subjects) {
+                    a.subjects.forEach(sub => allSubs.add(sub as string));
+                }
             });
             teacherSubs = Array.from(allSubs);
-            if (teacherSubs.length === 0) teacherSubs = (teacher.subjects as string[]) || [];
         }
 
         // 2. FILTRO ESTRITO PELA GRADE HORÁRIA
         if (classSchedules && classSchedules.length > 0) {
-            // Conversão robusta de Nome (ex: "9º Ano") para ID (ex: "grade_9_ano")
-            const gradeEntry = Object.values(ACADEMIC_GRADES).find(g => 
-                gradeLevel === g.label || gradeLevel.includes(g.label) || g.label.includes(gradeLevel)
-            );
-            const gradeId = gradeEntry ? gradeEntry.id : '';
+            const schedGradeId = gradeId;
 
             const matchingSchedules = classSchedules.filter(s => {
-                const isGradeMatch = s.grade === gradeLevel || s.grade === gradeId;
+                const isGradeMatch = s.grade === gradeLevel || s.grade === schedGradeId;
                 const isClassMatch = !schoolClass || s.class === schoolClass;
                 const isUnitMatch = s.schoolId === activeUnit;
                 const isShiftMatch = !shift || s.shift === shift;
@@ -737,9 +759,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         }
 
         // 3. REGRA ESTRITA: Se não tem grade horária, NÃO MOSTRA NADA.
-        // Isso impede que o professor lance notas em turmas não configuradas.
         return [];
-    }, [teacher.assignments, teacher.subjects, isEarlyChildhoodTeacher, classSchedules, activeUnit]);
+    }, [teacher.assignments, teacher.subjects, isEarlyChildhoodTeacher, classSchedules, activeUnit, academicSubjects]);
 
     const filteredSubjectsForGrades = useMemo(() => {
         const grade = selectedStudent?.gradeLevel || filterGrade;
