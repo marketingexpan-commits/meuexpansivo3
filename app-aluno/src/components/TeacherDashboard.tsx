@@ -967,9 +967,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 faltas: faltasToSave,
                 media: 0,
                 difficultyTopic: topic,
-                isApproved: false, // Reset legacy approval
-                isNotaApproved: isRecoveryView ? (currentData.isNotaApproved ?? true) : false,
-                isRecuperacaoApproved: isRecoveryView ? false : (currentData.isRecuperacaoApproved ?? true)
+                isApproved: isRecoveryView ? (recToSave === null ? true : false) : (notaToSave === null ? true : false),
+                isNotaApproved: isRecoveryView ? (currentData.isNotaApproved ?? true) : (notaToSave === null ? true : false),
+                isRecuperacaoApproved: isRecoveryView ? (recToSave === null ? true : false) : (currentData.isRecuperacaoApproved ?? true)
             };
             newBimesters[bimesterKey] = calculateBimesterMedia(rawBimesterData);
         }
@@ -1377,7 +1377,16 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     };
 
     const getBimesterDataDisplay = () => { if (!currentGradeData || selectedStage === 'recuperacaoFinal') return null; const key = selectedStage.replace('_rec', '') as keyof GradeEntry['bimesters']; return currentGradeData.bimesters[key]; }
-    const getAnnualMediaValue = () => { if (!currentGradeData) return 0; return ((currentGradeData.bimesters.bimester1.media || 0) + (currentGradeData.bimesters.bimester2.media || 0) + (currentGradeData.bimesters.bimester3.media || 0) + (currentGradeData.bimesters.bimester4.media || 0)) / 4; };
+    const getAnnualMediaValue = () => {
+        if (!currentGradeData) return 0;
+        const getBimMedia = (b: any) => (b && b.media !== undefined && b.media !== null && b.media >= 0) ? b.media : 0;
+        return (
+            getBimMedia(currentGradeData.bimesters.bimester1) +
+            getBimMedia(currentGradeData.bimesters.bimester2) +
+            getBimMedia(currentGradeData.bimesters.bimester3) +
+            getBimMedia(currentGradeData.bimesters.bimester4)
+        ) / 4;
+    };
     const getAnnualMediaDisplay = () => !currentGradeData ? '-' : getAnnualMediaValue().toFixed(1);
     const isRecoveryMode = selectedStage.includes('_rec') && selectedStage !== 'recuperacaoFinal';
     const isAnnualMediaPassing = getAnnualMediaValue() >= 7;
