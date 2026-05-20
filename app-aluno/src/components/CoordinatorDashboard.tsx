@@ -3005,6 +3005,15 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         });
     }, [crmAttendances, crmSearch, crmStatusFilter]);
 
+    const handleMarkAllAsRead = async () => {
+        if (!onDeleteNotification || !notifications) return;
+        const unread = notifications.filter(n => !n.read);
+        if (unread.length === 0) return;
+        
+        await Promise.all(unread.map(n => onDeleteNotification(n.id)));
+        setShowNotifications(false);
+    };
+
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans transition-all duration-500 ease-in-out print:min-h-0 print:h-auto print:bg-white print:p-0 print:block print:overflow-visible">
             <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${activeTab === 'menu' ? 'max-w-2xl' :
@@ -3070,9 +3079,20 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                 {/* NOTIFICATION MODAL */}
                                 {showNotifications && (
                                     <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden ring-1 ring-black ring-opacity-5 animate-in fade-in zoom-in-95 duration-200">
-                                        <div className="p-3 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
-                                            <h4 className="font-bold text-blue-950 text-xs uppercase tracking-wider">Notificações</h4>
-                                            <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-blue-800">
+                                        <div className="p-3 bg-blue-50/50 border-b border-blue-100 flex justify-between items-center backdrop-blur-sm">
+                                            <div className="flex items-center gap-2">
+                                                <h4 className="font-bold text-blue-950 text-xs uppercase tracking-wider">Notificações</h4>
+                                                {notifications.filter(n => !n.read).length > 0 && (
+                                                    <button 
+                                                        onClick={handleMarkAllAsRead} 
+                                                        className="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-0.5 rounded font-medium transition-colors"
+                                                        title="Marcar todas como lidas"
+                                                    >
+                                                        Marcar todas como lidas
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-blue-800 transition-colors p-1 hover:bg-gray-100 rounded-full">
                                                 <X className="w-4 h-4" />
                                             </button>
                                         </div>

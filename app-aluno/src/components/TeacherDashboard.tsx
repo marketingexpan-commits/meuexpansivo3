@@ -1744,6 +1744,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         }
     };
 
+    const handleMarkAllAsRead = async () => {
+        if (!onDeleteNotification || !notifications) return;
+        const unread = notifications.filter(n => !n.read);
+        if (unread.length === 0) return;
+        
+        await Promise.all(unread.map(n => onDeleteNotification(n.id)));
+        setShowNotifications(false);
+    };
+
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans">
             <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${activeTab === 'menu' ? 'max-w-md' : activeTab === 'announcements' ? 'max-w-xl' : 'max-w-5xl'}`}>
@@ -1785,7 +1794,18 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                             {showNotifications && (
                                 <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden ring-1 ring-black ring-opacity-5 text-left">
                                     <div className="p-3 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
-                                        <h4 className="font-bold text-blue-900 text-sm">Notificações</h4>
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="font-bold text-blue-900 text-sm">Notificações</h4>
+                                            {unreadNotifications > 0 && (
+                                                <button 
+                                                    onClick={handleMarkAllAsRead} 
+                                                    className="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-0.5 rounded font-medium transition-colors"
+                                                    title="Marcar todas como lidas"
+                                                >
+                                                    Marcar todas como lidas
+                                                </button>
+                                            )}
+                                        </div>
                                         <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-gray-600">
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                         </button>
