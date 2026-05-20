@@ -33,6 +33,7 @@ export interface SchoolConfig {
     appIconSize?: number;
     appPwaIconSize?: number;
     appIconBgColor?: string;
+    ebookMessage?: string;
 }
 
 const DEFAULT_CONFIG: SchoolConfig = {
@@ -59,7 +60,8 @@ const DEFAULT_CONFIG: SchoolConfig = {
     appIconRotation: 0,
     appIconSize: 110,
     appPwaIconSize: 85,
-    appIconBgColor: '#FFFFFF'
+    appIconBgColor: '#FFFFFF',
+    ebookMessage: ''
 };
 
 export const useSchoolConfig = () => {

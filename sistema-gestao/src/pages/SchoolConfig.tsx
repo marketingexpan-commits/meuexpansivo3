@@ -107,6 +107,7 @@ interface SchoolConfigData {
     // Informative Messages
     gradeRulesMessage?: string;
     gradeApprovalMessage?: string;
+    ebookMessage?: string;
 }
 
 const DEFAULT_CONFIG: SchoolConfigData = {
@@ -167,7 +168,8 @@ const DEFAULT_CONFIG: SchoolConfigData = {
 
     // Informative Messages
     gradeRulesMessage: '',
-    gradeApprovalMessage: ''
+    gradeApprovalMessage: '',
+    ebookMessage: ''
 };
 
 export const SchoolConfig = () => {
@@ -1334,6 +1336,31 @@ export const SchoolConfig = () => {
                                 <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                                     <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wider mb-1">Prévia do banner no app:</p>
                                     <p className="text-xs text-blue-800 leading-relaxed">{config.gradeApprovalMessage}</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Mensagem para o Menu de E-Livros (App do Aluno) */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                            <h2 className="text-lg font-bold text-slate-800 mb-1 flex items-center gap-2">
+                                <span className="w-3 h-3 rounded-full bg-orange-500 shrink-0"></span>
+                                Aviso no Menu de E-Livros
+                                <span className="text-xs font-normal text-slate-400 ml-1">(Visível no App do Aluno)</span>
+                            </h2>
+                            <p className="text-xs text-slate-500 mb-4">
+                                Este texto será exibido no topo do menu de E-Livros do aluno. Recomendamos orientar a leitura pelo computador ou tablet.
+                            </p>
+                            <textarea
+                                value={config.ebookMessage || ''}
+                                onChange={e => setConfig({ ...config, ebookMessage: e.target.value })}
+                                rows={4}
+                                className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 outline-none transition-all resize-none text-sm text-slate-700"
+                                placeholder="Ex: Recomendamos a leitura de nossos e-livros pelo computador ou tablet. Assim, você aproveita o formato original de páginas duplas para uma melhor experiência de leitura."
+                            />
+                            {config.ebookMessage && (
+                                <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                                    <p className="text-[10px] font-bold text-orange-700 uppercase tracking-wider mb-1">Prévia do texto no app:</p>
+                                    <p className="text-xs text-orange-800 leading-relaxed">{config.ebookMessage}</p>
                                 </div>
                             )}
                         </div>

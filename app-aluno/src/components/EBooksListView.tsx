@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Lock, ChevronRight, Loader2, ShoppingCart, Trash2, X, QrCode, Award, Check, Copy } from 'lucide-react';
+import { BookOpen, Lock, ChevronRight, Loader2, ShoppingCart, Trash2, X, QrCode, Award, Check, Copy, Info } from 'lucide-react';
 import { Student } from '../types';
 import { db } from '../firebaseConfig';
 import { ACADEMIC_GRADES, ACADEMIC_SEGMENTS } from '../utils/academicDefaults';
+import { useSchoolConfig } from '../hooks/useSchoolConfig';
 
 interface EBooksListViewProps {
     student: Student;
@@ -10,6 +11,7 @@ interface EBooksListViewProps {
 }
 
 const EBooksListView: React.FC<EBooksListViewProps> = ({ student, onOpenBook }) => {
+    const { config } = useSchoolConfig();
     const [books, setBooks] = useState<any[]>([]);
     const [progressData, setProgressData] = useState<Record<string, any>>({});
     const [isLoading, setIsLoading] = useState(true);
@@ -198,6 +200,20 @@ const EBooksListView: React.FC<EBooksListViewProps> = ({ student, onOpenBook }) 
                 <BookOpen className="w-6 h-6 text-blue-900" />
                 e-Livros Digitais
             </h3>
+
+            {config?.ebookMessage && (
+                <div className="mb-8 p-4 bg-blue-50/50 rounded-2xl border border-blue-100 flex items-start gap-3 animate-fade-in">
+                    <div className="bg-blue-100 p-2 rounded-xl text-blue-700 shrink-0 mt-0.5">
+                        <Info size={18} />
+                    </div>
+                    <div>
+                        <h4 className="font-bold text-blue-900 text-sm mb-0.5">Melhor Experiência</h4>
+                        <p className="text-xs text-blue-800 leading-relaxed">
+                            {config.ebookMessage}
+                        </p>
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {isLoading ? (
