@@ -873,13 +873,21 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                 return alert("Atenção: Para liberar o acesso ao aplicativo (gerar senha), o aluno deve estar matriculado no ano letivo de 2026. Atualize o ano letivo do aluno antes de salvar.");
             }
 
+            // Determinar o status final efetivo (vem do histórico mais recente ou do formulário)
+            const effectiveStatus = latestEnrollment ? latestEnrollment.status : formData.status;
+
+            // REGRA DE BLOQUEIO: Apenas 'CURSANDO', 'ATIVO' e 'APROVADO' liberam acesso ao aplicativo
+            const ACTIVE_STATUSES = ['CURSANDO', 'ATIVO', 'APROVADO'];
+            const shouldBeBlocked = !ACTIVE_STATUSES.includes(effectiveStatus);
+
             const finalData = cleanObject({
                 ...formData,
                 gradeLevel: latestEnrollment ? latestEnrollment.gradeLevel : finalGradeLevel,
                 gradeId: officialGrade ? officialGrade.id : null, // NEW: Save ID for robust matching
                 schoolClass: latestEnrollment ? latestEnrollment.schoolClass : formData.schoolClass,
                 shift: latestEnrollment ? latestEnrollment.shift : formData.shift,
-                status: latestEnrollment ? latestEnrollment.status : formData.status,
+                status: effectiveStatus,
+                isBlocked: shouldBeBlocked, // AUTOMÁTICO: bloquear acesso se status não for ativo
                 enrolledYears: enrolledYears, // Sync for filtering
                 segment: selectedLevel, // Explicit segment storage
                 segmentId: Object.values(ACADEMIC_SEGMENTS).find(s => s.label === selectedLevel)?.id || '',

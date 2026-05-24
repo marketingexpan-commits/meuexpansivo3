@@ -863,7 +863,10 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
         const matchesYear = student.enrolledYears?.includes('2026');
 
-        return matchesUnit && isAuthorized && matchesGrade && matchesShift && matchesClass && matchesSearch && matchesYear;
+        // REGRA DE STATUS: Apenas alunos com status ativo participam das atividades
+        const isActiveStudent = student.status === 'CURSANDO' || student.status === 'ATIVO';
+
+        return matchesUnit && isAuthorized && matchesGrade && matchesShift && matchesClass && matchesSearch && matchesYear && isActiveStudent;
     }).sort((a, b) => a.name.localeCompare(b.name)), [students, activeUnit, teacher.gradeLevels, teacher.assignments, filterGrade, filterShift, filterClass, searchTerm]);
 
 
@@ -1084,6 +1087,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
             // REGRAS DE ANO LETIVO: Apenas alunos matriculados em 2026
             if (s.enrolledYears && !s.enrolledYears.includes('2026')) return false;
+
+            // REGRA DE STATUS: Apenas alunos com status ativo participam da chamada
+            if (s.status !== 'CURSANDO' && s.status !== 'ATIVO') return false;
 
             return s.unit === activeUnit &&
                 sGrade === attendanceGrade &&

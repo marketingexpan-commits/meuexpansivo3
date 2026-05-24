@@ -1596,6 +1596,9 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                     
                     if (!(nameMatch || codeMatch)) return false;
 
+                    // REGRA DE STATUS: Apenas alunos CURSANDO ou ATIVO aparecem nos relatórios
+                    if (s.status !== 'CURSANDO' && s.status !== 'ATIVO') return false;
+
                     // Apply Segment Filtering
                     const isGeneralCoordinator = coordinator.role === 'admin_geral' || coordinator.role === 'GENERAL_COORDINATOR' || coordinator.unit === 'all';
                     if (!isGeneralCoordinator && coordinator.segment) {
@@ -1670,8 +1673,10 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             const allStudents = studentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
             
             const studentsList = allStudents.filter(s => {
+                // REGRA DE STATUS: Apenas alunos CURSANDO ou ATIVO entram nos relatórios de notas
+                if (s.status !== 'CURSANDO' && s.status !== 'ATIVO') return false;
+
                 if (s.situacao && s.situacao !== 'Ativo') return false;
-                if (s.status && s.status === 'CANCELADO') return false;
 
                 const sGrade = parseGradeLevel(s.gradeLevel || '').grade;
                 const fGrade = parseGradeLevel(reportGradeFilter).grade;
@@ -2277,6 +2282,9 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
             // Refinar filtros em memória (mais seguro contra divergências de string, normalização de turmas e UTF-8)
             students = students.filter((s: any) => {
+                // REGRA DE STATUS: Apenas alunos CURSANDO ou ATIVO podem ter ocorrências registradas
+                if (s.status !== 'CURSANDO' && s.status !== 'ATIVO') return false;
+
                 // Verificar Turno
                 if (s.shift !== occFilters.shift) return false;
 
@@ -2695,6 +2703,9 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.code.includes(searchTerm);
                 if (!matchesSearch) return false;
 
+                // REGRA DE STATUS: Apenas alunos CURSANDO ou ATIVO aparecem na busca CRM
+                if (s.status !== 'CURSANDO' && s.status !== 'ATIVO') return false;
+
                 // Segment Restriction
                 if (!coordinator.segment || coordinator.segment === CoordinationSegment.GERAL) return true;
 
@@ -2799,6 +2810,9 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             const filtered = allStudents.filter(s => {
                 const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.code.includes(searchTerm);
                 if (!matchesSearch) return false;
+
+                // REGRA DE STATUS: Apenas alunos CURSANDO ou ATIVO aparecem na busca de acessos
+                if (s.status !== 'CURSANDO' && s.status !== 'ATIVO') return false;
 
                 if (!coordinator.segment || coordinator.segment === CoordinationSegment.GERAL) return true;
                 if (s.gradeId) return allowedGradeIds.has(s.gradeId);

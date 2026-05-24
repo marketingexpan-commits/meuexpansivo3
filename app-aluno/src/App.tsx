@@ -891,6 +891,14 @@ const AppContent: React.FC = () => {
         } else {
           // REFRESH SESSION DATA (Critical for migration updates like gradeId)
           const freshUser = { ...doc.data(), id: doc.id } as Student | Teacher | UnitContact;
+
+          // BLOQUEIO EM TEMPO REAL: Se o aluno foi bloqueado (INATIVO/TRANSFERIDO), forçar logout
+          if (session.role === UserRole.STUDENT && (freshUser as Student).isBlocked) {
+            console.warn("Student account is blocked. Forcing logout.");
+            handleLogout();
+            return;
+          }
+
           // Only update if data actually changed to avoid loop? 
           // JSON stringify comparison is cheap for this size.
           if (JSON.stringify(freshUser) !== JSON.stringify(session.user)) {
