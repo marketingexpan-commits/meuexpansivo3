@@ -231,6 +231,7 @@ const CoordinatorAnnouncementsView: React.FC<{
     const [removedExistingAttachment, setRemovedExistingAttachment] = useState(false);
 
     const isGeneral = coordinator.unit === 'all' || coordinator.role === 'admin_geral' || coordinator.role === 'GENERAL_COORDINATOR';
+    const isViewingOnly = !!(editingAnnouncement && !isGeneral && editingAnnouncement.authorId !== coordinator.id);
 
     const editor = useEditor({
         extensions: [
@@ -426,7 +427,7 @@ const CoordinatorAnnouncementsView: React.FC<{
 
             <div className="w-full">
                 {(() => {
-                    const visibleAnnouncements = announcements.filter(ann => isGeneral || ann.authorId === coordinator.id || ann.recipient === AnnouncementRecipient.COORDINATORS as string);
+                    const visibleAnnouncements = announcements;
                     return visibleAnnouncements.length > 0 ? (
                     <div className="col-span-full bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm flex flex-col">
                         {visibleAnnouncements
@@ -505,15 +506,15 @@ const CoordinatorAnnouncementsView: React.FC<{
                                     <span className="text-[10px] text-gray-400 mt-0.5 mb-2">
                                         {new Date(ann.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                     </span>
-                                    {(isGeneral || ann.authorId === coordinator.id) && (
-                                        <div className="flex items-center gap-2">
-                                            <button 
-                                                onClick={() => handleEdit(ann)} 
-                                                className="text-gray-400 hover:text-blue-600 transition-colors"
-                                                title="Editar"
-                                            >
-                                                <Search className="w-4 h-4" />
-                                            </button>
+                                    <div className="flex items-center gap-2">
+                                        <button 
+                                            onClick={() => handleEdit(ann)} 
+                                            className="text-gray-400 hover:text-blue-600 transition-colors"
+                                            title={isGeneral || ann.authorId === coordinator.id ? "Editar" : "Visualizar"}
+                                        >
+                                            <Search className="w-4 h-4" />
+                                        </button>
+                                        {(isGeneral || ann.authorId === coordinator.id) && (
                                             <button 
                                                 onClick={() => handleDelete(ann.id!)} 
                                                 className="text-gray-400 hover:text-red-600 transition-colors"
@@ -521,8 +522,8 @@ const CoordinatorAnnouncementsView: React.FC<{
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         )})}
@@ -542,7 +543,7 @@ const CoordinatorAnnouncementsView: React.FC<{
                         {/* Modal Header */}
                         <div className="p-6 pb-2 flex justify-between items-center bg-white">
                             <h2 className="text-xl font-black text-blue-950 uppercase tracking-tight">
-                                {editingAnnouncement ? 'Editar Comunicado' : 'Novo Comunicado'}
+                                {isViewingOnly ? 'Visualizar Comunicado' : editingAnnouncement ? 'Editar Comunicado' : 'Novo Comunicado'}
                             </h2>
                             <button onClick={() => setIsModalOpen(false)} className="p-2 text-gray-400 hover:text-blue-950 hover:bg-gray-100 rounded-full transition-all">
                                 <X className="w-5 h-5" />
@@ -558,19 +559,24 @@ const CoordinatorAnnouncementsView: React.FC<{
                                     value={title}
                                     onChange={e => setTitle(e.target.value)}
                                     placeholder="Ex: Reunião de Pais e Mestres"
-                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 outline-none focus:border-blue-500 focus:bg-white transition-all"
+                                    disabled={isViewingOnly}
+                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 outline-none focus:border-blue-500 focus:bg-white transition-all disabled:opacity-75 disabled:cursor-not-allowed"
                                 />
                             </div>
 
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider pl-1">Conteúdo</label>
-                                <div className="border border-gray-200 rounded-xl overflow-hidden focus-within:border-blue-500 transition-all">
-                                    <MenuBar editor={editor} />
-                                    <EditorContent
-                                        editor={editor}
-                                        className="prose prose-sm max-w-none p-4 focus:outline-none flex-1 overflow-y-auto min-h-[200px] tiptap-editor text-left"
-                                    />
-                                </div>
+                                {isViewingOnly ? (
+                                    <div className="prose prose-sm max-w-none p-4 min-h-[200px] border border-gray-200 rounded-xl bg-gray-50 overflow-y-auto disabled:opacity-75" dangerouslySetInnerHTML={{ __html: content }} />
+                                ) : (
+                                    <div className="border border-gray-200 rounded-xl overflow-hidden focus-within:border-blue-500 transition-all">
+                                        <MenuBar editor={editor} />
+                                        <EditorContent
+                                            editor={editor}
+                                            className="prose prose-sm max-w-none p-4 focus:outline-none flex-1 overflow-y-auto min-h-[200px] tiptap-editor text-left"
+                                        />
+                                    </div>
+                                )}
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
@@ -579,7 +585,8 @@ const CoordinatorAnnouncementsView: React.FC<{
                                     <select 
                                         value={recipient}
                                         onChange={e => setRecipient(e.target.value as AnnouncementRecipient)}
-                                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 outline-none"
+                                        disabled={isViewingOnly}
+                                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 outline-none disabled:opacity-75 disabled:cursor-not-allowed"
                                     >
                                         <option value={AnnouncementRecipient.ALL}>Alunos, Pais e Professores</option>
                                         <option value={AnnouncementRecipient.STUDENTS}>Apenas Alunos e Pais</option>
@@ -609,7 +616,8 @@ const CoordinatorAnnouncementsView: React.FC<{
                                         <select 
                                             value={targetSegment}
                                             onChange={e => { setTargetSegment(e.target.value); setTargetGrade(''); }}
-                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs outline-none"
+                                            disabled={isViewingOnly}
+                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs outline-none disabled:opacity-75 disabled:cursor-not-allowed"
                                         >
                                             <option value="">Todos os Segmentos</option>
                                             {academicSegments.filter(seg => {
@@ -631,8 +639,8 @@ const CoordinatorAnnouncementsView: React.FC<{
                                         <select 
                                             value={targetGrade}
                                             onChange={e => setTargetGrade(e.target.value)}
-                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs outline-none"
-                                            disabled={!targetSegment}
+                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs outline-none disabled:opacity-75 disabled:cursor-not-allowed"
+                                            disabled={!targetSegment || isViewingOnly}
                                         >
                                             <option value="">Todas as Séries</option>
                                             {academicGrades.filter(g => g.segmentId === targetSegment).map(grade => (
@@ -648,7 +656,8 @@ const CoordinatorAnnouncementsView: React.FC<{
                                         <select 
                                             value={targetClass}
                                             onChange={e => setTargetClass(e.target.value as SchoolClass)}
-                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs outline-none"
+                                            disabled={isViewingOnly}
+                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs outline-none disabled:opacity-75 disabled:cursor-not-allowed"
                                         >
                                             <option value="">Todas as Turmas</option>
                                             {SCHOOL_CLASSES_LIST.map(cls => (
@@ -662,7 +671,8 @@ const CoordinatorAnnouncementsView: React.FC<{
                                             <select 
                                                 value={targetShift}
                                                 onChange={e => setTargetShift(e.target.value as SchoolShift)}
-                                                className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs outline-none"
+                                                disabled={isViewingOnly}
+                                                className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs outline-none disabled:opacity-75 disabled:cursor-not-allowed"
                                             >
                                                 <option value="">Todos os Turnos</option>
                                                 {Object.entries(SHIFT_LABELS).map(([id, label]) => (
@@ -680,41 +690,68 @@ const CoordinatorAnnouncementsView: React.FC<{
 
                             <div className="space-y-1">
                                 <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider pl-1">Anexo (Opcional)</label>
-                                <div className="flex items-center gap-3">
-                                    <input 
-                                        type="file" 
-                                        id="announcement-file-modal"
-                                        className="hidden" 
-                                        onChange={e => {
-                                            setFile(e.target.files?.[0] || null);
-                                            if (e.target.files?.[0]) setRemovedExistingAttachment(false);
-                                        }}
-                                        accept=".pdf,.jpeg,.jpg,.png,application/pdf,image/jpeg,image/png"
-                                    />
-                                    <label 
-                                        htmlFor="announcement-file-modal"
-                                        className="flex-1 p-3 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center gap-2 cursor-pointer hover:border-blue-900 hover:bg-blue-50 transition-all text-sm text-gray-500 font-medium overflow-hidden"
-                                    >
-                                        <Package className="w-5 h-5 flex-shrink-0" />
-                                        <span className="truncate">
-                                            {file ? file.name : (editingAnnouncement?.attachmentUrl && !removedExistingAttachment ? (editingAnnouncement.attachmentName || "Arquivo já anexado") : "Clique para anexar PDF ou Imagem")}
-                                        </span>
-                                    </label>
-                                    {(file || (editingAnnouncement?.attachmentUrl && !removedExistingAttachment)) && (
-                                        <button 
-                                            type="button" 
-                                            onClick={() => {
-                                                if (file) setFile(null);
-                                                else setRemovedExistingAttachment(true);
-                                            }} 
-                                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg flex-shrink-0 transition-colors"
-                                            title="Remover anexo"
-                                        >
-                                            <X className="w-5 h-5" />
-                                        </button>
-                                    )}
-                                </div>
-                                <p className="text-[10px] text-gray-400 pl-1 font-medium">* Tamanho máximo permitido: 5MB</p>
+                                {isViewingOnly ? (
+                                    editingAnnouncement?.attachmentUrl ? (
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex-1 p-3 border border-gray-200 bg-gray-50 rounded-xl flex items-center gap-2 overflow-hidden">
+                                                <Package className="w-5 h-5 flex-shrink-0 text-gray-400" />
+                                                <span className="truncate text-sm text-gray-600 font-medium">
+                                                    {editingAnnouncement.attachmentName || "Arquivo anexado"}
+                                                </span>
+                                            </div>
+                                            <a 
+                                                href={editingAnnouncement.attachmentUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="px-4 py-3 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl flex-shrink-0 transition-colors text-sm font-bold flex items-center gap-2"
+                                            >
+                                                <Search className="w-4 h-4" /> Visualizar
+                                            </a>
+                                        </div>
+                                    ) : (
+                                        <div className="p-3 border border-gray-200 bg-gray-50 rounded-xl text-sm text-gray-400 font-medium italic">
+                                            Sem anexo.
+                                        </div>
+                                    )
+                                ) : (
+                                    <>
+                                        <div className="flex items-center gap-3">
+                                            <input 
+                                                type="file" 
+                                                id="announcement-file-modal"
+                                                className="hidden" 
+                                                onChange={e => {
+                                                    setFile(e.target.files?.[0] || null);
+                                                    if (e.target.files?.[0]) setRemovedExistingAttachment(false);
+                                                }}
+                                                accept=".pdf,.jpeg,.jpg,.png,application/pdf,image/jpeg,image/png"
+                                            />
+                                            <label 
+                                                htmlFor="announcement-file-modal"
+                                                className="flex-1 p-3 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center gap-2 cursor-pointer hover:border-blue-900 hover:bg-blue-50 transition-all text-sm text-gray-500 font-medium overflow-hidden"
+                                            >
+                                                <Package className="w-5 h-5 flex-shrink-0" />
+                                                <span className="truncate">
+                                                    {file ? file.name : (editingAnnouncement?.attachmentUrl && !removedExistingAttachment ? (editingAnnouncement.attachmentName || "Arquivo já anexado") : "Clique para anexar PDF ou Imagem")}
+                                                </span>
+                                            </label>
+                                            {(file || (editingAnnouncement?.attachmentUrl && !removedExistingAttachment)) && (
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => {
+                                                        if (file) setFile(null);
+                                                        else setRemovedExistingAttachment(true);
+                                                    }} 
+                                                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg flex-shrink-0 transition-colors"
+                                                    title="Remover anexo"
+                                                >
+                                                    <X className="w-5 h-5" />
+                                                </button>
+                                            )}
+                                        </div>
+                                        <p className="text-[10px] text-gray-400 pl-1 font-medium">* Tamanho máximo permitido: 5MB</p>
+                                    </>
+                                )}
                                 {uploadProgress > 0 && (
                                     <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2 overflow-hidden">
                                         <div className="bg-blue-600 h-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
@@ -729,25 +766,27 @@ const CoordinatorAnnouncementsView: React.FC<{
                                 onClick={() => setIsModalOpen(false)}
                                 className="px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors uppercase tracking-widest"
                             >
-                                Cancelar
+                                {isViewingOnly ? 'Fechar' : 'Cancelar'}
                             </button>
-                            <Button 
-                                onClick={handleSave} 
-                                disabled={isSaving || !title || !content}
-                                className="min-w-[140px]"
-                            >
-                                {isSaving ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                        Salvando...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Save className="w-4 h-4 mr-2" />
-                                        {editingAnnouncement ? 'Salvar Alterações' : 'Publicar Comunicado'}
-                                    </>
-                                )}
-                            </Button>
+                            {!isViewingOnly && (
+                                <Button 
+                                    onClick={handleSave} 
+                                    disabled={isSaving || !title || !content}
+                                    className="min-w-[140px]"
+                                >
+                                    {isSaving ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                            Salvando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save className="w-4 h-4 mr-2" />
+                                            {editingAnnouncement ? 'Salvar Alterações' : 'Publicar Comunicado'}
+                                        </>
+                                    )}
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>
