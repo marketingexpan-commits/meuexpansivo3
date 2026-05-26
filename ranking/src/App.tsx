@@ -244,7 +244,7 @@ const SponsorsShowcase = ({ settings, unitName, scale }: { settings: RankSetting
         />
         <div className="w-px h-10 bg-white/20" />
         <div>
-          <h1 translate="no" className="text-3xl font-black tracking-tighter uppercase leading-none text-white">RANKING EXPANSIVO</h1>
+          <h1 translate="no" className="text-3xl font-black tracking-tighter uppercase leading-none text-white">DESTAQUES <span className="ml-2">EXPANSIVO</span></h1>
           <p translate="no" className="text-sm font-bold text-blue-400 tracking-[0.2em] uppercase mt-1">{unitName}</p>
         </div>
       </div>
@@ -751,7 +751,7 @@ function App() {
                   />
                   <div className="w-px h-10 bg-slate-100" />
                   <div>
-                    <h1 translate="no" className="text-3xl font-black tracking-tighter uppercase leading-none text-[#001c3d]">RANKING EXPANSIVO</h1>
+                    <h1 translate="no" className="text-3xl font-black tracking-tighter uppercase leading-none text-[#001c3d]">DESTAQUES <span className="ml-2">EXPANSIVO</span></h1>
                     <p translate="no" className="text-sm font-bold text-blue-600 tracking-[0.2em] uppercase mt-1">{unitName}</p>
                   </div>
                 </div>
