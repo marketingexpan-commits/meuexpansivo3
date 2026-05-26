@@ -96,6 +96,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
 
     const [selectedYear, setSelectedYear] = useState(getCurrentSchoolYear());
     const [loadingCep, setLoadingCep] = useState(false);
+    const [isBlockingInProgress, setIsBlockingInProgress] = useState(false);
 
     const handleCepSearch = async () => {
         if (!formData.cep || formData.cep.replace(/\D/g, '').length !== 8) {
@@ -431,6 +432,32 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
 
             return newData;
         });
+    };
+
+    // BLOQUEIO IMEDIATO: Persiste isBlocked no Firestore ao clicar no checkbox
+    const handleToggleBlock = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newBlockedValue = e.target.checked;
+
+        // Atualiza o estado local imediatamente (feedback visual instantâneo)
+        setFormData((prev: any) => ({ ...prev, isBlocked: newBlockedValue }));
+
+        // Se o aluno já está salvo no banco, persiste o bloqueio/desbloqueio imediatamente
+        if (student?.id) {
+            setIsBlockingInProgress(true);
+            try {
+                await studentService.updateStudent(student.id, { isBlocked: newBlockedValue });
+                // Feedback visual sutil (sem alert para não interromper o fluxo)
+                console.log(`Acesso do aluno ${newBlockedValue ? 'bloqueado' : 'liberado'} imediatamente.`);
+            } catch (error) {
+                console.error('Erro ao atualizar bloqueio de acesso:', error);
+                // Reverter estado local em caso de erro
+                setFormData((prev: any) => ({ ...prev, isBlocked: !newBlockedValue }));
+                alert('Erro ao atualizar o status de acesso. Tente novamente.');
+            } finally {
+                setIsBlockingInProgress(false);
+            }
+        }
+        // Para novos alunos (sem ID), o valor será salvo junto com o resto do cadastro
     };
 
 
@@ -876,9 +903,11 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
             // Determinar o status final efetivo (vem do histórico mais recente ou do formulário)
             const effectiveStatus = latestEnrollment ? latestEnrollment.status : formData.status;
 
-            // REGRA DE BLOQUEIO: Apenas 'CURSANDO', 'ATIVO' e 'APROVADO' liberam acesso ao aplicativo
+            // REGRA DE BLOQUEIO: Status inativo força bloqueio; status ativo respeita o checkbox manual
             const ACTIVE_STATUSES = ['CURSANDO', 'ATIVO', 'APROVADO'];
-            const shouldBeBlocked = !ACTIVE_STATUSES.includes(effectiveStatus);
+            const isBlockedByStatus = !ACTIVE_STATUSES.includes(effectiveStatus);
+            // Se o status exige bloqueio → bloqueia sempre; caso contrário, respeita o checkbox do formulário
+            const finalIsBlocked = isBlockedByStatus || (formData.isBlocked === true);
 
             const finalData = cleanObject({
                 ...formData,
@@ -887,7 +916,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                 schoolClass: latestEnrollment ? latestEnrollment.schoolClass : formData.schoolClass,
                 shift: latestEnrollment ? latestEnrollment.shift : formData.shift,
                 status: effectiveStatus,
-                isBlocked: shouldBeBlocked, // AUTOMÁTICO: bloquear acesso se status não for ativo
+                isBlocked: finalIsBlocked, // Respeita tanto o status quanto o checkbox manual
                 enrolledYears: enrolledYears, // Sync for filtering
                 segment: selectedLevel, // Explicit segment storage
                 segmentId: Object.values(ACADEMIC_SEGMENTS).find(s => s.label === selectedLevel)?.id || '',
@@ -1327,8 +1356,9 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                                             type="checkbox"
                                             name="isBlocked"
                                             checked={formData.isBlocked || false}
-                                            onChange={handleChange}
-                                            className="w-5 h-5 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer"
+                                            onChange={handleToggleBlock}
+                                            disabled={isBlockingInProgress}
+                                            className="w-5 h-5 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer disabled:opacity-50 disabled:cursor-wait"
                                         />
                                     </div>
                                     <div className="flex flex-col">
