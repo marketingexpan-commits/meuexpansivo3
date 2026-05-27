@@ -664,17 +664,77 @@ export const LegalTermsManager = () => {
             return nameA.localeCompare(nameB);
         });
 
-        const rows = sortedStudents.map((sig: any) => {
-            const sData = sig.studentData;
-            const shiftLabel = SHIFT_LABELS[sData?.shift as SchoolShift] || sData?.shift || sig.shift || '-';
+        const studentsByUnit: Record<string, typeof sortedStudents> = {};
+        sortedStudents.forEach((sig: any) => {
+            const unitId = sig.unit || 'unknown';
+            if (!studentsByUnit[unitId]) studentsByUnit[unitId] = [];
+            studentsByUnit[unitId].push(sig);
+        });
+
+        const pagesHtml = Object.entries(studentsByUnit).map(([unitId, students]) => {
+            let currentUnitInfo = unitInfo;
+            if (unitId !== 'unknown') {
+                const u = getUnitById(unitId);
+                if (u) currentUnitInfo = u;
+            }
+
+            const rowsHtml = students.map((sig: any) => {
+                const sData = sig.studentData;
+                const shiftLabel = SHIFT_LABELS[sData?.shift as SchoolShift] || sData?.shift || sig.shift || '-';
+                return `
+                    <tr>
+                        <td style="padding: 6px; border: 1px solid #000; text-align: center;">${sData?.code || '-'}</td>
+                        <td style="padding: 6px; border: 1px solid #000; text-align: left; font-weight: bold; background: #f8fafc;">${sData?.name || sig.studentName || '-'}</td>
+                        <td style="padding: 6px; border: 1px solid #000; text-align: center;">${sData?.gradeLevel || '-'}</td>
+                        <td style="padding: 6px; border: 1px solid #000; text-align: center;">${sData?.schoolClass || '-'}</td>
+                        <td style="padding: 6px; border: 1px solid #000; text-align: center;">${shiftLabel}</td>
+                    </tr>
+                `;
+            }).join('');
+
             return `
-                <tr>
-                    <td style="padding: 6px; border: 1px solid #000; text-align: center;">${sData?.code || '-'}</td>
-                    <td style="padding: 6px; border: 1px solid #000; text-align: left; font-weight: bold; background: #f8fafc;">${sData?.name || sig.studentName || '-'}</td>
-                    <td style="padding: 6px; border: 1px solid #000; text-align: center;">${sData?.gradeLevel || '-'}</td>
-                    <td style="padding: 6px; border: 1px solid #000; text-align: center;">${sData?.schoolClass || '-'}</td>
-                    <td style="padding: 6px; border: 1px solid #000; text-align: center;">${shiftLabel}</td>
-                </tr>
+                <div class="page">
+                    <div class="header">
+                        <div style="display: flex; gap: 15px; align-items: center;">
+                            <img src="${currentUnitInfo.logoUrl || 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png'}" alt="Logo" class="logo">
+                            <div class="school-info">
+                                <h2>EXPANSIVO REDE DE ENSINO</h2>
+                                <p>UNIDADE: ${currentUnitInfo.fullName ? currentUnitInfo.fullName.replace('Expansivo - ', '').toUpperCase() : ''}</p>
+                            </div>
+                        </div>
+                        <div class="report-title">
+                            <h1>RELATÓRIO DE AUTORIZAÇÕES</h1>
+                            <div class="subtitle">
+                                ${segmentInfo} &nbsp;|&nbsp; ${gradeLevelInfo} &nbsp;|&nbsp; Turma: ${classInfo} &nbsp;|&nbsp; Turno: ${shiftInfo}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="term-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="text-align: left;">TERMO: ${selectedTermForSignatures?.title?.toUpperCase() || 'TODOS'}</span>
+                        <span>
+                            TOTAL DE ALUNOS: ${students.length}
+                            <span style="margin-left: 15px;">GERADO EM: ${currentDate} ${currentTime}</span>
+                        </span>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr style="border: none; background: transparent;">
+                                <th colspan="5" style="border: none; background: transparent; padding: 0; height: 10mm;"></th>
+                            </tr>
+                            <tr>
+                                <th style="width: 50px;">CÓD.</th>
+                                <th style="text-align: left;">ALUNO(A)</th>
+                                <th style="width: 140px;">SÉRIE/SEGMENTO</th>
+                                <th style="width: 60px;">TURMA</th>
+                                <th style="width: 80px;">TURNO</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHtml}
+                        </tbody>
+                    </table>
+                </div>
             `;
         }).join('');
 
@@ -683,12 +743,13 @@ export const LegalTermsManager = () => {
             <html lang="pt-BR">
             <head>
                 <meta charset="UTF-8">
-                <title>Relação de Autorizações</title>
+                <title>Relatório de Autorizações</title>
                 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&display=swap" rel="stylesheet">
                 <style>
-                    @page { size: A4 portrait; margin: 10mm; }
+                    @page { size: A4 portrait; margin-top: 0; margin-bottom: 10mm; margin-left: 10mm; margin-right: 10mm; }
                     body { font-family: 'Inter', sans-serif; color: #000; margin: 0; padding: 0; background: white; }
-                    .page { padding: 10px; }
+                    .page { padding-top: 10mm; page-break-after: always; break-after: page; }
+                    .page:last-child { page-break-after: auto; break-after: auto; }
                     .header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 2px; }
                     .logo { max-height: 40px; }
                     .school-info { text-align: left; }
@@ -699,9 +760,9 @@ export const LegalTermsManager = () => {
                     .report-title h1 { font-size: 18px; font-weight: 900; color: #000; margin: 0 0 2px 0; text-transform: uppercase; }
                     .report-title .subtitle { font-size: 9px; color: #334155; font-weight: 700; }
                     
-                    .term-header { border-bottom: 1px solid #000; padding: 4px 0; margin-bottom: 15px; text-align: right; font-size: 10px; font-weight: bold; color: #475569; }
+                    .term-header { border-bottom: 1px solid #000; padding: 4px 0; margin-bottom: 4px; text-align: right; font-size: 10px; font-weight: bold; color: #475569; position: relative; z-index: 10; }
                     
-                    table { width: 100%; border-collapse: collapse; font-size: 9.5px; margin-top: 10px; }
+                    table { width: 100%; border-collapse: collapse; font-size: 9.5px; margin-top: calc(0px - 10mm); }
                     th { background: #f1f5f9; color: #334155; font-weight: 800; font-size: 9px; text-transform: uppercase; padding: 8px 4px; border: 1px solid #000; }
                     td { color: #000; font-weight: 500; }
                     @media print {
@@ -711,47 +772,13 @@ export const LegalTermsManager = () => {
                 </style>
             </head>
             <body>
-                <div class="page">
-                    <div class="header">
-                        <div style="display: flex; gap: 15px; align-items: center;">
-                            <img src="${unitInfo.logoUrl || 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png'}" alt="Logo" class="logo">
-                            <div class="school-info">
-                                <h2>EXPANSIVO REDE DE ENSINO</h2>
-                                <p>UNIDADE: ${unitInfo.fullName ? unitInfo.fullName.replace('Expansivo - ', '').toUpperCase() : ''}</p>
-                            </div>
-                        </div>
-                        <div class="report-title">
-                            <h1>RELAÇÃO DE AUTORIZAÇÕES</h1>
-                            <div class="subtitle">
-                                ${segmentInfo} &nbsp;|&nbsp; ${gradeLevelInfo} &nbsp;|&nbsp; Turma: ${classInfo} &nbsp;|&nbsp; Turno: ${shiftInfo}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="term-header" style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="text-align: left;">TERMO: ${selectedTermForSignatures?.title?.toUpperCase() || 'TODOS'}</span>
-                        <span>
-                            TOTAL DE ALUNOS: ${sortedStudents.length}
-                            <span style="margin-left: 15px;">GERADO EM: ${currentDate} ${currentTime}</span>
-                        </span>
-                    </div>
-
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style="width: 50px;">CÓD.</th>
-                                <th style="text-align: left;">ALUNO(A)</th>
-                                <th style="width: 140px;">SÉRIE/NÍVEL</th>
-                                <th style="width: 60px;">TURMA</th>
-                                <th style="width: 80px;">TURNO</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${rows}
-                        </tbody>
-                    </table>
-                </div>
+                ${pagesHtml}
 
                 <script>
+                    try {
+                        window.history.replaceState(null, '', '/MeuExpansivo');
+                    } catch(e) {}
+                    
                     window.onload = function() {
                         setTimeout(() => { window.print(); }, 500);
                     }
