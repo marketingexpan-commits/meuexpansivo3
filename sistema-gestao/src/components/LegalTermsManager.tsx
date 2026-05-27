@@ -671,6 +671,8 @@ export const LegalTermsManager = () => {
             studentsByUnit[unitId].push(sig);
         });
 
+        const ROWS_PER_PAGE = 38;
+
         const pagesHtml = Object.entries(studentsByUnit).map(([unitId, students]) => {
             let currentUnitInfo = unitInfo;
             if (unitId !== 'unknown') {
@@ -678,64 +680,73 @@ export const LegalTermsManager = () => {
                 if (u) currentUnitInfo = u;
             }
 
-            const rowsHtml = students.map((sig: any) => {
-                const sData = sig.studentData;
-                const shiftLabel = SHIFT_LABELS[sData?.shift as SchoolShift] || sData?.shift || sig.shift || '-';
+            const unitPages: any[][] = [];
+            for (let i = 0; i < students.length; i += ROWS_PER_PAGE) {
+                unitPages.push(students.slice(i, i + ROWS_PER_PAGE));
+            }
+
+            return unitPages.map((pageStudents, pageIdx) => {
+                const rowsHtml = pageStudents.map((sig: any) => {
+                    const sData = sig.studentData;
+                    const shiftLabel = SHIFT_LABELS[sData?.shift as SchoolShift] || sData?.shift || sig.shift || '-';
+                    return `
+                        <tr>
+                            <td style="padding: 6px; border: 1px solid #000; text-align: center;">${sData?.code || '-'}</td>
+                            <td style="padding: 6px; border: 1px solid #000; text-align: left; font-weight: bold; background: #f8fafc;">${sData?.name || sig.studentName || '-'}</td>
+                            <td style="padding: 6px; border: 1px solid #000; text-align: center;">${sData?.gradeLevel || '-'}</td>
+                            <td style="padding: 6px; border: 1px solid #000; text-align: center;">${sData?.schoolClass || '-'}</td>
+                            <td style="padding: 6px; border: 1px solid #000; text-align: center;">${shiftLabel}</td>
+                        </tr>
+                    `;
+                }).join('');
+
                 return `
-                    <tr>
-                        <td style="padding: 6px; border: 1px solid #000; text-align: center;">${sData?.code || '-'}</td>
-                        <td style="padding: 6px; border: 1px solid #000; text-align: left; font-weight: bold; background: #f8fafc;">${sData?.name || sig.studentName || '-'}</td>
-                        <td style="padding: 6px; border: 1px solid #000; text-align: center;">${sData?.gradeLevel || '-'}</td>
-                        <td style="padding: 6px; border: 1px solid #000; text-align: center;">${sData?.schoolClass || '-'}</td>
-                        <td style="padding: 6px; border: 1px solid #000; text-align: center;">${shiftLabel}</td>
-                    </tr>
+                    <div class="print-page">
+                        <div class="header">
+                            <div style="display: flex; gap: 15px; align-items: center;">
+                                <img src="${currentUnitInfo.logoUrl || 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png'}" alt="Logo" class="logo">
+                                <div class="school-info">
+                                    <h2>EXPANSIVO REDE DE ENSINO</h2>
+                                    <p>UNIDADE: ${currentUnitInfo.fullName ? currentUnitInfo.fullName.replace('Expansivo - ', '').toUpperCase() : ''}</p>
+                                </div>
+                            </div>
+                            <div class="report-title">
+                                <h1>RELATÓRIO DE AUTORIZAÇÕES</h1>
+                                <div class="subtitle">
+                                    ${segmentInfo} &nbsp;|&nbsp; ${gradeLevelInfo} &nbsp;|&nbsp; Turma: ${classInfo} &nbsp;|&nbsp; Turno: ${shiftInfo}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="term-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="text-align: left;">TERMO: ${selectedTermForSignatures?.title?.toUpperCase() || 'TODOS'}</span>
+                            <span>
+                                TOTAL DE ALUNOS: ${students.length}
+                                <span style="margin-left: 15px;">GERADO EM: ${currentDate} ${currentTime}</span>
+                            </span>
+                        </div>
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width: 50px;">CÓD.</th>
+                                    <th style="text-align: left;">ALUNO(A)</th>
+                                    <th style="width: 140px;">SÉRIE/SEGMENTO</th>
+                                    <th style="width: 60px;">TURMA</th>
+                                    <th style="width: 80px;">TURNO</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rowsHtml}
+                            </tbody>
+                        </table>
+                        
+                        <div class="page-footer">
+                            <span>MeuExpansivo</span>
+                            <span style="text-transform:uppercase">PÁGINA ${pageIdx + 1} DE ${unitPages.length}</span>
+                        </div>
+                    </div>
                 `;
             }).join('');
-
-            return `
-                <div class="page">
-                    <div class="header">
-                        <div style="display: flex; gap: 15px; align-items: center;">
-                            <img src="${currentUnitInfo.logoUrl || 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png'}" alt="Logo" class="logo">
-                            <div class="school-info">
-                                <h2>EXPANSIVO REDE DE ENSINO</h2>
-                                <p>UNIDADE: ${currentUnitInfo.fullName ? currentUnitInfo.fullName.replace('Expansivo - ', '').toUpperCase() : ''}</p>
-                            </div>
-                        </div>
-                        <div class="report-title">
-                            <h1>RELATÓRIO DE AUTORIZAÇÕES</h1>
-                            <div class="subtitle">
-                                ${segmentInfo} &nbsp;|&nbsp; ${gradeLevelInfo} &nbsp;|&nbsp; Turma: ${classInfo} &nbsp;|&nbsp; Turno: ${shiftInfo}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="term-header" style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="text-align: left;">TERMO: ${selectedTermForSignatures?.title?.toUpperCase() || 'TODOS'}</span>
-                        <span>
-                            TOTAL DE ALUNOS: ${students.length}
-                            <span style="margin-left: 15px;">GERADO EM: ${currentDate} ${currentTime}</span>
-                        </span>
-                    </div>
-
-                    <table>
-                        <thead>
-                            <tr style="border: none; background: transparent;">
-                                <th colspan="5" style="border: none; background: transparent; padding: 0; height: 10mm;"></th>
-                            </tr>
-                            <tr>
-                                <th style="width: 50px;">CÓD.</th>
-                                <th style="text-align: left;">ALUNO(A)</th>
-                                <th style="width: 140px;">SÉRIE/SEGMENTO</th>
-                                <th style="width: 60px;">TURMA</th>
-                                <th style="width: 80px;">TURNO</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${rowsHtml}
-                        </tbody>
-                    </table>
-                </div>
-            `;
         }).join('');
 
         const htmlContent = `
@@ -746,10 +757,10 @@ export const LegalTermsManager = () => {
                 <title>Relatório de Autorizações</title>
                 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&display=swap" rel="stylesheet">
                 <style>
-                    @page { size: A4 portrait; margin-top: 0; margin-bottom: 10mm; margin-left: 10mm; margin-right: 10mm; }
+                    @page { size: A4 portrait; margin: 0; }
                     body { font-family: 'Inter', sans-serif; color: #000; margin: 0; padding: 0; background: white; }
-                    .page { padding-top: 10mm; page-break-after: always; break-after: page; }
-                    .page:last-child { page-break-after: auto; break-after: auto; }
+                    .print-page { padding: 10mm; box-sizing: border-box; page-break-after: always; break-after: page; display: flex; flex-direction: column; height: 297mm; }
+                    .print-page:last-child { page-break-after: auto; break-after: auto; }
                     .header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 2px; }
                     .logo { max-height: 40px; }
                     .school-info { text-align: left; }
@@ -762,9 +773,10 @@ export const LegalTermsManager = () => {
                     
                     .term-header { border-bottom: 1px solid #000; padding: 4px 0; margin-bottom: 4px; text-align: right; font-size: 10px; font-weight: bold; color: #475569; position: relative; z-index: 10; }
                     
-                    table { width: 100%; border-collapse: collapse; font-size: 9.5px; margin-top: calc(0px - 10mm); }
+                    table { width: 100%; border-collapse: collapse; font-size: 9.5px; margin-top: 4px; }
                     th { background: #f1f5f9; color: #334155; font-weight: 800; font-size: 9px; text-transform: uppercase; padding: 8px 4px; border: 1px solid #000; }
                     td { color: #000; font-weight: 500; }
+                    .page-footer { margin-top: auto; padding-top: 8px; border-top: 0.5px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; font-size: 8px; font-weight: 700; color: #94a3b8; letter-spacing: 0.5px; }
                     @media print {
                         body { padding: 0; }
                         .no-print { display: none; }
