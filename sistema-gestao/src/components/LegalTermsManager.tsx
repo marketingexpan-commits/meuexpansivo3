@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebaseConfig';
 import { collection, query, getDocs, addDoc, updateDoc, doc, deleteDoc, where, onSnapshot } from 'firebase/firestore';
-import { Plus, Edit2, Trash2, Loader2, FileText, CheckCircle, XCircle, Users, Eye, PenTool, Bold, Italic, List, ListOrdered, Smile, Undo, Redo, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, FileText, CheckCircle, XCircle, Users, Eye, PenTool, Bold, Italic, List, ListOrdered, Smile, Undo, Redo, Search, Printer } from 'lucide-react';
 import type { LegalTerm, AcademicSegment, TermSignature, Student } from '../types';
 import { UNIT_LABELS, SchoolUnit, SchoolShift, SHIFT_LABELS, SchoolClass } from '../types';
 import { useAcademicData } from '../hooks/useAcademicData';
+import { useSchoolUnits } from '../hooks/useSchoolUnits';
 
 // Tiptap Imports
 import { useEditor, EditorContent } from '@tiptap/react';
@@ -166,6 +167,7 @@ export const LegalTermsManager = () => {
     const [selectedSegments, setSelectedSegments] = useState<string[]>([]);
 
     const { grades } = useAcademicData();
+    const { getUnitById, units } = useSchoolUnits();
 
     // Signatures State
     const [isSignaturesModalOpen, setIsSignaturesModalOpen] = useState(false);
@@ -538,6 +540,7 @@ export const LegalTermsManager = () => {
         }
     };
 
+
     const toggleUnit = (unitId: string) => {
         if (unitId === 'all') {
             if (selectedUnits.includes('all')) {
@@ -594,6 +597,172 @@ export const LegalTermsManager = () => {
 
         return matchesLevel && matchesUnit && matchesGrade && matchesClass && matchesShift;
     });
+
+    const handlePrintAuthorized = () => {
+        const authorizedStudents = filteredSignatures.filter((s: any) => s.isAuthorized !== false);
+        if (authorizedStudents.length === 0) {
+            alert("Nenhum aluno autorizado na lista atual para impressão.");
+            return;
+        }
+
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            alert("Pop-up bloqueado! Por favor permita pop-ups para gerar o documento.");
+            return;
+        }
+
+        let unitInfo = {
+            logoUrl: 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png',
+            fullName: 'EXPANSIVO REDE DE ENSINO',
+            address: '',
+            district: '',
+            city: '',
+            uf: '',
+            cnpj: '',
+            phone: ''
+        } as any;
+
+        if (filterUnit && filterUnit !== 'all') {
+            const u = getUnitById(filterUnit);
+            if (u) unitInfo = u;
+        } else if (units.length > 0) {
+            unitInfo = units[0];
+        }
+
+        const currentDate = new Date().toLocaleDateString('pt-BR');
+        const currentTime = new Date().toLocaleTimeString('pt-BR');
+
+        // Formatação das informações para o cabeçalho (igual ao relatório de notas)
+        const segmentObj = segments.find(s => s.id === filterLevel);
+        const segmentInfo = segmentObj ? segmentObj.name : (filterLevel ? filterLevel : 'Todos os Segmentos');
+        const gradeLevelInfo = filterGrade ? filterGrade.split(' - ')[0] : 'Todas as Séries';
+        const classInfo = filterClass ? filterClass : 'Todas';
+        const shiftInfo = filterShift ? (SHIFT_LABELS[filterShift as SchoolShift] || filterShift) : 'Todos';
+
+        const sortedStudents = [...authorizedStudents].sort((a: any, b: any) => {
+            const gradeA = a.studentData?.gradeLevel || '';
+            const gradeB = b.studentData?.gradeLevel || '';
+            
+            const getBaseGrade = (str: string) => str ? str.split(' - ')[0].trim() : '';
+            const baseA = getBaseGrade(gradeA);
+            const baseB = getBaseGrade(gradeB);
+
+            const indexA = grades.findIndex((g: any) => g.name === baseA);
+            const indexB = grades.findIndex((g: any) => g.name === baseB);
+
+            // Usa a propriedade order da série vinda do banco de dados (ou 999 se não encontrar)
+            const orderA = indexA !== -1 ? (grades[indexA].order || indexA) : 999;
+            const orderB = indexB !== -1 ? (grades[indexB].order || indexB) : 999;
+
+            if (orderA !== orderB) {
+                return orderA - orderB;
+            }
+
+            const nameA = a.studentData?.name || a.studentName || '';
+            const nameB = b.studentData?.name || b.studentName || '';
+            
+            return nameA.localeCompare(nameB);
+        });
+
+        const rows = sortedStudents.map((sig: any) => {
+            const sData = sig.studentData;
+            const shiftLabel = SHIFT_LABELS[sData?.shift as SchoolShift] || sData?.shift || sig.shift || '-';
+            return `
+                <tr>
+                    <td style="padding: 6px; border: 1px solid #000; text-align: center;">${sData?.code || '-'}</td>
+                    <td style="padding: 6px; border: 1px solid #000; text-align: left; font-weight: bold; background: #f8fafc;">${sData?.name || sig.studentName || '-'}</td>
+                    <td style="padding: 6px; border: 1px solid #000; text-align: center;">${sData?.gradeLevel || '-'}</td>
+                    <td style="padding: 6px; border: 1px solid #000; text-align: center;">${sData?.schoolClass || '-'}</td>
+                    <td style="padding: 6px; border: 1px solid #000; text-align: center;">${shiftLabel}</td>
+                </tr>
+            `;
+        }).join('');
+
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html lang="pt-BR">
+            <head>
+                <meta charset="UTF-8">
+                <title>Relação de Autorizações</title>
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&display=swap" rel="stylesheet">
+                <style>
+                    @page { size: A4 portrait; margin: 10mm; }
+                    body { font-family: 'Inter', sans-serif; color: #000; margin: 0; padding: 0; background: white; }
+                    .page { padding: 10px; }
+                    .header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 2px; }
+                    .logo { max-height: 40px; }
+                    .school-info { text-align: left; }
+                    .school-info h2 { font-size: 16px; font-weight: 900; color: #000; margin: 0; text-transform: uppercase; letter-spacing: -0.5px; }
+                    .school-info p { margin:2px 0 0 0; font-weight: 700; text-transform: uppercase; color: #64748b; font-size: 10px; letter-spacing: 0.5px; }
+                    
+                    .report-title { text-align: right; }
+                    .report-title h1 { font-size: 18px; font-weight: 900; color: #000; margin: 0 0 2px 0; text-transform: uppercase; }
+                    .report-title .subtitle { font-size: 9px; color: #334155; font-weight: 700; }
+                    
+                    .term-header { border-bottom: 1px solid #000; padding: 4px 0; margin-bottom: 15px; text-align: right; font-size: 10px; font-weight: bold; color: #475569; }
+                    
+                    table { width: 100%; border-collapse: collapse; font-size: 9.5px; margin-top: 10px; }
+                    th { background: #f1f5f9; color: #334155; font-weight: 800; font-size: 9px; text-transform: uppercase; padding: 8px 4px; border: 1px solid #000; }
+                    td { color: #000; font-weight: 500; }
+                    @media print {
+                        body { padding: 0; }
+                        .no-print { display: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="page">
+                    <div class="header">
+                        <div style="display: flex; gap: 15px; align-items: center;">
+                            <img src="${unitInfo.logoUrl || 'https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png'}" alt="Logo" class="logo">
+                            <div class="school-info">
+                                <h2>EXPANSIVO REDE DE ENSINO</h2>
+                                <p>UNIDADE: ${unitInfo.fullName ? unitInfo.fullName.replace('Expansivo - ', '').toUpperCase() : ''}</p>
+                            </div>
+                        </div>
+                        <div class="report-title">
+                            <h1>RELAÇÃO DE AUTORIZAÇÕES</h1>
+                            <div class="subtitle">
+                                ${segmentInfo} &nbsp;|&nbsp; ${gradeLevelInfo} &nbsp;|&nbsp; Turma: ${classInfo} &nbsp;|&nbsp; Turno: ${shiftInfo}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="term-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="text-align: left;">TERMO: ${selectedTermForSignatures?.title?.toUpperCase() || 'TODOS'}</span>
+                        <span>
+                            TOTAL DE ALUNOS: ${sortedStudents.length}
+                            <span style="margin-left: 15px;">GERADO EM: ${currentDate} ${currentTime}</span>
+                        </span>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">CÓD.</th>
+                                <th style="text-align: left;">ALUNO(A)</th>
+                                <th style="width: 140px;">SÉRIE/NÍVEL</th>
+                                <th style="width: 60px;">TURMA</th>
+                                <th style="width: 80px;">TURNO</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows}
+                        </tbody>
+                    </table>
+                </div>
+
+                <script>
+                    window.onload = function() {
+                        setTimeout(() => { window.print(); }, 500);
+                    }
+                </script>
+            </body>
+            </html>
+        `;
+
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+    };
 
     return (
         <div className="animate-fade-in-up">
@@ -987,21 +1156,32 @@ export const LegalTermsManager = () => {
                                 </div>
                             ) : (
                                 <div className="space-y-3">
-                                    <div className="flex gap-4 mb-4 text-sm">
-                                        <div className="flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1.5 rounded-lg border border-green-200">
-                                            <CheckCircle className="w-4 h-4" />
-                                            <span className="font-bold mb-0.5">Autorizados:</span>
-                                            <span className="font-bold bg-green-200 text-green-800 px-2 py-0.5 rounded-full text-xs">
-                                                {filteredSignatures.filter(s => s.isAuthorized !== false).length}
-                                            </span>
+                                    <div className="flex flex-wrap items-center justify-between gap-4 mb-4 text-sm">
+                                        <div className="flex gap-4">
+                                            <div className="flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1.5 rounded-lg border border-green-200">
+                                                <CheckCircle className="w-4 h-4" />
+                                                <span className="font-bold mb-0.5">Autorizados:</span>
+                                                <span className="font-bold bg-green-200 text-green-800 px-2 py-0.5 rounded-full text-xs">
+                                                    {filteredSignatures.filter(s => s.isAuthorized !== false).length}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-2 bg-red-50 text-red-700 px-3 py-1.5 rounded-lg border border-red-200">
+                                                <XCircle className="w-4 h-4" />
+                                                <span className="font-bold mb-0.5">Não Autorizados:</span>
+                                                <span className="font-bold bg-red-200 text-red-800 px-2 py-0.5 rounded-full text-xs">
+                                                    {filteredSignatures.filter(s => s.isAuthorized === false).length}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-2 bg-red-50 text-red-700 px-3 py-1.5 rounded-lg border border-red-200">
-                                            <XCircle className="w-4 h-4" />
-                                            <span className="font-bold mb-0.5">Não Autorizados:</span>
-                                            <span className="font-bold bg-red-200 text-red-800 px-2 py-0.5 rounded-full text-xs">
-                                                {filteredSignatures.filter(s => s.isAuthorized === false).length}
-                                            </span>
-                                        </div>
+                                        <Button
+                                            onClick={handlePrintAuthorized}
+                                            variant="outline"
+                                            size="sm"
+                                            className="gap-2 text-slate-700 hover:text-blue-950 border-slate-300"
+                                        >
+                                            <Printer className="w-4 h-4" />
+                                            Imprimir / Salvar PDF
+                                        </Button>
                                     </div>
                                     {filteredSignatures.map(sig => (
                                         <div key={sig.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
