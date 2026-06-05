@@ -1114,7 +1114,7 @@ function App() {
                     key={currentGradeConfig?.sponsorName || settings?.sponsorName || 'default'}
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="flex items-center space-x-6"
+                    className="flex items-center space-x-3"
                   >
                     {(() => {
                       const isValid = (val?: string) => {
@@ -1130,7 +1130,7 @@ function App() {
                       return (
                         <>
                           <div className="text-right">
-                            <p className="text-xs text-blue-400 font-black tracking-[0.2em] uppercase mb-1">PARCEIRO</p>
+                            <p className="text-[8px] text-blue-400 font-black tracking-[0.2em] uppercase mb-1">PARCEIRO</p>
                             {partnerName && (
                               <p translate="no" className="text-xl font-black text-white tracking-tighter leading-none uppercase">
                                 {partnerName}
@@ -1142,7 +1142,7 @@ function App() {
                               </p>
                             )}
                           </div>
-                          <div className="bg-white rounded-2xl shadow-xl flex items-center justify-center overflow-hidden shrink-0" style={{ width: '187px', height: '76px' }}>
+                          <div className="bg-white rounded-2xl shadow-xl flex items-center justify-center overflow-hidden shrink-0" style={{ width: '168px', height: '76px' }}>
                             {partnerLogo ? (
                               <img
                                 src={partnerLogo}
