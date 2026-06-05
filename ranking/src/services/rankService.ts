@@ -39,6 +39,8 @@ export interface RankSettings {
     regulationUrl?: string;
     regulationText?: string;
     gradeConfigs?: Record<string, GradeConfig>;
+    globalFontSizeMode?: 'auto' | 'manual';
+    globalManualFontSize?: number;
     lastUpdated?: string;
 }
 

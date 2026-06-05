@@ -18,10 +18,24 @@ const RankIcon = ({ position }: { position: number }) => {
   }
 };
 
-const AwardsLegend = ({ config }: { config?: GradeConfig }) => {
+const AwardsLegend = ({ config, globalSettings }: { config?: GradeConfig, globalSettings?: RankSettings }) => {
   if (!config) return null;
   const { rank1, rank2, rank3 } = config.awards;
   if (!rank1 && !rank2 && !rank3) return null;
+
+  const getAwardFontSize = (text?: string) => {
+    if (globalSettings?.globalFontSizeMode === 'manual' && globalSettings?.globalManualFontSize) {
+      return `${globalSettings.globalManualFontSize}px`;
+    }
+    
+    if (!text) return '1.25rem';
+    const len = text.length;
+    if (len <= 20) return '1.25rem'; // text-xl
+    if (len <= 35) return '1.1rem';  // text-lg
+    if (len <= 50) return '0.95rem'; // text-base
+    if (len <= 70) return '0.85rem'; // text-sm
+    return '0.75rem';                // text-xs
+  };
 
   return (
     <motion.div
@@ -32,15 +46,15 @@ const AwardsLegend = ({ config }: { config?: GradeConfig }) => {
     >
       <div className="space-y-1">
         <p className="text-[10px] font-black text-yellow-600 uppercase tracking-[0.2em]">1º Lugar - Prêmio</p>
-        <p translate="no" className="text-xl font-black text-[#001c3d] leading-tight uppercase tracking-tighter">{rank1 || '---'}</p>
+        <p translate="no" className="font-black text-[#001c3d] leading-tight uppercase tracking-tighter" style={{ fontSize: getAwardFontSize(rank1) }}>{rank1 || '---'}</p>
       </div>
       <div className="space-y-1">
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">2º Lugar - Prêmio</p>
-        <p translate="no" className="text-xl font-black text-[#001c3d] leading-tight uppercase tracking-tighter">{rank2 || '---'}</p>
+        <p translate="no" className="font-black text-[#001c3d] leading-tight uppercase tracking-tighter" style={{ fontSize: getAwardFontSize(rank2) }}>{rank2 || '---'}</p>
       </div>
       <div className="space-y-1">
         <p className="text-[10px] font-black text-orange-400 uppercase tracking-[0.2em]">3º Lugar - Prêmio</p>
-        <p translate="no" className="text-xl font-black text-[#001c3d] leading-tight uppercase tracking-tighter">{rank3 || '---'}</p>
+        <p translate="no" className="font-black text-[#001c3d] leading-tight uppercase tracking-tighter" style={{ fontSize: getAwardFontSize(rank3) }}>{rank3 || '---'}</p>
       </div>
     </motion.div>
   );
@@ -1093,7 +1107,7 @@ function App() {
                       </div>
 
                       {/* Vertical Awards Legend */}
-                      <AwardsLegend config={currentGradeConfig || undefined} />
+                      <AwardsLegend config={currentGradeConfig || undefined} globalSettings={settings} />
                     </motion.div>
                   </AnimatePresence>
                 </div>

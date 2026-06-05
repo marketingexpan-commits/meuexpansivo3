@@ -32,6 +32,8 @@ interface RankSettings {
     regulationUrl?: string;
     regulationText?: string;
     gradeConfigs?: Record<string, GradeConfig>;
+    globalFontSizeMode?: 'auto' | 'manual';
+    globalManualFontSize?: number;
 }
 
 const UNITS_LIST = [
@@ -65,6 +67,7 @@ export default function RankingConfig() {
     const [selectedReplicationGrades, setSelectedReplicationGrades] = useState<string[]>([]);
     const [uploadingPdf, setUploadingPdf] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [savingGlobalFont, setSavingGlobalFont] = useState(false);
 
     const relevantGrades = Object.values(ACADEMIC_GRADES).filter(g =>
         g.segmentId === ACADEMIC_SEGMENTS.FUND_2.id ||
@@ -145,6 +148,31 @@ export default function RankingConfig() {
             alert("Erro ao salvar configurações.");
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleGlobalFontSave = async () => {
+        setSavingGlobalFont(true);
+        try {
+            const batch = writeBatch(db);
+            const globalRef = doc(db, 'rank_settings', 'global');
+            const updatePayload = {
+                globalFontSizeMode: settings.globalFontSizeMode || 'auto',
+                globalManualFontSize: settings.globalManualFontSize || 16
+            };
+            batch.set(globalRef, updatePayload, { merge: true });
+            
+            UNITS_LIST.forEach(unit => {
+                const unitRef = doc(db, 'rank_settings', unit.id);
+                batch.set(unitRef, updatePayload, { merge: true });
+            });
+            await batch.commit();
+            alert("Tamanho da fonte global atualizado com sucesso em TODAS as unidades!");
+        } catch (e) {
+            console.error("Erro ao salvar fonte global:", e);
+            alert("Erro ao salvar a configuração de fonte nas unidades.");
+        } finally {
+            setSavingGlobalFont(false);
         }
     };
 
@@ -358,9 +386,9 @@ export default function RankingConfig() {
 
                 <div className="md:col-span-3 space-y-6">
                     {/* Status & Replication Actions */}
-                    <div className="flex flex-col lg:flex-row items-start gap-4">
+                    <div className="flex flex-wrap items-stretch gap-4">
                         {/* Status Toggle */}
-                        <div className="flex-1 flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="flex-1 min-w-[200px] flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
                             <div className="flex items-center gap-4">
                                 <div className={`p-3 rounded-xl ${settings.isEnabled ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-500'}`}>
                                     <Power className="w-6 h-6" />
@@ -379,7 +407,7 @@ export default function RankingConfig() {
                         </div>
 
                         {/* Showcase Toggle */}
-                        <div className="flex-1 flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="flex-1 min-w-[200px] flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
                             <div className="flex items-center gap-4">
                                 <div className={`p-3 rounded-xl ${settings.showcaseEnabled ? 'bg-blue-100 text-blue-600' : 'bg-slate-200 text-slate-500'}`}>
                                     <Megaphone className="w-6 h-6" />
@@ -398,7 +426,7 @@ export default function RankingConfig() {
                         </div>
 
                         {/* Regulation Config */}
-                        <div className="flex-[2] flex flex-col p-4 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3">
+                        <div className="flex-[2] min-w-[280px] flex flex-col p-4 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-slate-100 rounded-lg text-slate-600">
                                     <Trophy className="w-5 h-5" />
@@ -445,8 +473,60 @@ export default function RankingConfig() {
                             </div>
                         </div>
 
+                        {/* Global Visual Config */}
+                        <div className="flex-[2] min-w-[280px] flex flex-col p-4 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-slate-100 rounded-lg text-slate-600">
+                                    <Megaphone className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-blue-950 text-sm">Design Global</h3>
+                                    <p className="text-[10px] text-slate-500">Tamanho da fonte dos prêmios</p>
+                                </div>
+                            </div>
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between gap-4">
+                                    <label className="text-xs font-bold text-slate-600">Modo de Tamanho:</label>
+                                    <div className="flex items-center bg-slate-100 rounded-lg p-1">
+                                        <button
+                                            onClick={() => setSettings({ ...settings, globalFontSizeMode: 'auto' })}
+                                            className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${(!settings.globalFontSizeMode || settings.globalFontSizeMode === 'auto') ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                        >
+                                            Automático
+                                        </button>
+                                        <button
+                                            onClick={() => setSettings({ ...settings, globalFontSizeMode: 'manual' })}
+                                            className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${settings.globalFontSizeMode === 'manual' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                        >
+                                            Manual
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                {settings.globalFontSizeMode === 'manual' && (
+                                    <div className="flex items-center gap-3">
+                                        <label className="text-xs font-bold text-slate-600 flex-1">Tamanho (px):</label>
+                                        <Input 
+                                            type="number"
+                                            value={settings.globalManualFontSize || 16}
+                                            onChange={(e) => setSettings({ ...settings, globalManualFontSize: parseInt(e.target.value) || 16 })}
+                                            className="w-20 text-center h-8"
+                                        />
+                                    </div>
+                                )}
+
+                                <Button 
+                                    onClick={handleGlobalFontSave}
+                                    disabled={savingGlobalFont}
+                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold h-9"
+                                >
+                                    {savingGlobalFont ? 'Salvando...' : 'Aplicar em Todas as Unidades'}
+                                </Button>
+                            </div>
+                        </div>
+
                         {/* Replication Tools */}
-                        <div className="flex gap-2 min-w-[200px]">
+                        <div className="flex-1 min-w-[200px] flex gap-2">
                             <Button
                                 variant="outline"
                                 onClick={() => setShowReplicateModal(true)}
