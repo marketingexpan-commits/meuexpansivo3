@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { db } from '../firebaseConfig';
-import { getDoc, setDoc, doc, onSnapshot } from 'firebase/firestore';
+import { db, storage } from '../firebaseConfig';
+import { getDoc, setDoc, doc, onSnapshot, writeBatch } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
@@ -62,6 +63,8 @@ export default function RankingConfig() {
     const [saving, setSaving] = useState(false);
     const [showReplicateModal, setShowReplicateModal] = useState(false);
     const [selectedReplicationGrades, setSelectedReplicationGrades] = useState<string[]>([]);
+    const [uploadingPdf, setUploadingPdf] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
 
     const relevantGrades = Object.values(ACADEMIC_GRADES).filter(g =>
         g.segmentId === ACADEMIC_SEGMENTS.FUND_2.id ||
@@ -142,6 +145,90 @@ export default function RankingConfig() {
             alert("Erro ao salvar configurações.");
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.type !== 'application/pdf') {
+            alert('Por favor, selecione um arquivo PDF.');
+            return;
+        }
+
+        setUploadingPdf(true);
+        setUploadProgress(0);
+
+        try {
+            const fileName = `regulamento_${currentUnitId}_${Date.now()}.pdf`;
+            const storageRef = ref(storage, `rankings/regulamentos/${fileName}`);
+            const uploadTask = uploadBytesResumable(storageRef, file);
+
+            uploadTask.on(
+                'state_changed',
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    setUploadProgress(progress);
+                },
+                (error) => {
+                    console.error("Erro no upload do PDF:", error);
+                    alert("Erro ao fazer upload do PDF.");
+                    setUploadingPdf(false);
+                },
+                async () => {
+                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                    
+                    try {
+                        const batch = writeBatch(db);
+                        const globalRef = doc(db, 'rank_settings', 'global');
+                        batch.set(globalRef, { regulationUrl: downloadURL }, { merge: true });
+                        
+                        UNITS_LIST.forEach(unit => {
+                            const unitRef = doc(db, 'rank_settings', unit.id);
+                            batch.set(unitRef, { regulationUrl: downloadURL }, { merge: true });
+                        });
+                        await batch.commit();
+
+                        setSettings(prev => ({ ...prev, regulationUrl: downloadURL }));
+                        alert("PDF enviado com sucesso! O regulamento foi atualizado em TODAS AS UNIDADES automaticamente.");
+                    } catch (e) {
+                        console.error(e);
+                        alert("Erro ao salvar link nas unidades.");
+                    } finally {
+                        setUploadingPdf(false);
+                    }
+                }
+            );
+        } catch (error) {
+            console.error("Erro geral no upload:", error);
+            alert("Erro ao enviar arquivo.");
+            setUploadingPdf(false);
+        }
+    };
+
+    const handleRemovePdf = async () => {
+        if (!confirm("Deseja realmente remover o regulamento em PDF de TODAS AS UNIDADES?")) return;
+        
+        setUploadingPdf(true);
+        try {
+            const batch = writeBatch(db);
+            const globalRef = doc(db, 'rank_settings', 'global');
+            batch.set(globalRef, { regulationUrl: '' }, { merge: true });
+            
+            UNITS_LIST.forEach(unit => {
+                const unitRef = doc(db, 'rank_settings', unit.id);
+                batch.set(unitRef, { regulationUrl: '' }, { merge: true });
+            });
+            await batch.commit();
+
+            setSettings(prev => ({ ...prev, regulationUrl: '' }));
+            alert("Regulamento removido com sucesso de todas as unidades.");
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao remover regulamento.");
+        } finally {
+            setUploadingPdf(false);
         }
     };
 
@@ -322,18 +409,39 @@ export default function RankingConfig() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Input
-                                    value={settings.regulationUrl || ''}
-                                    onChange={e => setSettings({ ...settings, regulationUrl: e.target.value })}
-                                    placeholder="Link Externo (opcional)"
-                                    className="h-9 text-xs"
-                                />
-                                <textarea
-                                    value={settings.regulationText || ''}
-                                    onChange={e => setSettings({ ...settings, regulationText: e.target.value })}
-                                    placeholder="Texto do Regulamento Interno (visto ao escanear)..."
-                                    className="w-full h-20 p-3 text-xs border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-blue-500 transition-all resize-none"
-                                />
+                                {settings.regulationUrl && (
+                                    <div className="flex items-center justify-between gap-2 p-2 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-100 text-xs font-bold">
+                                        <div className="flex items-center gap-2 overflow-hidden">
+                                            <Check className="w-4 h-4 shrink-0" />
+                                            <span className="truncate">Regulamento Global Ativo</span>
+                                        </div>
+                                        <button 
+                                            onClick={handleRemovePdf}
+                                            disabled={uploadingPdf}
+                                            className="p-1 hover:bg-emerald-100 rounded text-red-500 transition-colors shrink-0"
+                                            title="Remover PDF"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                )}
+                                <div className="relative mt-2 mb-2">
+                                    <input 
+                                        type="file" 
+                                        accept=".pdf"
+                                        id="pdf-upload"
+                                        className="hidden"
+                                        onChange={handlePdfUpload}
+                                        disabled={uploadingPdf}
+                                    />
+                                    <label 
+                                        htmlFor="pdf-upload" 
+                                        className={`flex items-center justify-center w-full h-9 border-2 border-dashed border-slate-200 rounded-xl text-xs font-bold cursor-pointer transition-colors ${uploadingPdf ? 'bg-slate-50 text-slate-400' : 'hover:border-blue-300 hover:bg-blue-50 text-blue-600'}`}
+                                    >
+                                        {uploadingPdf ? `Processando... ${Math.round(uploadProgress)}%` : 'Enviar Novo PDF (Todas as Unidades)'}
+                                    </label>
+                                </div>
+
                             </div>
                         </div>
 
