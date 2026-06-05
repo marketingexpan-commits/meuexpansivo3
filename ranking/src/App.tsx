@@ -935,8 +935,7 @@ function App() {
                 <div className="flex justify-center shrink-0 px-2">
                   <div className="flex items-center">
                     <div className="text-right shrink-0" style={{ marginRight: '1.5rem' }}>
-                      <p className="text-[8px] lg:text-[9px] text-blue-400 font-extrabold uppercase tracking-widest leading-none mb-1">Regulamento</p>
-                      <p className="text-[8px] lg:text-[10px] text-white font-bold opacity-60 uppercase leading-tight italic">Escanear para ver<br />regras e prêmios</p>
+                      <p className="text-[9px] lg:text-[11px] text-white font-black opacity-80 uppercase leading-tight italic">Escaneie para ver<br />o regulamento</p>
                     </div>
                     <div className="shrink-0 rounded-xl shadow-xl" style={{ padding: '6px', background: 'white', border: '2px solid rgba(255,255,255,0.9)' }}>
                       <QRCodeSVG
