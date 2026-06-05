@@ -589,7 +589,8 @@ function App() {
     };
     setUnitName(unitNames[unitId] || "Unidade Escolhida");
 
-    const unsubRanks = rankService.listenToRank(unitId, (newRanks) => {
+    // On regulation route, skip heavy rank loading — only load settings to redirect
+    const unsubRanks = isRegulationRoute ? () => {} : rankService.listenToRank(unitId, (newRanks) => {
       setRanks(newRanks);
     });
 
@@ -617,7 +618,31 @@ function App() {
     return () => clearInterval(interval);
   }, [totalSteps, isShowcaseStep]);
 
-  const isLoading = !settings || !settings.isEnabled || grades.length === 0;
+  const isLoading = isRegulationRoute ? false : (!settings || !settings.isEnabled || grades.length === 0);
+
+  // Show redirect screen when on regulation route
+  if (isRegulationRoute) {
+    return (
+      <div className="fixed inset-0 flex flex-col items-center justify-center bg-[#f8fafc]">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/5 blur-[120px] rounded-full" />
+        <div className="relative flex flex-col items-center gap-6">
+          <img
+            src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"
+            alt="Logo Expansivo"
+            className="h-24 w-auto object-contain drop-shadow-xl"
+          />
+          <div className="text-center">
+            <h1 className="text-xl font-black text-[#001c3d] mb-3 uppercase tracking-tighter">
+              Abrindo Regulamento...
+            </h1>
+            <div className="w-48 h-1 bg-slate-200 rounded-full overflow-hidden relative mx-auto">
+              <div className="absolute inset-y-0 left-0 bg-blue-600 rounded-full animate-pulse w-full" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={twMerge(
