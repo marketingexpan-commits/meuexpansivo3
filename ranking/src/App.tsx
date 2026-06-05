@@ -594,6 +594,10 @@ function App() {
     });
 
     const unsubSettings = rankService.listenToSettings(unitId, (s) => {
+      if (isRegulationRoute && s.regulationUrl) {
+        window.location.replace(s.regulationUrl);
+        return;
+      }
       setSettings(s);
     });
 
