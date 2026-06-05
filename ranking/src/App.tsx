@@ -42,17 +42,18 @@ const AwardsLegend = ({ config, globalSettings }: { config?: GradeConfig, global
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
-      className="flex-shrink-0 flex flex-col gap-8 ml-6 py-6 border-l-4 border-yellow-400/20 pl-10 max-w-[380px]"
+      className="flex-shrink-0 flex flex-col space-y-8 py-6 max-w-[450px]"
+      style={{ paddingLeft: '40px' }}
     >
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col space-y-1">
         <p className="text-[10px] font-black text-yellow-600 uppercase tracking-[0.2em]">1º Lugar - Prêmio</p>
         <p translate="no" className="font-black text-[#001c3d] leading-tight uppercase tracking-tighter" style={{ fontSize: getAwardFontSize(rank1) }}>{rank1 || '---'}</p>
       </div>
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col space-y-1">
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">2º Lugar - Prêmio</p>
         <p translate="no" className="font-black text-[#001c3d] leading-tight uppercase tracking-tighter" style={{ fontSize: getAwardFontSize(rank2) }}>{rank2 || '---'}</p>
       </div>
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col space-y-1">
         <p className="text-[10px] font-black text-orange-400 uppercase tracking-[0.2em]">3º Lugar - Prêmio</p>
         <p translate="no" className="font-black text-[#001c3d] leading-tight uppercase tracking-tighter" style={{ fontSize: getAwardFontSize(rank3) }}>{rank3 || '---'}</p>
       </div>
@@ -564,9 +565,9 @@ function App() {
   useEffect(() => {
     const handleResize = () => {
       const h = window.innerHeight;
-      // Cards Scale: Header(112) + Footer(112) + Buffer(120) = 344px reserved
-      // Base Height adjusted to ensure fit
-      const availableForCards = h - 260;
+      // Cards Scale: Header(80) + Footer(112) + Buffer(130) = 322px reserved
+      // Base Height adjusted to ensure fit and leave breathing room
+      const availableForCards = h - 230;
       const computedCardScale = Math.min(1.15, Math.max(0.5, availableForCards / 525));
       setScaleFactor(computedCardScale);
 
@@ -1010,13 +1011,13 @@ function App() {
             </AnimatePresence>
 
             {/* Header */}
-            <header className="h-28 bg-white border-b border-slate-100 shadow-sm z-20 flex-shrink-0">
+            <header className="h-20 bg-white border-b border-slate-100 shadow-sm z-20 flex-shrink-0">
               <div className="max-w-[1440px] mx-auto w-full h-full px-6 md:px-12 lg:px-20 flex items-center justify-between">
                 <div className="flex items-center space-x-3 md:space-x-6 shrink-0">
                   <img
                     src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"
                     alt="Logo"
-                    className="h-10 md:h-12"
+                    className="h-10 md:h-12 object-contain"
                   />
                   <div className="w-px h-8 md:h-10 bg-slate-100" />
                   <div>
@@ -1038,7 +1039,7 @@ function App() {
             </header>
 
             {/* Main Rank Area */}
-            <main className="flex-1 flex items-center justify-center p-12 z-20 overflow-hidden">
+            <main className="flex-1 flex items-center justify-center py-8 px-12 z-20 overflow-hidden">
               {!currentGrade ? (
                 <div className="flex flex-col items-center gap-6">
                   <div className="relative">
@@ -1065,14 +1066,17 @@ function App() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
-                      className="flex items-center justify-center gap-12 w-full relative"
+                      className="flex items-center justify-center w-full relative"
+                      style={{ gap: '40px' }}
                     >
                       {/* Score Cards Container */}
                       <div
                         className="flex items-end space-x-8 flex-shrink-0"
                         style={{
                           transform: `scale(${scaleFactor})`,
-                          transformOrigin: 'center center'
+                          transformOrigin: 'center center',
+                          marginLeft: `${-((([ranks[currentGrade]?.[1], ranks[currentGrade]?.[0], ranks[currentGrade]?.[2]].filter(Boolean).length || 0) * 265 + (Math.max(0, ([ranks[currentGrade]?.[1], ranks[currentGrade]?.[0], ranks[currentGrade]?.[2]].filter(Boolean).length || 0) - 1)) * 32) * (1 - scaleFactor)) / 2}px`,
+                          marginRight: `${-((([ranks[currentGrade]?.[1], ranks[currentGrade]?.[0], ranks[currentGrade]?.[2]].filter(Boolean).length || 0) * 265 + (Math.max(0, ([ranks[currentGrade]?.[1], ranks[currentGrade]?.[0], ranks[currentGrade]?.[2]].filter(Boolean).length || 0) - 1)) * 32) * (1 - scaleFactor)) / 2}px`
                         }}
                       >
                         {/* 2nd Place */}
