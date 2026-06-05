@@ -25,16 +25,18 @@ const AwardsLegend = ({ config, globalSettings }: { config?: GradeConfig, global
 
   const getAwardFontSize = (text?: string) => {
     if (globalSettings?.globalFontSizeMode === 'manual' && globalSettings?.globalManualFontSize) {
-      return `${globalSettings.globalManualFontSize}px`;
+      // On manual mode, interpret value as vw units for consistent scaling on any screen
+      const vwSize = Math.max(0.8, Math.min(3, globalSettings.globalManualFontSize * 0.12));
+      return `${vwSize}vw`;
     }
     
-    if (!text) return '1.25rem';
+    if (!text) return '1.6vw';
     const len = text.length;
-    if (len <= 20) return '1.25rem'; // text-xl
-    if (len <= 35) return '1.1rem';  // text-lg
-    if (len <= 50) return '0.95rem'; // text-base
-    if (len <= 70) return '0.85rem'; // text-sm
-    return '0.75rem';                // text-xs
+    if (len <= 20) return '1.6vw';
+    if (len <= 35) return '1.4vw';
+    if (len <= 50) return '1.2vw';
+    if (len <= 70) return '1.0vw';
+    return '0.85vw';
   };
 
   return (
@@ -42,18 +44,19 @@ const AwardsLegend = ({ config, globalSettings }: { config?: GradeConfig, global
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
-      className="flex flex-col gap-8 ml-6 py-6 border-l-4 border-yellow-400/20 pl-10 max-w-[380px]"
+      className="flex-shrink-0 flex flex-col gap-8 ml-4 py-6 border-l-4 border-yellow-400/20 pl-8"
+      style={{ width: '26vw', maxWidth: '340px' }}
     >
       <div className="flex flex-col gap-1">
-        <p className="text-[10px] font-black text-yellow-600 uppercase tracking-[0.2em]">1º Lugar - Prêmio</p>
+        <p style={{ fontSize: '0.7vw' }} className="font-black text-yellow-600 uppercase tracking-[0.2em]">1º Lugar - Prêmio</p>
         <p translate="no" className="font-black text-[#001c3d] leading-tight uppercase tracking-tighter" style={{ fontSize: getAwardFontSize(rank1) }}>{rank1 || '---'}</p>
       </div>
       <div className="flex flex-col gap-1">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">2º Lugar - Prêmio</p>
+        <p style={{ fontSize: '0.7vw' }} className="font-black text-slate-400 uppercase tracking-[0.2em]">2º Lugar - Prêmio</p>
         <p translate="no" className="font-black text-[#001c3d] leading-tight uppercase tracking-tighter" style={{ fontSize: getAwardFontSize(rank2) }}>{rank2 || '---'}</p>
       </div>
       <div className="flex flex-col gap-1">
-        <p className="text-[10px] font-black text-orange-400 uppercase tracking-[0.2em]">3º Lugar - Prêmio</p>
+        <p style={{ fontSize: '0.7vw' }} className="font-black text-orange-400 uppercase tracking-[0.2em]">3º Lugar - Prêmio</p>
         <p translate="no" className="font-black text-[#001c3d] leading-tight uppercase tracking-tighter" style={{ fontSize: getAwardFontSize(rank3) }}>{rank3 || '---'}</p>
       </div>
     </motion.div>
@@ -1065,11 +1068,11 @@ function App() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
-                      className="flex items-center justify-center gap-12 w-full relative"
+                      className="flex items-center justify-center gap-4 w-full relative"
                     >
-                      {/* Score Cards Container */}
+                      {/* Score Cards Container - flex-1 so it takes maximum available space */}
                       <div
-                        className="flex items-end space-x-8"
+                        className="flex items-end space-x-8 flex-1 justify-center"
                         style={{
                           transform: `scale(${scaleFactor})`,
                           transformOrigin: 'center center'
