@@ -862,7 +862,11 @@ function App() {
                     </div>
                     <div className="shrink-0 p-1.5 bg-white rounded-lg shadow-xl transition-transform hover:scale-105">
                       <QRCodeSVG
-                        value={settings?.regulationUrl || (window.location.origin + '/regulamento')}
+                        value={
+                          settings?.regulationUrl && settings.regulationUrl.trim() !== ''
+                            ? settings.regulationUrl
+                            : (window.location.origin + '/regulamento?u=' + (unitId.replace('unit_', '') || 'zn'))
+                        }
                         size={76}
                         level="M"
                         includeMargin={false}
