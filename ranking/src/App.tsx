@@ -837,22 +837,22 @@ function App() {
                 </div>
 
                 {/* 1. Left Section: Scoring Info */}
-                <div className="flex flex-col min-w-0 flex-1 pr-6 pt-6">
+                <div className="flex flex-col min-w-0 flex-1 pr-2 md:pr-6 pt-6">
                   <p className="text-[9px] lg:text-[10px] text-blue-400 font-black tracking-widest uppercase mb-1 truncate">
                     Composição dos Pontos
                   </p>
-                  <p className="text-[10px] lg:text-[11px] text-white/70 font-bold uppercase leading-tight italic line-clamp-2">
-                    60% Nota Média • 30% Frequência • 10% Comportamento
+                  <p className="text-[8px] md:text-[10px] lg:text-[11px] text-white/70 font-bold uppercase leading-tight italic line-clamp-2">
+                    {isSmartTV ? "60% Média • 30% Freq. • 10% Comp." : "60% Nota Média • 30% Frequência • 10% Comportamento"}
                   </p>
-                  <p className="text-[8px] lg:text-[9px] text-blue-400/80 font-bold uppercase tracking-tight italic mt-0.5 truncate">
-                    Desempate: Maior Nota Média
+                  <p className="text-[7px] md:text-[8px] lg:text-[9px] text-blue-400/80 font-bold uppercase tracking-tight italic mt-0.5 truncate">
+                    {isSmartTV ? "Desempate: Maior Média" : "Desempate: Maior Nota Média"}
                   </p>
                 </div>
 
                 {/* 2. Center Section: QR Code & Regulation */}
                 <div className="flex justify-center shrink-0 px-2">
-                  <div className="flex items-center gap-3 lg:gap-6">
-                    <div className="text-right shrink-0">
+                  <div className="flex items-center">
+                    <div className="text-right shrink-0" style={{ marginRight: '1.5rem' }}>
                       <p className="text-[8px] lg:text-[9px] text-blue-400 font-extrabold uppercase tracking-widest leading-none mb-1">Regulamento</p>
                       <p className="text-[8px] lg:text-[10px] text-white font-bold opacity-60 uppercase leading-tight italic">Escanear para ver<br />regras e prêmios</p>
                     </div>
