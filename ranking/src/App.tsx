@@ -42,17 +42,17 @@ const AwardsLegend = ({ config, globalSettings }: { config?: GradeConfig, global
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
-      className="flex flex-col space-y-8 ml-12 py-8 border-l-4 border-yellow-400/20 pl-10 max-w-[300px]"
+      className="flex flex-col gap-8 ml-6 py-6 border-l-4 border-yellow-400/20 pl-10 max-w-[320px]"
     >
-      <div className="space-y-1">
+      <div className="flex flex-col gap-1">
         <p className="text-[10px] font-black text-yellow-600 uppercase tracking-[0.2em]">1º Lugar - Prêmio</p>
         <p translate="no" className="font-black text-[#001c3d] leading-tight uppercase tracking-tighter" style={{ fontSize: getAwardFontSize(rank1) }}>{rank1 || '---'}</p>
       </div>
-      <div className="space-y-1">
+      <div className="flex flex-col gap-1">
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">2º Lugar - Prêmio</p>
         <p translate="no" className="font-black text-[#001c3d] leading-tight uppercase tracking-tighter" style={{ fontSize: getAwardFontSize(rank2) }}>{rank2 || '---'}</p>
       </div>
-      <div className="space-y-1">
+      <div className="flex flex-col gap-1">
         <p className="text-[10px] font-black text-orange-400 uppercase tracking-[0.2em]">3º Lugar - Prêmio</p>
         <p translate="no" className="font-black text-[#001c3d] leading-tight uppercase tracking-tighter" style={{ fontSize: getAwardFontSize(rank3) }}>{rank3 || '---'}</p>
       </div>
@@ -1065,7 +1065,7 @@ function App() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
-                      className="flex items-center justify-center gap-10 w-full"
+                      className="flex items-center justify-center gap-12 w-full relative"
                     >
                       {/* Score Cards Container */}
                       <div
