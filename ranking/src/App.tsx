@@ -860,17 +860,14 @@ function App() {
                       <p className="text-[8px] lg:text-[9px] text-blue-400 font-extrabold uppercase tracking-widest leading-none mb-1">Regulamento</p>
                       <p className="text-[8px] lg:text-[10px] text-white font-bold opacity-60 uppercase leading-tight italic">Escanear para ver<br />regras e prêmios</p>
                     </div>
-                    <div className="shrink-0 p-1.5 bg-white rounded-lg shadow-xl transition-transform hover:scale-105">
+                    <div className="shrink-0 rounded-xl shadow-xl" style={{ padding: '6px', background: 'white', border: '2px solid rgba(255,255,255,0.9)' }}>
                       <QRCodeSVG
-                        value={
-                          settings?.regulationUrl && settings.regulationUrl.trim() !== ''
-                            ? settings.regulationUrl
-                            : (window.location.origin + '/regulamento?u=' + (unitId.replace('unit_', '') || 'zn'))
-                        }
-                        size={76}
+                        value={window.location.origin + '/regulamento?u=' + (unitId.replace('unit_', '') || 'zn')}
+                        size={72}
                         level="L"
                         includeMargin={false}
                         fgColor="#0f172a"
+                        bgColor="#ffffff"
                       />
                     </div>
                   </div>
