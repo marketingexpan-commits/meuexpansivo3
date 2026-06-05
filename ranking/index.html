@@ -13,6 +13,30 @@
         style.innerHTML = 'body { background-color: #f8fafc !important; color: #000 !important; }';
         document.head.appendChild(style);
 
+        // Adiciona mensagem amigável de carregamento assim que o DOM estiver pronto
+        document.addEventListener('DOMContentLoaded', function() {
+          const root = document.getElementById('root');
+          if (root) {
+            root.innerHTML = `
+              <div style="position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; text-align: center; padding: 20px; box-sizing: border-box; z-index: 99999;">
+                <div style="margin-bottom: 20px;">
+                  <img src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png" alt="Logo" style="height: 56px; width: auto; object-fit: contain;" />
+                </div>
+                <h1 style="font-size: 18px; font-weight: 800; color: #001c3d; margin: 0 0 12px 0; text-transform: uppercase; letter-spacing: -0.01em;">Carregando Regulamento...</h1>
+                <div style="width: 140px; height: 3px; background-color: #e2e8f0; border-radius: 9999px; overflow: hidden; position: relative; margin: 0 auto;">
+                  <div style="position: absolute; top: 0; bottom: 0; left: 0; width: 60px; background-color: #2563eb; border-radius: 9999px; animation: loading-pulse 1.2s infinite linear;"></div>
+                </div>
+                <style>
+                  @keyframes loading-pulse {
+                    0% { left: -60px; }
+                    100% { left: 140px; }
+                  }
+                </style>
+              </div>
+            `;
+          }
+        });
+
         // Identifica a unidade do QR Code
         const query = new URLSearchParams(window.location.search);
         const qUnit = query.get('u') || query.get('unit');
