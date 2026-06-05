@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from './firebaseConfig';
 import type { StudentRank, RankSettings, GradeConfig } from './services/rankService';
 import { rankService } from './services/rankService';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -499,6 +501,27 @@ const RegulationView = ({ settings, unitName }: { settings: RankSettings, unitNa
     </motion.div>
   );
 };
+// Helper: Retorna uma string "YYYY-MM-DD" que representa a SEGUNDA-FEIRA da semana atual no fuso de Brasília.
+const getBrasiliaWeekKey = (): string => {
+  const now = new Date();
+  // Converte a data atual para o fuso horário de São Paulo (Brasília)
+  const brTimeStr = now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" });
+  const brTime = new Date(brTimeStr);
+  
+  // getDay() retorna 0 (Dom) a 6 (Sáb). Queremos que Segunda (1) seja a base.
+  const day = brTime.getDay();
+  // Se for Domingo (0), recuamos 6 dias para chegar na segunda-feira passada.
+  // Caso contrário, recuamos (day - 1) dias.
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  
+  brTime.setDate(brTime.getDate() + diffToMonday);
+  
+  const year = brTime.getFullYear();
+  const month = String(brTime.getMonth() + 1).padStart(2, '0');
+  const date = String(brTime.getDate()).padStart(2, '0');
+  
+  return `${year}-${month}-${date}`;
+};
 
 function App() {
   const [isSmartTV, setIsSmartTV] = useState(false);
@@ -656,64 +679,93 @@ function App() {
     };
     setUnitName(unitNames[unitId] || "Unidade Escolhida");
 
-    // Carrega o histórico do localStorage para comparação de posições
+    // Carrega o histórico da Nuvem (Firebase) para comparação de posições (Rodada Semanal)
     let prevRanksObj: Record<string, StudentRank[]> = {};
-    try {
-      const savedHistory = localStorage.getItem(`ranking_history_${unitId}`);
-      if (savedHistory) {
-        prevRanksObj = JSON.parse(savedHistory);
-      }
-    } catch (e) {
-      console.error("Error reading from localStorage:", e);
-    }
+    let savedWeekKey = '';
+    
+    let unsubRanks: () => void = () => {};
 
-    // On regulation route, skip heavy rank loading — only load settings to redirect
-    const unsubRanks = isRegulationRoute ? () => {} : rankService.listenToRank(unitId, (newRanks) => {
-      // Calcula as mudanças de posição para os alunos do Top 3
-      const newChanges: Record<string, { type: 'up' | 'down' | 'same', diff: number }> = {};
-      
-      Object.keys(newRanks).forEach(grade => {
-        const oldList = prevRanksObj[grade] || [];
-        const newList = newRanks[grade] || [];
-        
-        newList.slice(0, 3).forEach((student) => {
-          const oldIndex = oldList.findIndex(s => s.id === student.id);
-          if (oldIndex !== -1) {
-            const oldPos = oldIndex + 1;
-            const newPos = student.rankPosition || 0;
-            if (newPos < oldPos) {
-              newChanges[student.id] = { type: 'up', diff: oldPos - newPos };
-            } else if (newPos > oldPos) {
-              newChanges[student.id] = { type: 'down', diff: newPos - oldPos };
-            } else {
-              newChanges[student.id] = { type: 'same', diff: 0 };
-            }
-          } else {
-            // Se o aluno entrou no Top 3 mas não estava na lista anterior
-            if (oldList.length > 0) {
-              newChanges[student.id] = { type: 'up', diff: 0 };
-            } else {
-              newChanges[student.id] = { type: 'same', diff: 0 };
-            }
-          }
-        });
-      });
+    const setupRanks = async () => {
+      if (isRegulationRoute) return;
 
-      setRankChanges(prev => ({
-        ...prev,
-        ...newChanges
-      }));
-
-      // Salva a classificação atual no localStorage para futura comparação
       try {
-        localStorage.setItem(`ranking_history_${unitId}`, JSON.stringify(newRanks));
+        const snapshotDoc = await getDoc(doc(db, "weeklySnapshots", unitId));
+        if (snapshotDoc.exists()) {
+          const data = snapshotDoc.data();
+          if (data && data.weekKey && data.ranks) {
+            savedWeekKey = data.weekKey;
+            prevRanksObj = data.ranks;
+          }
+        }
       } catch (e) {
-        console.error("Failed to save ranking history:", e);
+        console.error("Error fetching weekly snapshot from Firestore:", e);
       }
 
-      prevRanksObj = newRanks;
-      setRanks(newRanks);
-    });
+      // Limpeza: Remove dados órfãos da memória local da TV para evitar confusões futuras
+      try {
+        localStorage.removeItem(`ranking_history_${unitId}`);
+        localStorage.removeItem(`ranking_history_weekly_${unitId}`);
+      } catch(e) {}
+
+      unsubRanks = rankService.listenToRank(unitId, async (newRanks) => {
+        const currentWeekKey = getBrasiliaWeekKey();
+        
+        // Se virou a semana ou se a nuvem está vazia, esta TV toma a iniciativa de atualizar a Nuvem!
+        if (currentWeekKey !== savedWeekKey) {
+          try {
+            const payload = {
+              weekKey: currentWeekKey,
+              ranks: newRanks,
+              timestamp: new Date().toISOString()
+            };
+            await setDoc(doc(db, "weeklySnapshots", unitId), payload);
+            
+            // Atualiza a memória base local para a matemática desta TV
+            savedWeekKey = currentWeekKey;
+            prevRanksObj = newRanks;
+          } catch (e) {
+            console.error("Failed to save weekly snapshot to Firestore:", e);
+          }
+        }
+
+        // Calcula as mudanças de posição para os alunos do Top 3
+        // COMPARAÇÃO: Pos Atual (em tempo real) vs Snapshot da Segunda-Feira (Nuvem)
+        const newChanges: Record<string, { type: 'up' | 'down' | 'same', diff: number }> = {};
+        
+        Object.keys(newRanks).forEach(grade => {
+          const oldList = prevRanksObj[grade] || [];
+          const newList = newRanks[grade] || [];
+          
+          newList.slice(0, 3).forEach((student) => {
+            const oldIndex = oldList.findIndex(s => s.id === student.id);
+            if (oldIndex !== -1) {
+              const oldPos = oldIndex + 1;
+              const newPos = student.rankPosition || 0;
+              if (newPos < oldPos) {
+                newChanges[student.id] = { type: 'up', diff: oldPos - newPos };
+              } else if (newPos > oldPos) {
+                newChanges[student.id] = { type: 'down', diff: newPos - oldPos };
+              } else {
+                newChanges[student.id] = { type: 'same', diff: 0 };
+              }
+            } else {
+              // Se o aluno entrou no Top 3 mas não estava na lista da segunda-feira
+              if (oldList.length > 0) {
+                newChanges[student.id] = { type: 'up', diff: 0 };
+              } else {
+                newChanges[student.id] = { type: 'same', diff: 0 };
+              }
+            }
+          });
+        });
+
+        // Sobrescrevemos TUDO porque a base de comparação agora é absoluta (A foto da nuvem)
+        setRankChanges(newChanges);
+        setRanks(newRanks);
+      });
+    };
+
+    setupRanks();
 
     const unsubSettings = rankService.listenToSettings(unitId, (s) => {
       setSettings(s);
