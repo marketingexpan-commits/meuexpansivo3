@@ -11,7 +11,10 @@ const firebaseConfig = {
     appId: "1:688981571362:web:179c1dcae4b01f9f9f177b"
 };
 
+const ua = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : '';
+const isSmartTV = /webos|smarttv|tizen|viera|bravia/.test(ua);
+
 const app = initializeApp(firebaseConfig);
-export const db = initializeFirestore(app, {
+export const db = initializeFirestore(app, isSmartTV ? {
     experimentalForceLongPolling: true,
-});
+} : {});

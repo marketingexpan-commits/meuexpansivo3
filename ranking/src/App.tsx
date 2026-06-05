@@ -595,11 +595,10 @@ function App() {
     });
 
     const unsubSettings = rankService.listenToSettings(unitId, (s) => {
+      setSettings(s);
       if (isRegulationRoute && s.regulationUrl) {
         window.location.replace(s.regulationUrl);
-        return;
       }
-      setSettings(s);
     });
 
     return () => {
@@ -607,6 +606,43 @@ function App() {
       unsubSettings();
     };
   }, [unitId]);
+
+  // Busca rápida e direta (one-shot getDoc) para redirecionamento no celular
+  useEffect(() => {
+    if (!isRegulationRoute) return;
+
+    const fetchDirectAndRedirect = async () => {
+      try {
+        const { getDoc, doc } = await import('firebase/firestore');
+        const { db } = await import('./firebaseConfig');
+        
+        // 1. Tentar documento da unidade específica
+        const unitDocRef = doc(db, 'rank_settings', unitId);
+        const unitSnap = await getDoc(unitDocRef);
+        if (unitSnap.exists()) {
+          const data = unitSnap.data();
+          if (data && data.regulationUrl) {
+            window.location.replace(data.regulationUrl);
+            return;
+          }
+        }
+        
+        // 2. Fallback para o documento global
+        const globalDocRef = doc(db, 'rank_settings', 'global');
+        const globalSnap = await getDoc(globalDocRef);
+        if (globalSnap.exists()) {
+          const data = globalSnap.data();
+          if (data && data.regulationUrl) {
+            window.location.replace(data.regulationUrl);
+          }
+        }
+      } catch (err) {
+        console.error("Direct fetch failed:", err);
+      }
+    };
+
+    fetchDirectAndRedirect();
+  }, [unitId, isRegulationRoute]);
 
   useEffect(() => {
     if (totalSteps <= 1) return;
@@ -625,19 +661,36 @@ function App() {
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center bg-[#f8fafc]">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/5 blur-[120px] rounded-full" />
-        <div className="relative flex flex-col items-center gap-6">
+        <div className="relative flex flex-col items-center gap-6 max-w-sm px-6 text-center">
           <img
             src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"
             alt="Logo Expansivo"
             className="h-24 w-auto object-contain drop-shadow-xl"
           />
-          <div className="text-center">
-            <h1 className="text-xl font-black text-[#001c3d] mb-3 uppercase tracking-tighter">
+          <div className="text-center space-y-4">
+            <h1 className="text-xl font-black text-[#001c3d] uppercase tracking-tighter">
               Abrindo Regulamento...
             </h1>
-            <div className="w-48 h-1 bg-slate-200 rounded-full overflow-hidden relative mx-auto">
-              <div className="absolute inset-y-0 left-0 bg-blue-600 rounded-full animate-pulse w-full" />
-            </div>
+            
+            {settings?.regulationUrl ? (
+              <div className="space-y-3">
+                <p className="text-sm text-slate-500 font-bold leading-relaxed">
+                  Caso o regulamento não abra automaticamente, clique no botão abaixo para visualizar:
+                </p>
+                <a
+                  href={settings.regulationUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center px-8 py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl hover:bg-blue-700 transition-colors uppercase text-xs tracking-wider"
+                >
+                  Visualizar Regulamento
+                </a>
+              </div>
+            ) : (
+              <div className="w-48 h-1 bg-slate-200 rounded-full overflow-hidden relative mx-auto mt-2">
+                <div className="absolute inset-y-0 left-0 bg-blue-600 rounded-full animate-pulse w-full" />
+              </div>
+            )}
           </div>
         </div>
       </div>
