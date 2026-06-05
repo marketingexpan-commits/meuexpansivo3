@@ -169,7 +169,8 @@ export const rankService = {
                     // 3. Final: Alphabetical Order
                     return a.name.localeCompare(b.name);
                 });
-                groupedRanks[grade] = groupedRanks[grade].slice(0, 3).map((item, idx) => ({ ...item, rankPosition: idx + 1 }));
+                // Mapeia a posição de todos os alunos classificados na série
+                groupedRanks[grade] = groupedRanks[grade].map((item, idx) => ({ ...item, rankPosition: idx + 1 }));
             });
 
             onUpdate(groupedRanks);

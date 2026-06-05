@@ -44,7 +44,68 @@ const AwardsLegend = ({ config }: { config?: GradeConfig }) => {
   );
 };
 
-const RankCard = ({ student, index, isSmartTV }: { student: StudentRank, index: number, isSmartTV: boolean }) => {
+const TrendIndicator = ({ trend }: { trend?: { type: 'up' | 'down' | 'same', diff: number } }) => {
+  if (!trend) return null;
+
+  let bgHex = "#f8fafc";
+  let textHex = "#94a3b8";
+  let borderHex = "#e2e8f0";
+  let icon = null;
+
+  if (trend.type === 'up') {
+    bgHex = "#ecfdf5";
+    textHex = "#059669";
+    borderHex = "#a7f3d0";
+    icon = (
+      <svg viewBox="0 0 24 24" style={{ width: '14px', height: '14px', fill: 'currentColor' }} className="shrink-0 select-none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 14h6v8h4v-8h6L12 4 4 14z"/>
+      </svg>
+    );
+  } else if (trend.type === 'down') {
+    bgHex = "#fef2f2";
+    textHex = "#dc2626";
+    borderHex = "#fecaca";
+    icon = (
+      <svg viewBox="0 0 24 24" style={{ width: '14px', height: '14px', fill: 'currentColor' }} className="shrink-0 select-none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20 10h-6V2h-4v8H4l8 10 8-10z"/>
+      </svg>
+    );
+  } else {
+    bgHex = "#f1f5f9";
+    textHex = "#94a3b8";
+    borderHex = "#e2e8f0";
+    icon = (
+      <span style={{ fontSize: '12px', fontWeight: 'bold', lineHeight: 1 }} className="select-none">▬</span>
+    );
+  }
+
+  return (
+    <div 
+      className="flex items-center justify-center rounded-full shadow-lg"
+      style={{ 
+        height: '32px', 
+        paddingLeft: '8px', 
+        paddingRight: '8px', 
+        gap: '4px',
+        display: 'inline-flex',
+        backgroundColor: bgHex,
+        borderColor: borderHex,
+        color: textHex,
+        borderWidth: '1px',
+        borderStyle: 'solid'
+      }}
+    >
+      {trend.diff > 0 && (
+        <span className="text-sm font-black leading-none select-none">
+          {trend.diff}
+        </span>
+      )}
+      {icon}
+    </div>
+  );
+};
+
+const RankCard = ({ student, index, isSmartTV, trend }: { student: StudentRank, index: number, isSmartTV: boolean, trend?: { type: 'up' | 'down' | 'same', diff: number } }) => {
   const is1st = student.rankPosition === 1;
   const targetScale = is1st ? 1.04 : 1.0;
   const tvDelay = 0.5 + index * 1.0; // Clearer "step" sequence for TV (0.5s start, 1.0s intervals)
@@ -104,14 +165,19 @@ const RankCard = ({ student, index, isSmartTV }: { student: StudentRank, index: 
           </div>
         </div>
 
-        {/* Rank Number Badge - Now outside overflow-hidden */}
+        {/* Rank Number Badge with Trend Indicator - Now outside overflow-hidden */}
         <div className={twMerge(
-          "absolute -bottom-4 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full font-black text-xl border shadow-xl z-10 whitespace-nowrap",
+          "absolute -bottom-4 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full font-black text-xl border shadow-xl z-10 whitespace-nowrap flex items-center justify-center",
           student.rankPosition === 1 ? "bg-yellow-400 text-yellow-950 border-yellow-200" :
             student.rankPosition === 2 ? "bg-slate-200 text-slate-800 border-slate-100" :
               "bg-white text-orange-600 border-orange-200"
         )}>
-          {student.rankPosition}º LUGAR
+          <span>{student.rankPosition}º LUGAR</span>
+          {trend && (
+            <div style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: '100%', marginLeft: '8px' }}>
+              <TrendIndicator trend={trend} />
+            </div>
+          )}
         </div>
       </div>
 
@@ -449,6 +515,7 @@ function App() {
   }, []);
 
   const [ranks, setRanks] = useState<Record<string, StudentRank[]>>({});
+  const [rankChanges, setRankChanges] = useState<Record<string, { type: 'up' | 'down' | 'same', diff: number }>>({});
   const [settings, setSettings] = useState<RankSettings | null>(null);
   const [currentGradeIndex, setCurrentGradeIndex] = useState(0);
   const [unitName, setUnitName] = useState("Unidade...");
@@ -589,8 +656,62 @@ function App() {
     };
     setUnitName(unitNames[unitId] || "Unidade Escolhida");
 
+    // Carrega o histórico do localStorage para comparação de posições
+    let prevRanksObj: Record<string, StudentRank[]> = {};
+    try {
+      const savedHistory = localStorage.getItem(`ranking_history_${unitId}`);
+      if (savedHistory) {
+        prevRanksObj = JSON.parse(savedHistory);
+      }
+    } catch (e) {
+      console.error("Error reading from localStorage:", e);
+    }
+
     // On regulation route, skip heavy rank loading — only load settings to redirect
     const unsubRanks = isRegulationRoute ? () => {} : rankService.listenToRank(unitId, (newRanks) => {
+      // Calcula as mudanças de posição para os alunos do Top 3
+      const newChanges: Record<string, { type: 'up' | 'down' | 'same', diff: number }> = {};
+      
+      Object.keys(newRanks).forEach(grade => {
+        const oldList = prevRanksObj[grade] || [];
+        const newList = newRanks[grade] || [];
+        
+        newList.slice(0, 3).forEach((student) => {
+          const oldIndex = oldList.findIndex(s => s.id === student.id);
+          if (oldIndex !== -1) {
+            const oldPos = oldIndex + 1;
+            const newPos = student.rankPosition || 0;
+            if (newPos < oldPos) {
+              newChanges[student.id] = { type: 'up', diff: oldPos - newPos };
+            } else if (newPos > oldPos) {
+              newChanges[student.id] = { type: 'down', diff: newPos - oldPos };
+            } else {
+              newChanges[student.id] = { type: 'same', diff: 0 };
+            }
+          } else {
+            // Se o aluno entrou no Top 3 mas não estava na lista anterior
+            if (oldList.length > 0) {
+              newChanges[student.id] = { type: 'up', diff: 0 };
+            } else {
+              newChanges[student.id] = { type: 'same', diff: 0 };
+            }
+          }
+        });
+      });
+
+      setRankChanges(prev => ({
+        ...prev,
+        ...newChanges
+      }));
+
+      // Salva a classificação atual no localStorage para futura comparação
+      try {
+        localStorage.setItem(`ranking_history_${unitId}`, JSON.stringify(newRanks));
+      } catch (e) {
+        console.error("Failed to save ranking history:", e);
+      }
+
+      prevRanksObj = newRanks;
       setRanks(newRanks);
     });
 
@@ -889,13 +1010,34 @@ function App() {
                         }}
                       >
                         {/* 2nd Place */}
-                        {ranks[currentGrade]?.[1] && <RankCard student={ranks[currentGrade][1]} index={1} isSmartTV={isSmartTV} />}
+                        {ranks[currentGrade]?.[1] && (
+                          <RankCard 
+                            student={ranks[currentGrade][1]} 
+                            index={1} 
+                            isSmartTV={isSmartTV} 
+                            trend={rankChanges[ranks[currentGrade][1].id]} 
+                          />
+                        )}
 
                         {/* 1st Place */}
-                        {ranks[currentGrade]?.[0] && <RankCard student={ranks[currentGrade][0]} index={0} isSmartTV={isSmartTV} />}
+                        {ranks[currentGrade]?.[0] && (
+                          <RankCard 
+                            student={ranks[currentGrade][0]} 
+                            index={0} 
+                            isSmartTV={isSmartTV} 
+                            trend={rankChanges[ranks[currentGrade][0].id]} 
+                          />
+                        )}
 
                         {/* 3rd Place */}
-                        {ranks[currentGrade]?.[2] && <RankCard student={ranks[currentGrade][2]} index={2} isSmartTV={isSmartTV} />}
+                        {ranks[currentGrade]?.[2] && (
+                          <RankCard 
+                            student={ranks[currentGrade][2]} 
+                            index={2} 
+                            isSmartTV={isSmartTV} 
+                            trend={rankChanges[ranks[currentGrade][2].id]} 
+                          />
+                        )}
                       </div>
 
                       {/* Vertical Awards Legend */}
@@ -918,8 +1060,8 @@ function App() {
                   </div>
                 </div>
 
-                {/* 1. Left Section: Scoring Info */}
-                <div className="flex flex-col min-w-0 flex-1 pr-2 md:pr-6 pt-6">
+                {/* 1. Left Section: Scoring Info & Legend */}
+                <div className="flex flex-col min-w-0 flex-1 pr-2 md:pr-6 pt-4">
                   <p className="text-[9px] lg:text-[10px] text-blue-400 font-black tracking-widest uppercase mb-1 truncate">
                     Composição dos Pontos
                   </p>
@@ -929,6 +1071,22 @@ function App() {
                   <p className="text-[7px] md:text-[8px] lg:text-[9px] text-blue-400/80 font-bold uppercase tracking-tight italic mt-0.5 truncate">
                     {isSmartTV ? "Desempate: Maior Média" : "Desempate: Maior Nota Média"}
                   </p>
+                  
+                  {/* Trend Indicator Legend */}
+                  <div className="flex items-center space-x-3 mt-1.5 opacity-80">
+                    <div className="flex items-center space-x-1">
+                      <svg viewBox="0 0 24 24" style={{ width: '10px', height: '10px', fill: '#10b981' }}><path d="M4 14h6v8h4v-8h6L12 4 4 14z"/></svg>
+                      <span className="text-[8px] lg:text-[9px] text-white/60 font-bold uppercase tracking-wider">subiu</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <svg viewBox="0 0 24 24" style={{ width: '10px', height: '10px', fill: '#ef4444' }}><path d="M20 10h-6V2h-4v8H4l8 10 8-10z"/></svg>
+                      <span className="text-[8px] lg:text-[9px] text-white/60 font-bold uppercase tracking-wider">caiu</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <span style={{ fontSize: '10px', color: '#94a3b8', lineHeight: 1 }} className="font-black">▬</span>
+                      <span className="text-[8px] lg:text-[9px] text-white/60 font-bold uppercase tracking-wider">manteve</span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* 2. Center Section: QR Code & Regulation */}
