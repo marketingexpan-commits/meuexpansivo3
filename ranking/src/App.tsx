@@ -868,8 +868,9 @@ function App() {
                             : (window.location.origin + '/regulamento?u=' + (unitId.replace('unit_', '') || 'zn'))
                         }
                         size={76}
-                        level="M"
+                        level="L"
                         includeMargin={false}
+                        fgColor="#0f172a"
                       />
                     </div>
                   </div>
