@@ -46,15 +46,15 @@ const AwardsLegend = ({ config, globalSettings }: { config?: GradeConfig, global
       style={{ paddingLeft: '40px' }}
     >
       <div className="flex flex-col space-y-1">
-        <p className="text-[10px] font-black text-yellow-600 uppercase tracking-[0.2em]">1º Lugar - Prêmio</p>
+        <p className="text-xs font-black text-yellow-600 uppercase tracking-[0.2em]">1º Lugar - Prêmio</p>
         <p translate="no" className="font-black text-[#001c3d] leading-tight uppercase tracking-tighter" style={{ fontSize: getAwardFontSize(rank1) }}>{rank1 || '---'}</p>
       </div>
       <div className="flex flex-col space-y-1">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">2º Lugar - Prêmio</p>
+        <p className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">2º Lugar - Prêmio</p>
         <p translate="no" className="font-black text-[#001c3d] leading-tight uppercase tracking-tighter" style={{ fontSize: getAwardFontSize(rank2) }}>{rank2 || '---'}</p>
       </div>
       <div className="flex flex-col space-y-1">
-        <p className="text-[10px] font-black text-orange-400 uppercase tracking-[0.2em]">3º Lugar - Prêmio</p>
+        <p className="text-xs font-black text-orange-400 uppercase tracking-[0.2em]">3º Lugar - Prêmio</p>
         <p translate="no" className="font-black text-[#001c3d] leading-tight uppercase tracking-tighter" style={{ fontSize: getAwardFontSize(rank3) }}>{rank3 || '---'}</p>
       </div>
     </motion.div>
@@ -200,12 +200,12 @@ const RankCard = ({ student, index, isSmartTV, trend }: { student: StudentRank, 
 
       {/* Details */}
       <div className="text-center mt-6 space-y-1">
-        <h3 translate="no" className="text-lg font-black text-slate-900 leading-tight uppercase tracking-tighter" style={{ fontSize: student.name.length > 15 ? '1.1rem' : '1.25rem' }}>
+        <h3 translate="no" className="text-xl font-black text-slate-900 leading-tight uppercase tracking-tighter" style={{ fontSize: student.name.length > 15 ? '1.25rem' : '1.4rem' }}>
           {student.name.split(' ').slice(0, 2).join(' ')}
         </h3>
-        <div className="flex flex-col items-center space-y-0 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-          <span className="text-blue-600 leading-none">{student.gradeLevel}</span>
-          <div className="flex items-center space-x-1 auto-cols-min leading-none mt-0.5">
+        <div className="flex flex-col items-center space-y-0 text-slate-500 font-bold uppercase tracking-wider text-xs">
+          <span className="text-blue-600 leading-none text-sm font-black">{student.gradeLevel}</span>
+          <div className="flex items-center space-x-1 auto-cols-min leading-none mt-2">
             <span>TURMA {student.schoolClass}</span>
             <span className="opacity-30 mx-0.5">•</span>
             <span>{student.shift === 'shift_morning' ? 'MATUTINO' : 'VESPERTINO'}</span>
@@ -216,30 +216,30 @@ const RankCard = ({ student, index, isSmartTV, trend }: { student: StudentRank, 
       {/* Scores Grid (4 Columns) */}
       <div className="grid grid-cols-7 gap-0 w-full mt-4 pt-3 border-t border-slate-100 px-1">
         <div className="col-span-1 text-center flex flex-col justify-end">
-          <p className="text-[7px] text-slate-400 uppercase font-bold leading-none tracking-tighter">Nota</p>
-          <p className="text-[7px] text-slate-400 uppercase font-bold leading-none tracking-tighter mb-0.5">Média</p>
-          <p className="text-sm font-black text-blue-600 leading-tight">{student.avgGrade.toFixed(1)}</p>
+          <p className="text-[10px] text-slate-400 uppercase font-black leading-none tracking-tighter">Nota</p>
+          <p className="text-[10px] text-slate-400 uppercase font-black leading-none tracking-tighter mb-0.5">Média</p>
+          <p className="text-base font-black text-blue-600 leading-tight">{student.avgGrade.toFixed(1)}</p>
         </div>
         <div className="col-span-1 flex justify-center py-1">
           <div className="w-[1px] h-full bg-slate-200" />
         </div>
         <div className="col-span-1 text-center flex flex-col justify-end">
-          <p className="text-[8px] text-slate-400 uppercase font-black tracking-tighter mb-0.5">Freq</p>
-          <p className="text-sm font-black text-[#001c3d] leading-tight">{student.attendanceRate.toFixed(0)}%</p>
+          <p className="text-[10px] text-slate-400 uppercase font-black tracking-tighter mb-0.5">Freq</p>
+          <p className="text-base font-black text-[#001c3d] leading-tight">{student.attendanceRate.toFixed(0)}%</p>
         </div>
         <div className="col-span-1 flex justify-center py-1">
           <div className="w-[1px] h-full bg-slate-200" />
         </div>
         <div className="col-span-1 text-center flex flex-col justify-end">
-          <p className="text-[8px] text-slate-400 uppercase font-black tracking-tighter mb-0.5">Comp</p>
-          <p className="text-sm font-black text-orange-600 leading-tight">{student.behaviorScore}</p>
+          <p className="text-[10px] text-slate-400 uppercase font-black tracking-tighter mb-0.5">Comp</p>
+          <p className="text-base font-black text-orange-600 leading-tight">{student.behaviorScore}</p>
         </div>
         <div className="col-span-1 flex justify-center py-1">
           <div className="w-[1px] h-full bg-slate-200" />
         </div>
         <div className="col-span-1 text-center flex flex-col justify-end">
-          <p className="text-[8px] text-blue-600 uppercase font-black tracking-tighter mb-0.5">Pontos</p>
-          <p className="text-sm font-black text-blue-800 leading-tight">{student.totalScore.toFixed(1)}</p>
+          <p className="text-[10px] text-blue-600 uppercase font-black tracking-tighter mb-0.5">Pontos</p>
+          <p className="text-base font-black text-blue-800 leading-tight">{student.totalScore.toFixed(1)}</p>
         </div>
       </div>
 
@@ -847,7 +847,7 @@ function App() {
   // Show redirect screen when on regulation route
   if (isRegulationRoute) {
     return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center bg-[#f8fafc]">
+      <div className="fixed inset-0 w-screen h-screen flex flex-col items-center justify-center bg-[#f8fafc]">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/5 blur-[120px] rounded-full" />
         <div className="relative flex flex-col items-center gap-6 max-w-sm px-6 text-center">
           <img
@@ -947,7 +947,7 @@ function App() {
             initial={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 1.05, filter: "blur(15px)" }}
             transition={{ duration: 0.8, ease: "easeInOut" }}
-            className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#f8fafc]"
+            className="absolute inset-0 w-full h-full z-[100] flex flex-col items-center justify-center bg-[#f8fafc]"
           >
             {/* Background Glows */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/5 blur-[120px] rounded-full" />
