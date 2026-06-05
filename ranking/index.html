@@ -4,6 +4,49 @@
 <head>
   <meta name="google" content="notranslate" />
   <meta charset="UTF-8" />
+  <script>
+    (function() {
+      const path = window.location.pathname;
+      if (path.includes('/regulamento')) {
+        // Evita a tela azul aplicando um estilo claro imediatamente
+        const style = document.createElement('style');
+        style.innerHTML = 'body { background-color: #f8fafc !important; color: #000 !important; }';
+        document.head.appendChild(style);
+
+        // Identifica a unidade do QR Code
+        const query = new URLSearchParams(window.location.search);
+        const qUnit = query.get('u') || query.get('unit');
+        const rawUnit = qUnit || path.replace('/', '').replace('regulamento', '').toLowerCase() || 'zn';
+        const cleanUnit = rawUnit.replace('/', '').trim();
+        const unitId = cleanUnit.startsWith('unit_') ? cleanUnit : 'unit_' + cleanUnit;
+        const finalUnitId = (cleanUnit === 'regulamento' || !cleanUnit) ? 'unit_zn' : unitId;
+
+        const fetchDoc = async (id) => {
+          try {
+            const res = await fetch('https://firestore.googleapis.com/v1/projects/meu-expansivo-app/databases/(default)/documents/rank_settings/' + id);
+            if (res.ok) {
+              const data = await res.json();
+              if (data && data.fields && data.fields.regulationUrl && data.fields.regulationUrl.stringValue) {
+                return data.fields.regulationUrl.stringValue;
+              }
+            }
+          } catch (e) {}
+          return null;
+        };
+
+        // Redireciona imediatamente sem carregar o resto do site
+        (async function() {
+          let url = await fetchDoc(finalUnitId);
+          if (!url) {
+            url = await fetchDoc('global');
+          }
+          if (url) {
+            window.location.replace(url);
+          }
+        })();
+      }
+    })();
+  </script>
   <link rel="icon" type="image/png" href="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
