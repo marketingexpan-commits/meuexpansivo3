@@ -244,7 +244,7 @@ const SponsorsShowcase = ({ settings, unitName, scale }: { settings: RankSetting
         />
         <div className="w-px h-10 bg-white/20" />
         <div>
-          <h1 translate="no" className="text-3xl font-black tracking-tighter uppercase leading-none text-white">DESTAQUES <span className="ml-2">EXPANSIVO</span></h1>
+          <h1 translate="no" className="text-3xl font-black tracking-tighter uppercase leading-none text-white">DESTAQUES <span className="inline-block ml-3">EXPANSIVO</span></h1>
           <p translate="no" className="text-sm font-bold text-blue-400 tracking-[0.2em] uppercase mt-1">{unitName}</p>
         </div>
       </div>
@@ -699,7 +699,7 @@ function App() {
 
               <div className="text-center">
                 <h1 className="text-2xl font-black text-[#001c3d] mb-4 uppercase tracking-tighter">
-                  Carregando Ranking
+                  Carregando <span className="ml-2">Destaques</span>
                 </h1>
 
                 {/* Linear Progress Bar below the logo/text */}
@@ -742,26 +742,26 @@ function App() {
 
             {/* Header */}
             <header className="h-28 bg-white border-b border-slate-100 shadow-sm z-20 flex-shrink-0">
-              <div className="max-w-[1440px] mx-auto w-full h-full px-12 md:px-20 flex items-center justify-between">
-                <div className="flex items-center space-x-6">
+              <div className="max-w-[1440px] mx-auto w-full h-full px-6 md:px-12 lg:px-20 flex items-center justify-between">
+                <div className="flex items-center space-x-3 md:space-x-6 shrink-0">
                   <img
                     src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png"
                     alt="Logo"
-                    className="h-12"
+                    className="h-10 md:h-12"
                   />
-                  <div className="w-px h-10 bg-slate-100" />
+                  <div className="w-px h-8 md:h-10 bg-slate-100" />
                   <div>
-                    <h1 translate="no" className="text-3xl font-black tracking-tighter uppercase leading-none text-[#001c3d]">DESTAQUES <span className="ml-2">EXPANSIVO</span></h1>
-                    <p translate="no" className="text-sm font-bold text-blue-600 tracking-[0.2em] uppercase mt-1">{unitName}</p>
+                    <h1 translate="no" className="text-xl md:text-2xl lg:text-3xl font-black tracking-tighter uppercase leading-none text-[#001c3d] whitespace-nowrap">DESTAQUES <span className="inline-block ml-2 md:ml-3">EXPANSIVO</span></h1>
+                    <p translate="no" className="text-[10px] md:text-xs lg:text-sm font-bold text-blue-600 tracking-[0.2em] uppercase mt-1">{unitName}</p>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-6">
+                <div className="flex items-center space-x-3 md:space-x-6 shrink-0 ml-4">
                   <div className="text-right">
-                    <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none">Série em destaque</p>
-                    <div className="h-1.5 w-16 bg-blue-600 ml-auto mt-1.5 rounded-full" />
+                    <p className="text-[8px] md:text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none">Série em destaque</p>
+                    <div className="h-1 lg:h-1.5 w-10 md:w-16 bg-blue-600 ml-auto mt-1 lg:mt-1.5 rounded-full" />
                   </div>
-                  <h2 translate="no" className="text-4xl font-black text-[#001c3d] uppercase tracking-tighter ml-2 whitespace-nowrap">
+                  <h2 translate="no" className="text-2xl md:text-3xl lg:text-4xl font-black text-[#001c3d] uppercase tracking-tighter ml-1 lg:ml-2 whitespace-nowrap">
                     {currentGrade || 'Patrocinadores'}
                   </h2>
                 </div>
@@ -850,16 +850,16 @@ function App() {
                 </div>
 
                 {/* 2. Center Section: QR Code & Regulation */}
-                <div className="flex justify-center shrink-0">
-                  <div className="flex items-center gap-6">
+                <div className="flex justify-center shrink-0 px-2">
+                  <div className="flex items-center gap-3 lg:gap-6">
                     <div className="text-right shrink-0">
-                      <p className="text-[9px] text-blue-400 font-extrabold uppercase tracking-widest leading-none mb-1">Regulamento</p>
-                      <p className="text-[10px] text-white font-bold opacity-60 uppercase leading-tight italic">Escanear para ver<br />regras e prêmios</p>
+                      <p className="text-[8px] lg:text-[9px] text-blue-400 font-extrabold uppercase tracking-widest leading-none mb-1">Regulamento</p>
+                      <p className="text-[8px] lg:text-[10px] text-white font-bold opacity-60 uppercase leading-tight italic">Escanear para ver<br />regras e prêmios</p>
                     </div>
                     <div className="shrink-0 p-1.5 bg-white rounded-lg shadow-xl transition-transform hover:scale-105">
                       <QRCodeSVG
                         value={settings?.regulationUrl || (window.location.origin + '/regulamento')}
-                        size={84}
+                        size={76}
                         level="M"
                         includeMargin={false}
                       />
