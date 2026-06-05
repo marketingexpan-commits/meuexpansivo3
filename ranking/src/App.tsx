@@ -1142,12 +1142,12 @@ function App() {
                               </p>
                             )}
                           </div>
-                          <div className="px-10 py-5 bg-white rounded-3xl border border-white/10 shadow-xl flex items-center justify-center min-w-[360px] h-28 overflow-hidden">
+                          <div className="bg-white rounded-2xl shadow-xl flex items-center justify-center overflow-hidden shrink-0" style={{ width: '187px', height: '76px' }}>
                             {partnerLogo ? (
                               <img
                                 src={partnerLogo}
                                 alt="Partner"
-                                className="max-h-20 w-auto object-contain p-2"
+                                className="h-full w-full object-contain p-2.5"
                                 crossOrigin="anonymous"
                                 loading="eager"
                                 onError={(e) => {
@@ -1156,7 +1156,7 @@ function App() {
                                 }}
                               />
                             ) : (
-                              <Globe className="text-slate-200 h-10 w-10 opacity-20" />
+                              <Globe className="text-slate-200 h-8 w-8 opacity-30" />
                             )}
                           </div>
                         </>
