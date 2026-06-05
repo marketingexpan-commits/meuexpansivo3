@@ -42,7 +42,7 @@ const AwardsLegend = ({ config, globalSettings }: { config?: GradeConfig, global
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
-      className="flex flex-col gap-8 ml-6 py-6 border-l-4 border-yellow-400/20 pl-10 max-w-[320px]"
+      className="flex flex-col gap-8 ml-6 py-6 border-l-4 border-yellow-400/20 pl-10 max-w-[380px]"
     >
       <div className="flex flex-col gap-1">
         <p className="text-[10px] font-black text-yellow-600 uppercase tracking-[0.2em]">1º Lugar - Prêmio</p>
