@@ -1,5 +1,6 @@
 import { db } from "../firebaseConfig";
 import { collection, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
+import { calculateGeneralFrequency } from "../utils/frequency";
 
 export interface StudentRank {
     id: string;
@@ -64,9 +65,30 @@ export const rankService = {
         let studentsMap: any[] = [];
         let gradesMap: Record<string, any[]> = {};
         let occurrencesMap: Record<string, any[]> = {};
-        let attendanceMap: Record<string, any[]> = {};
+        let allAttendanceRecords: any[] = [];
+        let subjectsList: any[] = [];
+        let academicSettings: any = null;
+        let calendarEventsList: any[] = [];
+        let classSchedulesList: any[] = [];
+        let matricesList: any[] = [];
+
+        // Tracks initial loads
+        let studentsLoaded = false;
+        let gradesLoaded = false;
+        let occurrencesLoaded = false;
+        let attendanceLoaded = false;
+        let subjectsLoaded = false;
+        let settingsLoaded = false;
+        let eventsLoaded = false;
+        let schedulesLoaded = false;
+        let matricesLoaded = false;
 
         const recompute = () => {
+            if (!studentsLoaded || !gradesLoaded || !occurrencesLoaded || !attendanceLoaded ||
+                !subjectsLoaded || !settingsLoaded || !eventsLoaded || !schedulesLoaded || !matricesLoaded) {
+                return;
+            }
+
             if (studentsMap.length === 0) return;
 
             const groupedRanks: Record<string, StudentRank[]> = {};
@@ -81,7 +103,6 @@ export const rankService = {
 
                 const studentGrades = gradesMap[student.id] || [];
                 const studentOccurrences = occurrencesMap[student.id] || [];
-                const studentAttendance = attendanceMap[student.id] || [];
 
                 // 1. Academic Average (Dynamic)
                 // If mediaAnual is 0 or -1, look at individual bimester averages
@@ -116,21 +137,22 @@ export const rankService = {
 
                 const avgGrade = subjectsCount > 0 ? (totalMedias / subjectsCount) : 0;
 
-                // 2. Real Attendance Rate
-                // Calculate based on attendance records (Presence vs Absence)
-                // app-aluno uses "Presente" and "Faltou"
-                let totalLessons = 0;
-                let presentLessons = 0;
-
-                studentAttendance.forEach(record => {
-                    const lessonWeight = record.lessonCount || 1;
-                    totalLessons += lessonWeight;
-                    if (record.status === 'Presente') {
-                        presentLessons += lessonWeight;
-                    }
-                });
-
-                const attendanceRate = totalLessons > 0 ? (presentLessons / totalLessons) * 100 : 100;
+                // 2. Real Attendance Rate using Student App's dynamic calculation
+                const freqStr = calculateGeneralFrequency(
+                    [],
+                    allAttendanceRecords,
+                    student.id,
+                    student.gradeLevel || "",
+                    subjectsList,
+                    academicSettings,
+                    calendarEventsList,
+                    student.unit,
+                    classSchedulesList,
+                    student.schoolClass,
+                    student.shift,
+                    matricesList
+                );
+                const attendanceRate = freqStr === '-' ? 100 : parseFloat(freqStr.replace('%', ''));
 
                 // 3. Behavior Score
                 const behaviorScore = CALCULATE_BEHAVIOR_SCORE(studentOccurrences);
@@ -188,6 +210,7 @@ export const rankService = {
 
         const unsubStudents = onSnapshot(studentsQuery, (snap) => {
             studentsMap = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            studentsLoaded = true;
             recompute();
         });
 
@@ -199,6 +222,7 @@ export const rankService = {
                 temp[data.studentId].push(data);
             });
             gradesMap = temp;
+            gradesLoaded = true;
             recompute();
         });
 
@@ -210,24 +234,44 @@ export const rankService = {
                 temp[data.studentId].push(data);
             });
             occurrencesMap = temp;
+            occurrencesLoaded = true;
             recompute();
         });
 
         const unsubAttendance = onSnapshot(query(collection(db, "attendance"), where("unit", "==", unitId)), (snap) => {
-            const temp: Record<string, any[]> = {};
-            snap.docs.forEach(d => {
-                const data = d.data();
-                if (data.studentStatus) {
-                    Object.keys(data.studentStatus).forEach(sId => {
-                        if (!temp[sId]) temp[sId] = [];
-                        temp[sId].push({
-                            status: data.studentStatus[sId],
-                            lessonCount: data.lessonCount || 1
-                        });
-                    });
-                }
-            });
-            attendanceMap = temp;
+            allAttendanceRecords = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            attendanceLoaded = true;
+            recompute();
+        });
+
+        const unsubSubjects = onSnapshot(collection(db, "academic_subjects"), (snap) => {
+            subjectsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            subjectsLoaded = true;
+            recompute();
+        });
+
+        const unsubSettings = onSnapshot(query(collection(db, "academic_settings"), where("year", "==", 2026)), (snap) => {
+            const allSettings = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+            academicSettings = allSettings.find(s => s.unit === unitId) || allSettings.find(s => s.unit === 'all') || null;
+            settingsLoaded = true;
+            recompute();
+        });
+
+        const unsubEvents = onSnapshot(query(collection(db, "calendar_events"), where("units", "array-contains-any", [unitId, "all"])), (snap) => {
+            calendarEventsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            eventsLoaded = true;
+            recompute();
+        });
+
+        const unsubSchedules = onSnapshot(query(collection(db, "class_schedules"), where("schoolId", "==", unitId)), (snap) => {
+            classSchedulesList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            schedulesLoaded = true;
+            recompute();
+        });
+
+        const unsubMatrices = onSnapshot(collection(db, "academic_matrices"), (snap) => {
+            matricesList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            matricesLoaded = true;
             recompute();
         });
 
@@ -236,6 +280,11 @@ export const rankService = {
             unsubGrades();
             unsubOccurrences();
             unsubAttendance();
+            unsubSubjects();
+            unsubSettings();
+            unsubEvents();
+            unsubSchedules();
+            unsubMatrices();
         };
     },
 

@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regulamento - Ranking Alunos Destaques</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+
+        :root {
+            --expansivo-blue: #001c3d;
+            --expansivo-blue-light: #003366;
+            --expansivo-yellow: #facc15;
+            --expansivo-orange: #ea580c;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #cbd5e1;
+            font-family: 'Inter', sans-serif;
+            color: #334155;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        /* Formato Contínuo */
+        .page {
+            max-width: 800px;
+            padding: 40px;
+            margin: 20px auto;
+            background: white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box;
+            border-radius: 8px;
+        }
+
+        /* Configurações de Impressão */
+        /* O tamanho do PDF e as margens serão injetados dinamicamente pelo JavaScript para ficar idêntico à tela! */
+
+        @media print {
+            body {
+                background-color: white;
+                margin: 0;
+                padding: 0;
+            }
+
+            .page {
+                margin: 0 auto;
+                box-shadow: none;
+                /* Removido o padding: 0 para que a margem interna da tela (40px) atue como as margens do PDF */
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            /* Evita que blocos sejam cortados ao meio na impressão */
+            h3,
+            .pilar-card,
+            .alert-box,
+            .formula-box,
+            p,
+            ul,
+            li {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            h3 {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+        }
+
+        /* Cabeçalho */
+        .header {
+            display: flex;
+            align-items: center;
+            border-bottom: 4px solid var(--expansivo-yellow);
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            gap: 20px;
+        }
+
+        .header img {
+            height: 60px;
+            object-fit: contain;
+        }
+
+        .header-content {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .header h1 {
+            color: var(--expansivo-blue);
+            font-weight: 900;
+            text-transform: uppercase;
+            font-size: 18pt;
+            margin: 0;
+            letter-spacing: -0.5px;
+        }
+
+        .sub-header {
+            color: var(--expansivo-blue);
+            font-weight: 800;
+            font-size: 11pt;
+            text-transform: uppercase;
+            text-align: right;
+            margin: -20px 0 30px 0;
+            letter-spacing: 1px;
+        }
+
+        /* Tipografia Base */
+        h3 {
+            color: var(--expansivo-blue);
+            font-weight: 800;
+            font-size: 14pt;
+            margin-top: 25px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        h3::before {
+            content: '';
+            display: inline-block;
+            width: 6px;
+            height: 20px;
+            background-color: var(--expansivo-orange);
+            border-radius: 4px;
+        }
+
+        p {
+            line-height: 1.6;
+            margin-top: 0;
+            margin-bottom: 15px;
+            text-align: justify;
+            font-size: 11pt;
+        }
+
+        ul {
+            margin-top: 0;
+            margin-bottom: 15px;
+            padding-left: 20px;
+        }
+
+        li {
+            line-height: 1.6;
+            margin-bottom: 8px;
+            font-size: 11pt;
+        }
+
+        /* Pilares */
+        .pilares-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .pilar-card {
+            background-color: #f8fafc;
+            border-left: 4px solid var(--expansivo-blue);
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .pilar-card.academico {
+            border-color: #2563eb;
+        }
+
+        .pilar-card.frequencia {
+            border-color: #10b981;
+        }
+
+        .pilar-card.comportamento {
+            border-color: var(--expansivo-orange);
+        }
+
+        .pilar-title {
+            font-weight: 900;
+            font-size: 11pt;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            color: var(--expansivo-blue);
+        }
+
+        .pilar-title span {
+            float: right;
+            background: var(--expansivo-blue);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 9pt;
+        }
+
+        .pilar-card.academico .pilar-title span {
+            background: #2563eb;
+        }
+
+        .pilar-card.frequencia .pilar-title span {
+            background: #10b981;
+        }
+
+        .pilar-card.comportamento .pilar-title span {
+            background: var(--expansivo-orange);
+        }
+
+        .pilar-text {
+            font-size: 10pt;
+            margin: 0;
+            text-align: left;
+        }
+
+        /* Formula Box */
+        .formula-box {
+            background-color: var(--expansivo-blue);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            margin: 20px 0;
+            font-size: 11pt;
+            box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.1);
+        }
+
+        .formula-box span {
+            color: var(--expansivo-yellow);
+        }
+
+        /* Criterios Desempate */
+        .criterios-list {
+            counter-reset: criterio;
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .criterios-list li {
+            position: relative;
+            padding-left: 40px;
+            margin-bottom: 12px;
+            text-align: left;
+        }
+
+        .criterios-list li::before {
+            counter-increment: criterio;
+            content: counter(criterio);
+            position: absolute;
+            left: 0;
+            top: -2px;
+            background-color: var(--expansivo-orange);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 10pt;
+        }
+
+        /* Alerta Importante */
+        .alert-box {
+            background-color: #fffbeb;
+            border: 2px solid #fde68a;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 25px;
+        }
+
+        .alert-title {
+            color: #b45309;
+            font-weight: 800;
+            font-size: 12pt;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+        }
+
+        .alert-box p {
+            margin: 0;
+            font-size: 10pt;
+            color: #92400e;
+        }
+
+        .alert-box ul {
+            margin-top: 10px;
+            margin-bottom: 0;
+            color: #92400e;
+            font-size: 10pt;
+        }
+
+        /* Rodapé */
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 7.5pt;
+            color: #94a3b8;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Botão Imprimir */
+        .print-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background-color: var(--expansivo-blue);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 800;
+            font-size: 11pt;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 28, 61, 0.3);
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .print-btn:hover {
+            transform: translateY(-2px);
+            background-color: var(--expansivo-blue-light);
+        }
+    </style>
+</head>
+
+<body>
+
+    <button class="print-btn no-print" onclick="imprimirExato()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+        </svg>
+        Salvar PDF
+    </button>
+
+    <div class="page">
+        <div class="header">
+            <img src="https://i.postimg.cc/Hs4CPVBM/Vagas-flyer-02.png" alt="Logotipo Expansivo">
+            <div class="header-content">
+                <h1>Expansivo Rede de Ensino</h1>
+            </div>
+        </div>
+        <div class="sub-header">Regulamento: Alunos Destaques</div>
+
+        <h3>1. Objetivo</h3>
+        <p>O "Alunos Destaques" tem como principal objetivo reconhecer, valorizar e incentivar o desempenho
+            global dos nossos alunos. Compreendemos que um aluno de destaque vai além das notas acadêmicas, por isso
+            nosso sistema premia também o compromisso com a assiduidade (frequência) e a conduta exemplar no ambiente
+            escolar (comportamento).</p>
+
+        <h3>2. Quem Participa?</h3>
+        <p>Participam automaticamente do ranking todos os alunos regularmente matriculados e com status "CURSANDO" nas
+            turmas do <strong>Ensino Fundamental II</strong> (6º ao 9º Ano) e do <strong>Ensino Médio</strong>. O
+            ranking promove uma competição saudável, sendo disputado <strong>exclusivamente entre os alunos da mesma
+                unidade escolar</strong> e da mesma série/ano escolar. Como a rede possui várias unidades, cada unidade
+            tem o seu próprio ranking independente.</p>
+
+        <h3>3. Como a Pontuação ("Pontos") é Calculada?</h3>
+        <p>Para garantir um sistema justo e abrangente, o sistema gera uma pontuação final (máximo de 100 pontos). Essa
+            pontuação é baseada em três pilares, cada um com um peso específico:</p>
+
+        <div class="pilar-card academico" style="margin-bottom: 15px;">
+            <div class="pilar-title"> Pilar Acadêmico <span>Peso: 60%</span></div>
+            <p class="pilar-text">Média geral das notas de todas as disciplinas do aluno no período. Esse valor é
+                convertido para uma escala de 100 pontos e compõe a maior parte da pontuação.</p>
+            <div
+                style="background: rgba(37, 99, 235, 0.08); padding: 12px; border-radius: 6px; margin-top: 12px; border-left: 3px solid #2563eb; font-size: 9pt; color: #1e3a8a;">
+                <strong>Exemplo Prático (Média Anual Progressiva):</strong> O ranking utiliza a projeção anual da nota.
+                Se no 1º Bimestre o aluno tira <strong>8.0</strong>, sua Média Anual parcial será <strong>2.0</strong>
+                (8.0 ÷ 4 bimestres).
+                <div style="margin-top: 8px;"><strong>Simulação (Boletim com 4 disciplinas no 1º Bimestre):</strong>
+                </div>
+                <ul style="margin: 4px 0 8px 0; padding-left: 20px;">
+                    <li>Português: Tirou 8.5 ➔ <em>Média Anual = 2.1</em></li>
+                    <li>Matemática: Tirou 7.0 ➔ <em>Média Anual = 1.8</em></li>
+                    <li>História: Tirou 10.0 ➔ <em>Média Anual = 2.5</em></li>
+                    <li>Geografia: Tirou 9.0 ➔ <em>Média Anual = 2.3</em></li>
+                </ul>
+                <strong>Como o Ranking calcula a "Nota Média":</strong> O sistema soma todas essas médias (2.1 + 1.8 +
+                2.5 + 2.3 = <strong>8.7</strong>) e divide pela quantidade total de disciplinas (8.7 ÷ 4 matérias =
+                <strong>2.17</strong>). O ranking arredonda e exibe a Nota Média <strong>2.2</strong> na tela. O aluno
+                continuará elevando essa nota ao longo dos próximos bimestres!
+            </div>
+        </div>
+
+        <div class="pilares-grid">
+            <div class="pilar-card frequencia">
+                <div class="pilar-title"> Pilar Assiduidade <span>Peso: 30%</span></div>
+                <p class="pilar-text">Reflete o compromisso com a presença. A taxa de frequência (de 0% a 100%) é
+                    calculada em tempo real com base na relação entre total de aulas dadas e presenças.</p>
+            </div>
+
+            <div class="pilar-card comportamento">
+                <div class="pilar-title"> Pilar Disciplinar (Comportamento) <span>Peso: 10%</span></div>
+                <p class="pilar-text">Todos iniciam com <strong>100 pontos</strong>. O sistema ajusta com base nos
+                    registros
+                    da coordenação: <strong>-10 pontos</strong> por ocorrência disciplinar e <strong>+5 pontos</strong>
+                    por
+                    elogio.</p>
+            </div>
+        </div>
+
+        <div class="formula-box">
+            Fórmula Matemática: <br>
+            <span>Pontos = (Nota Média Ajustada × 60%) + (Frequência % × 30%) + (Comportamento × 10%)</span>
+        </div>
+
+        <h3>4. Critérios de Desempate</h3>
+        <p>Em caso de empate na pontuação total, o sistema aplicará automaticamente, e nesta exata ordem, os seguintes
+            critérios:</p>
+        <ul class="criterios-list">
+            <li><strong>Maior Nota Média Acadêmica:</strong> O primeiro critério é o desempenho acadêmico puro. O aluno
+                com a maior nota média exata ficará na frente.</li>
+            <li><strong>Maior Frequência (Assiduidade):</strong> Se o empate persistir, o sistema valorizará o aluno
+                mais presente nas aulas, utilizando a taxa exata de frequência.</li>
+            <li><strong>Maior Pontuação de Comportamento:</strong> Se ainda assim houver empate, vence quem tiver o
+                melhor desempenho disciplinar.</li>
+            <li><strong>Ordem Alfabética:</strong> Persistindo o empate absoluto em todos os valores, a posição será
+                definida pela ordem alfabética do nome.</li>
+        </ul>
+
+        <div class="alert-box">
+            <div class="alert-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
+                    </path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                Importante: Valores na Tela vs. Valores Exatos
+            </div>
+            <p>Para manter as telas nas TVs limpas e de fácil leitura, os valores de "Nota Média", "Freq.", "Comp." e
+                "Pontos" são <strong>arredondados visualmente</strong>. No entanto, <strong>os cálculos de posições e
+                    desempates do sistema utilizam os valores matemáticos exatos e não arredondados</strong>.</p>
+            <ul>
+                <li>Podem haver alunos com a mesma "Nota Média" na tela (ex: 2.0), mas com "Pontos" diferentes.</li>
+                <li>Podem haver alunos com os mesmos "Pontos" na tela (ex: 51.9), mas ocupando posições diferentes
+                    devido aos critérios exatos de desempate nos bastidores.</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            SISTEMA MEU EXPANSIVO
+        </div>
+    </div>
+
+    <script>
+        function imprimirExato() {
+            // Pega o elemento principal que contém todo o regulamento
+            const page = document.querySelector('.page');
+
+            // Pega as medidas exatas do elemento na tela. 
+            // Adicionamos +30px na altura como margem de segurança porque os navegadores renderizam 
+            // as fontes ligeiramente maiores no formato PDF, o que empurra a última linha pra 2ª página.
+            const width = page.offsetWidth;
+            const height = page.offsetHeight + 30;
+
+            // Cria um bloco de estilo customizado para o PDF
+            let style = document.getElementById('dynamic-print-style');
+            if (!style) {
+                style = document.createElement('style');
+                style.id = 'dynamic-print-style';
+                document.head.appendChild(style);
+            }
+
+            // Injeta a regra CSS @page definindo o PDF para ser do tamanho exato da div em pixels.
+            // A margem: 0 no PDF garante que o navegador não esmague o documento.
+            style.innerHTML = `@page { size: ${width}px ${height}px; margin: 0; }`;
+
+            // Espera um instante mínimo para o navegador processar a nova regra e abre a impressão
+            setTimeout(() => {
+                window.print();
+            }, 100);
+        }
+    </script>
+</body>
+
+</html>
