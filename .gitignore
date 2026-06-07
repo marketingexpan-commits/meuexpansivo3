@@ -53,3 +53,6 @@ audit_*.json
 
 # Build artifacts
 *.tsbuildinfo
+
+# Local Regulation Files
+Regulamento_A4_Ranking.html
