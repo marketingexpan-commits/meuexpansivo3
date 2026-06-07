@@ -168,7 +168,15 @@ export const rankService = {
                     if (Math.abs(b.avgGrade - a.avgGrade) > 0.001) {
                         return b.avgGrade - a.avgGrade;
                     }
-                    // 3. Final: Alphabetical Order
+                    // 3. Tertiary: Attendance Rate (Frequência)
+                    if (Math.abs(b.attendanceRate - a.attendanceRate) > 0.001) {
+                        return b.attendanceRate - a.attendanceRate;
+                    }
+                    // 4. Quaternary: Behavior Score (Comportamento)
+                    if (Math.abs(b.behaviorScore - a.behaviorScore) > 0.001) {
+                        return b.behaviorScore - a.behaviorScore;
+                    }
+                    // 5. Final: Alphabetical Order
                     return a.name.localeCompare(b.name);
                 });
                 // Mapeia a posição de todos os alunos classificados na série
