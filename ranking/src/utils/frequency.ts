@@ -11,8 +11,11 @@ import type { GradeEntry, AttendanceRecord, AcademicSubject, AcademicSettings, C
 import { getCurrentSchoolYear, getDynamicBimester, calculateSchoolDays, calculateEffectiveTaughtClasses, getSubjectDurationForDay, isClassScheduled } from "../utils/academicUtils";
 
 /**
- * Calculates the number of taught classes for a given period and subject.
+ * Core function to calculate how many classes were taught for a given subject.
+ * Returns both the taught count and whether it's an estimated calculation.
  */
+const taughtClassesCache: Record<string, { taught: number, isEstimated: boolean }> = {};
+
 export const calculateTaughtClasses = (
     subject: string,
     gradeLevel: string,
@@ -26,6 +29,12 @@ export const calculateTaughtClasses = (
     shift?: string,
     matrices?: CurriculumMatrix[]
 ): { taught: number, isEstimated: boolean } => {
+    // Attempt cache
+    const cacheKey = `${subject}_${gradeLevel}_${startDate}_${endDate}_${unit}_${schoolClass}_${shift}`;
+    if (taughtClassesCache[cacheKey]) {
+        return taughtClassesCache[cacheKey];
+    }
+
     let taughtClasses = 0;
     let isEstimated = false;
 
@@ -97,7 +106,9 @@ export const calculateTaughtClasses = (
         }
     }
 
-    return { taught: taughtClasses, isEstimated };
+    const result = { taught: taughtClasses, isEstimated };
+    taughtClassesCache[cacheKey] = result;
+    return result;
 };
 
 /**

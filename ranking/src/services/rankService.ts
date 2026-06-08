@@ -65,7 +65,7 @@ export const rankService = {
         let studentsMap: any[] = [];
         let gradesMap: Record<string, any[]> = {};
         let occurrencesMap: Record<string, any[]> = {};
-        let allAttendanceRecords: any[] = [];
+        let studentAbsencesMap: Record<string, any[]> = {};
         let subjectsList: any[] = [];
         let academicSettings: any = null;
         let calendarEventsList: any[] = [];
@@ -137,10 +137,12 @@ export const rankService = {
 
                 const avgGrade = subjectsCount > 0 ? (totalMedias / subjectsCount) : 0;
 
+                const studentAbsences = studentAbsencesMap[student.id] || [];
+
                 // 2. Real Attendance Rate using Student App's dynamic calculation
                 const freqStr = calculateGeneralFrequency(
                     [],
-                    allAttendanceRecords,
+                    studentAbsences,
                     student.id,
                     student.gradeLevel || "",
                     subjectsList,
@@ -239,7 +241,19 @@ export const rankService = {
         });
 
         const unsubAttendance = onSnapshot(query(collection(db, "attendance"), where("unit", "==", unitId)), (snap) => {
-            allAttendanceRecords = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            const tempMap: Record<string, any[]> = {};
+            snap.docs.forEach(d => {
+                const data: any = { id: d.id, ...d.data() };
+                if (data.studentStatus) {
+                    Object.keys(data.studentStatus).forEach(studentId => {
+                        if (data.studentStatus[studentId] === 'Faltou') {
+                            if (!tempMap[studentId]) tempMap[studentId] = [];
+                            tempMap[studentId].push(data);
+                        }
+                    });
+                }
+            });
+            studentAbsencesMap = tempMap;
             attendanceLoaded = true;
             recompute();
         });

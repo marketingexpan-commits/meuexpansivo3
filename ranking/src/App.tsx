@@ -725,26 +725,7 @@ function App() {
       unsubRanks = rankService.listenToRank(unitId, async (newRanks) => {
         const currentWeekKey = getBrasiliaWeekKey();
         
-        // Se virou a semana ou se a nuvem está vazia, esta TV toma a iniciativa de atualizar a Nuvem!
-        if (currentWeekKey !== savedWeekKey) {
-          try {
-            const payload = {
-              weekKey: currentWeekKey,
-              ranks: JSON.parse(JSON.stringify(newRanks)), // Remove 'undefined' properties (como photoUrl vazia) para evitar crash no Firestore
-              timestamp: new Date().toISOString()
-            };
-            await setDoc(doc(db, "weeklySnapshots", unitId), payload);
-            
-            // Atualiza a memória base local para a matemática desta TV
-            savedWeekKey = currentWeekKey;
-            prevRanksObj = newRanks;
-          } catch (e) {
-            console.error("Failed to save weekly snapshot to Firestore:", e);
-          }
-        }
-
-        // Calcula as mudanças de posição para os alunos do Top 3
-        // COMPARAÇÃO: Pos Atual (em tempo real) vs Snapshot da Segunda-Feira (Nuvem)
+        // Calcula as mudanças de posição IMEDIATAMENTE sem esperar a nuvem
         const newChanges: Record<string, { type: 'up' | 'down' | 'same', diff: number }> = {};
         
         Object.keys(newRanks).forEach(grade => {
@@ -764,7 +745,6 @@ function App() {
                 newChanges[student.id] = { type: 'same', diff: 0 };
               }
             } else {
-              // Se o aluno entrou no Top 3 mas não estava na lista da segunda-feira
               if (oldList.length > 0) {
                 newChanges[student.id] = { type: 'up', diff: 0 };
               } else {
@@ -774,9 +754,26 @@ function App() {
           });
         });
 
-        // Sobrescrevemos TUDO porque a base de comparação agora é absoluta (A foto da nuvem)
+        // Atualiza a UI imediatamente para sair da tela de carregamento
         setRankChanges(newChanges);
         setRanks(newRanks);
+
+        // Se virou a semana ou se a nuvem está vazia, esta TV toma a iniciativa de atualizar a Nuvem!
+        // Fazemos isso assincronamente sem usar await para não travar a tela de carregamento!
+        if (currentWeekKey !== savedWeekKey) {
+          const payload = {
+            weekKey: currentWeekKey,
+            ranks: JSON.parse(JSON.stringify(newRanks)), 
+            timestamp: new Date().toISOString()
+          };
+          setDoc(doc(db, "weeklySnapshots", unitId), payload).then(() => {
+            savedWeekKey = currentWeekKey;
+            prevRanksObj = newRanks;
+            console.log("Weekly snapshot salvo com sucesso na nuvem!");
+          }).catch((e) => {
+            console.error("Failed to save weekly snapshot to Firestore:", e);
+          });
+        }
       });
     };
 
@@ -843,6 +840,7 @@ function App() {
   }, [totalSteps, isShowcaseStep]);
 
   const isLoading = isRegulationRoute ? false : (!settings || !settings.isEnabled || grades.length === 0);
+  console.log("LOADING STATE:", { isLoading, isRegulationRoute, hasSettings: !!settings, isEnabled: settings?.isEnabled, gradesLength: grades.length });
 
   // Show redirect screen when on regulation route
   if (isRegulationRoute) {
