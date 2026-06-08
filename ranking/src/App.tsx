@@ -761,14 +761,17 @@ function App() {
         // Se virou a semana ou se a nuvem está vazia, esta TV toma a iniciativa de atualizar a Nuvem!
         // Fazemos isso assincronamente sem usar await para não travar a tela de carregamento!
         if (currentWeekKey !== savedWeekKey) {
+          // Atualiza a memória base local imediatamente para garantir que as setinhas funcionem
+          // mesmo se a gravação no Firebase falhar (ex: por falta de permissão)
+          savedWeekKey = currentWeekKey;
+          prevRanksObj = newRanks;
+
           const payload = {
             weekKey: currentWeekKey,
             ranks: JSON.parse(JSON.stringify(newRanks)), 
             timestamp: new Date().toISOString()
           };
           setDoc(doc(db, "weeklySnapshots", unitId), payload).then(() => {
-            savedWeekKey = currentWeekKey;
-            prevRanksObj = newRanks;
             console.log("Weekly snapshot salvo com sucesso na nuvem!");
           }).catch((e) => {
             console.error("Failed to save weekly snapshot to Firestore:", e);
