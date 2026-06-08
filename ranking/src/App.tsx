@@ -730,7 +730,7 @@ function App() {
           try {
             const payload = {
               weekKey: currentWeekKey,
-              ranks: newRanks,
+              ranks: JSON.parse(JSON.stringify(newRanks)), // Remove 'undefined' properties (como photoUrl vazia) para evitar crash no Firestore
               timestamp: new Date().toISOString()
             };
             await setDoc(doc(db, "weeklySnapshots", unitId), payload);
