@@ -766,9 +766,19 @@ function App() {
           savedWeekKey = currentWeekKey;
           prevRanksObj = newRanks;
 
+          // Cria uma versão leve (apenas IDs e posições) para não estourar o limite de 1MB do Firestore
+          // (As fotos em base64 ocupam muito espaço e não são necessárias para calcular as setinhas)
+          const minimalRanks: Record<string, { id: string, rankPosition?: number }[]> = {};
+          Object.keys(newRanks).forEach(grade => {
+            minimalRanks[grade] = newRanks[grade].map(s => ({
+              id: s.id,
+              rankPosition: s.rankPosition
+            }));
+          });
+
           const payload = {
             weekKey: currentWeekKey,
-            ranks: JSON.parse(JSON.stringify(newRanks)), 
+            ranks: minimalRanks, 
             timestamp: new Date().toISOString()
           };
           setDoc(doc(db, "weeklySnapshots", unitId), payload).then(() => {
