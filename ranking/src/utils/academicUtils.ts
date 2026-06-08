@@ -549,10 +549,10 @@ export const isClassScheduled = (
     (calendarEvents || []).forEach(e => {
         if (!doesEventApplyToStudent(e, unit, gradeLevel, schoolClass, shift, subjectId)) return;
 
-        const s = new Date(e.startDate + 'T00:00:00');
-        const f = e.endDate ? new Date(e.endDate + 'T00:00:00') : new Date(e.startDate + 'T00:00:00');
+        const eStart = e.startDate;
+        const eEnd = e.endDate || e.startDate;
 
-        if (date >= s && date <= f) {
+        if (dateStr >= eStart && dateStr <= eEnd) {
             if (e.type === 'holiday_national' || e.type === 'holiday_state' || e.type === 'holiday_municipal' || e.type === 'holiday_school' || e.type === 'vacation' || e.type === 'recess') {
                 isHoliday = true;
             } else if (e.type === 'school_day' || e.type === 'substitution') {
@@ -621,9 +621,9 @@ export const getSubjectDurationForDay = (
     // Check for substitution in calendar events
     const dayEvent = (calendarEvents || []).find(e => {
         if (!doesEventApplyToStudent(e, unit, gradeLevel, schoolClass, shift, subjectId)) return false;
-        const s = new Date(e.startDate + 'T00:00:00');
-        const f = e.endDate ? new Date(e.endDate + 'T00:00:00') : new Date(e.startDate + 'T00:00:00');
-        return date >= s && date <= f;
+        const eStart = e.startDate;
+        const eEnd = e.endDate || e.startDate;
+        return dateStr >= eStart && dateStr <= eEnd;
     });
 
     if (dayEvent && (dayEvent.type === 'school_day' || dayEvent.type === 'substitution')) {
