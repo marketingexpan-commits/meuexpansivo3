@@ -26,8 +26,8 @@ export default async function handler(request, response) {
             throw new Error('GEMINI_API_KEY não configurada no servidor.');
         }
 
-        // Modelo atualizado (Gemini 2.0 Flash)
-        const model = 'gemini-2.0-flash';
+        // Modelo atualizado (Gemini 2.5 Flash)
+        const model = 'gemini-2.5-flash';
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
         const prompt = `

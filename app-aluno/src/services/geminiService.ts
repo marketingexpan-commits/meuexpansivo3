@@ -13,10 +13,10 @@ export const getStudyTips = async (subject: Subject, difficultyTopic: string, gr
       throw new Error("Chave de API não configurada. Local: Verifique .env | Produção: Verifique Variáveis de Ambiente no Vercel");
     }
 
-    // Using gemini-2.0-flash
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    // Using gemini-2.5-flash
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    console.log(`🤖 [Gemini Service] Solicitando dicas para: ${subject} - ${difficultyTopic} (Modelo: gemini-2.0-flash)`);
+    console.log(`🤖 [Gemini Service] Solicitando dicas para: ${subject} - ${difficultyTopic} (Modelo: gemini-2.5-flash)`);
 
     const prompt = `
       Atue como um tutor escolar especialista e amigável.
@@ -43,7 +43,7 @@ export const getStudyTips = async (subject: Subject, difficultyTopic: string, gr
 
     if (errorMessage.includes("API_KEY_INVALID")) return "Erro: A chave de API informada é inválida.";
     if (errorMessage.includes("BILLING_DISABLED")) return "Erro: A conta da API não tem faturamento ativado.";
-    return `Erro: O modelo atual (gemini-2.0-flash) não está disponível. Verifique se o nome do modelo está correto ou se sua chave tem acesso a ele.`;
+    return `Erro: O modelo atual (gemini-2.5-flash) não está disponível. Verifique se o nome do modelo está correto ou se sua chave tem acesso a ele.`;
 
     return `Erro Técnico: ${errorMessage}`;
   }
