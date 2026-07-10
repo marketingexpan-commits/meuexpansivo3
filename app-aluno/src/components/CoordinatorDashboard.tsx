@@ -2210,7 +2210,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     };
 
     const handleApproveGrade = async (grade: CoordinationGradeEntry) => {
-        if (!window.confirm(`Confirma a aprovação das notas de ${grade.subject}?`)) return;
+        const subjectName = academicSubjects?.find(s => s.id === grade.subject)?.name || SUBJECT_LABELS[grade.subject as keyof typeof SUBJECT_LABELS] || grade.subject;
+        if (!window.confirm(`Confirma a aprovação das notas de ${subjectName}?`)) return;
 
         try {
             const updatedBimesters = { ...grade.bimesters };
@@ -3855,7 +3856,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                                         return (
                                                                             <tr key={grade.id} className="hover:bg-blue-50 transition-colors border-b last:border-0 border-gray-200">
                                                                                 <td className="px-2 py-2 border-r border-gray-300 sticky left-0 bg-white z-10 shadow-sm">
-                                                                                    <div className="font-bold text-gray-700">{SUBJECT_LABELS[grade.subject as keyof typeof SUBJECT_LABELS] || grade.subject}</div>
+                                                                                    <div className="font-bold text-gray-700">{academicSubject?.name || SUBJECT_LABELS[grade.subject as keyof typeof SUBJECT_LABELS] || grade.subject}</div>
                                                                                     <div className="text-[9px] text-gray-400 mt-0.5">{tName}</div>
                                                                                 </td>
                                                                                 <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-12 font-medium bg-gray-50/30">
