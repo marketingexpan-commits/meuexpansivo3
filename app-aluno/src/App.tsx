@@ -612,6 +612,16 @@ const AppContent: React.FC = () => {
         setInitialLoad(prev => ({ ...prev, notifications: true }));
       }));
 
+      // EarlyChildhood Reports - Needed for grade report status indicator
+      // Note: EarlyChildhoodReport has no 'unit' field; unit scoping happens via studentId matching
+      unsubs.push(db.collection('earlyChildhoodReports').onSnapshot(snap => {
+        setEarlyChildhoodReports(snap.docs.map(doc => doc.data() as EarlyChildhoodReport));
+        setInitialLoad(prev => ({ ...prev, earlyChildhoodReports: true }));
+      }, (err) => {
+        console.error("Coordinator EarlyChildhoodReports listen error:", err);
+        setInitialLoad(prev => ({ ...prev, earlyChildhoodReports: true }));
+      }));
+
       // We just need to signal that the "initial load" is complete so the router can proceed.
       setInitialLoad(prev => ({
         ...prev,
@@ -1495,6 +1505,7 @@ const AppContent: React.FC = () => {
           onLogout={handleLogout}
           onCreateNotification={createNotification}
           academicSettings={academicSettings}
+          earlyChildhoodReports={earlyChildhoodReports}
           tickets={tickets}
           calendarEvents={calendarEvents}
           classSchedules={classSchedules}

@@ -15,7 +15,9 @@ import {
     AcademicSettings,
     CalendarEvent,
     UNIT_LABELS,
-    SHIFT_LABELS
+    SHIFT_LABELS,
+    EarlyChildhoodReport,
+    CompetencyStatus
 } from '../types';
 
 import { 
@@ -49,6 +51,7 @@ interface CoordinatorStudentReportModalProps {
     student: Student | null;
     academicSettings: any;
     calendarEvents: CalendarEvent[];
+    earlyChildhoodReports?: EarlyChildhoodReport[];
 }
 
 export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportModalProps> = ({
@@ -56,7 +59,8 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
     onClose,
     student,
     academicSettings,
-    calendarEvents
+    calendarEvents,
+    earlyChildhoodReports = []
 }) => {
     const { subjects: academicSubjects, matrices, grades: allGrades, schedules: classSchedules } = useAcademicData();
 
@@ -64,6 +68,7 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
     const [studentAttendance, setStudentAttendance] = useState<AttendanceRecord[]>([]);
     const [loading, setLoading] = useState(false);
     const [localAcademicSettings, setLocalAcademicSettings] = useState<AcademicSettings | null>(null);
+    const [selectedSemesterModal, setSelectedSemesterModal] = useState<1 | 2>(1);
 
     // Use prop if valid (has bimesters), otherwise fall back to locally fetched settings
     const effectiveSettings = (academicSettings?.bimesters?.length > 0) ? academicSettings : localAcademicSettings;
@@ -78,7 +83,7 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
     }, [effectiveSettings]);
 
     const isEarlyChildhood = student?.gradeLevel?.toLowerCase().includes('infantil');
-    const headerText = 'BOLETIM ESCOLAR 2026';
+    const headerText = isEarlyChildhood ? 'RELATÓRIO DE DESENVOLVIMENTO' : 'BOLETIM ESCOLAR 2026';
 
     const today = new Date().toLocaleDateString('en-CA');
 
@@ -384,7 +389,7 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                         <div className="animate-fade-in-up">
                             <style>{`
                                 @media print {
-                                    @page { size: landscape; margin: 10mm; }
+                                    @page { size: ${isEarlyChildhood ? 'portrait' : 'landscape'}; margin: 8mm; }
                                     
                                     /* 1. Hide the background dashboard elements that cause extra pages */
                                     main, 
@@ -453,9 +458,9 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
 
                                     /* Standard print helpers */
                                     .print-scale-wrapper {
-                                        width: 181.818% !important;
-                                        transform: scale(0.55) !important;
-                                        transform-origin: top left !important;
+                                        width: ${isEarlyChildhood ? '100%' : '181.818%'} !important;
+                                        transform: ${isEarlyChildhood ? 'scale(0.88)' : 'scale(0.55)'} !important;
+                                        transform-origin: ${isEarlyChildhood ? 'top center' : 'top left'} !important;
                                         display: flex !important;
                                         justify-content: center !important;
                                         margin: 0 !important;
@@ -466,7 +471,7 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                         padding: 0 !important; 
                                         margin: 0 auto !important; 
                                         display: block !important;
-                                        width: max-content !important;
+                                        width: ${isEarlyChildhood ? '100%' : 'max-content'} !important;
                                         max-width: none !important;
                                     }
 
@@ -476,6 +481,54 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                     
                                     /* Force colors */
                                     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+                                    ${isEarlyChildhood ? `
+                                    /* Additional compact rules for Early Childhood to guarantee 1 page */
+                                    .print-bulletin-container {
+                                        width: 100% !important;
+                                        max-width: 100% !important;
+                                    }
+                                    h4.text-xs {
+                                        font-size: 10px !important;
+                                        margin-bottom: 2px !important;
+                                        padding-bottom: 1px !important;
+                                    }
+                                    .space-y-4 > * + * {
+                                        margin-top: 4px !important;
+                                    }
+                                    .space-y-1 > * + * {
+                                        margin-top: 1px !important;
+                                    }
+                                    .py-1 {
+                                        padding-top: 1px !important;
+                                        padding-bottom: 1px !important;
+                                    }
+                                    .gap-3 {
+                                        gap: 4px !important;
+                                    }
+                                    .text-xs {
+                                        font-size: 10px !important;
+                                    }
+                                    .text-[10px] {
+                                        font-size: 8px !important;
+                                        padding-top: 1px !important;
+                                        padding-bottom: 1px !important;
+                                    }
+                                    .p-4 {
+                                        padding: 8px !important;
+                                    }
+                                    .mb-8 {
+                                        margin-bottom: 24px !important;
+                                        padding-bottom: 8px !important;
+                                    }
+                                    .mt-6 {
+                                        margin-top: 4px !important;
+                                        padding: 6px !important;
+                                    }
+                                    .mt-8, .mt-16 {
+                                        margin-top: 80px !important;
+                                    }
+                                    ` : ''}
                                 }
                             `}</style>
                             
@@ -498,8 +551,14 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                             </div>
                                         </div>
                                         <div className="text-left md:text-right print:text-right w-full md:w-auto print:w-auto">
-                                            <h4 className="text-xl font-bold text-gray-800 uppercase print:text-base">{headerText}</h4>
-                                            <p className="text-xs text-gray-500 mt-1 print:mt-0">Emissão: {new Date().toLocaleDateString('pt-BR')}</p>
+                                            <h4 className={`font-bold uppercase print:text-base ${isEarlyChildhood ? 'text-lg md:text-xl text-blue-950' : 'text-xl text-gray-800'}`}>{headerText}</h4>
+                                            {isEarlyChildhood ? (
+                                                <p className="text-sm text-slate-500 mt-1 font-medium tracking-wider print:mt-0">
+                                                    {academicSettings?.year || new Date().getFullYear()}
+                                                </p>
+                                            ) : (
+                                                <p className="text-xs text-gray-500 mt-1 print:mt-0">Emissão: {new Date().toLocaleDateString('pt-BR')}</p>
+                                            )}
                                         </div>
                                     </div>
 
@@ -751,6 +810,87 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                             </tbody>
                                         </table>
                                     </div>
+                                ) : isEarlyChildhood ? (
+                                    <div>
+                                        {/* Controls */}
+                                        <div className="mb-4 flex items-center justify-between gap-3 print:hidden">
+                                            <div className="flex items-center gap-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Semestre:</label>
+                                                <select
+                                                    value={selectedSemesterModal}
+                                                    onChange={(e) => setSelectedSemesterModal(Number(e.target.value) as 1 | 2)}
+                                                    className="border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-blue-950 bg-white focus:ring-2 focus:ring-blue-950 outline-none shadow-sm"
+                                                >
+                                                    <option value={1}>1º Semestre</option>
+                                                    <option value={2}>2º Semestre</option>
+                                                </select>
+                                            </div>
+                                            <Button
+                                                onClick={() => window.print()}
+                                                variant="outline"
+                                                className="flex items-center gap-2 bg-white shadow-sm border-slate-200 hover:bg-slate-50 text-blue-950 font-bold px-4 py-2 rounded-lg transition-all active:scale-95"
+                                            >
+                                                <Download className="w-4 h-4" /> Imprimir Relatório
+                                            </Button>
+                                        </div>
+
+                                        {/* Report content for selected semester */}
+                                        {(() => {
+                                            const year = academicSettings?.year || new Date().getFullYear();
+                                            const reportId = `${student!.id}_${selectedSemesterModal}_${year}`;
+                                            const report = earlyChildhoodReports.find(r => r.id === reportId);
+                                            return (
+                                                <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                                                    <div className="bg-blue-950 text-white px-5 py-3 flex items-center justify-between print:hidden">
+                                                        <span className="font-bold text-sm uppercase tracking-wider">{selectedSemesterModal}º Semestre</span>
+                                                        {report ? (
+                                                            <span className="text-xs bg-green-400 text-green-900 font-bold px-3 py-1 rounded-full">Lançado</span>
+                                                        ) : (
+                                                            <span className="text-xs bg-amber-400 text-amber-900 font-bold px-3 py-1 rounded-full">Pendente</span>
+                                                        )}
+                                                    </div>
+                                                    {/* Print-only semester header */}
+                                                    <div className="hidden print:flex items-center justify-between px-5 py-3 bg-slate-100 border-b border-slate-300 mb-4">
+                                                        <span className="font-bold text-sm uppercase tracking-wider text-blue-950">{selectedSemesterModal}º Semestre — {year}</span>
+                                                    </div>
+                                                    {report ? (
+                                                        <div className="p-4 space-y-4">
+                                                            {report.fields.map(field => (
+                                                                <div key={field.id}>
+                                                                    <h4 className="text-xs font-black uppercase tracking-wider text-blue-950 mb-2 border-b border-slate-100 pb-1">{field.name}</h4>
+                                                                    <div className="space-y-1">
+                                                                        {field.competencies.map(comp => (
+                                                                            <div key={comp.id} className="flex items-start gap-3 py-1">
+                                                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 mt-0.5 ${
+                                                                                    comp.status === CompetencyStatus.DEVELOPED ? 'bg-green-100 text-green-700' :
+                                                                                    comp.status === CompetencyStatus.IN_PROCESS ? 'bg-amber-100 text-amber-700' :
+                                                                                    comp.status === CompetencyStatus.NOT_OBSERVED ? 'bg-slate-100 text-slate-500' :
+                                                                                    'bg-slate-100 text-slate-400'
+                                                                                }`}>
+                                                                                    {comp.status || 'Não avaliado'}
+                                                                                </span>
+                                                                                <span className="text-xs text-slate-700 leading-relaxed">{comp.description}</span>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                            {report.teacherObservations && (
+                                                                <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Observações do Professor</p>
+                                                                    <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">{report.teacherObservations}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="p-8 text-center text-slate-400">
+                                                            <p className="text-sm">Relatório ainda não lançado pelo professor.</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
                                 ) : (
                                     <div className="p-12 text-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl">
                                         <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-4" />
@@ -761,13 +901,13 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                 {/* SIGNATURES */}
                                 <div className="mt-8 md:mt-16 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-20 print:grid-cols-2 print:gap-20 print:mt-8">
                                     <div className="text-center">
-                                        <div className="border-t-2 border-black mx-auto w-full max-w-[280px] md:max-w-96 print:max-w-96 pt-3">
+                                        <div className="border-t border-black mx-auto w-full max-w-[280px] md:max-w-96 print:max-w-96 pt-3">
                                             <p className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Coordenação Pedagógica</p>
                                             <p className="text-[9px] text-slate-400 mt-1 uppercase">Assinatura e Carimbo</p>
                                         </div>
                                     </div>
                                     <div className="text-center">
-                                        <div className="border-t-2 border-black mx-auto w-full max-w-[280px] md:max-w-96 print:max-w-96 pt-3">
+                                        <div className="border-t border-black mx-auto w-full max-w-[280px] md:max-w-96 print:max-w-96 pt-3">
                                             <p className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Direção Escolar</p>
                                             <p className="text-[9px] text-slate-400 mt-1 uppercase">Assinatura e Carimbo</p>
                                         </div>

@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
-import { Student, GradeEntry, AcademicSubject, CurriculumMatrix, SUBJECT_SHORT_LABELS, UNIT_LABELS, SchoolUnit, SchoolShift, SHIFT_LABELS } from '../types';
+import { Student, GradeEntry, AcademicSubject, CurriculumMatrix, SUBJECT_SHORT_LABELS, UNIT_LABELS, SchoolUnit, SchoolShift, SHIFT_LABELS, EarlyChildhoodReport } from '../types';
 import { SchoolLogo } from './SchoolLogo';
 import { getCurriculumSubjects, SCHOOL_LOGO_URL } from '../constants';
 import { getSubjectShortLabel } from '../utils/subjectUtils';
@@ -13,10 +13,11 @@ interface CoordinatorGradeReportProps {
     students: Student[]; grades: GradeEntry[]; selectedBimester: number;
     selectedGrade: string; selectedClass: string; selectedShift: string;
     unit: string; academicSubjects?: AcademicSubject[]; matrices?: CurriculumMatrix[];
+    earlyChildhoodReports?: EarlyChildhoodReport[]; year: number;
 }
 
 export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
-    students, grades, selectedBimester, selectedGrade, selectedClass, selectedShift, unit, academicSubjects, matrices
+    students, grades, selectedBimester, selectedGrade, selectedClass, selectedShift, unit, academicSubjects, matrices, earlyChildhoodReports = [], year
 }) => {
     const bimesterKey = `bimester${selectedBimester}` as keyof GradeEntry['bimesters'];
     // wrapperRef is on the outer container whose width is constrained by the layout (w-full + overflow-hidden on parent).
@@ -47,6 +48,8 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
     }, [students]); // Re-run when report data changes
 
     const sortedStudents = useMemo(() => [...students].sort((a, b) => a.name.localeCompare(b.name)), [students]);
+
+    const isEarlyChildhood = ['Berçário', 'Nível I', 'Nível II', 'Nível III', 'Nível IV', 'Nível V'].includes(selectedGrade);
 
     const subjectsToShow = useMemo(() => {
         if (students.length === 0) return [];
@@ -90,16 +93,24 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
     const handlePrint = () => {
         const pagesHtml = pages.map((pg, pi) => {
             const rows = pg.map((s, idx) => {
-                const sg = grades.filter(g => g.studentId === s.id);
-                const cells = subjectsToShow.map((id, si) => {
-                    const bData = sg.find(g => g.subject === id)?.bimesters?.[bimesterKey];
-                    const notaValue = bData?.media;
-                    const hasLaunched = bData?.nota !== undefined && bData?.nota !== null;
-                    const val = hasLaunched ? (notaValue !== undefined ? notaValue.toFixed(1) : '0.0') : '-';
-                    const red = hasLaunched && notaValue !== undefined && notaValue < 7;
-                    return `<td class="td-subj ${red ? 'red' : ''}" style="${si === subjectsToShow.length - 1 ? 'border-right:none' : ''}">${val}</td>`;
-                }).join('');
-                return `<tr class="${idx % 2 === 0 ? 'row-even' : 'row-odd'}"><td class="col-code">${s.code}</td><td class="col-name">${s.name.toUpperCase()}</td>${cells}</tr>`;
+                if (isEarlyChildhood) {
+                    const reportId = `${s.id}_${selectedBimester}_${year}`; // selectedBimester actually represents semester 1 or 2 here
+                    const hasReport = earlyChildhoodReports.some(r => r.id === reportId);
+                    const val = hasReport ? 'Lançado' : 'Pendente';
+                    const color = hasReport ? '#16a34a' : '#dc2626'; // green-600 or red-600
+                    return `<tr class="${idx % 2 === 0 ? 'row-even' : 'row-odd'}"><td class="col-code">${s.code}</td><td class="col-name">${s.name.toUpperCase()}</td><td class="td-subj" style="border-right:none; color:${color}; font-weight:bold;">${val}</td></tr>`;
+                } else {
+                    const sg = grades.filter(g => g.studentId === s.id);
+                    const cells = subjectsToShow.map((id, si) => {
+                        const bData = sg.find(g => g.subject === id)?.bimesters?.[bimesterKey];
+                        const notaValue = bData?.media;
+                        const hasLaunched = bData?.nota !== undefined && bData?.nota !== null;
+                        const val = hasLaunched ? (notaValue !== undefined ? notaValue.toFixed(1) : '0.0') : '-';
+                        const red = hasLaunched && notaValue !== undefined && notaValue < 7;
+                        return `<td class="td-subj ${red ? 'red' : ''}" style="${si === subjectsToShow.length - 1 ? 'border-right:none' : ''}">${val}</td>`;
+                    }).join('');
+                    return `<tr class="${idx % 2 === 0 ? 'row-even' : 'row-odd'}"><td class="col-code">${s.code}</td><td class="col-name">${s.name.toUpperCase()}</td>${cells}</tr>`;
+                }
             }).join('');
             const footer = `<div class="page-footer"><span>MeuExpansivo</span><span style="text-transform:uppercase">Página ${pi + 1} de ${pages.length}</span></div>`;
             return `<div class="print-page">
@@ -109,11 +120,15 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
                         <div class="school-info"><strong>EXPANSIVO REDE DE ENSINO</strong><span>Unidade: ${unitLabel}</span></div>
                     </div>
                     <div class="page-meta">
-                        <div style="font-size:13px;font-weight:900;color:#111;letter-spacing:-0.3px;text-transform:uppercase">Relatório de Notas</div>
-                        <div style="font-size:8px;font-weight:700;color:#334155;margin-top:3px;text-transform:uppercase"><b>${selectedGrade}</b> &nbsp;|&nbsp; <span style="color:#94a3b8">Turma:</span> <b>${selectedClass}</b> &nbsp;|&nbsp; <span style="color:#94a3b8">Turno:</span> <b>${shiftLabel}</b> &nbsp;|&nbsp; <b>${selectedBimester}º Bimestre</b></div>
+                        <div style="font-size:13px;font-weight:900;color:#111;letter-spacing:-0.3px;text-transform:uppercase">${isEarlyChildhood ? 'Relatório de Desenvolvimento' : 'Relatório de Notas'}</div>
+                        <div style="font-size:8px;font-weight:700;color:#334155;margin-top:3px;text-transform:uppercase"><b>${selectedGrade}</b> &nbsp;|&nbsp; <span style="color:#94a3b8">Turma:</span> <b>${selectedClass}</b> &nbsp;|&nbsp; <span style="color:#94a3b8">Turno:</span> <b>${shiftLabel}</b> &nbsp;|&nbsp; <b>${selectedBimester}º ${isEarlyChildhood ? 'Semestre' : 'Bimestre'}</b></div>
                     </div>
                 </div>
-                <table><thead><tr><th class="th-code">Cód.</th><th class="th-name">Aluno(a)</th>${subjectsToShow.map((id, idx) => `<th class="subj-th" style="${idx === subjectsToShow.length - 1 ? 'border-right:none' : ''}"><div class="subj-label"><span>${getSubjectShortLabel(id, academicSubjects)}</span></div></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
+                <table><thead><tr><th class="th-code">Cód.</th><th class="th-name">Aluno(a)</th>${
+                    isEarlyChildhood 
+                    ? `<th class="subj-th" style="width:70px; border-right:none;"><div class="subj-label" style="transform:none;"><span>Status</span></div></th>`
+                    : subjectsToShow.map((id, idx) => `<th class="subj-th" style="${idx === subjectsToShow.length - 1 ? 'border-right:none' : ''}"><div class="subj-label"><span>${getSubjectShortLabel(id, academicSubjects)}</span></div></th>`).join('')
+                }</tr></thead><tbody>${rows}</tbody></table>
                 ${footer}
             </div>`;
         }).join('');
@@ -129,7 +144,7 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Relatório de Notas — ${selectedGrade} ${selectedClass} ${selectedBimester}º Bim</title>
+    <title>Relatório de Notas — ${selectedGrade} ${selectedClass} ${selectedBimester}º ${isEarlyChildhood ? 'Sem' : 'Bim'}</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: Arial, sans-serif; background: #f1f5f9; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -306,55 +321,72 @@ export const CoordinatorGradeReport: React.FC<CoordinatorGradeReportProps> = ({
                                     </div>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
-                                    <div style={{ fontSize: 13, fontWeight: 900, color: '#111', textTransform: 'uppercase', letterSpacing: '-0.3px' }}>Relatório de Notas</div>
-                                    <div style={{ fontSize: 8, fontWeight: 700, color: '#334155', marginTop: 3 }}>
-                                        <b>{selectedGrade}</b> &nbsp;|&nbsp; <span style={{ color: '#94a3b8' }}>Turma:</span> <b>{selectedClass}</b> &nbsp;|&nbsp; <span style={{ color: '#94a3b8' }}>Turno:</span> <b>{SHIFT_LABELS[selectedShift as SchoolShift] || selectedShift}</b> &nbsp;|&nbsp; <b>{selectedBimester}º Bimestre</b>
+                                    <div style={{ fontSize: 13, fontWeight: 900, color: '#111', textTransform: 'uppercase', letterSpacing: '-0.3px' }}>{isEarlyChildhood ? 'Relatório de Desenvolvimento' : 'Relatório de Notas'}</div>
+                                    <div style={{ fontSize: 8, fontWeight: 700, color: '#334155', marginTop: 3, textTransform: 'uppercase' }}>
+                                        <b>{selectedGrade}</b> &nbsp;|&nbsp; <span style={{ color: '#94a3b8' }}>Turma:</span> <b>{selectedClass}</b> &nbsp;|&nbsp; <span style={{ color: '#94a3b8' }}>Turno:</span> <b>{SHIFT_LABELS[selectedShift as SchoolShift] || selectedShift}</b> &nbsp;|&nbsp; <b>{selectedBimester}º {isEarlyChildhood ? 'Semestre' : 'Bimestre'}</b>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Table */}
-                            <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed', fontSize: 9, border: '1px solid #000' }}>
-                                <thead>
-                                    <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #000' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: 9, border: '1px solid #000' }}>
+                                <thead style={{ background: '#f1f5f9', borderBottom: '1px solid #000' }}>
+                                    <tr>
                                         <th style={{ width: 40, padding: '4px 2px', textAlign: 'center', fontSize: 7.5, fontWeight: 900, textTransform: 'uppercase', color: '#64748b', borderRight: '1px solid #000' }}>Cód.</th>
                                         <th style={{ width: 'auto', padding: '4px 6px', textAlign: 'left', fontSize: 8, fontWeight: 900, textTransform: 'uppercase', color: '#0f172a', borderRight: '1px solid #000' }}>Aluno(a)</th>
-                                        {subjectsToShow.map((id, si) => (
-                                            <th key={id} style={{ width: 30, padding: 0, background: '#f8fafc', borderRight: si < subjectsToShow.length - 1 ? '1px solid #000' : 'none' }}>
+                                        {isEarlyChildhood ? (
+                                            <th style={{ width: 70, padding: 0, background: '#f8fafc', borderRight: 'none' }}>
                                                 <div style={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                    <span style={{ display: 'inline-block', transform: 'rotate(-90deg)', whiteSpace: 'nowrap', fontSize: 8.5, fontWeight: 900, textTransform: 'uppercase', color: '#1e293b', letterSpacing: '-0.3px' }}>
-                                                        {getSubjectShortLabel(id, academicSubjects)}
-                                                    </span>
+                                                    <span style={{ fontSize: 8.5, fontWeight: 900, textTransform: 'uppercase', color: '#1e293b', letterSpacing: -0.3 }}>Status</span>
                                                 </div>
                                             </th>
-                                        ))}
+                                        ) : (
+                                            subjectsToShow.map((id, idx) => (
+                                                <th key={id} style={{ width: 30, padding: 0, background: '#f8fafc', borderRight: idx === subjectsToShow.length - 1 ? 'none' : '1px solid #000' }}>
+                                                    <div style={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <span style={{ display: 'inline-block', transform: 'rotate(-90deg)', whiteSpace: 'nowrap', fontSize: 8.5, fontWeight: 900, textTransform: 'uppercase', color: '#1e293b', letterSpacing: -0.3 }}>
+                                                            {getSubjectShortLabel(id, academicSubjects)}
+                                                        </span>
+                                                    </div>
+                                                </th>
+                                            ))
+                                        )}
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {pageStudents.map((student, idx) => {
-                                        const sg = grades.filter(g => g.studentId === student.id);
+                                    {pageStudents.map((s, idx) => {
+                                        const sg = grades.filter(g => g.studentId === s.id);
                                         return (
-                                            <tr key={student.id} style={{ background: idx % 2 === 0 ? '#fff' : '#f8fafc', borderBottom: '1px solid #000' }}>
-                                                <td style={{ padding: '3px 2px', textAlign: 'center', fontSize: 7.5, fontWeight: 700, color: '#94a3b8', fontFamily: 'monospace', borderRight: '1px solid #000', width: 40 }}>{student.code}</td>
-                                                <td style={{ padding: '3px 6px', fontSize: 8, fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', borderRight: '1px solid #000', width: 'auto' }}>{student.name.toUpperCase()}</td>
-                                                {subjectsToShow.map((id, si) => {
-                                                    const bData = sg.find(g => g.subject === id)?.bimesters?.[bimesterKey];
-                                                    const notaValue = bData?.media;
-                                                    const hasLaunched = bData?.nota !== undefined && bData?.nota !== null;
-                                                    const display = hasLaunched ? (notaValue !== undefined ? notaValue.toFixed(1) : '0.0') : '-';
+                                            <tr key={s.id} style={{ background: idx % 2 === 0 ? '#fff' : '#f8fafc', borderBottom: '1px solid #000' }}>
+                                                <td style={{ padding: '3px 2px', textAlign: 'center', fontSize: 7.5, fontWeight: 700, color: '#94a3b8', fontFamily: 'monospace', borderRight: '1px solid #000' }}>{s.code}</td>
+                                                <td style={{ padding: '3px 6px', fontSize: 8, fontWeight: 700, color: '#0f172a', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', borderRight: '1px solid #000' }}>{s.name.toUpperCase()}</td>
+                                                {isEarlyChildhood ? (() => {
+                                                    const reportId = `${s.id}_${selectedBimester}_${year}`;
+                                                    const hasReport = earlyChildhoodReports.some(r => r.id === reportId);
                                                     return (
-                                                        <td key={id} style={{ padding: '3px 2px', textAlign: 'center', fontSize: 8.5, fontWeight: 700, color: (hasLaunched && notaValue !== undefined && notaValue < 7) ? '#dc2626' : '#334155', borderRight: si < subjectsToShow.length - 1 ? '1px solid #000' : 'none', width: 30 }}>
-                                                            {display}
+                                                        <td style={{ padding: '3px 2px', textAlign: 'center', fontSize: 8.5, fontWeight: 700, borderRight: 'none', color: hasReport ? '#16a34a' : '#dc2626' }}>
+                                                            {hasReport ? 'Lançado' : 'Pendente'}
                                                         </td>
                                                     );
-                                                })}
+                                                })() : (
+                                                    subjectsToShow.map((id, si) => {
+                                                        const bData = sg.find(g => g.subject === id)?.bimesters?.[bimesterKey];
+                                                        const notaValue = bData?.media;
+                                                        const hasLaunched = bData?.nota !== undefined && bData?.nota !== null;
+                                                        const val = hasLaunched ? (notaValue !== undefined ? notaValue.toFixed(1) : '0.0') : '-';
+                                                        const red = hasLaunched && notaValue !== undefined && notaValue < 7;
+                                                        return (
+                                                            <td key={id} style={{ padding: '3px 2px', textAlign: 'center', fontSize: 8.5, fontWeight: 700, color: red ? '#dc2626' : '#334155', borderRight: si === subjectsToShow.length - 1 ? 'none' : '1px solid #000' }}>
+                                                                {val}
+                                                            </td>
+                                                        );
+                                                    })
+                                                )}
                                             </tr>
                                         );
                                     })}
                                 </tbody>
                             </table>
 
-                            {/* Footer */}
                             <div style={{ marginTop: 'auto', paddingTop: 8, borderTop: '0.5px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 7.5, fontWeight: 700, color: '#94a3b8', letterSpacing: 0.5 }}>
                                 <span>MeuExpansivo</span>
                                 <span style={{ textTransform: 'uppercase' }}>Página {pageIdx + 1} de {pages.length}</span>

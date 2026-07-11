@@ -67,6 +67,7 @@ import { ListItem } from '@tiptap/extension-list-item';
 import { BulletList } from '@tiptap/extension-bullet-list';
 import { OrderedList } from '@tiptap/extension-ordered-list';
 import { CoordinatorStudentReportModal } from './CoordinatorStudentReportModal';
+import { EarlyChildhoodReport } from '../types';
 
 // --- SUB-COMPONENT: EDITOR TOOLBAR ---
 const MenuBar = ({ editor }: { editor: any }) => {
@@ -1260,6 +1261,7 @@ interface CoordinatorDashboardProps {
     onLogout: () => void;
     onCreateNotification?: (title: string, message: string, studentId?: string, teacherId?: string, coordinatorId?: string) => Promise<void>;
     academicSettings?: any;
+    earlyChildhoodReports?: EarlyChildhoodReport[];
     tickets?: Ticket[];
     announcements?: Announcement[];
     calendarEvents?: CalendarEvent[];
@@ -1552,6 +1554,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     onLogout,
     onCreateNotification,
     academicSettings,
+    earlyChildhoodReports = [],
     tickets: _tickets = [],
     announcements: _announcements = [],
     calendarEvents: _calendarEvents = [],
@@ -3317,7 +3320,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                             title="Relatório de Notas por Série"
                                         >
                                             <ClipboardList className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
-                                            <span className="text-[10px] font-bold uppercase tracking-wider">Relatório de Notas</span>
+                                            <span className="text-[10px] font-bold uppercase tracking-wider">Relatórios de Notas/Desenv.</span>
                                         </button>
                                     </div>
 
@@ -5511,7 +5514,13 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                         <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Série</label>
                                         <select
                                             value={reportGradeFilter}
-                                            onChange={(e) => setReportGradeFilter(e.target.value)}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setReportGradeFilter(val);
+                                                if (['Berçário', 'Nível I', 'Nível II', 'Nível III', 'Nível IV', 'Nível V'].includes(val) && reportBimesterFilter > 2) {
+                                                    setReportBimesterFilter(1);
+                                                }
+                                            }}
                                             className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
                                         >
                                             <option value="">-- Selecione --</option>
@@ -5565,15 +5574,23 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
                                     {/* BIMESTER FILTER */}
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Bimestre</label>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">
+                                            {['Berçário', 'Nível I', 'Nível II', 'Nível III', 'Nível IV', 'Nível V'].includes(reportGradeFilter) ? 'Semestre' : 'Bimestre'}
+                                        </label>
                                         <select
                                             value={reportBimesterFilter}
                                             onChange={(e) => setReportBimesterFilter(Number(e.target.value))}
                                             className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
                                         >
-                                            {[1, 2, 3, 4].map(num => (
-                                                <option key={num} value={num}>{num}º Bimestre</option>
-                                            ))}
+                                            {['Berçário', 'Nível I', 'Nível II', 'Nível III', 'Nível IV', 'Nível V'].includes(reportGradeFilter) ? (
+                                                [1, 2].map(num => (
+                                                    <option key={num} value={num}>{num}º Semestre</option>
+                                                ))
+                                            ) : (
+                                                [1, 2, 3, 4].map(num => (
+                                                    <option key={num} value={num}>{num}º Bimestre</option>
+                                                ))
+                                            )}
                                         </select>
                                     </div>
 
@@ -5584,7 +5601,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                             className="w-full py-3 !bg-blue-950 hover:!bg-black text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
                                         >
                                             {reportLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
-                                            {reportLoading ? 'Gerando Relatório...' : 'Gerar Relatório de Notas'}
+                                            {reportLoading ? 'Gerando Relatório...' : 'Gerar Relatório'}
                                         </Button>
                                     </div>
                                 </div>
@@ -5600,6 +5617,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                 unit={currentUnit}
                                 academicSubjects={academicSubjects}
                                 matrices={matrices}
+                                earlyChildhoodReports={earlyChildhoodReports}
+                                year={academicSettings?.year || new Date().getFullYear()}
                             />
                         </div>
                     )}
@@ -5667,6 +5686,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                     student={selectedReportStudent}
                     academicSettings={academicSettings}
                     calendarEvents={calendarEvents}
+                    earlyChildhoodReports={earlyChildhoodReports}
                 />
             )}
         </div >
