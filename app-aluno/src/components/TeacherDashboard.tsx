@@ -2615,9 +2615,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     {/* CONTEÚDO TAB: NOTAS/RELATÓRIOS/ETC (Original) */}
                     {activeTab === 'grades' && (
                         <div className="flex flex-col md:flex-row space-y-6 md:space-y-0 md:space-x-6">
-                            <div className="w-full md:w-1/3 p-4 border rounded-lg shadow-md h-full bg-white flex flex-col">
-                                <h2 className="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">Alunos da Turma</h2>
-                                <div className="mb-4 space-y-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                            <div className="w-full md:w-1/3 border rounded-lg shadow-md bg-white flex flex-col h-[700px] md:h-[80vh] overflow-y-auto relative">
+                                <div className="sticky top-0 bg-white z-10 px-4 pt-4 pb-2 border-b border-gray-100">
+                                    <h2 className="text-xl font-semibold text-gray-800">Alunos da Turma</h2>
+                                </div>
+                                <div className="mb-4 space-y-3 bg-gray-50 p-3 rounded-lg border border-gray-200 shrink-0 mx-4 mt-4">
                                     <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Filtrar por:</h3>
                                     <div>
                                         <label className="text-xs text-gray-400 block mb-1">Unidade Escolar</label>
@@ -2649,7 +2651,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                         className="w-full text-sm p-2 border border-gray-300 rounded focus:ring-blue-950 focus:border-blue-950 mt-2"
                                     />
                                 </div>
-                                <div ref={studentListRef} className="flex-1 overflow-y-auto pr-2 relative">
+                                <div ref={studentListRef} className="flex-1 relative min-h-0 px-4 pb-4">
                                     <ul className="divide-y divide-gray-200">
                                         {filteredStudents.length > 0 ? (
                                             filteredStudents.map(student => (
@@ -2691,7 +2693,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
 
 
-                            <div ref={gradeFormRef} className="w-full md:w-2/3 p-6 border rounded-lg shadow-md bg-blue-50 overflow-y-auto max-h-[85vh]">
+                            <div ref={gradeFormRef} className="w-full md:w-2/3 p-6 border rounded-lg shadow-md bg-blue-50 overflow-y-auto h-[700px] md:h-[80vh]">
                                 {!selectedStudent ? (
                                     <div className="flex flex-col items-center justify-center h-64 text-gray-400">
                                         <p className="text-lg">Selecione um aluno na lista ao lado.</p>
