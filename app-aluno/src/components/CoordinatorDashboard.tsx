@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { db, storage } from '../firebaseConfig';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
@@ -1549,6 +1549,109 @@ const CoordinatorPhotographerDemands: React.FC<{ unit: SchoolUnit, coordinator: 
     );
 };
 
+// ─── Grade Selection Store ───────────────────────────────────────────────────
+// Uses a ref-based store so checkbox toggles NEVER cause a re-render of the
+// heavy CoordinatorDashboard component. Each lightweight sub-component
+// subscribes to the store and manages its own local state.
+type GradeSelStore = {
+    state: Record<string, Set<string>>;
+    checkboxSetters: Map<string, React.Dispatch<React.SetStateAction<boolean>>>;
+    selectAllSetters: Map<string, React.Dispatch<React.SetStateAction<boolean>>>;
+    footerSetters: Map<string, React.Dispatch<React.SetStateAction<number>>>;
+};
+
+// Individual row checkbox — subscribes to store, zero parent re-renders
+const GradeRowCheckbox = React.memo(({
+    gradeId,
+    studentId,
+    storeRef,
+    onToggle,
+}: {
+    gradeId: string;
+    studentId: string;
+    storeRef: React.MutableRefObject<GradeSelStore>;
+    onToggle: (studentId: string, gradeId: string) => void;
+}) => {
+    const [checked, setChecked] = useState(false);
+    const key = `${studentId}::${gradeId}`;
+    useEffect(() => {
+        storeRef.current.checkboxSetters.set(key, setChecked);
+        setChecked((storeRef.current.state[studentId] || new Set()).has(gradeId));
+        return () => { storeRef.current.checkboxSetters.delete(key); };
+    }, [key, studentId, gradeId, storeRef]);
+    return (
+        <input
+            type="checkbox"
+            className="w-5 h-5 accent-blue-950 cursor-pointer rounded"
+            title="Selecionar para aprovar"
+            checked={checked}
+            onChange={() => onToggle(studentId, gradeId)}
+        />
+    );
+});
+
+// Select-all header checkbox — subscribes to store
+const SelectAllCheckbox = React.memo(({
+    studentId,
+    gradeIds,
+    storeRef,
+    onToggleAll,
+}: {
+    studentId: string;
+    gradeIds: string[];
+    storeRef: React.MutableRefObject<GradeSelStore>;
+    onToggleAll: (studentId: string, gradeIds: string[]) => void;
+}) => {
+    const [checked, setChecked] = useState(false);
+    useEffect(() => {
+        storeRef.current.selectAllSetters.set(studentId, setChecked);
+        return () => { storeRef.current.selectAllSetters.delete(studentId); };
+    }, [studentId, storeRef]);
+    return (
+        <input
+            type="checkbox"
+            className="w-4 h-4 accent-blue-950 cursor-pointer"
+            title="Selecionar todas"
+            checked={checked}
+            onChange={() => onToggleAll(studentId, gradeIds)}
+        />
+    );
+});
+
+// Approve footer — subscribes to store for count, calls parent for approval
+const StudentApproveFooter = React.memo(({
+    studentId,
+    storeRef,
+    onApprove,
+    isApproving,
+}: {
+    studentId: string;
+    storeRef: React.MutableRefObject<GradeSelStore>;
+    onApprove: (studentId: string) => void;
+    isApproving: boolean;
+}) => {
+    const [count, setCount] = useState(0);
+    useEffect(() => {
+        storeRef.current.footerSetters.set(studentId, setCount);
+        return () => { storeRef.current.footerSetters.delete(studentId); };
+    }, [studentId, storeRef]);
+    return (
+        <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/60 flex items-center justify-between gap-3">
+            <span className="text-xs text-gray-500">
+                {count > 0 ? `${count} disciplina(s) selecionada(s)` : 'Nenhuma disciplina selecionada'}
+            </span>
+            <button
+                onClick={() => onApprove(studentId)}
+                disabled={count === 0 || isApproving}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-bold uppercase rounded-lg shadow-sm transition-all hover:scale-[1.02] disabled:scale-100"
+            >
+                <span>✅</span>
+                <span>Aprovar Selecionadas</span>
+            </button>
+        </div>
+    );
+});
+
 export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     coordinator,
     onLogout,
@@ -1898,6 +2001,13 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     const [pendingGradesStudents, setPendingGradesStudents] = useState<any[]>([]);
     const [pendingGradesMap, setPendingGradesMap] = useState<Record<string, CoordinationGradeEntry[]>>({});
     const [allStudentGradesMap, setAllStudentGradesMap] = useState<Record<string, CoordinationGradeEntry[]>>({}); // NEW: Holds ALL grades for frequency calc
+    // Ref-based selection store — keeps selection state WITHOUT causing re-renders
+    const gradeSelectionRef = useRef<GradeSelStore>({
+        state: {},
+        checkboxSetters: new Map(),
+        selectAllSetters: new Map(),
+        footerSetters: new Map(),
+    });
 
     // --- LOST AND FOUND REAL-TIME BADGE ---
     const { items: lostFoundItems } = useLostAndFound(currentUnit as SchoolUnit);
@@ -2306,6 +2416,104 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             alert(`Erro ao aprovar: ${error.message || 'Erro desconhecido'}`);
         }
     };
+
+    const handleToggleGradeSelection = useCallback((studentId: string, gradeId: string) => {
+        const store = gradeSelectionRef.current;
+        const current = new Set(store.state[studentId] || []);
+        const wasSelected = current.has(gradeId);
+        if (wasSelected) current.delete(gradeId); else current.add(gradeId);
+        store.state = { ...store.state, [studentId]: current };
+        // Notify only the toggled checkbox
+        store.checkboxSetters.get(`${studentId}::${gradeId}`)?.(!wasSelected);
+        // Update footer count
+        store.footerSetters.get(studentId)?.(current.size);
+        // Update select-all state for this student
+        const allGradeIds = [...store.checkboxSetters.keys()]
+            .filter(k => k.startsWith(`${studentId}::`))
+            .map(k => k.split('::')[1]);
+        const allSelected = allGradeIds.length > 0 && allGradeIds.every(id => current.has(id));
+        store.selectAllSetters.get(studentId)?.(allSelected);
+    }, []);
+
+    const handleToggleSelectAll = useCallback((studentId: string, gradeIds: string[]) => {
+        const store = gradeSelectionRef.current;
+        const current = store.state[studentId] || new Set<string>();
+        const allSelected = gradeIds.every(id => current.has(id));
+        const newSet = allSelected ? new Set<string>() : new Set(gradeIds);
+        store.state = { ...store.state, [studentId]: newSet };
+        // Notify all individual checkboxes for this student
+        gradeIds.forEach(gid => {
+            store.checkboxSetters.get(`${studentId}::${gid}`)?.(!allSelected);
+        });
+        store.selectAllSetters.get(studentId)?.(!allSelected);
+        store.footerSetters.get(studentId)?.(allSelected ? 0 : gradeIds.length);
+    }, []);
+
+    const handleApproveSelected = useCallback(async (studentId: string) => {
+        const store = gradeSelectionRef.current;
+        const selected = store.state[studentId];
+        if (!selected || selected.size === 0) {
+            alert('Selecione ao menos uma disciplina para aprovar.');
+            return;
+        }
+        const gradesToApprove = (pendingGradesMap[studentId] || []).filter(g => selected.has(g.id));
+        if (gradesToApprove.length === 0) return;
+        if (!window.confirm(`Confirma a aprovação de ${gradesToApprove.length} disciplina(s) selecionada(s)?`)) return;
+
+        setLoading(true);
+        try {
+            for (const grade of gradesToApprove) {
+                const updatedBimesters = { ...grade.bimesters };
+                Object.keys(updatedBimesters).forEach((key) => {
+                    const k = key as keyof typeof updatedBimesters;
+                    updatedBimesters[k] = { ...updatedBimesters[k] };
+                    if (updatedBimesters[k].isApproved === false) updatedBimesters[k].isApproved = true;
+                    if (updatedBimesters[k].isNotaApproved === false) updatedBimesters[k].isNotaApproved = true;
+                    if (updatedBimesters[k].isRecuperacaoApproved === false) updatedBimesters[k].isRecuperacaoApproved = true;
+                });
+                const sanitizeUndefined = (obj: any): any => JSON.parse(JSON.stringify(obj));
+                const payload = sanitizeUndefined({ bimesters: updatedBimesters, recuperacaoFinalApproved: true });
+                await db.collection('grades').doc(grade.id).update(payload);
+
+                if (onCreateNotification) {
+                    const student = pendingGradesStudents.find((s: any) => s.id === grade.studentId);
+                    const studentName = student?.name || 'o aluno';
+                    const subjectName = academicSubjects?.find(s => s.id === grade.subject)?.name || grade.subject;
+                    try {
+                        await onCreateNotification('Nota Aprovada', `Sua nota de ${subjectName} foi aprovada pela coordenação.`, grade.studentId, undefined);
+                        if (grade.teacherId) {
+                            await onCreateNotification('Nota Aprovada', `Sua nota de ${subjectName} para ${studentName} foi aprovada pela coordenação.`, undefined, grade.teacherId);
+                        }
+                    } catch (notifError) {
+                        console.error('[CoordinatorDashboard] Erro ao criar notificação em lote:', notifError);
+                    }
+                }
+            }
+
+            // Reset selection in store (no setState — no re-render)
+            store.state = { ...store.state, [studentId]: new Set<string>() };
+            store.checkboxSetters.forEach((setter, key) => {
+                if (key.startsWith(`${studentId}::`)) setter(false);
+            });
+            store.selectAllSetters.get(studentId)?.(false);
+            store.footerSetters.get(studentId)?.(0);
+
+            // Update pending grades (this WILL re-render, but it's a data change — correct)
+            setPendingGradesMap(prev => {
+                const studentGrades = (prev[studentId] || []).filter(g => !selected.has(g.id));
+                if (studentGrades.length === 0) {
+                    setPendingGradesStudents(prevS => prevS.filter(s => s.id !== studentId));
+                }
+                return { ...prev, [studentId]: studentGrades };
+            });
+            alert(`${gradesToApprove.length} disciplina(s) aprovada(s) com sucesso!`);
+        } catch (error: any) {
+            console.error('Erro ao aprovar em lote:', error);
+            alert(`Erro ao aprovar: ${error.message || 'Erro desconhecido'}`);
+        } finally {
+            setLoading(false);
+        }
+    }, [pendingGradesMap, pendingGradesStudents, onCreateNotification, academicSubjects]);
 
     const handleOccurrencesFetchStudents = async () => {
         if (!occFilters.level || !occFilters.grade || !occFilters.class || !occFilters.shift) {
@@ -3742,10 +3950,20 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                             <th rowSpan={2} className="px-1 py-1 text-center font-bold uppercase border-r border-gray-300">MÉD.<br />ANUAL</th>
                                                             <th rowSpan={2} className="px-1 py-1 text-center font-bold text-amber-700 uppercase border-r border-gray-300 bg-amber-50">PROV.<br />FINAL</th>
                                                             <th rowSpan={2} className="px-1 py-1 text-center font-bold text-blue-900 uppercase border-r border-gray-300 bg-blue-50">MÉD.<br />FINAL</th>
-                                                            <th rowSpan={2} className="px-1 py-1 text-center font-bold uppercase border-r border-gray-300">F</th>
-                                                            <th rowSpan={2} className="px-1 py-1 text-center font-bold uppercase border-r border-gray-300">FREQ.<br />(%)</th>
+                                                            <th rowSpan={2} className="px-1 py-1 text-center font-bold uppercase">F</th>
+                                                            <th rowSpan={2} className="px-1 py-1 text-center font-bold uppercase">FREQ.<br />(%)</th>
                                                             <th rowSpan={2} className="px-1 py-1 text-center font-bold uppercase">SITUAÇÃO</th>
-                                                            <th rowSpan={2} className="px-2 py-2 text-center font-bold uppercase w-20 bg-gray-100">Ação</th>
+                                                            <th rowSpan={2} className="px-2 py-2 text-center font-bold uppercase w-10 bg-blue-50">
+                                                                <div className="flex flex-col items-center gap-1">
+                                                                    <span className="text-[9px] text-blue-900">SEL.</span>
+                                                                    <SelectAllCheckbox
+                                                                        studentId={student.id}
+                                                                        gradeIds={grades.map(g => g.id)}
+                                                                        storeRef={gradeSelectionRef}
+                                                                        onToggleAll={handleToggleSelectAll}
+                                                                    />
+                                                                </div>
+                                                            </th>
                                                         </tr>
                                                         <tr className="bg-gray-100 text-[10px]">
                                                             {[1, 2, 3, 4].map(num => (
@@ -4004,14 +4222,13 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                                                     </span>
                                                                                 </td>
 
-                                                                                <td className="px-2 py-2 text-center bg-gray-50">
-                                                                                    <button
-                                                                                        onClick={() => handleApproveGrade(grade)}
-                                                                                        className="bg-green-600 hover:bg-green-700 text-white p-1.5 rounded shadow-sm hover:scale-105 transition-all w-full flex items-center justify-center gap-1"
-                                                                                        title="Aprovar alterações desta disciplina"
-                                                                                    >
-                                                                                        <span className="text-xs">✅</span> <span className="text-[10px] font-bold uppercase hidden md:inline">Aprovar</span>
-                                                                                    </button>
+                                                                                <td className="px-2 py-2 text-center bg-blue-50/40">
+                                                                                    <GradeRowCheckbox
+                                                                                        gradeId={grade.id}
+                                                                                        studentId={student.id}
+                                                                                        storeRef={gradeSelectionRef}
+                                                                                        onToggle={handleToggleGradeSelection}
+                                                                                    />
                                                                                 </td>
                                                                             </tr>
                                                                         );
@@ -4038,6 +4255,13 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                 </table>
                                             </div>
                                         </div>
+                                        {/* APPROVE SELECTED BUTTON */}
+                                        <StudentApproveFooter
+                                            studentId={student.id}
+                                            storeRef={gradeSelectionRef}
+                                            onApprove={handleApproveSelected}
+                                            isApproving={loading}
+                                        />
                                     </div>
                                 );
                             })}
