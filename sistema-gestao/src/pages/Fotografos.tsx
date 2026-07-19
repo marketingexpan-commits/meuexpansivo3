@@ -4,7 +4,7 @@ import { Card, CardContent } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { PhotographerForm } from '../components/PhotographerForm';
-import { Search, Loader2, UserPlus, Lock, Pencil, Trash2, ShieldCheck, Camera } from 'lucide-react';
+import { Search, Loader2, UserPlus, Pencil, Trash2, ShieldCheck, Camera, Phone } from 'lucide-react';
 import { photographerService } from '../services/photographerService';
 import { type Photographer } from '../types';
 import { useSchoolUnits } from '../hooks/useSchoolUnits';
@@ -128,16 +128,20 @@ export function Fotografos() {
                                 <div className="p-6 space-y-4">
                                     <div className="flex items-start justify-between">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-12 h-12 rounded-xl bg-blue-950/5 flex items-center justify-center text-blue-950 group-hover:bg-blue-950 group-hover:text-white transition-all duration-300 shadow-inner">
-                                                <Camera className="w-6 h-6" />
+                                            <div className="w-12 h-16 rounded-xl bg-blue-950/5 flex items-center justify-center text-blue-950 group-hover:bg-blue-950 group-hover:text-white transition-all duration-300 shadow-inner overflow-hidden border border-slate-100 shrink-0">
+                                                {p.photoUrl ? (
+                                                    <img src={p.photoUrl} alt={p.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <Camera className="w-6 h-6" />
+                                                )}
                                             </div>
-                                            <div>
+                                            <div className="flex-1 min-w-0">
                                                 <h3 className="font-bold text-slate-900 group-hover:text-blue-950 transition-colors truncate max-w-[150px]">
                                                     {p.name}
                                                 </h3>
                                                 <div className="flex items-center gap-1.5 text-[11px] font-bold text-blue-950/60 uppercase tracking-wider">
-                                                    <ShieldCheck className="w-3 h-3" />
-                                                    {p.unit === 'all' ? 'Toda a Rede' : getUnitName(p.unit)}
+                                                    <ShieldCheck className="w-3 h-3 shrink-0" />
+                                                    <span className="truncate">{p.unit === 'all' ? 'Toda a Rede' : getUnitName(p.unit)}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -167,9 +171,9 @@ export function Fotografos() {
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-2 text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100 group-hover:border-blue-950/10 group-hover:bg-white transition-all">
-                                            <Lock className="w-4 h-4 text-blue-950/50" />
-                                            <span className="text-xs font-mono font-bold tracking-tight">
-                                                Senha: ••••••
+                                            <Phone className="w-4 h-4 text-blue-950/50" />
+                                            <span className="text-xs font-semibold">
+                                                WhatsApp: {p.whatsapp || 'Não informado'}
                                             </span>
                                         </div>
                                     </div>
