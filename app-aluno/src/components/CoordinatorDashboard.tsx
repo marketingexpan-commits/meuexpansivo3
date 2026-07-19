@@ -2132,6 +2132,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     }, [pendingGradesStudents, quickClassFilter, quickGradeFilter, quickShiftFilter, quickSubjectFilter, quickBimesterFilter, pendingGradesMap]);
 
     const [teachersMap, setTeachersMap] = useState<Record<string, string>>({}); // ID -> Name
+    const [subjectTeacherMap, setSubjectTeacherMap] = useState<Record<string, string>>({}); // "subjectId::gradeLevel" -> nome do professor atual
     const [loading, setLoading] = useState(false);
 
     // --- OCCURRENCE MODAL STATE ---
@@ -2197,11 +2198,27 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             // 0. Fetch Teachers for this unit (to ensure names are available)
             const teachersSnap = await db.collection('teachers').where('unit', '==', currentUnit).get();
             const tMap: Record<string, string> = {};
+            const sMap: Record<string, string> = {};
             teachersSnap.docs.forEach(doc => {
                 const t = doc.data();
                 tMap[doc.id] = t.name;
+                // Monta mapa pelo cadastro atual do professor: subjects[] + gradeLevels[]
+                // Estes são os campos que o formulário de cadastro realmente preenche
+                (t.gradeIds || []).forEach((gId: string) => {
+                    (t.subjects || []).forEach((subj: string) => {
+                        sMap[`${subj}::${gId}`] = t.name;
+                    });
+                });
+                // Também indexa por gradeLevels[] como fallback
+                (t.gradeLevels || []).forEach((gl: string) => {
+                    (t.subjects || []).forEach((subj: string) => {
+                        const key = `${subj}::${gl}`;
+                        if (!sMap[key]) sMap[key] = t.name;
+                    });
+                });
             });
             setTeachersMap(tMap);
+            setSubjectTeacherMap(sMap);
             // Use academicSettings.year or fallback to current system year
             const searchYear = academicSettings?.year || new Date().getFullYear();
 
@@ -4018,7 +4035,14 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                                 <>
                                                                     {finalGrades.map(grade => {
                                                                         const isRecFinalPending = grade.recuperacaoFinalApproved === false;
-                                                                        const tName = teachersMap[grade.teacherId || ''] || grade.teacherName || 'N/A';
+                                                                        const studentGradeId    = (student as any).gradeId || '';
+                                                                        const studentGradeLevel = student.gradeLevel || '';
+                                                                        const tName =
+                                                                            (studentGradeId    && subjectTeacherMap[`${grade.subject}::${studentGradeId}`]) ||
+                                                                            (studentGradeLevel && subjectTeacherMap[`${grade.subject}::${studentGradeLevel}`]) ||
+                                                                            teachersMap[grade.teacherId || ''] ||
+                                                                            grade.teacherName ||
+                                                                            'N/A';
 
                                                                         // Calculate Workload (Aligned with StudentDashboard)
                                                                         let weeklyClasses = 0;
