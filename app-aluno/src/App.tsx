@@ -31,7 +31,7 @@ const AppContent: React.FC = () => {
       const saved = localStorage.getItem('app_session');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.role === UserRole.ADMIN) {
+        if (!parsed || !parsed.role || parsed.role === UserRole.ADMIN) {
           return { role: UserRole.NONE, user: null };
         }
         return parsed;
@@ -422,6 +422,19 @@ const AppContent: React.FC = () => {
       setInitialLoad(prev => ({ ...prev, students: true, admins: true, messages: true }));
 
     } else if (session.role === UserRole.TEACHER) {
+      // Listen to own teacher profile to force logout if blocked
+      unsubs.push(db.collection('teachers').doc(userId).onSnapshot(snap => {
+        if (snap.exists) {
+          const teacherData = snap.data();
+          if (teacherData?.isBlocked) {
+            setSession({ role: UserRole.NONE, user: null });
+            setLoginError('Seu acesso foi bloqueado. Entre em contato com a coordenação.');
+          }
+        }
+      }, (err) => {
+        console.error("Teacher profile listen error:", err);
+      }));
+
       // Teacher Data Scoping
       unsubs.push(db.collection('students').where('unit', '==', userUnit).onSnapshot(snap => {
         setStudents(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Student)));
@@ -819,6 +832,13 @@ const AppContent: React.FC = () => {
 
       if (!snapshot.empty) {
         const data = snapshot.docs[0].data();
+        
+        // Verifica se o professor está bloqueado
+        if (data.isBlocked) {
+          setLoginError('Seu acesso está bloqueado. Entre em contato com a coordenação.');
+          return;
+        }
+
         const teacher = {
           ...data,
           id: snapshot.docs[0].id,
