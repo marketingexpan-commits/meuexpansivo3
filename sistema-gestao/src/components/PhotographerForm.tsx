@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Input } from './Input';
 import { Button } from './Button';
 import { Checkbox } from './Checkbox';
-import { User, Key, X, Loader2, CreditCard, Camera } from 'lucide-react';
+import { User, Key, X, Loader2, CreditCard, Camera, Upload, Phone } from 'lucide-react';
 import { photographerService } from '../services/photographerService';
 import { type Photographer } from '../types';
+import { PhotoCaptureModal } from './PhotoCaptureModal';
+import { ImageCropperModal } from './ImageCropperModal';
 
 interface PhotographerFormProps {
     onClose: (shouldRefresh?: boolean) => void;
@@ -14,6 +16,11 @@ interface PhotographerFormProps {
 export function PhotographerForm({ onClose, photographer }: PhotographerFormProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    
+    // Photo states
+    const [isCameraOpen, setIsCameraOpen] = useState(false);
+    const [isCropperOpen, setIsCropperOpen] = useState(false);
+    const [rawPhoto, setRawPhoto] = useState<string | null>(null);
 
     const [formData, setFormData] = useState<Partial<Photographer>>({
         name: '',
@@ -21,7 +28,8 @@ export function PhotographerForm({ onClose, photographer }: PhotographerFormProp
         password: '',
         unit: 'all',
         isActive: true,
-        isBlocked: false
+        isBlocked: false,
+        photoUrl: ''
     });
 
     useEffect(() => {
@@ -55,6 +63,28 @@ export function PhotographerForm({ onClose, photographer }: PhotographerFormProp
         setFormData(prev => ({ ...prev, cpf: formatCPF(e.target.value) }));
     };
 
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            alert('Por favor, selecione uma imagem válida.');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setRawPhoto(reader.result as string);
+            setIsCropperOpen(true);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleCropComplete = (croppedBase64: string) => {
+        setFormData(prev => ({ ...prev, photoUrl: croppedBase64 }));
+        setRawPhoto(null);
+    };
+
     const generatePassword = () => {
         const pass = "Ft" + Math.floor(1000 + Math.random() * 9000); // Ex: Ft1234
         setFormData(prev => ({ ...prev, password: pass }));
@@ -70,7 +100,8 @@ export function PhotographerForm({ onClose, photographer }: PhotographerFormProp
 
         const cleanedData = {
             ...formData,
-            cpf: (formData.cpf || '').replace(/\D/g, '')
+            cpf: (formData.cpf || '').replace(/\D/g, ''),
+            whatsapp: (formData.whatsapp || '').replace(/\D/g, '')
         };
 
         try {
@@ -92,13 +123,10 @@ export function PhotographerForm({ onClose, photographer }: PhotographerFormProp
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-blue-950/40 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden border border-slate-200">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden border border-slate-200">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-blue-950 flex items-center justify-center text-white shadow-lg shadow-blue-950/20">
-                            <Camera className="w-5 h-5" />
-                        </div>
                         <div>
                             <h2 className="text-xl font-bold text-slate-900">
                                 {photographer ? 'Editar Fotógrafo' : 'Novo Fotógrafo'}
@@ -118,29 +146,92 @@ export function PhotographerForm({ onClose, photographer }: PhotographerFormProp
 
                 {/* Form Body */}
                 <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
-                    <div className="space-y-4">
-                        <Input
-                            label="Nome do Fotógrafo"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleChange}
-                            startIcon={<User className="w-4 h-4" />}
-                            placeholder="Ex: Carlos Silva"
-                            required
-                        />
+                    <div className="flex gap-6 items-start">
+                        {/* Photo Upload Section */}
+                        <div className="flex flex-col items-center shrink-0">
+                            <label className="text-sm font-medium text-gray-700 mb-2 block w-full text-center">Foto 3x4</label>
+                            <div className="flex flex-col gap-3 items-center">
+                                <div className="relative group">
+                                    <div className="w-28 h-36 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl overflow-hidden flex flex-col items-center justify-center transition-all group-hover:border-blue-950/40 group-hover:bg-blue-950/5">
+                                        {formData.photoUrl ? (
+                                            <img src={formData.photoUrl} alt="Preview" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="flex flex-col items-center text-slate-400 p-2 text-center">
+                                                <Camera className="w-8 h-8 mb-2 opacity-50" />
+                                                <span className="text-[10px] font-medium leading-tight">Anexar</span>
+                                            </div>
+                                        )}
 
-                        <Input
-                            label="CPF"
-                            name="cpf"
-                            value={formData.cpf}
-                            onChange={handleCpfChange}
-                            maxLength={14}
-                            startIcon={<CreditCard className="w-4 h-4" />}
-                            placeholder="000.000.000-00"
-                            required
-                        />
+                                        {/* Overlay on Hover */}
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <Upload className="w-6 h-6 text-white" />
+                                        </div>
 
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleFileChange}
+                                            className="absolute inset-0 opacity-0 cursor-pointer"
+                                            title="Anexar foto 3x4"
+                                        />
+                                    </div>
 
+                                    {formData.photoUrl && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData(prev => ({ ...prev, photoUrl: '' }))}
+                                            className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-xl shadow-lg hover:bg-red-600 transition-colors z-10"
+                                            title="Remover foto"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setIsCameraOpen(true)}
+                                    className="w-full h-8 text-xs text-slate-600 border-slate-300 px-2"
+                                >
+                                    <Camera className="w-3 h-3 mr-1.5 shrink-0" />
+                                    Tirar Foto
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Text Fields */}
+                        <div className="flex-1 space-y-4">
+                            <Input
+                                label="Nome do Fotógrafo"
+                                name="name"
+                                value={formData.name}
+                                onChange={handleChange}
+                                startIcon={<User className="w-4 h-4" />}
+                                placeholder="Ex: Carlos Silva"
+                                required
+                            />
+
+                            <Input
+                                label="CPF"
+                                name="cpf"
+                                value={formData.cpf}
+                                onChange={handleCpfChange}
+                                maxLength={14}
+                                startIcon={<CreditCard className="w-4 h-4" />}
+                                placeholder="000.000.000-00"
+                                required
+                            />
+                            
+                            <Input
+                                label="WhatsApp (Com DDD)"
+                                name="whatsapp"
+                                value={formData.whatsapp || ''}
+                                onChange={handleChange}
+                                startIcon={<Phone className="w-4 h-4" />}
+                                placeholder="5584999999999"
+                            />
+                        </div>
+                    </div>
 
                         <div className="space-y-1.5">
                             <label className="block text-sm font-semibold text-slate-700">Senha de Acesso ao App</label>
@@ -192,7 +283,6 @@ export function PhotographerForm({ onClose, photographer }: PhotographerFormProp
                                     : "Este fotógrafo tem permissão ativa para acessar o aplicativo do aluno."}
                             </p>
                         </div>
-                    </div>
                 </form>
 
                 {/* Footer */}
@@ -221,6 +311,23 @@ export function PhotographerForm({ onClose, photographer }: PhotographerFormProp
                         )}
                     </Button>
                 </div>
+                
+                {/* Modals for Photo */}
+                <PhotoCaptureModal
+                    isOpen={isCameraOpen}
+                    onClose={() => setIsCameraOpen(false)}
+                    onCapture={(base64) => setFormData(prev => ({ ...prev, photoUrl: base64 }))}
+                />
+
+                <ImageCropperModal
+                    isOpen={isCropperOpen}
+                    imageSrc={rawPhoto}
+                    onClose={() => {
+                        setIsCropperOpen(false);
+                        setRawPhoto(null);
+                    }}
+                    onCropComplete={handleCropComplete}
+                />
             </div>
         </div>
     );

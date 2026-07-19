@@ -823,6 +823,8 @@ export interface Photographer {
   unit: string; // unit ID or 'all' for network-wide access
   isActive: boolean;
   isBlocked?: boolean;
+  photoUrl?: string;
+  whatsapp?: string;
   createdAt: string;
   updatedAt: string;
 }

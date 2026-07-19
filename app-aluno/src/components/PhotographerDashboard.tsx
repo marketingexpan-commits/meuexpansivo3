@@ -26,12 +26,15 @@ export const PhotographerDashboard: React.FC = () => {
     const photographerName = localStorage.getItem('photographerName') || 'Fotógrafo';
     const userUnit = localStorage.getItem('userUnit') || '';
     const photographerId = localStorage.getItem('photographerId') || '';
+    const [photographerData, setPhotographerData] = useState<any>(null);
+    const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
 
     useEffect(() => {
         if (photographerId) {
             const unsub = db.collection('photographers').doc(photographerId).onSnapshot(snap => {
                 if (snap.exists) {
                     const data = snap.data();
+                    setPhotographerData(data);
                     if (data?.isBlocked) {
                         alert("Seu acesso foi bloqueado. Entre em contato com a coordenação.");
                         localStorage.removeItem('userUnit');
@@ -283,11 +286,21 @@ export const PhotographerDashboard: React.FC = () => {
                     ) : (
                         <div className="space-y-6 animate-fade-in-up">
                             {/* Greeting Area */}
-                            <div>
-                                <h2 className="text-blue-950 font-black text-xl leading-tight">Olá, {photographerName}</h2>
-                                <p className="text-gray-400 text-sm font-medium">
-                                    {activeTab === 'students' ? 'Busque os alunos para verificar autorizações.' : 'Acompanhe as solicitações de presença.'}
-                                </p>
+                            <div className="flex items-center gap-4">
+                                {photographerData?.photoUrl && (
+                                    <button 
+                                        onClick={() => setIsPhotoModalOpen(true)}
+                                        className="w-14 h-14 rounded-full overflow-hidden border-2 border-orange-500 shrink-0 shadow-lg hover:scale-105 transition-transform"
+                                    >
+                                        <img src={photographerData.photoUrl} alt="Fotógrafo" className="w-full h-full object-cover" />
+                                    </button>
+                                )}
+                                <div>
+                                    <h2 className="text-blue-950 font-black text-xl leading-tight">Olá, {photographerName}</h2>
+                                    <p className="text-gray-400 text-sm font-medium">
+                                        {activeTab === 'students' ? 'Busque os alunos para verificar autorizações.' : 'Acompanhe as solicitações de presença.'}
+                                    </p>
+                                </div>
                             </div>
 
                             {/* Tabs Navigation */}
@@ -661,6 +674,31 @@ export const PhotographerDashboard: React.FC = () => {
                     )}
                 </main>
             </div>
+
+            {/* Photo Enlarge Modal */}
+            {isPhotoModalOpen && photographerData?.photoUrl && (
+                <div 
+                    className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200"
+                    onClick={() => setIsPhotoModalOpen(false)}
+                >
+                    <div 
+                        className="relative max-w-sm w-full animate-in zoom-in-95 duration-200"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <button 
+                            className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors bg-black/50 p-2 rounded-full"
+                            onClick={() => setIsPhotoModalOpen(false)}
+                        >
+                            <XCircle className="w-8 h-8" />
+                        </button>
+                        <img 
+                            src={photographerData.photoUrl} 
+                            alt="Fotógrafo" 
+                            className="w-full h-auto rounded-3xl border-4 border-white shadow-2xl"
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

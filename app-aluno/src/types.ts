@@ -807,6 +807,8 @@ export interface Photographer {
   unit: string; // SchoolUnit ID or 'all'
   isActive: boolean;
   isBlocked?: boolean;
+  photoUrl?: string;
+  whatsapp?: string;
   createdAt: string;
   updatedAt: string;
 }

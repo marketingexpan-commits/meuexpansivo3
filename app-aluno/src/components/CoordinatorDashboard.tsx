@@ -792,6 +792,7 @@ const CoordinatorAnnouncementsView: React.FC<{
                     </div>
                 </div>
             )}
+
         </div>
     );
 };
@@ -1284,8 +1285,10 @@ export function getCoordinatorTitle(gender?: 'M' | 'F' | string, role?: string, 
 // --- SUB-COMPONENT: PHOTOGRAPHER DEMANDS (COORDINATOR) ---
 const CoordinatorPhotographerDemands: React.FC<{ unit: SchoolUnit, coordinator: { id: string, name: string } }> = ({ unit, coordinator }) => {
     const [demands, setDemands] = useState<PhotographerDemand[]>([]);
+    const [photographers, setPhotographers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
+    const [isPhotoModalOpen, setIsPhotoModalOpen] = useState<{isOpen: boolean, url: string}>({isOpen: false, url: ''});
 
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
@@ -1300,6 +1303,13 @@ const CoordinatorPhotographerDemands: React.FC<{ unit: SchoolUnit, coordinator: 
 
                 const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as PhotographerDemand));
                 setDemands(data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+
+                // Fetch photographers
+                const photoSnap = await db.collection('photographers').get();
+                const photosData = photoSnap.docs
+                    .map(doc => ({ id: doc.id, ...doc.data() } as any))
+                    .filter(p => p.unit === 'all' || p.unit === unit);
+                setPhotographers(photosData);
             } catch (err) {
                 console.error("Erro buscar demandas:", err);
             } finally {
@@ -1379,6 +1389,31 @@ const CoordinatorPhotographerDemands: React.FC<{ unit: SchoolUnit, coordinator: 
                         Agendar Fotógrafo
                     </h2>
                     <p className="text-sm text-slate-500 font-medium">Solicite a presença do fotógrafo na unidade</p>
+                    
+                    {photographers.length > 0 && (
+                        <div className="mt-4 flex flex-wrap gap-4">
+                            {photographers.map(p => (
+                                <div key={p.id} className="flex items-center gap-3 bg-slate-50 border border-slate-100 p-2 pr-4 rounded-full">
+                                    {p.photoUrl ? (
+                                        <button 
+                                            onClick={() => setIsPhotoModalOpen({isOpen: true, url: p.photoUrl})}
+                                            className="w-10 h-10 rounded-full overflow-hidden shrink-0 border-2 border-white shadow-sm hover:scale-105 transition-transform"
+                                        >
+                                            <img src={p.photoUrl} alt={p.name} className="w-full h-full object-cover" />
+                                        </button>
+                                    ) : (
+                                        <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center shrink-0 border-2 border-white shadow-sm">
+                                            <Camera className="w-4 h-4 text-slate-400" />
+                                        </div>
+                                    )}
+                                    <div className="flex flex-col">
+                                        <span className="text-xs font-bold text-slate-700 leading-tight">{p.name}</span>
+                                        <span className="text-[10px] text-slate-500 leading-tight">Fotógrafo Responsável</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
                 {!showForm && (
                     <button
@@ -1545,6 +1580,31 @@ const CoordinatorPhotographerDemands: React.FC<{ unit: SchoolUnit, coordinator: 
                     </div>
                 )}
             </div>
+
+            {/* Photo Enlarge Modal */}
+            {isPhotoModalOpen.isOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4 animate-in fade-in duration-200"
+                    onClick={() => setIsPhotoModalOpen({isOpen: false, url: ''})}
+                >
+                    <div 
+                        className="relative max-w-sm w-full animate-in zoom-in-95 duration-200"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <button 
+                            className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors bg-black/50 p-2 rounded-full"
+                            onClick={() => setIsPhotoModalOpen({isOpen: false, url: ''})}
+                        >
+                            <X className="w-8 h-8" />
+                        </button>
+                        <img 
+                            src={isPhotoModalOpen.url} 
+                            alt="Fotógrafo" 
+                            className="w-full h-auto rounded-3xl border-4 border-white shadow-2xl"
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
