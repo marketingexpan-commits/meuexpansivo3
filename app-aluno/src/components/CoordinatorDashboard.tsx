@@ -1295,28 +1295,31 @@ const CoordinatorPhotographerDemands: React.FC<{ unit: SchoolUnit, coordinator: 
     const [reason, setReason] = useState('');
 
     useEffect(() => {
-        const fetchDemands = async () => {
+        const fetchPhotographers = async () => {
             try {
-                const snap = await db.collection('photographer_demands')
-                    .where('unit', '==', unit)
-                    .get();
-
-                const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as PhotographerDemand));
-                setDemands(data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-
-                // Fetch photographers
                 const photoSnap = await db.collection('photographers').get();
                 const photosData = photoSnap.docs
                     .map(doc => ({ id: doc.id, ...doc.data() } as any))
                     .filter(p => p.unit === 'all' || p.unit === unit);
                 setPhotographers(photosData);
             } catch (err) {
-                console.error("Erro buscar demandas:", err);
-            } finally {
-                setLoading(false);
+                console.error("Erro buscar fotógrafos:", err);
             }
         };
-        fetchDemands();
+        fetchPhotographers();
+
+        const unsubscribe = db.collection('photographer_demands')
+            .where('unit', '==', unit)
+            .onSnapshot((snap) => {
+                const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as PhotographerDemand));
+                setDemands(data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+                setLoading(false);
+            }, (error) => {
+                console.error("Erro listener demandas:", error);
+                setLoading(false);
+            });
+
+        return () => unsubscribe();
     }, [unit]);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -1336,7 +1339,6 @@ const CoordinatorPhotographerDemands: React.FC<{ unit: SchoolUnit, coordinator: 
             };
 
             const docRef = await db.collection('photographer_demands').add(newDemand);
-            setDemands(prev => [{ id: docRef.id, ...newDemand }, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
 
             setDate('');
             setTime('');
@@ -1362,7 +1364,6 @@ const CoordinatorPhotographerDemands: React.FC<{ unit: SchoolUnit, coordinator: 
                 suggestedTime: null,
                 suggestedAt: null
             });
-            setDemands(prev => prev.map(d => d.id === demand.id ? { ...d, date: demand.suggestedDate!, time: demand.suggestedTime!, status: 'confirmed', confirmedAt: now, suggestedDate: null, suggestedTime: null, suggestedAt: null } : d));
             alert("Sugestão aceita e agendamento confirmado!");
         } catch (error) {
             console.error("Erro ao aceitar sugestão:", error);
@@ -1374,7 +1375,6 @@ const CoordinatorPhotographerDemands: React.FC<{ unit: SchoolUnit, coordinator: 
         if (!window.confirm("Você tem certeza que deseja cancelar e excluir esta solicitação?")) return;
         try {
             await db.collection('photographer_demands').doc(demandId).delete();
-            setDemands(prev => prev.filter(d => d.id !== demandId));
         } catch (error) {
             console.error("Erro delete:", error);
         }
@@ -1529,7 +1529,17 @@ const CoordinatorPhotographerDemands: React.FC<{ unit: SchoolUnit, coordinator: 
                                         {demand.confirmedAt && (
                                             <div className="flex items-center justify-between text-[10px] font-bold">
                                                 <span className="text-blue-950/60 uppercase">Confirmado em:</span>
-                                                <span className="text-slate-800 font-black">{new Date(demand.confirmedAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                                <div className="flex flex-col items-end">
+                                                    <span className="text-slate-800 font-black">{new Date(demand.confirmedAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                                    {(() => {
+                                                         const pName = demand.photographerName || 
+                                                             (demand.photographerId ? photographers.find(p => p.id === demand.photographerId)?.name : null) ||
+                                                             (photographers.length === 1 ? photographers[0].name : null);
+                                                         return pName ? (
+                                                             <span className="text-orange-500 font-bold text-[9px] uppercase tracking-wider">{pName}</span>
+                                                         ) : null;
+                                                     })()}
+                                                </div>
                                             </div>
                                         )}
                                     </div>

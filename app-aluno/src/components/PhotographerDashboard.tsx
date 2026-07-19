@@ -139,8 +139,19 @@ export const PhotographerDashboard: React.FC = () => {
             const updateData: any = { status: newStatus };
             const now = new Date().toISOString();
 
-            if (newStatus === 'read') updateData.readAt = now;
-            if (newStatus === 'confirmed') updateData.confirmedAt = now;
+            const pId = localStorage.getItem('photographerId') || '';
+            const pName = localStorage.getItem('photographerName') || '';
+
+            if (newStatus === 'read') {
+                updateData.readAt = now;
+                updateData.photographerId = pId;
+                updateData.photographerName = pName;
+            }
+            if (newStatus === 'confirmed') {
+                updateData.confirmedAt = now;
+                updateData.photographerId = pId;
+                updateData.photographerName = pName;
+            }
 
             await db.collection('photographer_demands').doc(demandId).update(updateData);
             setDemands(prev => prev.map(d => d.id === demandId ? { ...d, ...updateData } : d));
