@@ -290,7 +290,7 @@ export const PhotographerDashboard: React.FC = () => {
                                 {photographerData?.photoUrl && (
                                     <button 
                                         onClick={() => setIsPhotoModalOpen(true)}
-                                        className="w-14 h-14 rounded-full overflow-hidden border-2 border-orange-500 shrink-0 shadow-lg hover:scale-105 transition-transform"
+                                        className="w-[72px] h-24 rounded-lg bg-slate-50 overflow-hidden border border-slate-100 shrink-0 shadow-sm hover:shadow-md hover:scale-105 transition-all"
                                     >
                                         <img src={photographerData.photoUrl} alt="Fotógrafo" className="w-full h-full object-cover" />
                                     </button>
