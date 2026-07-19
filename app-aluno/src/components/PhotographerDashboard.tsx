@@ -25,6 +25,25 @@ export const PhotographerDashboard: React.FC = () => {
 
     const photographerName = localStorage.getItem('photographerName') || 'Fotógrafo';
     const userUnit = localStorage.getItem('userUnit') || '';
+    const photographerId = localStorage.getItem('photographerId') || '';
+
+    useEffect(() => {
+        if (photographerId) {
+            const unsub = db.collection('photographers').doc(photographerId).onSnapshot(snap => {
+                if (snap.exists) {
+                    const data = snap.data();
+                    if (data?.isBlocked) {
+                        alert("Seu acesso foi bloqueado. Entre em contato com a coordenação.");
+                        localStorage.removeItem('userUnit');
+                        localStorage.removeItem('photographerName');
+                        localStorage.removeItem('photographerId');
+                        window.location.href = '/login';
+                    }
+                }
+            });
+            return () => unsub();
+        }
+    }, [photographerId]);
 
     useEffect(() => {
         if (!userUnit) {

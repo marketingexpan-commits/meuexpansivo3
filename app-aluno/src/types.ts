@@ -806,6 +806,7 @@ export interface Photographer {
   name: string;
   unit: string; // SchoolUnit ID or 'all'
   isActive: boolean;
+  isBlocked?: boolean;
   createdAt: string;
   updatedAt: string;
 }

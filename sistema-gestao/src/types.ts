@@ -822,6 +822,7 @@ export interface Photographer {
   name: string;
   unit: string; // unit ID or 'all' for network-wide access
   isActive: boolean;
+  isBlocked?: boolean;
   createdAt: string;
   updatedAt: string;
 }

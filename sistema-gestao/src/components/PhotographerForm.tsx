@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Input } from './Input';
 import { Button } from './Button';
+import { Checkbox } from './Checkbox';
 import { User, Key, X, Loader2, CreditCard, Camera } from 'lucide-react';
 import { photographerService } from '../services/photographerService';
 import { type Photographer } from '../types';
@@ -19,7 +20,8 @@ export function PhotographerForm({ onClose, photographer }: PhotographerFormProp
         cpf: '',
         password: '',
         unit: 'all',
-        isActive: true
+        isActive: true,
+        isBlocked: false
     });
 
     useEffect(() => {
@@ -32,8 +34,12 @@ export function PhotographerForm({ onClose, photographer }: PhotographerFormProp
     }, [photographer]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        const { name, value, type } = e.target;
+        let finalValue: any = value;
+        if (type === 'checkbox') {
+            finalValue = (e.target as HTMLInputElement).checked;
+        }
+        setFormData(prev => ({ ...prev, [name]: finalValue }));
     };
 
     const formatCPF = (value: string) => {
@@ -169,6 +175,21 @@ export function PhotographerForm({ onClose, photographer }: PhotographerFormProp
                             </div>
                             <p className="text-[10px] text-slate-400">
                                 O fotógrafo usará o CPF e esta senha para logar no aplicativo do aluno.
+                            </p>
+                        </div>
+                        
+                        <div className="pt-2">
+                            <Checkbox
+                                label="Status de Acesso ao App (Ativo / Bloqueado)"
+                                name="isBlocked"
+                                checked={formData.isBlocked}
+                                onChange={handleChange}
+                                className={formData.isBlocked ? "text-red-600" : "text-blue-600"}
+                            />
+                            <p className="text-[10px] text-slate-500 mt-1 ml-7 italic">
+                                {formData.isBlocked
+                                    ? "O acesso deste fotógrafo ao aplicativo do aluno está atualmente BLOQUEADO."
+                                    : "Este fotógrafo tem permissão ativa para acessar o aplicativo do aluno."}
                             </p>
                         </div>
                     </div>

@@ -101,6 +101,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   // --- REMEMBER ME LOGIC ---
   const [rememberMe, setRememberMe] = useState(false);
@@ -202,6 +203,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLocalError(null);
 
     // Save or Remove 'remember me' (Student Only)
     if (activeTab === 'student') {
@@ -239,7 +241,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
           .get();
 
         if (snapshot.empty) {
-          alert('Porteiro não encontrado nesta unidade ou nome incorreto.');
+          setLocalError('Porteiro não encontrado nesta unidade ou nome incorreto.');
           return;
         }
 
@@ -247,12 +249,12 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
         const gatekeeperData = gatekeeperDoc.data();
 
         if (!gatekeeperData.isActive) {
-          alert('Acesso negado. Usuário inativo.');
+          setLocalError('Acesso negado. Usuário inativo.');
           return;
         }
 
         if (gatekeeperData.password !== password) {
-          alert('Senha incorreta.');
+          setLocalError('Senha incorreta.');
           return;
         }
 
@@ -265,7 +267,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
       } catch (err) {
         console.error("Login error:", err);
-        alert('Erro ao realizar login. Tente novamente.');
+        setLocalError('Erro ao realizar login. Tente novamente.');
       }
     } else if (activeTab === 'photographer') {
       try {
@@ -274,7 +276,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
           .get();
 
         if (snapshot.empty) {
-          alert('Fotógrafo não encontrado ou CPF incorreto.');
+          setLocalError('Fotógrafo não encontrado ou CPF incorreto.');
           return;
         }
 
@@ -282,12 +284,17 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
         const photographerData = photographerDoc.data();
 
         if (!photographerData.isActive) {
-          alert('Acesso negado. Usuário inativo.');
+          setLocalError('Acesso negado. Usuário inativo.');
+          return;
+        }
+
+        if (photographerData.isBlocked) {
+          setLocalError('Seu acesso está bloqueado. Entre em contato com a coordenação.');
           return;
         }
 
         if (photographerData.password !== password) {
-          alert('Senha incorreta.');
+          setLocalError('Senha incorreta.');
           return;
         }
 
@@ -300,7 +307,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
 
       } catch (err) {
         console.error("Login error:", err);
-        alert('Erro ao realizar login. Tente novamente.');
+        setLocalError('Erro ao realizar login. Tente novamente.');
       }
     }
   };
@@ -309,6 +316,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
     setActiveTab(tab);
     setIdentifier('');
     setPassword('');
+    setLocalError(null);
     if (tab === 'teacher') setSelectedTeacherUnit(SCHOOL_UNITS_LIST[0]);
     if (tab === 'coordinator') setSelectedCoordinatorUnit(SCHOOL_UNITS_LIST[0]);
     if (tab === 'gatekeeper') setSelectedGatekeeperUnit(SCHOOL_UNITS_LIST[0]);
@@ -691,10 +699,10 @@ export const Login: React.FC<LoginProps> = ({ onLoginStudent, onLoginTeacher, on
                   </div>
                 )}
 
-                {error && (
+                {(localError || error) && (
                   <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg border border-red-100 flex items-center">
                     <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    {error}
+                    {localError || error}
                   </div>
                 )}
 
