@@ -27,7 +27,7 @@ export const PhotographerDashboard: React.FC = () => {
     const userUnit = localStorage.getItem('userUnit') || '';
     const photographerId = localStorage.getItem('photographerId') || '';
     const [photographerData, setPhotographerData] = useState<any>(null);
-    const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+    const [zoomedPhotoUrl, setZoomedPhotoUrl] = useState<string | null>(null);
 
     useEffect(() => {
         if (photographerId) {
@@ -289,8 +289,8 @@ export const PhotographerDashboard: React.FC = () => {
                             <div className="flex items-center gap-4">
                                 {photographerData?.photoUrl && (
                                     <button 
-                                        onClick={() => setIsPhotoModalOpen(true)}
-                                        className="w-[72px] h-24 rounded-lg bg-slate-50 overflow-hidden border border-slate-100 shrink-0 shadow-sm hover:shadow-md hover:scale-105 transition-all"
+                                        onClick={() => setZoomedPhotoUrl(photographerData.photoUrl)}
+                                        className="w-[72px] h-24 rounded-lg bg-slate-50 overflow-hidden border border-slate-100 shrink-0 shadow-sm hover:shadow-md hover:scale-105 transition-all cursor-zoom-in"
                                     >
                                         <img src={photographerData.photoUrl} alt="Fotógrafo" className="w-full h-full object-cover" />
                                     </button>
@@ -439,7 +439,14 @@ export const PhotographerDashboard: React.FC = () => {
                                                                 return (
                                                                     <div key={student.id} className="p-4 bg-white border border-gray-100 rounded-3xl shadow-sm hover:shadow-md transition-shadow flex items-center gap-4 group">
                                                                         {/* Student Photo */}
-                                                                        <div className="w-[3.5rem] h-[4.5rem] rounded-[10px] bg-slate-50 overflow-hidden flex-shrink-0 border border-slate-100 relative">
+                                                                        <button 
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                const url = (student as any).photoUrl || (student as any).photo;
+                                                                                if (url) setZoomedPhotoUrl(url);
+                                                                            }}
+                                                                            className="w-[3.5rem] h-[4.5rem] rounded-[10px] bg-slate-50 overflow-hidden flex-shrink-0 border border-slate-100 relative focus:outline-none focus:ring-2 focus:ring-blue-500 hover:opacity-90 transition-opacity cursor-zoom-in"
+                                                                        >
                                                                             {(student as any).photoUrl || (student as any).photo ? (
                                                                                 <img
                                                                                     src={(student as any).photoUrl || (student as any).photo}
@@ -448,10 +455,10 @@ export const PhotographerDashboard: React.FC = () => {
                                                                                 />
                                                                             ) : (
                                                                                 <div className="w-full h-full flex items-center justify-center text-slate-300">
-                                                                                    <User className="w-6 h-6" />
+                                                                                    <User className="w-8 h-8 opacity-20" />
                                                                                 </div>
                                                                             )}
-                                                                        </div>
+                                                                        </button>
 
                                                                         <div className="flex-1 min-w-0">
                                                                             <h3 className="font-bold text-blue-950 uppercase text-sm truncate w-full">{student.name}</h3>
@@ -676,10 +683,10 @@ export const PhotographerDashboard: React.FC = () => {
             </div>
 
             {/* Photo Enlarge Modal */}
-            {isPhotoModalOpen && photographerData?.photoUrl && (
+            {zoomedPhotoUrl && (
                 <div 
                     className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200"
-                    onClick={() => setIsPhotoModalOpen(false)}
+                    onClick={() => setZoomedPhotoUrl(null)}
                 >
                     <div 
                         className="relative max-w-sm w-full animate-in zoom-in-95 duration-200"
@@ -687,14 +694,14 @@ export const PhotographerDashboard: React.FC = () => {
                     >
                         <button 
                             className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors bg-black/50 p-2 rounded-full"
-                            onClick={() => setIsPhotoModalOpen(false)}
+                            onClick={() => setZoomedPhotoUrl(null)}
                         >
                             <XCircle className="w-8 h-8" />
                         </button>
                         <img 
-                            src={photographerData.photoUrl} 
-                            alt="Fotógrafo" 
-                            className="w-full h-auto rounded-3xl border-4 border-white shadow-2xl"
+                            src={zoomedPhotoUrl} 
+                            alt="Foto ampliada" 
+                            className="w-full h-auto rounded-3xl border-4 border-white shadow-2xl max-h-[85vh] object-contain"
                         />
                     </div>
                 </div>
