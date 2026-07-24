@@ -25,7 +25,8 @@ import {
     MessageSquareReply,
     Trophy,
     Camera,
-    BookOpen
+    BookOpen,
+    Phone
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -347,6 +348,7 @@ function SidebarContent({
                                 <SidebarItem icon={Building2} label="Unidades" path="/config/unidades" collapsed={collapsed} />
                                 <SidebarItem icon={UserCheck} label="Admin/Unidades" path="/config/admin-unidades" collapsed={collapsed} />
                                 <SidebarItem icon={Smartphone} label="Config. App" path="/config/escola" collapsed={collapsed} />
+                                <SidebarItem icon={Phone} label="Config. Diretoria" path="/config/diretoria" collapsed={collapsed} />
                                 <SidebarItem icon={Trophy} label="Ranking Escolar" path="/config/ranking" collapsed={collapsed} />
                             </>
                         )}
