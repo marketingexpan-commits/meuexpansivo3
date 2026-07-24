@@ -95,7 +95,7 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
       const contactName = contact ? contact.name : `Escola (${UNIT_LABELS[student.unit as SchoolUnit] || student.unit})`;
 
       if (waNumber) {
-        const messageText = `Olá ${contactName}! Sou o(a) ${student.name} (${student.gradeLevel} - Unidade ${UNIT_LABELS[student.unit as SchoolUnit] || student.unit}) e acabei de deixar uma mensagem de *${messageType}* no portal escolar direcionada à ${recipient}. Conteúdo: "${content}". Poderia verificar?`;
+        const messageText = `Olá ${contactName}! Sou o(a) ${student.name} (${student.gradeLevel} - Unidade ${UNIT_LABELS[student.unit as SchoolUnit] || student.unit}) e acabei de deixar uma mensagem de *${messageType}* no portal escolar direcionada à ${recipient}. Poderia verificar?`;
         // Usamos api.whatsapp.com pois é mais robusto em alguns dispositivos móveis
         waUrl = `https://api.whatsapp.com/send?phone=${waNumber}&text=${encodeURIComponent(messageText)}`;
 
