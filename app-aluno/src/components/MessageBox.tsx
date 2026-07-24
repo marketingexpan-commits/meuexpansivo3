@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { parseGradeLevel } from '../utils/academicUtils'; // Added for robust matching
-import { Student, SchoolMessage, MessageRecipient, MessageType, UnitContact, ContactRole, Teacher, TicketStatus, CoordinationSegment } from '../types';
+import { Student, SchoolMessage, MessageRecipient, MessageType, UnitContact, ContactRole, Teacher, TicketStatus, CoordinationSegment, SchoolUnit, UNIT_LABELS } from '../types';
 import { Button } from './Button';
 
 import { UNITS_DATA, DEFAULT_UNIT_DATA } from '../constants';
@@ -92,10 +92,10 @@ export const MessageBox: React.FC<{ student: Student; onSendMessage: (message: O
       // Prioriza o telefone do contato específico, senão usa o da unidade
       const phoneRaw = contact ? contact.phoneNumber : unitInfo.phone;
       const waNumber = phoneRaw.replace(/\D/g, '');
-      const contactName = contact ? contact.name : `Escola (${student.unit})`;
+      const contactName = contact ? contact.name : `Escola (${UNIT_LABELS[student.unit as SchoolUnit] || student.unit})`;
 
       if (waNumber) {
-        const messageText = `Olá ${contactName}! Sou o(a) ${student.name} (${student.gradeLevel} - Unidade ${student.unit}) e acabei de deixar uma mensagem de *${messageType}* no portal escolar direcionada à ${recipient}. Conteúdo: "${content}". Poderia verificar?`;
+        const messageText = `Olá ${contactName}! Sou o(a) ${student.name} (${student.gradeLevel} - Unidade ${UNIT_LABELS[student.unit as SchoolUnit] || student.unit}) e acabei de deixar uma mensagem de *${messageType}* no portal escolar direcionada à ${recipient}. Conteúdo: "${content}". Poderia verificar?`;
         // Usamos api.whatsapp.com pois é mais robusto em alguns dispositivos móveis
         waUrl = `https://api.whatsapp.com/send?phone=${waNumber}&text=${encodeURIComponent(messageText)}`;
 
