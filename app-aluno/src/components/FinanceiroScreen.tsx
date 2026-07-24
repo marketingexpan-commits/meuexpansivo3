@@ -965,9 +965,22 @@ export const FinanceiroScreen: React.FC<FinanceiroScreenProps> = ({ student, men
                                             ) : (
                                                 <tr className="block md:table-row">
                                                     <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic block md:table-cell">
-                                                        <span className="text-4xl block mb-2">🎉</span>
-                                                        Parabéns! Você está em dia com todas as mensalidades.
-                                                        <button onClick={() => setHistoryMode(true)} className="block mx-auto mt-2 text-blue-600 underline text-sm">Ver Histórico</button>
+                                                        {studentMensalidades.length > 0 ? (
+                                                            <>
+                                                                <span className="text-4xl block mb-2">🎉</span>
+                                                                Parabéns! Você está em dia com todas as mensalidades.
+                                                                <button onClick={() => setHistoryMode(true)} className="block mx-auto mt-2 text-blue-600 underline text-sm">Ver Histórico</button>
+                                                            </>
+                                                        ) : (
+                                                             <div className="flex flex-col items-center justify-center p-4 max-w-md mx-auto text-slate-700">
+                                                                 <AlertTriangle className="w-10 h-10 text-orange-500 mb-2 animate-bounce" />
+                                                                 <span className="font-bold text-gray-850 text-base block mb-1">Aviso Importante</span>
+                                                                 <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                                                                     O acompanhamento financeiro pelo aplicativo ainda não está ativo. 
+                                                                     Por favor, para pagamentos ou outras informações, entre em contato diretamente com o setor financeiro da escola.
+                                                                 </p>
+                                                             </div>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             );
