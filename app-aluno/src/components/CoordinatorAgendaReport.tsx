@@ -3,8 +3,8 @@ import { db } from '../firebaseConfig';
 import { SchoolUnit, DailyAgenda, Teacher, ClassSchedule, SchoolShift, SHIFT_LABELS, UnitContact, CoordinationSegment } from '../types';
 import { useAcademicData } from '../hooks/useAcademicData';
 import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST } from '../constants';
-import { Loader2, BookCheck, AlertCircle, CheckCircle2, ChevronDown, User, Calendar as CalendarIcon, Filter } from 'lucide-react';
-import { parseGradeLevel } from '../utils/academicUtils';
+import { Loader2, BookCheck, AlertCircle, CheckCircle2, ChevronDown, User, Calendar as CalendarIcon, Filter, Eye } from 'lucide-react';
+import { parseGradeLevel, formatDateWithTimeBr } from '../utils/academicUtils';
 
 interface CoordinatorAgendaReportProps {
     unit: SchoolUnit;
@@ -23,6 +23,7 @@ export const CoordinatorAgendaReport: React.FC<CoordinatorAgendaReportProps> = (
     const [agendas, setAgendas] = useState<DailyAgenda[]>([]);
     const [teachers, setTeachers] = useState<Teacher[]>([]);
     const [loading, setLoading] = useState(false);
+    const [viewingAgenda, setViewingAgenda] = useState<DailyAgenda | null>(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -437,12 +438,32 @@ export const CoordinatorAgendaReport: React.FC<CoordinatorAgendaReportProps> = (
                                                         {sch.gradeName} - {sch.class} ({SHIFT_LABELS[sch.shift as SchoolShift] || sch.shift})
                                                     </p>
                                                     <div className="flex flex-wrap gap-2">
-                                                        {sch.expectedSubjects.map((sub, sIdx) => (
-                                                            <span key={sIdx} className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold border ${sub.posted ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-600 border-red-200'}`}>
-                                                                {sub.posted ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
-                                                                {sub.name}
-                                                            </span>
-                                                        ))}
+                                                        {sch.expectedSubjects.map((sub, sIdx) => {
+                                                            const matchingAgenda = sub.posted ? item.agendas.find(a =>
+                                                                a.gradeLevel === sch.gradeName &&
+                                                                a.schoolClass === sch.class &&
+                                                                a.subject === sub.id
+                                                            ) : undefined;
+
+                                                            return (
+                                                                <button
+                                                                    key={sIdx}
+                                                                    type="button"
+                                                                    disabled={!sub.posted}
+                                                                    onClick={() => matchingAgenda && setViewingAgenda(matchingAgenda)}
+                                                                    title={sub.posted ? "Clique para visualizar a agenda" : "Agenda pendente"}
+                                                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold border transition-all ${
+                                                                        sub.posted
+                                                                            ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100 hover:border-green-300 cursor-pointer active:scale-95'
+                                                                            : 'bg-red-50 text-red-600 border-red-200 cursor-default opacity-80'
+                                                                    }`}
+                                                                >
+                                                                    {sub.posted ? <CheckCircle2 className="w-3 h-3 text-green-600" /> : <AlertCircle className="w-3 h-3 text-red-500" />}
+                                                                    {sub.name}
+                                                                    {sub.posted && <Eye className="w-3 h-3 ml-0.5 text-green-700/70" />}
+                                                                </button>
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
                                             ))}
@@ -472,6 +493,88 @@ export const CoordinatorAgendaReport: React.FC<CoordinatorAgendaReportProps> = (
 
                                 </div>
                             ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL DE VISUALIZAÇÃO DA AGENDA DIÁRIA */}
+            {viewingAgenda && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-fade-in-up">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-100 flex flex-col">
+                        {/* Header */}
+                        <div className="bg-white p-6 flex justify-between items-center sticky top-0 z-10 border-b border-gray-100 rounded-t-3xl">
+                            <div>
+                                <h2 className="text-gray-950 text-lg font-black tracking-tight">Detalhes da Agenda</h2>
+                                <p className="text-gray-500 text-xs mt-0.5">Visualização do Coordenador</p>
+                            </div>
+                            <button
+                                onClick={() => setViewingAgenda(null)}
+                                className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-2 transition-all active:scale-95"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 space-y-6 text-left overflow-y-auto">
+                            {/* Meta Info Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-gray-100 pb-5">
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Disciplina</label>
+                                    <p className="text-sm font-black text-gray-800">
+                                        {viewingAgenda.subject === 'general_early_childhood'
+                                            ? 'Geral (Ens. Infantil)'
+                                            : (subjects.find(s => s.id === viewingAgenda.subject)?.name || viewingAgenda.subject)}
+                                    </p>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Professor(a)</label>
+                                    <p className="text-sm font-bold text-gray-700">{viewingAgenda.teacherName || 'Não informado'}</p>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Série / Turma / Turno</label>
+                                    <p className="text-xs font-medium text-gray-600">
+                                        {viewingAgenda.gradeLevel} - {viewingAgenda.schoolClass} ({SHIFT_LABELS[viewingAgenda.shift as SchoolShift] || viewingAgenda.shift})
+                                    </p>
+                                </div>
+                                <div className="md:text-right">
+                                    <label className="block text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Data da Aula</label>
+                                    <span className="inline-flex text-blue-900 font-bold bg-blue-50 px-3 py-1 rounded-full text-xs border border-blue-100">
+                                        {new Date(viewingAgenda.date + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                    </span>
+                                    {viewingAgenda.timestamp && (
+                                        <p className="text-[10px] text-gray-400 mt-1">Postado em: {formatDateWithTimeBr(viewingAgenda.timestamp)}</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Conteúdo em Sala */}
+                            <div>
+                                <label className="block text-blue-950 text-xs uppercase font-extrabold mb-2 tracking-wider">Conteúdo em Sala</label>
+                                <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200/60 text-gray-700 whitespace-pre-wrap leading-relaxed text-sm shadow-inner">
+                                    {viewingAgenda.contentInClass || <span className="text-gray-400 italic font-medium">Nenhum conteúdo informado.</span>}
+                                </div>
+                            </div>
+
+                            {/* Tarefa de Casa */}
+                            <div>
+                                <label className="block text-orange-700 text-xs uppercase font-extrabold mb-2 tracking-wider">Trabalho para Casa / Tarefas</label>
+                                <div className="bg-orange-50/50 p-4 rounded-2xl border border-orange-100 text-orange-950 whitespace-pre-wrap leading-relaxed text-sm shadow-inner">
+                                    {viewingAgenda.homework || <span className="text-gray-400 italic font-medium">Nenhuma tarefa informada.</span>}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-4 bg-gray-50 flex justify-end border-t border-gray-100 rounded-b-3xl">
+                            <button
+                                type="button"
+                                onClick={() => setViewingAgenda(null)}
+                                className="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold rounded-xl transition-all text-xs uppercase tracking-wider active:scale-95"
+                            >
+                                Fechar
+                            </button>
                         </div>
                     </div>
                 </div>
