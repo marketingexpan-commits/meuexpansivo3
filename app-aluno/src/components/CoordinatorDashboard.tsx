@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAcademicData } from '../hooks/useAcademicData';
 import { db, storage } from '../firebaseConfig';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { UnitContact, SchoolUnit, UNIT_LABELS, SHIFT_LABELS, CoordinationSegment, Subject, SUBJECT_LABELS, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Ticket, SchoolMessage, MessageRecipient, CalendarEvent, ClassSchedule, PedagogicalAttendance, BimesterData, GradeEntry, PhotographerDemand, Announcement, AnnouncementRecipient, AppNotification } from '../types';
+import { UnitContact, SchoolUnit, UNIT_LABELS, SHIFT_LABELS, CoordinationSegment, Subject, SUBJECT_LABELS, SUBJECT_SHORT_LABELS, SchoolClass, SchoolShift, AttendanceRecord, AttendanceStatus, Occurrence, OccurrenceCategory, OCCURRENCE_TEMPLATES, Student, Teacher, Ticket, SchoolMessage, MessageRecipient, CalendarEvent, ClassSchedule, PedagogicalAttendance, BimesterData, GradeEntry, PhotographerDemand, Announcement, AnnouncementRecipient, AppNotification } from '../types';
 import { SCHOOL_CLASSES_LIST, SCHOOL_SHIFTS_LIST, CURRICULUM_MATRIX, getCurriculumSubjects, calculateBimesterMedia, calculateFinalData, SCHOOL_CLASSES_OPTIONS, ACADEMIC_GRADES } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateGeneralFrequency, calculateTaughtClasses, calculateBimesterGeneralFrequency } from '../utils/frequency';
 import { getDynamicBimester, isClassScheduled, normalizeClass, normalizeShift, parseGradeLevel, safeParseDate, calculateSchoolDays, getSubjectDurationForDay, normalizeUnit, resolveGradeId } from '../utils/academicUtils';
@@ -12,6 +12,7 @@ import { SchoolCalendar } from './SchoolCalendar';
 import { AttachmentViewer } from './AttachmentViewer';
 import { TextExpander } from './TextExpander';
 import { generateSchoolCalendar } from '../utils/calendarGenerator';
+import { CoordinatorAttendanceReport } from './CoordinatorAttendanceReport';
 import {
     AlertCircle,
     X,
@@ -53,7 +54,9 @@ import {
     Undo as UndoIcon,
     Redo as RedoIcon,
     FileSpreadsheet,
-    TableProperties
+    TableProperties,
+    Award,
+    TrendingUp
 } from 'lucide-react';
 
 // Tiptap Imports
@@ -1946,6 +1949,24 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     const [scheduleGrade, setScheduleGrade] = useState('');
     const [scheduleClass, setScheduleClass] = useState('');
     const [scheduleShift, setScheduleShift] = useState('');
+
+    // --- ATTENDANCE REPORT STATES ---
+    const [attendanceSubTab, setAttendanceSubTab] = useState<'record' | 'report'>('record');
+    const [reportMonth, setReportMonth] = useState<number>(new Date().getMonth() + 1);
+    const [reportYear, setReportYear] = useState<number>(new Date().getFullYear());
+    const [reportType, setReportType] = useState<'monthly' | 'bimester' | 'daily'>('monthly');
+    const [reportBimester, setReportBimester] = useState<number>(academicSettings?.currentBimester || 1);
+    const [reportDailyDate, setReportDailyDate] = useState<string>(new Date().toLocaleDateString('en-CA'));
+    const [reportSearch, setReportSearch] = useState<string>('');
+    const [attendanceReportData, setAttendanceReportData] = useState<Array<{
+        teacherId: string;
+        teacherName: string;
+        assignments: any[];
+        performedCount: number;
+        expectedCount: number;
+        statusColor: 'green' | 'yellow' | 'red';
+    }>>([]);
+    const [loadingReport, setLoadingReport] = useState<boolean>(false);
     // --- OCCURRENCE HISTORY STATE ---
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [historyOccurrences, setHistoryOccurrences] = useState<Occurrence[]>([]);
@@ -2993,6 +3014,496 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             setIsSendingReply(false);
         }
     };
+
+    const handleCalculateAttendanceReport = async () => {
+        setLoadingReport(true);
+        try {
+            // 1. Fetch all teachers for currentUnit
+            const teachersSnap = await db.collection('teachers').get();
+            const fetchedTeachers = teachersSnap.docs
+                .map(doc => ({ id: doc.id, ...doc.data() } as Teacher))
+                .filter(t => t.unit === currentUnit);
+
+            // 2. Set up dates
+            let startDateStr = '';
+            let endDateStr = '';
+            const today = new Date();
+            const todayStr = today.toLocaleDateString('en-CA');
+
+            if (reportType === 'monthly') {
+                startDateStr = `${reportYear}-${String(reportMonth).padStart(2, '0')}-01`;
+                const endOfMonthDate = new Date(reportYear, reportMonth, 0);
+                const lastDayOfMonthStr = `${reportYear}-${String(reportMonth).padStart(2, '0')}-${String(endOfMonthDate.getDate()).padStart(2, '0')}`;
+                
+                const isCurrentMonth = today.getFullYear() === reportYear && (today.getMonth() + 1) === reportMonth;
+                endDateStr = isCurrentMonth
+                    ? `${reportYear}-${String(reportMonth).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+                    : lastDayOfMonthStr;
+            } else if (reportType === 'bimester') {
+                // Try to load official bimester settings from the 'academic_settings' collection
+                let targetBimesters = academicSettings?.bimesters;
+                try {
+                    const settingsSnap = await db.collection('academic_settings')
+                        .where('year', '==', reportYear)
+                        .where('unit', '==', currentUnit)
+                        .limit(1)
+                        .get();
+                    if (!settingsSnap.empty) {
+                        const settingsData = settingsSnap.docs[0].data();
+                        if (settingsData && settingsData.bimesters) {
+                            targetBimesters = settingsData.bimesters;
+                        }
+                    }
+                } catch (err) {
+                    console.error("Error fetching official academic_settings from Firestore:", err);
+                }
+
+                // If not found in database, clone from global 'all' or fallback to DEFAULT_BIMESTERS constants
+                if (!targetBimesters) {
+                    try {
+                        const allSettingsSnap = await db.collection('academic_settings')
+                            .where('year', '==', reportYear)
+                            .where('unit', '==', 'all')
+                            .limit(1)
+                            .get();
+                        if (!allSettingsSnap.empty) {
+                            const allSettingsData = allSettingsSnap.docs[0].data();
+                            targetBimesters = allSettingsData.bimesters;
+                        }
+                    } catch (err) {
+                        console.error("Error fetching base academic_settings:", err);
+                    }
+                }
+
+                const finalBimesters = targetBimesters || [
+                    { number: 1, label: '1º Bimestre', startDate: `${reportYear}-01-19`, endDate: `${reportYear}-04-17` },
+                    { number: 2, label: '2º Bimestre', startDate: `${reportYear}-04-20`, endDate: `${reportYear}-06-25` },
+                    { number: 3, label: '3º Bimestre', startDate: `${reportYear}-07-06`, endDate: `${reportYear}-09-18` },
+                    { number: 4, label: '4º Bimestre', startDate: `${reportYear}-09-21`, endDate: `${reportYear}-12-18` }
+                ];
+
+                const bimesterConfig = finalBimesters.find((b: any) => b.number === reportBimester);
+                if (bimesterConfig) {
+                    startDateStr = bimesterConfig.startDate;
+                    endDateStr = bimesterConfig.endDate;
+                } else {
+                    // Safety absolute fallback
+                    const estMap: Record<number, { s: string, e: string }> = {
+                        1: { s: `${reportYear}-02-01`, e: `${reportYear}-04-30` },
+                        2: { s: `${reportYear}-05-01`, e: `${reportYear}-07-31` },
+                        3: { s: `${reportYear}-08-01`, e: `${reportYear}-09-30` },
+                        4: { s: `${reportYear}-10-01`, e: `${reportYear}-12-20` },
+                    };
+                    const est = estMap[reportBimester];
+                    startDateStr = est.s;
+                    endDateStr = est.e;
+                }
+            } else { // daily
+                startDateStr = reportDailyDate;
+                endDateStr = reportDailyDate;
+            }
+
+            // 3. Fetch all attendance records for unit/period
+            const attendanceSnap = await db.collection('attendance')
+                .where('unit', '==', currentUnit)
+                .where('date', '>=', startDateStr)
+                .where('date', '<=', endDateStr)
+                .get();
+            const attendanceRecords = attendanceSnap.docs.map(doc => doc.data() as AttendanceRecord);
+
+            // 4. Filter out Educação Infantil teachers (this segment has no daily roll call)
+            const INFANTIL_GRADE_IDS = new Set([
+                'grade_bercario', 'grade_nivel_1', 'grade_nivel_2',
+                'grade_nivel_3', 'grade_nivel_4', 'grade_nivel_5'
+            ]);
+            const isInfantilOnly = (teacher: Teacher): boolean => {
+                const assignments = teacher.assignments || [];
+                if (assignments.length === 0) return false;
+                return assignments.every(a => {
+                    const gradeId = a.gradeId || resolveGradeId(a.gradeLevel) || a.gradeLevel;
+                    return INFANTIL_GRADE_IDS.has(gradeId);
+                });
+            };
+            const getSubjectShortLabel = (subjectId: string) => {
+                const lowerId = subjectId.toLowerCase();
+                if (
+                    lowerId.includes('producao_texto') || 
+                    lowerId.includes('produção_de_texto') || 
+                    lowerId.includes('producaodetexto') ||
+                    lowerId === 'kzkirs0fvjy8r0rsrkkm'
+                ) {
+                    return 'P. Texto';
+                }
+
+                const dbSubj = academicSubjects?.find(s => s.id === subjectId);
+                if (dbSubj) {
+                    const dbName = (dbSubj.name || dbSubj.label || '').trim().toLowerCase();
+                    if (dbName === 'produção de texto' || dbName === 'producao de texto') {
+                        return 'P. Texto';
+                    }
+                    const short = dbSubj.shortLabel || dbSubj.shortName || dbSubj.label || dbSubj.name;
+                    if (short) {
+                        if (short.length <= 6 && short.includes('/')) {
+                            return short;
+                        }
+                        if (short.includes('/')) {
+                            const parts = short.split('/');
+                            const prefix = parts[0].trim().slice(0, 3);
+                            const suffix = parts[1].trim();
+                            return `${prefix}/${suffix}`;
+                        }
+                        if (short.length <= 4) return short;
+                        return short.slice(0, 3);
+                    }
+                }
+                const staticShort = SUBJECT_SHORT_LABELS[subjectId] || SUBJECT_SHORT_LABELS[subjectId.toLowerCase()];
+                if (staticShort) return staticShort;
+                const clean = subjectId.replace('disc_', '');
+                return clean.charAt(0).toUpperCase() + clean.slice(1, 3);
+            };
+
+            const eligibleTeachers = fetchedTeachers.filter(t => !isInfantilOnly(t));
+
+            // 5. Process each eligible teacher
+            const processedData = eligibleTeachers.map(teacher => {
+                // Count performed: any attendance record where teacherId matches this teacher
+                // Count performed: only count attendance records that match the teacher's assignments by technical IDs
+                const teacherRecords = attendanceRecords.filter(rec => {
+                    if (rec.teacherId !== teacher.id) return false;
+                    
+                    return teacher.assignments?.some(a => {
+                        const aGradeId = resolveGradeId(a.gradeId || a.gradeLevel);
+                        const recGradeId = resolveGradeId(rec.gradeLevel);
+                        if (!aGradeId || !recGradeId || aGradeId !== recGradeId) return false;
+                        
+                        // If the teacher assignment specifies a class, it must match. Otherwise, it matches any class.
+                        if (a.class && normalizeClass(a.class) !== normalizeClass(rec.schoolClass)) return false;
+                        
+                        return a.subjects?.some(s => s.toLowerCase() === rec.discipline?.toLowerCase());
+                    });
+                });
+                const performedCount = teacherRecords.length;
+
+                // Count expected and dynamic counts
+                let expectedCount = 0;
+                const activeClasses = new Set<string>();
+                const activeSubjects = new Set<string>();
+
+                if (reportType === 'daily') {
+                    // Daily calculation: expected count is 1 for each scheduled subject on this date
+                    teacher.assignments?.forEach(a => {
+                        const gradeId = a.gradeId || a.gradeLevel;
+                        const resolvedGradeId = resolveGradeId(gradeId);
+
+                        // Resolve full grade name for filter/calendar matching
+                        const gradeObj = academicGrades.find(g =>
+                            (resolvedGradeId && g.id === resolvedGradeId) ||
+                            g.id === gradeId ||
+                            g.name === gradeId ||
+                            g.name?.startsWith(gradeId + ' ') ||
+                            (gradeId && g.name?.split(' - ')[0] === gradeId)
+                        );
+                        const gradeName = gradeObj?.name || gradeId || '';
+                        const finalGradeId = resolvedGradeId || gradeId;
+
+                        a.subjects?.forEach(subj => {
+                            // Check if this subject is scheduled for this date
+                            let subjExpectedCount = 0;
+                            const hasAnySchedulesForClass = classSchedules?.some(s => 
+                                resolveGradeId(s.grade) === finalGradeId && 
+                                (!a.class || normalizeClass(s.class) === normalizeClass(a.class)) && 
+                                normalizeShift(s.shift) === normalizeShift(a.shift)
+                            );
+
+                            if (hasAnySchedulesForClass && classSchedules && classSchedules.length > 0) {
+                                const curDate = new Date(reportDailyDate + 'T00:00:00');
+                                const dayOfWeek = curDate.getDay();
+                                
+                                // Check calendar events for this day
+                                let isHoliday = false;
+                                let isExtraSchoolDay = false;
+                                (calendarEvents || []).forEach((e: any) => {
+                                    const s = new Date(e.startDate + 'T00:00:00');
+                                    const f = e.endDate ? new Date(e.endDate + 'T00:00:00') : new Date(e.startDate + 'T00:00:00');
+                                    if (curDate >= s && curDate <= f) {
+                                        if (e.type === 'holiday_national' || e.type === 'holiday_state' || e.type === 'holiday_municipal' || e.type === 'holiday_school' || e.type === 'vacation' || e.type === 'recess') {
+                                            isHoliday = true;
+                                        } else if ((e.type === 'school_day' || e.type === 'substitution') && e.substituteDayOfWeek !== undefined) {
+                                            isExtraSchoolDay = true;
+                                        }
+                                    }
+                                });
+                                
+                                const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                                if (!isHoliday && (!isWeekend || isExtraSchoolDay)) {
+                                    const matchingSchedule = (classSchedules || []).find((s: any) => {
+                                        if (s.dayOfWeek !== dayOfWeek) return false;
+                                        const sGradeId = resolveGradeId(s.grade);
+                                        if (sGradeId !== finalGradeId) return false;
+                                        if (a.class && normalizeClass(s.class) !== normalizeClass(a.class)) return false;
+                                        if (a.shift && normalizeShift(s.shift) !== normalizeShift(a.shift)) return false;
+                                        return true;
+                                    });
+                                    
+                                    if (matchingSchedule?.items) {
+                                        const normalizedSubj = subj.trim().toLowerCase();
+                                        const count = matchingSchedule.items.filter((item: any) =>
+                                            (item.subject || '').trim().toLowerCase() === normalizedSubj
+                                        ).length;
+                                        subjExpectedCount = count;
+                                    }
+                                }
+                            } else {
+                                // Fallback: check if date is a school day, default count is 1
+                                const schoolDays = calculateSchoolDays(
+                                    reportDailyDate,
+                                    reportDailyDate,
+                                    calendarEvents || [],
+                                    currentUnit,
+                                    gradeName,
+                                    a.class || 'Única',
+                                    a.shift
+                                );
+                                if (schoolDays > 0) {
+                                    subjExpectedCount = 1;
+                                }
+                            }
+
+                            if (subjExpectedCount > 0) {
+                                expectedCount += subjExpectedCount;
+                                const technicalGradeId = resolvedGradeId || gradeId;
+                                const assignmentKey = `${technicalGradeId}_${normalizeClass(a.class || 'Única')}_${normalizeShift(a.shift)}`;
+                                activeClasses.add(assignmentKey);
+                                activeSubjects.add(subj);
+                            }
+                        });
+                    });
+                } else {
+                    // Monthly / Bimonthly calculations: iterate day-by-day using the real schedule
+                    teacher.assignments?.forEach(a => {
+                        const gradeId = a.gradeId || a.gradeLevel;
+                        const resolvedGradeId = resolveGradeId(gradeId);
+
+                        // Resolve full grade name for schedule matching
+                        const gradeObj = academicGrades.find(g =>
+                            (resolvedGradeId && g.id === resolvedGradeId) ||
+                            g.id === gradeId ||
+                            g.name === gradeId ||
+                            g.name?.startsWith(gradeId + ' ') ||
+                            (gradeId && g.name?.split(' - ')[0] === gradeId)
+                        );
+                        const gradeName = gradeObj?.name || gradeId || '';
+                        const finalGradeId = resolvedGradeId || gradeId;
+
+                        // Check if there is any schedule entry for this assignment
+                        // If assignment has no class specified, match any class in schedule
+                        const hasAnySchedulesForClass = classSchedules?.some(s =>
+                            resolveGradeId(s.grade) === finalGradeId &&
+                            (!a.class || normalizeClass(s.class) === normalizeClass(a.class)) &&
+                            normalizeShift(s.shift) === normalizeShift(a.shift)
+                        );
+
+                        a.subjects?.forEach(subj => {
+                            let subjExpectedCount = 0;
+
+                            if (hasAnySchedulesForClass && classSchedules && classSchedules.length > 0) {
+                                // PRIMARY: Iterate day-by-day using the real schedule (same logic as daily mode)
+                                const cur = new Date(startDateStr + 'T00:00:00');
+                                const end = new Date(endDateStr + 'T00:00:00');
+                                while (cur <= end) {
+                                    const dateStr = cur.toISOString().split('T')[0];
+                                    const dayOfWeek = cur.getDay();
+                                    
+                                    // Skip weekends unless it's an extra school day
+                                    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                                    
+                                    // Check calendar events for this day
+                                    let isHoliday = false;
+                                    let isExtraSchoolDay = false;
+                                    (calendarEvents || []).forEach((e: any) => {
+                                        const s = new Date(e.startDate + 'T00:00:00');
+                                        const f = e.endDate ? new Date(e.endDate + 'T00:00:00') : new Date(e.startDate + 'T00:00:00');
+                                        if (cur >= s && cur <= f) {
+                                            if (e.type === 'holiday_national' || e.type === 'holiday_state' || e.type === 'holiday_municipal' || e.type === 'holiday_school' || e.type === 'vacation' || e.type === 'recess') {
+                                                isHoliday = true;
+                                            } else if ((e.type === 'school_day' || e.type === 'substitution') && e.substituteDayOfWeek !== undefined) {
+                                                // Only counts as extra school day if it specifies a substitute day (real Saturday replacement)
+                                                isExtraSchoolDay = true;
+                                            }
+                                        }
+                                    });
+                                    
+                                    if (!isHoliday && (!isWeekend || isExtraSchoolDay)) {
+                                        // Count how many times this subject appears in the schedule for this day
+                                        const matchingSchedule = (classSchedules || []).find((s: any) => {
+                                            if (s.dayOfWeek !== dayOfWeek) return false;
+                                            const sGradeId = resolveGradeId(s.grade);
+                                            if (sGradeId !== finalGradeId) return false;
+                                            if (a.class && normalizeClass(s.class) !== normalizeClass(a.class)) return false;
+                                            if (a.shift && normalizeShift(s.shift) !== normalizeShift(a.shift)) return false;
+                                            return true;
+                                        });
+                                        
+                                        if (matchingSchedule?.items) {
+                                            const normalizedSubj = subj.trim().toLowerCase();
+                                            const count = matchingSchedule.items.filter((item: any) =>
+                                                (item.subject || '').trim().toLowerCase() === normalizedSubj
+                                            ).length;
+                                            subjExpectedCount += count;
+                                        }
+                                    }
+                                    cur.setDate(cur.getDate() + 1);
+                                }
+                            } else {
+                                // FALLBACK: No schedule found — use school days × weekly matrix frequency / 5
+                                const schoolDays = calculateSchoolDays(
+                                    startDateStr,
+                                    endDateStr,
+                                    calendarEvents || [],
+                                    currentUnit,
+                                    gradeName,
+                                    a.class || 'Única',
+                                    a.shift
+                                );
+
+                                let weeklyHours = 0;
+
+                                // 1. Dynamic matrix
+                                if (matrices && matrices.length > 0) {
+                                    const matchingMatrix = matrices.find(m =>
+                                        (m.unit === currentUnit || !m.unit) &&
+                                        (m.shift === a.shift || !m.shift) &&
+                                        (m.gradeId === finalGradeId || m.gradeId === gradeId ||
+                                            (m.gradeId && finalGradeId && (m.gradeId.includes(finalGradeId) || finalGradeId.includes(m.gradeId))))
+                                    );
+                                    if (matchingMatrix) {
+                                        const matrixSubj = matchingMatrix.subjects.find(s =>
+                                            s.id === subj || s.id?.toLowerCase() === subj?.toLowerCase()
+                                        );
+                                        if (matrixSubj) weeklyHours = matrixSubj.weeklyHours;
+                                    }
+                                }
+
+                                // 2. Academic subjects collection
+                                if (weeklyHours === 0 && academicSubjects && academicSubjects.length > 0) {
+                                    const acadSubj = academicSubjects.find(s => s.id === subj || s.name === subj);
+                                    if (acadSubj?.weeklyHours) {
+                                        const k = Object.keys(acadSubj.weeklyHours).find(key =>
+                                            gradeName.includes(key) || key.includes(gradeName.split(' - ')[0])
+                                        );
+                                        if (k) weeklyHours = acadSubj.weeklyHours[k];
+                                    }
+                                }
+
+                                // 3. Static fallback
+                                if (weeklyHours === 0) {
+                                    let levelKey = '';
+                                    if (gradeName.includes('Fundamental I')) levelKey = 'Fundamental I';
+                                    else if (gradeName.includes('Fundamental II')) levelKey = 'Fundamental II';
+                                    else if (gradeName.includes('Ensino Médio') || gradeName.includes('Série')) levelKey = 'Ensino Médio';
+                                    if (levelKey && CURRICULUM_MATRIX[levelKey]) {
+                                        weeklyHours = CURRICULUM_MATRIX[levelKey][subj] || 0;
+                                    }
+                                }
+
+                                if (weeklyHours > 0 && schoolDays > 0) {
+                                    subjExpectedCount = Math.round((weeklyHours / 5) * schoolDays);
+                                }
+                            }
+
+                            if (subjExpectedCount > 0) {
+                                expectedCount += subjExpectedCount;
+                                const technicalGradeId = resolvedGradeId || gradeId;
+                                const assignmentKey = `${technicalGradeId}_${normalizeClass(a.class || 'Única')}_${normalizeShift(a.shift)}`;
+                                activeClasses.add(assignmentKey);
+                                activeSubjects.add(subj);
+                            }
+                        });
+                    });
+                }
+
+                // Add classes/subjects from actual performed attendance records in the period to cover unscheduled/extra classes
+                teacherRecords.forEach(rec => {
+                    // Try to map back to the teacher's original assignment key to prevent duplicates
+                    const matchingAssignment = teacher.assignments?.find(a => {
+                        const aGradeId = resolveGradeId(a.gradeId || a.gradeLevel);
+                        const recGradeId = resolveGradeId(rec.gradeLevel);
+                        if (!aGradeId || !recGradeId || aGradeId !== recGradeId) return false;
+                        if (a.class && normalizeClass(a.class) !== normalizeClass(rec.schoolClass)) return false;
+                        return a.subjects?.some(s => s.toLowerCase() === rec.discipline?.toLowerCase());
+                    });
+
+                    if (matchingAssignment) {
+                        const aGradeId = resolveGradeId(matchingAssignment.gradeId || matchingAssignment.gradeLevel) || matchingAssignment.gradeLevel;
+                        const assignmentKey = `${aGradeId}_${normalizeClass(matchingAssignment.class || 'Única')}_${normalizeShift(matchingAssignment.shift)}`;
+                        activeClasses.add(assignmentKey);
+                    } else if (rec.gradeLevel) {
+                        // Fallback for extra/unmapped classes that don't match any assignment
+                        const technicalGradeId = resolveGradeId(rec.gradeLevel) || rec.gradeLevel;
+                        activeClasses.add(`${technicalGradeId}_${normalizeClass(rec.schoolClass || 'Única')}_unmapped`);
+                    }
+
+                    if (rec.discipline) {
+                        activeSubjects.add(rec.discipline);
+                    }
+                });
+
+                let statusColor: 'green' | 'yellow' | 'red' = 'green';
+                if (expectedCount > 0) {
+                    if (performedCount === 0) {
+                        statusColor = 'red';
+                    } else if (performedCount < expectedCount) {
+                        statusColor = 'yellow';
+                    } else {
+                        statusColor = 'green';
+                    }
+                }
+                if (expectedCount === 0 && performedCount > 0) {
+                    statusColor = 'green';
+                }
+
+                return {
+                    teacherId: teacher.id,
+                    teacherName: teacher.name || 'Professor sem nome',
+                    assignments: teacher.assignments || [],
+                    performedCount,
+                    expectedCount,
+                    statusColor,
+                    activeClassesCount: activeClasses.size,
+                    activeSubjectsCount: activeSubjects.size,
+                    activeSubjectsList: Array.from(activeSubjects)
+                        .map(sub => getSubjectShortLabel(sub))
+                        .filter((val, i, arr) => arr.indexOf(val) === i)
+                };
+            });
+
+            // Sort: highest engagement rate first
+            processedData.sort((a, b) => {
+                const rateA = a.expectedCount > 0 ? (a.performedCount / a.expectedCount) : (a.performedCount > 0 ? 1 : 0);
+                const rateB = b.expectedCount > 0 ? (b.performedCount / b.expectedCount) : (b.performedCount > 0 ? 1 : 0);
+                if (rateB !== rateA) return rateB - rateA;
+                return a.teacherName.localeCompare(b.teacherName);
+            });
+
+            // Filter: if daily, only show teachers who have scheduled or performed calls on this day
+            const filteredReportData = reportType === 'daily'
+                ? processedData.filter(item => item.expectedCount > 0 || item.performedCount > 0)
+                : processedData;
+
+            setAttendanceReportData(filteredReportData);
+        } catch (error) {
+            console.error("Error calculating attendance report:", error);
+            alert("Erro ao gerar relatório de chamadas.");
+        } finally {
+            setLoadingReport(false);
+        }
+    };
+
+    useEffect(() => {
+        if (attendanceSubTab === 'report' && currentUnit) {
+            handleCalculateAttendanceReport();
+        }
+    }, [attendanceSubTab, currentUnit, reportMonth, reportYear, reportType, reportBimester, reportDailyDate]);
 
     // --- CRM LOGIC ---
     useEffect(() => {
@@ -4713,226 +5224,397 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                     {activeTab === 'attendance' && (
                         <div className="space-y-6 animate-fade-in-up md:p-6 p-4">
                             {/* Header */}
-                            <div className="flex items-center gap-3 mb-2">
+                            <div className="flex items-center gap-3 mb-2 print:hidden">
                                 <div className="p-3 bg-blue-50 text-blue-950 rounded-xl shadow-sm">
                                     <Users className="w-6 h-6" />
                                 </div>
                                 <div>
                                     <h1 className="text-2xl font-bold text-gray-800">Controle de Frequência</h1>
-                                    <p className="text-gray-500 text-sm">Gerencie a chamada diária (Permite edições retroativas).</p>
+                                    <p className="text-gray-500 text-sm">Gerencie a chamada diária e acompanhe relatórios de lançamentos.</p>
                                 </div>
                             </div>
 
-                            {/* FILTERS CARD */}
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Data</label>
-                                        <input
-                                            type="date"
-                                            value={attDate}
-                                            onChange={e => setAttDate(e.target.value)}
-                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg font-medium text-gray-700 focus:ring-2 focus:ring-blue-950 outline-none transition-all hover:bg-white focus:bg-white"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Série</label>
-                                        <select
-                                            value={attGrade}
-                                            onChange={e => setAttGrade(e.target.value)}
-                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-950 transition-all hover:bg-white focus:bg-white"
-                                        >
-                                            <option value="">Selecione...</option>
-                                            {availableGradesForAttendance.map(g => (
-                                                <option key={g.id} value={g.id}>{g.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="md:col-span-1">
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Turno</label>
-                                        <select
-                                            value={attShift}
-                                            onChange={e => setAttShift(e.target.value)}
-                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-950 transition-all hover:bg-white focus:bg-white"
-                                        >
-                                            <option value="">Selecione...</option>
-                                            {SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{SHIFT_LABELS[s as SchoolShift] || s}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Turma</label>
-                                        <select
-                                            value={attClass}
-                                            onChange={e => setAttClass(e.target.value as SchoolClass)}
-                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-950 transition-all hover:bg-white focus:bg-white"
-                                        >
-                                            {SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Disciplina</label>
-                                        <select
-                                            value={attSubject}
-                                            onChange={e => setAttSubject(e.target.value)}
-                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-950 transition-all hover:bg-white focus:bg-white"
-                                        >
-                                            <option value="">Selecione...</option>
-                                            {loadingAcademic ? (
-                                                <option>Carregando...</option>
-                                            ) : (
-                                                availableSubjectsForAttendance.map(s => (
-                                                    <option key={s.id} value={s.id}>{SUBJECT_LABELS[s.id] || s.name}</option>
-                                                ))
-                                            )}
-                                        </select>
-                                    </div>
-                                </div>
-                                <div className="mt-4 flex justify-end">
-                                    <Button
-                                        onClick={handleLoadCoordinatorAttendance}
-                                        disabled={attLoading}
-                                        className="!bg-blue-950 hover:!bg-black text-white font-bold px-8 py-2.5 shadow-lg shadow-blue-100 rounded-xl transition-all active:scale-95"
-                                    >
-                                        {attLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Buscar Chamada'}
-                                    </Button>
-                                </div>
+                            {/* Sub-tab Switcher */}
+                            <div className="flex gap-2 bg-white p-1.5 rounded-2xl border border-gray-200 shadow-sm max-w-md print:hidden">
+                                <button
+                                    type="button"
+                                    onClick={() => setAttendanceSubTab('record')}
+                                    className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all ${attendanceSubTab === 'record' ? 'bg-blue-950 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+                                >
+                                    Realizar Chamada
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setAttendanceSubTab('report')}
+                                    className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all ${attendanceSubTab === 'report' ? 'bg-blue-950 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+                                >
+                                    Relatório de Chamadas
+                                </button>
                             </div>
 
-                            {/* LOADING STATE */}
-                            {attLoading && (
-                                <div className="text-center py-12">
-                                    <Loader2 className="w-10 h-10 animate-spin text-blue-950 mx-auto mb-4" />
-                                    <p className="text-gray-500 animate-pulse font-medium">Carregando lista de alunos...</p>
-                                </div>
-                            )}
-
-                            {/* LISTA DE ALUNOS */}
-                            {!attLoading && attStudents.length > 0 && (
-                                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4">
-                                    <div className="p-4 bg-gray-50 border-b border-gray-200 flex flex-col md:flex-row justify-between md:items-center gap-4">
-                                        <div>
-                                            <h3 className="font-bold text-gray-800 text-lg">Lista de Presença</h3>
-                                            <p className="text-xs text-gray-500 font-medium mt-1">
-                                                {attStudents.length} alunos encontrados • {attDate.split('-').reverse().join('/')} • {attSubject}
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center gap-3 bg-white px-3 py-2 rounded-xl border border-gray-200 shadow-sm">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Aulas no Dia:</label>
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={() => setAttLessonCount(Math.max(1, attLessonCount - 1))}
-                                                    className="w-6 h-6 rounded bg-gray-100 hover:bg-gray-200 flex items-center justify-center font-bold text-gray-600"
-                                                >-</button>
+                            {attendanceSubTab === 'record' ? (
+                                <>
+                                    {/* FILTERS CARD */}
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 print:hidden">
+                                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Data</label>
                                                 <input
-                                                    type="number"
-                                                    min="1"
-                                                    max="5"
-                                                    value={attLessonCount}
-                                                    onChange={e => setAttLessonCount(Number(e.target.value))}
-                                                    className="w-10 text-center font-bold text-gray-800 outline-none"
+                                                    type="date"
+                                                    value={attDate}
+                                                    onChange={e => setAttDate(e.target.value)}
+                                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg font-medium text-gray-700 focus:ring-2 focus:ring-blue-950 outline-none transition-all hover:bg-white focus:bg-white"
                                                 />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Série</label>
+                                                <select
+                                                    value={attGrade}
+                                                    onChange={e => setAttGrade(e.target.value)}
+                                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-950 transition-all hover:bg-white focus:bg-white"
+                                                >
+                                                    <option value="">Selecione...</option>
+                                                    {availableGradesForAttendance.map(g => (
+                                                        <option key={g.id} value={g.id}>{g.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="md:col-span-1">
+                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Turno</label>
+                                                <select
+                                                    value={attShift}
+                                                    onChange={e => setAttShift(e.target.value)}
+                                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-950 transition-all hover:bg-white focus:bg-white"
+                                                >
+                                                    <option value="">Selecione...</option>
+                                                    {SCHOOL_SHIFTS_LIST.map(s => <option key={s} value={s}>{SHIFT_LABELS[s as SchoolShift] || s}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Turma</label>
+                                                <select
+                                                    value={attClass}
+                                                    onChange={e => setAttClass(e.target.value as SchoolClass)}
+                                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-950 transition-all hover:bg-white focus:bg-white"
+                                                >
+                                                    {SCHOOL_CLASSES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Disciplina</label>
+                                                <select
+                                                    value={attSubject}
+                                                    onChange={e => setAttSubject(e.target.value)}
+                                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-950 transition-all hover:bg-white focus:bg-white"
+                                                >
+                                                    <option value="">Selecione...</option>
+                                                    {loadingAcademic ? (
+                                                        <option>Carregando...</option>
+                                                    ) : (
+                                                        availableSubjectsForAttendance.map(s => (
+                                                            <option key={s.id} value={s.id}>{SUBJECT_LABELS[s.id] || s.name}</option>
+                                                        ))
+                                                    )}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="mt-4 flex justify-end">
+                                            <Button
+                                                onClick={handleLoadCoordinatorAttendance}
+                                                disabled={attLoading}
+                                                className="!bg-blue-950 hover:!bg-black text-white font-bold px-8 py-2.5 shadow-lg shadow-blue-100 rounded-xl transition-all active:scale-95"
+                                            >
+                                                {attLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Buscar Chamada'}
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    {/* LOADING STATE */}
+                                    {attLoading && (
+                                        <div className="text-center py-12">
+                                            <Loader2 className="w-10 h-10 animate-spin text-blue-950 mx-auto mb-4" />
+                                            <p className="text-gray-500 animate-pulse font-medium">Carregando lista de alunos...</p>
+                                        </div>
+                                    )}
+
+                                    {/* LISTA DE ALUNOS */}
+                                    {!attLoading && attStudents.length > 0 && (
+                                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4">
+                                            <div className="p-4 bg-gray-50 border-b border-gray-200 flex flex-col md:flex-row justify-between md:items-center gap-4">
+                                                <div>
+                                                    <h3 className="font-bold text-gray-800 text-lg">Lista de Presença</h3>
+                                                    <p className="text-xs text-gray-500 font-medium mt-1">
+                                                        {attStudents.length} alunos encontrados • {attDate.split('-').reverse().join('/')} • {attSubject}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center gap-3 bg-white px-3 py-2 rounded-xl border border-gray-200 shadow-sm">
+                                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Aulas no Dia:</label>
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => setAttLessonCount(Math.max(1, attLessonCount - 1))}
+                                                            className="w-6 h-6 rounded bg-gray-100 hover:bg-gray-200 flex items-center justify-center font-bold text-gray-600"
+                                                        >-</button>
+                                                        <input
+                                                            type="number"
+                                                            min="1"
+                                                            max="5"
+                                                            value={attLessonCount}
+                                                            onChange={e => setAttLessonCount(Number(e.target.value))}
+                                                            className="w-10 text-center font-bold text-gray-800 outline-none"
+                                                        />
+                                                        <button
+                                                            onClick={() => setAttLessonCount(Math.min(5, attLessonCount + 1))}
+                                                            className="w-6 h-6 rounded bg-gray-100 hover:bg-gray-200 flex items-center justify-center font-bold text-gray-600"
+                                                        >+</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-sm text-left">
+                                                    <thead className="bg-gray-50 text-gray-500 uppercase font-bold text-xs sticky top-0 z-10">
+                                                        <tr>
+                                                            <th className="px-6 py-4 border-b border-gray-100">Aluno</th>
+                                                            <th className="px-6 py-4 text-center border-b border-gray-100 w-64">Status</th>
+                                                            <th className="px-6 py-4 text-center border-b border-gray-100 w-32">Faltas Reg.</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-50">
+                                                        {attStudents.map(student => {
+                                                            const status = attStatuses[student.id] ?? AttendanceStatus.PRESENT;
+                                                            const absenceCount = attAbsenceOverrides[student.id] !== undefined
+                                                                ? attAbsenceOverrides[student.id]
+                                                                : (status === AttendanceStatus.ABSENT ? attLessonCount : 0);
+
+                                                            return (
+                                                                <tr key={student.id} className={`hover:bg-blue-50/30 transition-colors ${status === AttendanceStatus.ABSENT ? 'bg-red-50/30' : ''}`}>
+                                                                    <td className="px-6 py-4">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${status === AttendanceStatus.ABSENT ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'}`}>
+                                                                                {student.name.substring(0, 2).toUpperCase()}
+                                                                            </div>
+                                                                            <div>
+                                                                                <p className={`font-bold ${status === AttendanceStatus.ABSENT ? 'text-red-900' : 'text-gray-900'}`}>{student.name}</p>
+                                                                                <p className="text-[10px] text-gray-400 font-medium">RM: {student.code}</p>
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="px-6 py-4 text-center">
+                                                                        <div className="flex justify-center bg-gray-100 p-1 rounded-lg inline-flex">
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    setAttStatuses(prev => ({ ...prev, [student.id]: AttendanceStatus.PRESENT }));
+                                                                                    setAttAbsenceOverrides(prev => {
+                                                                                        const copy = { ...prev };
+                                                                                        delete copy[student.id]; // Remove override on Present
+                                                                                        return copy;
+                                                                                    });
+                                                                                }}
+                                                                                className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all shadow-sm ${status === AttendanceStatus.PRESENT ? 'bg-white text-green-700 shadow ring-1 ring-black/5' : 'text-gray-400 hover:text-gray-600'}`}
+                                                                            >
+                                                                                Presente
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    setAttStatuses(prev => ({ ...prev, [student.id]: AttendanceStatus.ABSENT }));
+                                                                                }}
+                                                                                className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all shadow-sm ${status === AttendanceStatus.ABSENT ? 'bg-white text-red-700 shadow ring-1 ring-black/5' : 'text-gray-400 hover:text-gray-600'}`}
+                                                                            >
+                                                                                Faltou
+                                                                            </button>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="px-6 py-4 text-center">
+                                                                        <div className={`transition-opacity duration-200 ${status === AttendanceStatus.ABSENT ? 'opacity-100' : 'opacity-20 grayscale pointer-events-none'}`}>
+                                                                            <input
+                                                                                type="number"
+                                                                                min="1"
+                                                                                max="10"
+                                                                                value={absenceCount}
+                                                                                onChange={(e) => {
+                                                                                    const val = parseInt(e.target.value) || 1;
+                                                                                    setAttAbsenceOverrides(prev => ({ ...prev, [student.id]: val }));
+                                                                                }}
+                                                                                className="w-16 p-2 text-center border border-gray-200 rounded-lg focus:border-blue-950 focus:ring-2 focus:ring-blue-100 outline-none font-bold text-gray-700 shadow-sm"
+                                                                            />
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            )
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+                                                <Button
+                                                    onClick={handleSaveCoordinatorAttendance}
+                                                    disabled={attSaving}
+                                                    className="!bg-green-600 hover:!bg-green-700 text-white font-bold px-8 py-3 shadow-lg shadow-green-200 flex items-center gap-2 rounded-xl transition-all hover:-translate-y-0.5"
+                                                >
+                                                    {attSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5" /> Salvar Frequência</>}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Messages if no students found after search */}
+                                    {!attLoading && attStudents.length === 0 && attSubject && (
+                                        <div className="text-center py-20">
+                                            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-100">
+                                                <ClipboardList className="w-10 h-10 text-gray-300" />
+                                            </div>
+                                            <h3 className="text-gray-900 font-bold text-lg mb-1">Nenhum aluno encontrado</h3>
+                                            <p className="text-gray-500 max-w-sm mx-auto">Verifique os filtros de Data, Série, Turno e Turma selecionados acima.</p>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="space-y-6">
+                                    {/* Print-only Header */}
+                                    <div className="hidden print:block text-center border-b pb-4 mb-6">
+                                        <h2 className="text-xl font-bold uppercase tracking-wide text-gray-800">Relatório de Chamadas Realizadas</h2>
+                                        <p className="text-sm font-medium text-gray-500 mt-1">
+                                            Unidade: {UNIT_LABELS[currentUnit as SchoolUnit] || currentUnit} • Período: {
+                                                reportType === 'daily'
+                                                    ? `Data: ${reportDailyDate.split('-').reverse().join('/')}`
+                                                    : reportType === 'bimester'
+                                                        ? `${reportBimester}º Bimestre / ${reportYear}`
+                                                        : `${['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][reportMonth - 1]} / ${reportYear}`
+                                            }
+                                        </p>
+                                    </div>
+
+                                    {/* Filters Card */}
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 print:hidden">
+                                        <div className="flex flex-col lg:flex-row gap-4 items-end">
+                                            <div className="flex-1 min-w-[120px]">
+                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Período</label>
+                                                <select
+                                                    value={reportType}
+                                                    onChange={e => setReportType(e.target.value as any)}
+                                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
+                                                >
+                                                    <option value="monthly">Mensal</option>
+                                                    <option value="bimester">Bimestral</option>
+                                                    <option value="daily">Diário</option>
+                                                </select>
+                                            </div>
+
+                                            {reportType === 'monthly' && (
+                                                <div className="flex-1 min-w-[120px]">
+                                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Mês</label>
+                                                    <select
+                                                        value={reportMonth}
+                                                        onChange={e => setReportMonth(Number(e.target.value))}
+                                                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
+                                                    >
+                                                        {['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'].map((m, idx) => (
+                                                            <option key={idx} value={idx + 1}>{m}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )}
+
+                                            {reportType === 'bimester' && (
+                                                <div className="flex-1 min-w-[120px]">
+                                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Bimestre</label>
+                                                    <select
+                                                        value={reportBimester}
+                                                        onChange={e => setReportBimester(Number(e.target.value))}
+                                                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
+                                                    >
+                                                        <option value={1}>1º Bimestre</option>
+                                                        <option value={2}>2º Bimestre</option>
+                                                        <option value={3}>3º Bimestre</option>
+                                                        <option value={4}>4º Bimestre</option>
+                                                    </select>
+                                                </div>
+                                            )}
+
+                                            {reportType === 'daily' && (
+                                                <div className="flex-1 min-w-[150px]">
+                                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Data</label>
+                                                    <input
+                                                        type="date"
+                                                        value={reportDailyDate}
+                                                        onChange={e => setReportDailyDate(e.target.value)}
+                                                        className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {reportType !== 'daily' && (
+                                                <div className="flex-1 min-w-[100px]">
+                                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Ano</label>
+                                                    <select
+                                                        value={reportYear}
+                                                        onChange={e => setReportYear(Number(e.target.value))}
+                                                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
+                                                    >
+                                                        {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map(y => (
+                                                            <option key={y} value={y}>{y}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )}
+
+                                            <div className="flex-[2] min-w-[200px] relative">
+                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Buscar Professor</label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Digite o nome do professor..."
+                                                        value={reportSearch}
+                                                        onChange={e => setReportSearch(e.target.value)}
+                                                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-950 outline-none"
+                                                    />
+                                                    <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                                </div>
+                                            </div>
+
+                                            <div>
                                                 <button
-                                                    onClick={() => setAttLessonCount(Math.min(5, attLessonCount + 1))}
-                                                    className="w-6 h-6 rounded bg-gray-100 hover:bg-gray-200 flex items-center justify-center font-bold text-gray-600"
-                                                >+</button>
+                                                    type="button"
+                                                    onClick={handleCalculateAttendanceReport}
+                                                    disabled={loadingReport}
+                                                    className="w-full px-8 py-2.5 bg-blue-950 hover:bg-black text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all active:scale-95 shadow flex items-center justify-center gap-1.5"
+                                                >
+                                                    {loadingReport ? <Loader2 className="w-4 h-4 animate-spin" /> : <ClipboardList className="w-4 h-4" />}
+                                                    Gerar Relatório
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-sm text-left">
-                                            <thead className="bg-gray-50 text-gray-500 uppercase font-bold text-xs sticky top-0 z-10">
-                                                <tr>
-                                                    <th className="px-6 py-4 border-b border-gray-100">Aluno</th>
-                                                    <th className="px-6 py-4 text-center border-b border-gray-100 w-64">Status</th>
-                                                    <th className="px-6 py-4 text-center border-b border-gray-100 w-32">Faltas Reg.</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-50">
-                                                {attStudents.map(student => {
-                                                    const status = attStatuses[student.id] ?? AttendanceStatus.PRESENT;
-                                                    const absenceCount = attAbsenceOverrides[student.id] !== undefined
-                                                        ? attAbsenceOverrides[student.id]
-                                                        : (status === AttendanceStatus.ABSENT ? attLessonCount : 0);
 
-                                                    return (
-                                                        <tr key={student.id} className={`hover:bg-blue-50/30 transition-colors ${status === AttendanceStatus.ABSENT ? 'bg-red-50/30' : ''}`}>
-                                                            <td className="px-6 py-4">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${status === AttendanceStatus.ABSENT ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'}`}>
-                                                                        {student.name.substring(0, 2).toUpperCase()}
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className={`font-bold ${status === AttendanceStatus.ABSENT ? 'text-red-900' : 'text-gray-900'}`}>{student.name}</p>
-                                                                        <p className="text-[10px] text-gray-400 font-medium">RM: {student.code}</p>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-6 py-4 text-center">
-                                                                <div className="flex justify-center bg-gray-100 p-1 rounded-lg inline-flex">
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            setAttStatuses(prev => ({ ...prev, [student.id]: AttendanceStatus.PRESENT }));
-                                                                            setAttAbsenceOverrides(prev => {
-                                                                                const copy = { ...prev };
-                                                                                delete copy[student.id]; // Remove override on Present
-                                                                                return copy;
-                                                                            });
-                                                                        }}
-                                                                        className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all shadow-sm ${status === AttendanceStatus.PRESENT ? 'bg-white text-green-700 shadow ring-1 ring-black/5' : 'text-gray-400 hover:text-gray-600'}`}
-                                                                    >
-                                                                        Presente
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            setAttStatuses(prev => ({ ...prev, [student.id]: AttendanceStatus.ABSENT }));
-                                                                        }}
-                                                                        className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all shadow-sm ${status === AttendanceStatus.ABSENT ? 'bg-white text-red-700 shadow ring-1 ring-black/5' : 'text-gray-400 hover:text-gray-600'}`}
-                                                                    >
-                                                                        Faltou
-                                                                    </button>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-6 py-4 text-center">
-                                                                <div className={`transition-opacity duration-200 ${status === AttendanceStatus.ABSENT ? 'opacity-100' : 'opacity-20 grayscale pointer-events-none'}`}>
-                                                                    <input
-                                                                        type="number"
-                                                                        min="1"
-                                                                        max="10"
-                                                                        value={absenceCount}
-                                                                        onChange={(e) => {
-                                                                            const val = parseInt(e.target.value) || 1;
-                                                                            setAttAbsenceOverrides(prev => ({ ...prev, [student.id]: val }));
-                                                                        }}
-                                                                        className="w-16 p-2 text-center border border-gray-200 rounded-lg focus:border-blue-950 focus:ring-2 focus:ring-blue-100 outline-none font-bold text-gray-700 shadow-sm"
-                                                                    />
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    )
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-end">
-                                        <Button
-                                            onClick={handleSaveCoordinatorAttendance}
-                                            disabled={attSaving}
-                                            className="!bg-green-600 hover:!bg-green-700 text-white font-bold px-8 py-3 shadow-lg shadow-green-200 flex items-center gap-2 rounded-xl transition-all hover:-translate-y-0.5"
-                                        >
-                                            {attSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5" /> Salvar Frequência</>}
-                                        </Button>
-                                    </div>
-                                </div>
-                            )}
+                                    {/* Loading state */}
+                                    {loadingReport && (
+                                        <div className="text-center py-20 bg-white rounded-3xl border border-gray-200 shadow-sm">
+                                            <Loader2 className="w-10 h-10 animate-spin text-blue-950 mx-auto mb-4" />
+                                            <p className="text-gray-500 font-bold uppercase text-xs tracking-widest animate-pulse">Processando dados de lançamentos...</p>
+                                        </div>
+                                    )}
 
-                            {/* Messages if no students found after search */}
-                            {!attLoading && attStudents.length === 0 && attSubject && (
-                                <div className="text-center py-20">
-                                    <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-100">
-                                        <ClipboardList className="w-10 h-10 text-gray-300" />
-                                    </div>
-                                    <h3 className="text-gray-900 font-bold text-lg mb-1">Nenhum aluno encontrado</h3>
-                                    <p className="text-gray-500 max-w-sm mx-auto">Verifique os filtros de Data, Série, Turno e Turma selecionados acima.</p>
+                                    {/* Report Data view */}
+                                    {!loadingReport && attendanceReportData.length === 0 && (
+                                        <div className="text-center py-20 bg-white rounded-3xl border border-gray-200 shadow-sm">
+                                            <ClipboardList className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                                            <h3 className="text-gray-800 font-bold text-lg">Nenhum dado gerado</h3>
+                                            <p className="text-gray-400 text-sm mt-1">Preencha os filtros e clique em "Gerar" para processar o relatório de chamadas.</p>
+                                        </div>
+                                    )}
+
+                                    {!loadingReport && attendanceReportData.length > 0 && (
+                                        <CoordinatorAttendanceReport
+                                            reportData={attendanceReportData}
+                                            month={reportMonth}
+                                            year={reportYear}
+                                            unit={currentUnit}
+                                            loading={loadingReport}
+                                            searchTerm={reportSearch}
+                                            reportType={reportType}
+                                            bimester={reportBimester}
+                                            dailyDate={reportDailyDate}
+                                        />
+                                    )}
                                 </div>
                             )}
                         </div>

@@ -108,6 +108,11 @@ interface SchoolConfigData {
     gradeRulesMessage?: string;
     gradeApprovalMessage?: string;
     ebookMessage?: string;
+
+    // Attendance Reminder settings
+    attendanceReminderEnabled?: boolean;
+    attendanceReminderTitle?: string;
+    attendanceReminderMessage?: string;
 }
 
 const DEFAULT_CONFIG: SchoolConfigData = {
@@ -169,7 +174,12 @@ const DEFAULT_CONFIG: SchoolConfigData = {
     // Informative Messages
     gradeRulesMessage: '',
     gradeApprovalMessage: '',
-    ebookMessage: ''
+    ebookMessage: '',
+
+    // Attendance Reminder Defaults
+    attendanceReminderEnabled: true,
+    attendanceReminderTitle: 'Diário de Classe & Chamadas',
+    attendanceReminderMessage: 'Prezado(a) professor(a), para que o coordenador tenha dados corretos em seu relatório de progresso, lembre-se: é necessário clicar em "Salvar Chamada" mesmo que todos os alunos estejam presentes no dia. Se a chamada não for explicitamente salva, o sistema não registrará a sua aula, afetando seu índice de adesão.'
 };
 
 export const SchoolConfig = () => {
@@ -1311,6 +1321,68 @@ export const SchoolConfig = () => {
                                 <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                                     <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider mb-1">Prévia do banner no app:</p>
                                     <p className="text-xs text-amber-800 leading-relaxed">{config.gradeRulesMessage}</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Lembrete de Chamada Diária (Professores) */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                            <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+                                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                    <span className="w-3 h-3 rounded-full bg-blue-600 shrink-0"></span>
+                                    Lembrete de Chamada Diária
+                                    <span className="text-xs font-normal text-slate-400 ml-1">(Visível para Professores)</span>
+                                </h2>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={config.attendanceReminderEnabled ?? true}
+                                        onChange={e => setConfig({ ...config, attendanceReminderEnabled: e.target.checked })}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    <span className="ml-2 text-xs font-bold text-slate-600 uppercase">
+                                        {config.attendanceReminderEnabled ?? true ? 'Ativado' : 'Desativado'}
+                                    </span>
+                                </label>
+                            </div>
+                            
+                            <p className="text-xs text-slate-500 mb-4">
+                                Define se o pop-up educativo sobre a importância de salvar a chamada será exibido ao professor quando ele acessar o painel escolar.
+                            </p>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Título do Pop-up</label>
+                                    <input
+                                        type="text"
+                                        value={config.attendanceReminderTitle || ''}
+                                        onChange={e => setConfig({ ...config, attendanceReminderTitle: e.target.value })}
+                                        disabled={!(config.attendanceReminderEnabled ?? true)}
+                                        className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 outline-none transition-all text-sm text-slate-700 disabled:bg-slate-50 disabled:text-slate-400"
+                                        placeholder="Ex: Diário de Classe & Chamadas"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Mensagem do Pop-up</label>
+                                    <textarea
+                                        value={config.attendanceReminderMessage || ''}
+                                        onChange={e => setConfig({ ...config, attendanceReminderMessage: e.target.value })}
+                                        disabled={!(config.attendanceReminderEnabled ?? true)}
+                                        rows={4}
+                                        className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 outline-none transition-all resize-none text-sm text-slate-700 disabled:bg-slate-50 disabled:text-slate-400"
+                                        placeholder="Ex: Prezado professor, lembre-se de salvar a chamada..."
+                                    />
+                                </div>
+                            </div>
+
+                            {(config.attendanceReminderEnabled ?? true) && config.attendanceReminderMessage && (
+                                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                                    <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wider mb-2">Prévia do pop-up no app:</p>
+                                    <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 max-w-sm">
+                                        <h4 className="font-bold text-slate-800 text-sm mb-1">{config.attendanceReminderTitle || 'Diário de Classe & Chamadas'}</h4>
+                                        <p className="text-xs text-slate-600 leading-relaxed">{config.attendanceReminderMessage}</p>
+                                    </div>
                                 </div>
                             )}
                         </div>

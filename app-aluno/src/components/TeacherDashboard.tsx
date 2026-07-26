@@ -102,15 +102,35 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 }) => {
     const { grades: academicGrades, subjects: academicSubjects, matrices, loading: loadingAcademic } = useAcademicData();
 
-    // Informative message from school config
+    // Informative messages and settings from school config
     const [gradeRulesMessage, setGradeRulesMessage] = useState<string>('');
+    const [attendanceReminderEnabled, setAttendanceReminderEnabled] = useState<boolean>(true);
+    const [attendanceReminderTitle, setAttendanceReminderTitle] = useState<string>('');
+    const [attendanceReminderMessage, setAttendanceReminderMessage] = useState<string>('');
+
     useEffect(() => {
         db.collection('school_config').doc('global').get().then(snap => {
-            if (snap.exists) setGradeRulesMessage(snap.data()?.gradeRulesMessage || '');
+            if (snap.exists) {
+                const data = snap.data();
+                setGradeRulesMessage(data?.gradeRulesMessage || '');
+                setAttendanceReminderEnabled(data?.attendanceReminderEnabled ?? true);
+                setAttendanceReminderTitle(data?.attendanceReminderTitle || 'Diário de Classe & Chamadas');
+                setAttendanceReminderMessage(data?.attendanceReminderMessage || '');
+            }
         }).catch(() => {});
     }, []);
 
     const [activeTab, setActiveTab] = useState<'menu' | 'grades' | 'attendance' | 'tickets' | 'materials' | 'messages' | 'calendar' | 'exam_guides' | 'agenda' | 'media_gallery' | 'announcements'>('menu');
+
+    // Intercept tab navigation to warn about unsaved attendance
+    const handleTabChange = (tab: typeof activeTab) => {
+        if (activeTab === 'attendance' && attendanceStudents.length > 0 && !attendanceSaved && tab !== 'attendance') {
+            setPendingTab(tab);
+            setShowUnsavedWarning(true);
+            return;
+        }
+        setActiveTab(tab);
+    };
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const activeUnit = normalizeUnit(teacher.unit) as SchoolUnit;
@@ -182,6 +202,33 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     const [studentAbsenceOverrides, setStudentAbsenceOverrides] = useState<Record<string, number>>({});
 
     const [isAttendanceSaving, setIsAttendanceSaving] = useState(false);
+    const [attendanceSaved, setAttendanceSaved] = useState(false);
+    const [pendingTab, setPendingTab] = useState<string | null>(null);
+    const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
+    const [showWelcomeReminder, setShowWelcomeReminder] = useState(false);
+
+    // Check on mount if we need to show the educational pop-up
+    useEffect(() => {
+        const hideReminder = localStorage.getItem('hideAttendanceReminder');
+        if (hideReminder !== 'true' && attendanceReminderEnabled) {
+            const timer = setTimeout(() => {
+                setShowWelcomeReminder(true);
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [attendanceReminderEnabled]);
+
+    // Safety net: Alert when reloading or closing tab with unsaved attendance
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (activeTab === 'attendance' && attendanceStudents.length > 0 && !attendanceSaved) {
+                e.preventDefault();
+                e.returnValue = ''; // Standard trigger for modern browsers
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [activeTab, attendanceStudents, attendanceSaved]);
 
     const tickets = useMemo(() => {
         if (!propsTickets) return [];
@@ -1097,6 +1144,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 (!attendanceShift || s.shift === attendanceShift);
         }).sort((a, b) => a.name.localeCompare(b.name));
         setAttendanceStudents(studentsInClass);
+        setAttendanceSaved(false);
 
         // ID Includes Discipline now
         const recordId = `${attendanceDate}_${activeUnit}_${attendanceGrade}_${attendanceClass}_${attendanceSubject}`;
@@ -1160,6 +1208,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
         try {
             await onSaveAttendance(record);
+            setAttendanceSaved(true);
 
             // 2. TRIGGER: Synchronize Absences to 'Grades' Collection
             const [yearStr] = attendanceDate.split('-');
@@ -1785,7 +1834,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     <div className="flex items-center gap-3">
                         {activeTab !== 'menu' && (
                             <button
-                                onClick={() => setActiveTab('menu')}
+                                onClick={() => handleTabChange('menu')}
                                 className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
@@ -1934,7 +1983,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <button
-                                        onClick={() => setActiveTab('announcements')}
+                                        onClick={() => handleTabChange('announcements')}
                                         className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square relative"
                                     >
                                         <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
@@ -1944,7 +1993,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                     </button>
                                     {!isMusicTeacher && (
                                         <button
-                                            onClick={() => setActiveTab('grades')}
+                                            onClick={() => handleTabChange('grades')}
                                             className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
                                         >
                                             <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
@@ -1958,7 +2007,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
                                     {!isEarlyChildhoodTeacher && !isMusicTeacher && (
                                         <button
-                                            onClick={() => setActiveTab('attendance')}
+                                            onClick={() => handleTabChange('attendance')}
                                             className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
                                         >
                                             <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
@@ -1970,7 +2019,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
                                     {isMediaAuthorizedTeacher && (
                                         <button
-                                            onClick={() => setActiveTab('media_gallery')}
+                                            onClick={() => handleTabChange('media_gallery')}
                                             className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
                                         >
                                             <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
@@ -1982,7 +2031,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
                                     {!isEarlyChildhoodTeacher && (
                                         <button
-                                            onClick={() => setActiveTab('tickets')}
+                                            onClick={() => handleTabChange('tickets')}
                                             className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square relative"
                                         >
                                             {/* Global Style for File Inputs removed - using Tailwind file: modifier instead */}
@@ -1995,7 +2044,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
                                     {/* MENU: MENSAGENS DOS ALUNOS (NEW) */}
                                     <button
-                                        onClick={() => setActiveTab('messages')}
+                                        onClick={() => handleTabChange('messages')}
                                         className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square relative"
                                     >
                                         <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
@@ -2005,7 +2054,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                     </button>
 
                                     <button
-                                        onClick={() => setActiveTab('materials')}
+                                        onClick={() => handleTabChange('materials')}
                                         className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
                                     >
                                         <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
@@ -2015,7 +2064,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                     </button>
 
                                     <button
-                                        onClick={() => setActiveTab('agenda')}
+                                        onClick={() => handleTabChange('agenda')}
                                         className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
                                     >
                                         <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
@@ -2025,7 +2074,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                     </button>
 
                                     <button
-                                        onClick={() => setActiveTab('calendar')}
+                                        onClick={() => handleTabChange('calendar')}
                                         className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
                                     >
                                         <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
@@ -2036,7 +2085,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
                                     {!isEarlyChildhoodTeacher && !isMusicTeacher && (
                                         <button
-                                            onClick={() => setActiveTab('exam_guides')}
+                                            onClick={() => handleTabChange('exam_guides')}
                                             className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
                                         >
                                             <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
@@ -3399,6 +3448,20 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                     </div>
                                     Chamada Diária
                                 </h2>
+
+                                {/* Tip A: Informative banner */}
+                                {attendanceReminderEnabled && (
+                                    <div className="flex items-start gap-3 mb-5 p-3 bg-blue-50 border border-blue-200 rounded-lg animate-fade-in">
+                                        <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        <p className="text-sm text-blue-800 font-medium">
+                                            {attendanceReminderMessage ? (
+                                                <span>{attendanceReminderMessage}</span>
+                                            ) : (
+                                                <><strong>Lembre-se:</strong> clique em <strong>"Salvar Chamada"</strong> mesmo que todos os alunos estejam presentes. Isso garante o registro correto da aula no relatório de chamadas.</>
+                                            )}
+                                        </p>
+                                    </div>
+                                )}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 p-4 bg-gray-50 rounded-lg border mb-6">
                                     <div>
                                         <label className="text-sm font-bold text-gray-700 mb-1 block">Série/Ano</label>
@@ -3865,7 +3928,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                     <svg className="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                     Calendário Escolar
                                 </h2>
-                                <button onClick={() => setActiveTab('menu')} className="text-gray-500 hover:text-gray-700 font-medium text-sm flex items-center gap-1">
+                                <button onClick={() => handleTabChange('menu')} className="text-gray-500 hover:text-gray-700 font-medium text-sm flex items-center gap-1">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                                     Voltar
                                 </button>
@@ -3905,6 +3968,106 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                         
                         <div className="mt-4 pb-2 px-2 text-center">
                             <h4 className="font-bold text-gray-800 text-lg leading-tight uppercase tracking-tight">{zoomedPhoto.name}</h4>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: Aviso de chamada não salva */}
+            {showUnsavedWarning && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-fade-in">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900">Chamada não salva</h3>
+                        </div>
+                        <p className="text-gray-600 mb-6">
+                            Você carregou a turma mas <strong>ainda não salvou a chamada</strong>. Se sair agora, o registro desta aula não será contabilizado no relatório.
+                        </p>
+                        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6">
+                            💡 Salve a chamada mesmo que todos os alunos estejam presentes.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowUnsavedWarning(false);
+                                    setPendingTab(null);
+                                }}
+                                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+                            >
+                                Voltar e Salvar
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowUnsavedWarning(false);
+                                    if (pendingTab) setActiveTab(pendingTab as any);
+                                    setPendingTab(null);
+                                }}
+                                className="flex-1 px-4 py-2.5 bg-red-500 hover:bg-red-600 rounded-xl text-white font-semibold transition-colors"
+                            >
+                                Sair sem salvar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: Lembrete Educativo Inicial */}
+            {showWelcomeReminder && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-fade-in border border-blue-100">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <span className="text-xs font-bold text-blue-600 uppercase tracking-wider block">Aviso Importante</span>
+                                <h3 className="text-lg font-bold text-gray-900 leading-tight">{attendanceReminderTitle || 'Diário de Classe & Chamadas'}</h3>
+                            </div>
+                        </div>
+                        
+                        <div className="space-y-3 text-gray-600 text-sm leading-relaxed mb-6">
+                            {attendanceReminderMessage ? (
+                                <p className="leading-relaxed text-slate-700">
+                                    {attendanceReminderMessage}
+                                </p>
+                            ) : (
+                                <>
+                                    <p>
+                                        Prezado(a) professor(a), para que o coordenador tenha dados corretos em seu relatório de progresso, lembre-se:
+                                    </p>
+                                    <p className="bg-blue-50 border-l-4 border-blue-500 p-3 text-blue-900 rounded-r-lg font-medium">
+                                        É necessário clicar em <strong>"Salvar Chamada"</strong> mesmo que todos os alunos estejam presentes no dia.
+                                    </p>
+                                    <p>
+                                        Se a chamada não for explicitamente salva, o sistema não registrará a sua aula, afetando seu índice de adesão.
+                                    </p>
+                                </>
+                            )}
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <button
+                                onClick={() => setShowWelcomeReminder(false)}
+                                className="w-full px-4 py-2.5 bg-blue-900 hover:bg-blue-950 text-white rounded-xl font-bold transition-all shadow-sm shadow-blue-900/10 text-sm"
+                            >
+                                Entendi, obrigado!
+                            </button>
+                            <button
+                                onClick={() => {
+                                    localStorage.setItem('hideAttendanceReminder', 'true');
+                                    setShowWelcomeReminder(false);
+                                }}
+                                className="w-full px-4 py-2 text-gray-500 hover:text-gray-700 rounded-xl font-semibold transition-colors text-xs text-center"
+                            >
+                                Não mostrar este aviso novamente
+                            </button>
                         </div>
                     </div>
                 </div>
