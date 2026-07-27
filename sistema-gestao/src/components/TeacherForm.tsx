@@ -155,6 +155,16 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
             if (!formData.assignments || formData.assignments.length === 0) {
                 return alert("É necessário vincular pelo menos uma matéria a uma série no quadro de 'Vínculos de Aula'.");
             }
+
+            // Ensure every active assignment has at least one subject selected
+            const validShiftsForValidation: string[] = [SchoolShift.MORNING, SchoolShift.AFTERNOON];
+            const assignmentsWithoutSubjects = formData.assignments.filter(a =>
+                validShiftsForValidation.includes(a.shift as string) && (!a.subjects || a.subjects.length === 0)
+            );
+
+            if (assignmentsWithoutSubjects.length > 0) {
+                return alert("Por favor, selecione pelo menos uma matéria para cada turno marcado nos 'Vínculos de Aula'.");
+            }
         }
 
         setIsLoading(true);
