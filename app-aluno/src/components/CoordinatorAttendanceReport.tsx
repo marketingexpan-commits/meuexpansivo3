@@ -6,7 +6,7 @@ import { Printer, ClipboardList } from 'lucide-react';
 
 const A4_W = 794;
 const A4_H = 1123;
-const ROWS_PER_PAGE = 36;
+const ROWS_PER_PAGE = 22;
 
 const getAbbreviatedSubjects = (subjectsList?: string[]) => {
     if (!subjectsList || subjectsList.length === 0) return '';
@@ -163,7 +163,7 @@ export const CoordinatorAttendanceReport: React.FC<CoordinatorAttendanceReportPr
         .screen-toolbar { display: flex; justify-content: flex-end; gap: 10px; padding: 12px 16px; background: #1e3a8a; position: sticky; top: 0; z-index: 10; }
         .btn-close { background: white; color: #1e3a8a; border: none; padding: 8px 20px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; }
         .btn-print { background: #f97316; color: white; border: none; padding: 8px 20px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; }
-        .print-page { width: 210mm; padding: 20px 24px 10px 24px; box-sizing: border-box; page-break-after: always; break-after: page; display: flex; flex-direction: column; background: white; margin: 16px auto; box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
+        .print-page { width: 210mm; height: 297mm; position: relative; padding: 20px 24px 10px 24px; box-sizing: border-box; page-break-after: always; break-after: page; display: flex; flex-direction: column; background: white; margin: 16px auto; box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
         .print-page:last-child { page-break-after: avoid; break-after: avoid; margin-bottom: 32px; }
         .page-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 2.5px solid #111; }
         .school-info strong { font-size: 13px; font-weight: 900; text-transform: uppercase; color: #111; letter-spacing: -0.5px; display: block; }
@@ -182,7 +182,7 @@ export const CoordinatorAttendanceReport: React.FC<CoordinatorAttendanceReportPr
         .col-name { padding: 6px 10px; text-align: left; border-right: 1px solid #000; }
         .col-progress { padding: 6px 6px; text-align: center; font-size: 9px; font-weight: 700; color: #334155; border-right: 1px solid #000; }
         .col-status { padding: 6px 6px; text-align: center; font-size: 9px; font-weight: 700; }
-        .page-footer { padding-top: 8px; border-top: 0.5px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; font-size: 8px; font-weight: 700; color: #94a3b8; letter-spacing: 0.5px; margin-top: 8px; }
+        .page-footer { position: absolute; bottom: 20px; left: 24px; right: 24px; padding-top: 8px; border-top: 0.5px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; font-size: 8px; font-weight: 700; color: #94a3b8; letter-spacing: 0.5px; }
         @media print {
             body { background: white; }
             .screen-toolbar { display: none !important; }
@@ -219,7 +219,7 @@ export const CoordinatorAttendanceReport: React.FC<CoordinatorAttendanceReportPr
                     body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     #${containerId} { display: block !important; width: 210mm; margin: 0 auto; background: white; font-family: Arial, sans-serif; }
                     @page { size: A4 portrait; margin: 0; }
-                    .print-page { width: 210mm; height: auto; margin: 0; padding: 20px 24px 10px 24px; box-sizing: border-box; page-break-after: always !important; break-after: page !important; }
+                    .print-page { width: 210mm; height: 297mm; position: relative; margin: 0; padding: 20px 24px 10px 24px; box-sizing: border-box; page-break-after: always !important; break-after: page !important; }
                     .print-page:last-child { page-break-after: avoid !important; break-after: avoid !important; }
                     .page-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 2.5px solid #111; }
                     .school-info strong { font-size: 13px; font-weight: 900; text-transform: uppercase; color: #111; letter-spacing: -0.5px; display: block; }
@@ -238,7 +238,7 @@ export const CoordinatorAttendanceReport: React.FC<CoordinatorAttendanceReportPr
                     .col-name { padding: 6px 10px; font-size: 10px; font-weight: 700; color: #0f172a; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-right: 1px solid #000; }
                     .col-progress { padding: 6px 6px; text-align: center; font-size: 9px; font-weight: 700; color: #334155; border-right: 1px solid #000; }
                     .col-status { padding: 6px 6px; text-align: center; font-size: 9px; font-weight: 700; }
-                    .page-footer { margin-top: auto; padding-top: 8px; border-top: 0.5px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; font-size: 8px; font-weight: 700; color: #94a3b8; letter-spacing: 0.5px; }
+                    .page-footer { position: absolute; bottom: 20px; left: 24px; right: 24px; padding-top: 8px; border-top: 0.5px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; font-size: 8px; font-weight: 700; color: #94a3b8; letter-spacing: 0.5px; }
                 }
                 @media screen {
                     #${containerId} { display: none !important; }
@@ -397,7 +397,7 @@ export const CoordinatorAttendanceReport: React.FC<CoordinatorAttendanceReportPr
                             </table>
 
                             {/* Page Footer */}
-                            <div style={{ marginTop: 'auto', paddingTop: 8, borderTop: '0.5px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 7.5, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.5px' }}>
+                            <div style={{ position: 'absolute', bottom: 20, left: 24, right: 24, paddingTop: 8, borderTop: '0.5px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 7.5, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.5px' }}>
                                 <span>MeuExpansivo</span>
                                 <span style={{ textTransform: 'uppercase' }}>Página {pageIdx + 1} de {pages.length}</span>
                             </div>
