@@ -130,10 +130,25 @@ export const CoordinatorAgendaReport: React.FC<CoordinatorAgendaReportProps> = (
     const reportData = useMemo(() => {
         let data = teachers.map(teacher => {
             const teacherSchedules = expectedSchedules.filter(sch => {
-                return teacher.assignments?.some(a =>
-                    (a.gradeId === sch.grade || a.gradeLevel === sch.grade) &&
-                    a.shift === sch.shift
-                ) || teacher.gradeIds?.includes(sch.grade) || teacher.gradeLevels?.includes(sch.grade);
+                // First, try to match via formal assignments (gradeId/gradeLevel + shift + optional class)
+                const matchedByAssignment = teacher.assignments?.some(a => {
+                    const gradeMatch = (a.gradeId === sch.grade || a.gradeLevel === sch.grade);
+                    const shiftMatch = a.shift === sch.shift;
+                    // If assignment has a specific class, also validate it
+                    const classMatch = !a.class || a.class === sch.class || sch.class === 'Única';
+                    return gradeMatch && shiftMatch && classMatch;
+                });
+                if (matchedByAssignment) return true;
+
+                // Fallback: teacher has gradeIds/gradeLevels but no formal assignments — only include if
+                // the schedule's shift matches the teacher's own shift field (respect turno!)
+                if (!teacher.assignments || teacher.assignments.length === 0) {
+                    const gradeMatch = teacher.gradeIds?.includes(sch.grade) || teacher.gradeLevels?.includes(sch.grade);
+                    const shiftMatch = !teacher.shift || teacher.shift === sch.shift;
+                    return !!(gradeMatch && shiftMatch);
+                }
+
+                return false;
             });
 
             if (teacherSchedules.length === 0) return null;

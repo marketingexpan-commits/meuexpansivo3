@@ -159,11 +159,30 @@ export function TeacherForm({ onClose, teacher }: TeacherFormProps) {
 
         setIsLoading(true);
         try {
+            // Only keep assignments that have a valid shift — filters out old/corrupted entries
+            // (legacy assignments without shift cause "ghost" grade tags like "2º Ano -" in the list)
+            const validShifts: string[] = [SchoolShift.MORNING, SchoolShift.AFTERNOON];
+            const validAssignments = (formData.assignments || []).filter(a =>
+                validShifts.includes(a.shift as string)
+            );
+
+            // Sync gradeLevels from active VALID assignments only — so removing all shifts
+            // for a grade removes it from the legacy gradeLevels field too (no more ghost tags)
+            const activeGradeNamesFromAssignments = Array.from(
+                new Set(validAssignments.map(a => a.gradeLevel).filter(Boolean))
+            );
+            // For infantil teachers with no assignments, keep the full gradeLevels list
+            const finalGradeLevels = validAssignments.length === 0
+                ? (formData.gradeLevels || [])
+                : (formData.gradeLevels || []).filter(gl => activeGradeNamesFromAssignments.includes(gl));
+
             const dataToSave = {
                 ...formData,
+                assignments: validAssignments,
+                gradeLevels: finalGradeLevels,
                 // CRITICAL: Map selected grade names (Strings) to their IDs (grade_X)
                 // This ensures "Dual Support" - saving both for compatibility
-                gradeIds: formData.gradeLevels?.map(gName => {
+                gradeIds: finalGradeLevels.map(gName => {
                     const match = grades.find(g => g.name === gName);
                     return match ? match.id : null;
                 }).filter(id => id !== null) as string[],
