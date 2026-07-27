@@ -3124,6 +3124,19 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                     return INFANTIL_GRADE_IDS.has(gradeId);
                 });
             };
+
+            const isMusicOnly = (teacher: Teacher): boolean => {
+                const assignments = teacher.assignments || [];
+                if (assignments.length === 0) return false;
+                return assignments.every(a => {
+                    return a.subjects && a.subjects.length > 0 && a.subjects.every(s => 
+                        s.toLowerCase() === 'música' || 
+                        s.toLowerCase() === 'musica' || 
+                        s.toLowerCase() === 'disc_musica'
+                    );
+                });
+            };
+
             const getSubjectShortLabel = (subjectId: string) => {
                 const lowerId = subjectId.toLowerCase();
                 if (
@@ -3162,7 +3175,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 return clean.charAt(0).toUpperCase() + clean.slice(1, 3);
             };
 
-            const eligibleTeachers = fetchedTeachers.filter(t => !isInfantilOnly(t));
+            const eligibleTeachers = fetchedTeachers.filter(t => !isInfantilOnly(t) && !isMusicOnly(t));
 
             // 5. Process each eligible teacher
             const processedData = eligibleTeachers.map(teacher => {
