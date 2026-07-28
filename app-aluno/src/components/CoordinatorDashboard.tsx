@@ -2890,11 +2890,31 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
             setAttStudents(studentsInClass);
 
+            // Calculate expected lessons from schedule
+            const dateObj = new Date(attDate + 'T00:00:00');
+            const dayOfWeek = dateObj.getDay();
+            const finalGradeId = resolveGradeId(attGrade);
+            const matchingSchedule = (classSchedules || []).find((s: any) => {
+                if (s.dayOfWeek !== dayOfWeek) return false;
+                const sGradeId = resolveGradeId(s.grade);
+                if (sGradeId !== finalGradeId) return false;
+                if (attClass && normalizeClass(s.class) !== normalizeClass(attClass)) return false;
+                if (attShift && normalizeShift(s.shift) !== normalizeShift(attShift)) return false;
+                return true;
+            });
+            let scheduledLessons = 1;
+            if (matchingSchedule?.items) {
+                const normalizedSubj = attSubject.trim().toLowerCase();
+                scheduledLessons = matchingSchedule.items.filter((item: any) =>
+                    (item.subject || '').trim().toLowerCase() === normalizedSubj
+                ).length || 1;
+            }
+
             if (recordSnap.exists) {
                 const record = { id: recordSnap.id, ...recordSnap.data() } as AttendanceRecord;
                 setAttLoadedRecord(record);
                 setAttStatuses(record.studentStatus || {});
-                setAttLessonCount(record.lessonCount || 1);
+                setAttLessonCount(record.lessonCount || scheduledLessons);
                 setAttAbsenceOverrides(record.studentAbsenceCount || {});
             } else {
                 // New Sheet
@@ -2903,7 +2923,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
                 setAttLoadedRecord(null);
                 setAttStatuses(defaultStatuses);
-                setAttLessonCount(1);
+                setAttLessonCount(scheduledLessons);
                 setAttAbsenceOverrides({});
             }
 
@@ -3182,23 +3202,28 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 // Count performed: any attendance record where teacherId matches this teacher
                 // Count performed: only count attendance records that match the teacher's assignments by technical IDs
                 const teacherRecords = attendanceRecords.filter(rec => {
-                    if (rec.teacherId !== teacher.id) return false;
-                    
-                    return teacher.assignments?.some(a => {
-                        const aGradeId = resolveGradeId(a.gradeId || a.gradeLevel);
-                        const recGradeId = resolveGradeId(rec.gradeLevel);
-                        if (!aGradeId || !recGradeId || aGradeId !== recGradeId) return false;
-                        
-                        // If the teacher assignment specifies a class, it must match. Otherwise, it matches any class.
-                        if (a.class && normalizeClass(a.class) !== normalizeClass(rec.schoolClass)) return false;
-                        
-                        return a.subjects?.some(s => s.toLowerCase() === rec.discipline?.toLowerCase());
-                    });
+                    const isDirectMatch = rec.teacherId === teacher.id;
+                    const isSavedByCoordinator = !fetchedTeachers.some(t => t.id === rec.teacherId);
+
+                    if (isDirectMatch || isSavedByCoordinator) {
+                        return teacher.assignments?.some(a => {
+                            const aGradeId = resolveGradeId(a.gradeId || a.gradeLevel);
+                            const recGradeId = resolveGradeId(rec.gradeLevel);
+                            if (!aGradeId || !recGradeId || aGradeId !== recGradeId) return false;
+                            
+                            // If the teacher assignment specifies a class, it must match. Otherwise, it matches any class.
+                            if (a.class && normalizeClass(a.class) !== normalizeClass(rec.schoolClass)) return false;
+                            
+                            return a.subjects?.some(s => s.toLowerCase() === rec.discipline?.toLowerCase());
+                        });
+                    }
+                    return false;
                 });
-                const performedCount = teacherRecords.length;
 
                 // Count expected and dynamic counts
                 let expectedCount = 0;
+                let performedCount = 0;
+                const matchedRecordIds = new Set<string>();
                 const activeClasses = new Set<string>();
                 const activeSubjects = new Set<string>();
 
@@ -3284,6 +3309,21 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
                             if (subjExpectedCount > 0) {
                                 expectedCount += subjExpectedCount;
+                                
+                                // Check if teacher performed this call on this date
+                                const matchingRec = teacherRecords.find(rec => {
+                                    if (rec.date !== reportDailyDate) return false;
+                                    const recGradeId = resolveGradeId(rec.gradeLevel);
+                                    if (recGradeId !== finalGradeId) return false;
+                                    if (a.class && normalizeClass(a.class) !== normalizeClass(rec.schoolClass)) return false;
+                                    return rec.discipline?.toLowerCase() === subj.toLowerCase();
+                                });
+                                
+                                if (matchingRec) {
+                                    performedCount += subjExpectedCount; // Equals expected count on this day
+                                    matchedRecordIds.add(matchingRec.id);
+                                }
+
                                 const technicalGradeId = resolvedGradeId || gradeId;
                                 const assignmentKey = `${technicalGradeId}_${normalizeClass(a.class || 'Única')}_${normalizeShift(a.shift)}`;
                                 activeClasses.add(assignmentKey);
@@ -3362,7 +3402,24 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                             const count = matchingSchedule.items.filter((item: any) =>
                                                 (item.subject || '').trim().toLowerCase() === normalizedSubj
                                             ).length;
-                                            subjExpectedCount += count;
+                                            
+                                            if (count > 0) {
+                                                subjExpectedCount += count;
+                                                
+                                                // Check if teacher performed this call on this date
+                                                const matchingRec = teacherRecords.find(rec => {
+                                                    if (rec.date !== dateStr) return false;
+                                                    const recGradeId = resolveGradeId(rec.gradeLevel);
+                                                    if (recGradeId !== finalGradeId) return false;
+                                                    if (a.class && normalizeClass(a.class) !== normalizeClass(rec.schoolClass)) return false;
+                                                    return rec.discipline?.toLowerCase() === subj.toLowerCase();
+                                                });
+                                                
+                                                if (matchingRec) {
+                                                    performedCount += count; // Equals expected count on this day
+                                                    matchedRecordIds.add(matchingRec.id);
+                                                }
+                                            }
                                         }
                                     }
                                     cur.setDate(cur.getDate() + 1);
@@ -3421,6 +3478,19 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
                                 if (weeklyHours > 0 && schoolDays > 0) {
                                     subjExpectedCount = Math.round((weeklyHours / 5) * schoolDays);
+                                    
+                                    // Fallback: sum up matching records' lessonCount
+                                    const matchingRecs = teacherRecords.filter(rec => {
+                                        const recGradeId = resolveGradeId(rec.gradeLevel);
+                                        if (recGradeId !== finalGradeId) return false;
+                                        if (a.class && normalizeClass(a.class) !== normalizeClass(rec.schoolClass)) return false;
+                                        return rec.discipline?.toLowerCase() === subj.toLowerCase();
+                                    });
+                                    const sumPerformed = matchingRecs.reduce((sum, rec) => {
+                                        matchedRecordIds.add(rec.id);
+                                        return sum + (Number(rec.lessonCount) || 1);
+                                    }, 0);
+                                    performedCount += Math.min(subjExpectedCount, sumPerformed);
                                 }
                             }
 
@@ -3458,6 +3528,13 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
                     if (rec.discipline) {
                         activeSubjects.add(rec.discipline);
+                    }
+                });
+
+                // Add performed count for any unmapped records that were not matched during schedule loops
+                teacherRecords.forEach(rec => {
+                    if (!matchedRecordIds.has(rec.id)) {
+                        performedCount += Number(rec.lessonCount) || 1;
                     }
                 });
 

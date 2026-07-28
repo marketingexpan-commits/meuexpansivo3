@@ -29,7 +29,7 @@ import {
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 import { getAttendanceBreakdown, AttendanceBreakdown } from '../utils/attendanceUtils';
-import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, parseGradeLevel, normalizeClass, normalizeShift, normalizeUnit, calculateSchoolDays, isClassScheduled, getSubjectDurationForDay, formatDateWithTimeBr, safeParseDate } from '../utils/academicUtils';
+import { getBimesterFromDate, getCurrentSchoolYear, getDynamicBimester, parseGradeLevel, normalizeClass, normalizeShift, normalizeUnit, calculateSchoolDays, isClassScheduled, getSubjectDurationForDay, formatDateWithTimeBr, safeParseDate, resolveGradeId } from '../utils/academicUtils';
 import { calculateBimesterMedia, calculateFinalData, getCurriculumSubjects, SCHOOL_SHIFTS_LIST, SCHOOL_CLASSES_LIST, EARLY_CHILDHOOD_REPORT_TEMPLATE, CURRICULUM_MATRIX, ACADEMIC_GRADES } from '../constants';
 import { calculateAttendancePercentage, calculateAnnualAttendancePercentage, calculateTaughtClasses } from '../utils/frequency';
 import { getSubjectLabel } from '../utils/subjectUtils';
@@ -173,16 +173,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     };
 
     // New State for Bimester Filter - Default to current bimester
-    const [selectedFilterBimester, setSelectedFilterBimester] = useState<number>(() => getDynamicBimester(new Date().toLocaleDateString('en-CA'), academicSettings));
+    const [selectedFilterBimester, setSelectedFilterBimester] = useState<number>(() => {
+        const todayStr = new Date().toLocaleDateString('en-CA');
+        return getDynamicBimester(todayStr, academicSettings);
+    });
 
     // Synchronize bimester filter when settings are loaded/changed
     useEffect(() => {
-        if (academicSettings?.currentBimester) {
-            setSelectedFilterBimester(academicSettings.currentBimester);
-        } else {
-            // Re-calculate if settings changed but currentBimester is missing (fallback)
-            setSelectedFilterBimester(getDynamicBimester(new Date().toLocaleDateString('en-CA'), academicSettings));
-        }
+        const todayStr = new Date().toLocaleDateString('en-CA');
+        setSelectedFilterBimester(getDynamicBimester(todayStr, academicSettings));
     }, [academicSettings]);
 
     // Estados para Zoom da Foto do Aluno
@@ -1149,16 +1148,37 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         // ID Includes Discipline now
         const recordId = `${attendanceDate}_${activeUnit}_${attendanceGrade}_${attendanceClass}_${attendanceSubject}`;
         const existingRecord = attendanceRecords.find(r => r.id === recordId);
+        
+        // Calculate expected lessons from schedule
+        const dateObj = new Date(attendanceDate + 'T00:00:00');
+        const dayOfWeek = dateObj.getDay();
+        const finalGradeId = resolveGradeId(attendanceGrade);
+        const matchingSchedule = (classSchedules || []).find(s => {
+            if (s.dayOfWeek !== dayOfWeek) return false;
+            const sGradeId = resolveGradeId(s.grade);
+            if (sGradeId !== finalGradeId) return false;
+            if (attendanceClass && normalizeClass(s.class) !== normalizeClass(attendanceClass)) return false;
+            if (attendanceShift && normalizeShift(s.shift) !== normalizeShift(attendanceShift)) return false;
+            return true;
+        });
+        let scheduledLessons = 1;
+        if (matchingSchedule?.items) {
+            const normalizedSubj = attendanceSubject.trim().toLowerCase();
+            scheduledLessons = matchingSchedule.items.filter((item: any) =>
+                (item.subject || '').trim().toLowerCase() === normalizedSubj
+            ).length || 1;
+        }
+
         if (existingRecord) {
             setStudentStatuses(existingRecord.studentStatus);
-            setAttendanceLessonCount(existingRecord.lessonCount || 1);
+            setAttendanceLessonCount(existingRecord.lessonCount || scheduledLessons);
             setStudentAbsenceOverrides(existingRecord.studentAbsenceCount || {});
         }
         else {
             const defaultStatuses: Record<string, AttendanceStatus> = {};
             studentsInClass.forEach(s => { defaultStatuses[s.id] = AttendanceStatus.PRESENT; });
             setStudentStatuses(defaultStatuses);
-            setAttendanceLessonCount(1);
+            setAttendanceLessonCount(scheduledLessons);
             setStudentAbsenceOverrides({});
         }
         setIsAttendanceLoading(false);
