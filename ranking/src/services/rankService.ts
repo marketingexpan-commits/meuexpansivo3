@@ -56,8 +56,14 @@ const CALCULATE_BEHAVIOR_SCORE = (occurrences: any[]) => {
 
 export const rankService = {
     listenToRank(unitId: string, onUpdate: (ranks: Record<string, StudentRank[]>) => void) {
-        // 1. Listen to Students
-        const studentsQuery = query(collection(db, "students"), where("unit", "==", unitId), where("status", "==", "CURSANDO"));
+        // 1. Listen to Students for the current year
+        const currentYear = new Date().getFullYear();
+        const studentsQuery = query(
+            collection(db, "students"),
+            where("unit", "==", unitId),
+            where("status", "==", "CURSANDO"),
+            where("enrolledYears", "array-contains", String(currentYear))
+        );
 
         // We'll need to nest snapshot listeners or use a more complex aggregation.
         // Given the real-time requirement, we'll watch multiple collections.
@@ -264,7 +270,7 @@ export const rankService = {
             recompute();
         });
 
-        const unsubSettings = onSnapshot(query(collection(db, "academic_settings"), where("year", "==", 2026)), (snap) => {
+        const unsubSettings = onSnapshot(query(collection(db, "academic_settings"), where("year", "==", currentYear)), (snap) => {
             const allSettings = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
             academicSettings = allSettings.find(s => s.unit === unitId) || allSettings.find(s => s.unit === 'all') || null;
             settingsLoaded = true;
