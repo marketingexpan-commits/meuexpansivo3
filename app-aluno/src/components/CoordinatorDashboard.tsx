@@ -5575,8 +5575,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
                                     {/* Filters Card */}
                                     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 print:hidden">
-                                        <div className="flex flex-col lg:flex-row gap-4 items-end">
-                                            <div className="flex-1 min-w-[120px]">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-row gap-4 lg:items-end">
+                                            <div className="w-full lg:flex-1 lg:min-w-[120px]">
                                                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Período</label>
                                                 <select
                                                     value={reportType}
@@ -5590,7 +5590,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                             </div>
 
                                             {reportType === 'monthly' && (
-                                                <div className="flex-1 min-w-[120px]">
+                                                <div className="w-full lg:flex-1 lg:min-w-[120px]">
                                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Mês</label>
                                                     <select
                                                         value={reportMonth}
@@ -5605,7 +5605,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                             )}
 
                                             {reportType === 'bimester' && (
-                                                <div className="flex-1 min-w-[120px]">
+                                                <div className="w-full lg:flex-1 lg:min-w-[120px]">
                                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Bimestre</label>
                                                     <select
                                                         value={reportBimester}
@@ -5621,7 +5621,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                             )}
 
                                             {reportType === 'daily' && (
-                                                <div className="flex-1 min-w-[150px]">
+                                                <div className="w-full lg:flex-1 lg:min-w-[150px]">
                                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Data</label>
                                                     <input
                                                         type="date"
@@ -5633,7 +5633,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                             )}
 
                                             {reportType !== 'daily' && (
-                                                <div className="flex-1 min-w-[100px]">
+                                                <div className="w-full lg:flex-1 lg:min-w-[100px]">
                                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Ano</label>
                                                     <select
                                                         value={reportYear}
@@ -5647,7 +5647,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                 </div>
                                             )}
 
-                                            <div className="flex-[2] min-w-[200px] relative">
+                                            <div className="w-full sm:col-span-2 lg:flex-[2] lg:min-w-[200px] relative">
                                                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Buscar Professor</label>
                                                 <div className="relative">
                                                     <input
@@ -5661,7 +5661,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                 </div>
                                             </div>
 
-                                            <div>
+                                            <div className="w-full sm:col-span-2 lg:w-auto">
                                                 <button
                                                     type="button"
                                                     onClick={handleCalculateAttendanceReport}
