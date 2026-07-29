@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebaseConfig';
-import { Student, SchoolUnit, UNIT_LABELS, SHIFT_LABELS, SchoolShift, PhotographerDemand } from '../types';
+import { Student, SchoolUnit, UNIT_LABELS, SHIFT_LABELS, SchoolShift, PhotographerDemand, CalendarEvent } from '../types';
 import { SchoolLogo } from './SchoolLogo';
-import { LogOut, Search, Filter, Camera, CameraOff, AlertTriangle, CheckCircle2, User, XCircle, Users, CalendarDays, Bell, ChevronDown } from 'lucide-react';
+import { SchoolCalendar } from './SchoolCalendar';
+import { LogOut, Search, Filter, Camera, CameraOff, AlertTriangle, CheckCircle2, User, XCircle, Users, CalendarDays, Calendar as CalendarIcon, Bell, ChevronDown } from 'lucide-react';
 import { SCHOOL_UNITS_LIST } from '../constants';
 import { useAcademicData } from '../hooks/useAcademicData';
 
@@ -17,7 +18,10 @@ export const PhotographerDashboard: React.FC = () => {
     const [showOnlyExceptions, setShowOnlyExceptions] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [signatures, setSignatures] = useState<Record<string, { isAuthorized: boolean }>>({});
-    const [activeTab, setActiveTab] = useState<'students' | 'demands'>('students');
+    const [activeTab, setActiveTab] = useState<'students' | 'demands' | 'calendar'>('students');
+    const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+    const initialUserUnit = localStorage.getItem('userUnit') || '';
+    const [calendarUnit, setCalendarUnit] = useState<string>(initialUserUnit === 'all' || !initialUserUnit ? 'unit_bs' : initialUserUnit);
     const [demands, setDemands] = useState<PhotographerDemand[]>([]);
     const [suggestionForm, setSuggestionForm] = useState<{ demandId: string; date: string; time: string } | null>(null);
     const [demandsUnitFilter, setDemandsUnitFilter] = useState<string>('');
@@ -47,6 +51,19 @@ export const PhotographerDashboard: React.FC = () => {
             return () => unsub();
         }
     }, [photographerId]);
+
+    // Real-time listener for calendar events (by selected unit)
+    useEffect(() => {
+        if (!calendarUnit) return;
+        let q: any = db.collection('calendar_events');
+        if (calendarUnit !== 'all') {
+            q = q.where('units', 'array-contains-any', [calendarUnit, 'all']);
+        }
+        const unsub = q.onSnapshot((snap: any) => {
+            setCalendarEvents(snap.docs.map((d: any) => ({ id: d.id, ...d.data() } as CalendarEvent)));
+        });
+        return () => unsub();
+    }, [calendarUnit]);
 
     useEffect(() => {
         if (!userUnit) {
@@ -252,7 +269,7 @@ export const PhotographerDashboard: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-gray-100 flex justify-center md:items-center md:py-8 md:px-4 p-0 font-sans transition-all duration-500 ease-in-out">
-            <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out max-w-md`}>
+            <div className={`w-full bg-white md:rounded-3xl rounded-none shadow-2xl overflow-hidden relative min-h-screen md:min-h-[600px] flex flex-col transition-all duration-500 ease-in-out ${activeTab === 'calendar' ? 'max-w-5xl' : 'max-w-md'}`}>
                 {/* Header */}
                 <header className="flex items-center justify-between p-4 sm:p-6 bg-white shrink-0">
                     <div className="flex items-center gap-2">
@@ -288,48 +305,58 @@ export const PhotographerDashboard: React.FC = () => {
                 </header>
 
                 {/* Main Content */}
-                <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-white custom-scrollbar">
+                <main className={`flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar transition-colors duration-500 ${activeTab === 'calendar' ? 'bg-gray-100' : 'bg-white'}`}>
                     {isLoading || loadingAcademic ? (
                         <div className="text-center py-40 animate-pulse flex flex-col items-center">
                             <Camera className="w-16 h-16 text-blue-200 mb-6" />
                             <p className="text-blue-950 font-black uppercase text-[10px] tracking-widest italic">Acessando sistema...</p>
                         </div>
                     ) : (
-                        <div className="space-y-6 animate-fade-in-up">
-                            {/* Greeting Area */}
-                            <div className="flex items-center gap-4">
-                                {photographerData?.photoUrl && (
-                                    <button 
-                                        onClick={() => setZoomedPhotoUrl(photographerData.photoUrl)}
-                                        className="w-[72px] h-24 rounded-lg bg-slate-50 overflow-hidden border border-slate-100 shrink-0 shadow-sm hover:shadow-md hover:scale-105 transition-all cursor-zoom-in"
-                                    >
-                                        <img src={photographerData.photoUrl} alt="Fotógrafo" className="w-full h-full object-cover" />
-                                    </button>
-                                )}
-                                <div>
-                                    <h2 className="text-blue-950 font-black text-xl leading-tight">Olá, {photographerName}</h2>
-                                    <p className="text-gray-400 text-sm font-medium">
-                                        {activeTab === 'students' ? 'Busque os alunos para verificar autorizações.' : 'Acompanhe as solicitações de presença.'}
-                                    </p>
+                        <div className="animate-fade-in-up">
+                            {/* Header Greeting & Navigation Card */}
+                            <div className={activeTab === 'calendar' ? 'bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-5 mb-6' : 'space-y-6 mb-6'}>
+                                {/* Greeting Area */}
+                                <div className="flex items-center gap-4">
+                                    {photographerData?.photoUrl && (
+                                        <button 
+                                            onClick={() => setZoomedPhotoUrl(photographerData.photoUrl)}
+                                            className="w-[72px] h-24 rounded-lg bg-slate-50 overflow-hidden border border-slate-100 shrink-0 shadow-sm hover:shadow-md hover:scale-105 transition-all cursor-zoom-in"
+                                        >
+                                            <img src={photographerData.photoUrl} alt="Fotógrafo" className="w-full h-full object-cover" />
+                                        </button>
+                                    )}
+                                    <div>
+                                        <h2 className="text-blue-950 font-black text-xl leading-tight">Olá, {photographerName}</h2>
+                                        <p className="text-gray-400 text-sm font-medium">
+                                            {activeTab === 'students' ? 'Busque os alunos para verificar autorizações.' : activeTab === 'demands' ? 'Acompanhe as solicitações de presença.' : 'Calendário letivo da unidade.'}
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
 
-                            {/* Tabs Navigation */}
-                            <div className="flex p-1 bg-gray-100 rounded-2xl gap-1">
-                                <button
-                                    onClick={() => setActiveTab('students')}
-                                    className={`flex-1 py-3 px-4 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeTab === 'students' ? 'bg-white text-blue-950 shadow-sm' : 'text-gray-500 hover:text-blue-950 hover:bg-white/50'}`}
-                                >
-                                    <Users className="w-4 h-4" />
-                                    <span>Alunos</span>
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('demands')}
-                                    className={`flex-1 py-3 px-4 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeTab === 'demands' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500 hover:text-orange-600 hover:bg-white/50'}`}
-                                >
-                                    <CalendarDays className="w-4 h-4" />
-                                    <span>Demandas</span>
-                                </button>
+                                {/* Tabs Navigation */}
+                                <div className={`flex p-1 bg-gray-100 rounded-2xl gap-1 ${activeTab === 'calendar' ? 'mt-4' : ''}`}>
+                                    <button
+                                        onClick={() => setActiveTab('students')}
+                                        className={`flex-1 py-3 px-1.5 sm:px-4 rounded-xl text-[9px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 sm:gap-2 ${activeTab === 'students' ? 'bg-white text-blue-950 shadow-sm' : 'text-gray-500 hover:text-blue-950 hover:bg-white/50'}`}
+                                    >
+                                        <Users className="w-4 h-4" />
+                                        <span>Alunos</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('demands')}
+                                        className={`flex-1 py-3 px-1.5 sm:px-4 rounded-xl text-[9px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 sm:gap-2 ${activeTab === 'demands' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500 hover:text-orange-600 hover:bg-white/50'}`}
+                                    >
+                                        <CalendarDays className="w-4 h-4" />
+                                        <span>Demandas</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('calendar')}
+                                        className={`flex-1 py-3 px-1.5 sm:px-4 rounded-xl text-[9px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 sm:gap-2 ${activeTab === 'calendar' ? 'bg-white text-blue-950 shadow-sm' : 'text-gray-500 hover:text-blue-950 hover:bg-white/50'}`}
+                                    >
+                                        <CalendarIcon className="w-4 h-4" />
+                                        <span>Calendário</span>
+                                    </button>
+                                </div>
                             </div>
 
                             {activeTab === 'students' && (
@@ -688,6 +715,35 @@ export const PhotographerDashboard: React.FC = () => {
                                     )}
                                 </div>
                             )}
+                        </div>
+                    )}
+
+                    {activeTab === 'calendar' && (
+                        <div className="animate-fade-in-up space-y-6">
+                            {/* Calendar Header with Unit Selector */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="flex items-center gap-2">
+                                    <CalendarIcon className="w-6 h-6 text-orange-600" />
+                                    <h2 className="text-lg font-black text-blue-950">Calendário Escolar</h2>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Unidade:</label>
+                                    <select
+                                        value={calendarUnit}
+                                        onChange={e => setCalendarUnit(e.target.value)}
+                                        className="text-xs font-bold text-blue-950 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-950 cursor-pointer shadow-sm"
+                                    >
+                                        {Object.entries(UNIT_LABELS).map(([id, label]) => (
+                                            <option key={id} value={id}>{label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Calendar Content */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 md:p-6 mb-8 animate-fade-in-up">
+                                <SchoolCalendar events={calendarEvents} />
+                            </div>
                         </div>
                     )}
                 </main>
