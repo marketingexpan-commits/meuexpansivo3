@@ -1725,6 +1725,54 @@ const StudentApproveFooter = React.memo(({
     );
 });
 
+const OccurrenceDescription: React.FC<{
+    text: string;
+    id: string;
+    isExpanded: boolean;
+    onToggle: () => void;
+}> = ({ text, id, isExpanded, onToggle }) => {
+    const [isTruncated, setIsTruncated] = useState(false);
+    const textRef = useRef<HTMLParagraphElement>(null);
+
+    useEffect(() => {
+        const checkOverflow = () => {
+            if (textRef.current) {
+                if (!isExpanded) {
+                    setIsTruncated(textRef.current.scrollHeight > textRef.current.clientHeight);
+                }
+            }
+        };
+
+        const timeoutId = setTimeout(checkOverflow, 50);
+        window.addEventListener('resize', checkOverflow);
+        return () => {
+            clearTimeout(timeoutId);
+            window.removeEventListener('resize', checkOverflow);
+        };
+    }, [text, isExpanded]);
+
+    if (!text) return null;
+
+    return (
+        <div>
+            <p
+                ref={textRef}
+                className={`text-xs text-gray-600 leading-relaxed ${isExpanded ? 'whitespace-pre-wrap' : 'line-clamp-2'}`}
+            >
+                {text}
+            </p>
+            {(isTruncated || isExpanded) && (
+                <button
+                    onClick={onToggle}
+                    className="text-[10px] text-blue-600 hover:text-blue-800 font-bold mt-1 uppercase tracking-wider focus:outline-none transition-colors"
+                >
+                    {isExpanded ? 'Ver menos' : 'Ver mais'}
+                </button>
+            )}
+        </div>
+    );
+};
+
 export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     coordinator,
     onLogout,
@@ -2067,6 +2115,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     };
     const [historyFilterTerm, setHistoryFilterTerm] = useState('');
     const [studentSearchTerm, setStudentSearchTerm] = useState(''); // NEW: Search for students in occurrence modal
+    const [expandedOccurrences, setExpandedOccurrences] = useState<Record<string, boolean>>({});
 
     // --- DYNAMIC DATA LISTENERS FOR GENERAL COORDINATOR ---
     useEffect(() => {
@@ -2663,6 +2712,9 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
                 return false;
             });
+
+            // Ordenar por ordem alfabética de nome
+            students.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
             setOccStudents(students);
             if (students.length === 0) {
@@ -5260,7 +5312,12 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                             </span>
                                                         </div>
                                                         <h4 className="font-bold text-gray-900 leading-tight mb-1">{occ.title}</h4>
-                                                        <p className="text-xs text-gray-600 leading-relaxed line-clamp-2">{occ.description}</p>
+                                                        <OccurrenceDescription
+                                                            text={occ.description}
+                                                            id={occ.id}
+                                                            isExpanded={!!expandedOccurrences[occ.id]}
+                                                            onToggle={() => setExpandedOccurrences(prev => ({ ...prev, [occ.id]: !prev[occ.id] }))}
+                                                        />
                                                         <div className="mt-2 flex items-center gap-2 text-[10px] text-gray-400">
                                                             <span className="font-bold text-gray-500">{occ.studentName}</span> • <span>{occ.gradeLevel} - {occ.schoolClass}</span>
                                                         </div>
