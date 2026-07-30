@@ -336,8 +336,12 @@ function SidebarContent({
 
                 {isConfigOpen && !collapsed && (
                     <div className="ml-4 pl-4 border-l border-slate-100 space-y-0.5 animate-in slide-in-from-top-2 duration-200">
-                        <SidebarItem icon={Database} label="Disciplinas" path="/config/disciplinas" collapsed={collapsed} />
-                        <SidebarItem icon={Layers} label="Séries e Segmentos" path="/config/series" collapsed={collapsed} />
+                        {isAdmin && (
+                            <>
+                                <SidebarItem icon={Database} label="Disciplinas" path="/config/disciplinas" collapsed={collapsed} />
+                                <SidebarItem icon={Layers} label="Séries e Segmentos" path="/config/series" collapsed={collapsed} />
+                            </>
+                        )}
                         <SidebarItem icon={UserCheck} label="Coordenadores" path="/config/coordenadores" collapsed={collapsed} />
                         <SidebarItem icon={Users} label="Professores" path="/config/professores" collapsed={collapsed} />
                         <SidebarItem icon={UserCheck} label="Porteiros" path="/config/porteiros" collapsed={collapsed} />

@@ -42,8 +42,14 @@ function App() {
           <Route path="/financeiro/eventos" element={<Financeiro />} />
           <Route path="/financeiro/config" element={<FinanceiroConfig />} />
           <Route path="/grade-horaria" element={<GradeHoraria />} />
-          <Route path="/config/disciplinas" element={<Disciplinas />} />
-          <Route path="/config/series" element={<AcademicConfig />} />
+          <Route 
+            path="/config/disciplinas" 
+            element={localStorage.getItem('userUnit') === 'admin_geral' ? <Disciplinas /> : <Navigate to="/dashboard" replace />} 
+          />
+          <Route 
+            path="/config/series" 
+            element={localStorage.getItem('userUnit') === 'admin_geral' ? <AcademicConfig /> : <Navigate to="/dashboard" replace />} 
+          />
           <Route path="/config/coordenadores" element={<Coordenadores />} />
           <Route path="/config/professores" element={<Professores />} />
           <Route path="/config/unidades" element={<Unidades />} />
