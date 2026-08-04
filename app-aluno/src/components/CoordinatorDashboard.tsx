@@ -1998,8 +1998,21 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     const [scheduleClass, setScheduleClass] = useState('');
     const [scheduleShift, setScheduleShift] = useState('');
 
-    // --- ATTENDANCE REPORT STATES ---
-    const [attendanceSubTab, setAttendanceSubTab] = useState<'record' | 'report'>('record');
+    const [attendanceSubTab, setAttendanceSubTab] = useState<'record' | 'report' | 'licenses'>('record');
+    const [attPhotoModal, setAttPhotoModal] = useState<{isOpen: boolean, url: string, name: string}>({isOpen: false, url: '', name: ''});
+    // --- LICENSES TAB STATES ---
+    const [licenseFilters, setLicenseFilters] = useState({
+        level: '',
+        grade: '',
+        class: '',
+        shift: (coordinator.shift && coordinator.shift !== 'all') ? coordinator.shift : ''
+    });
+    const [licenseStudents, setLicenseStudents] = useState<any[]>([]);
+    const [licenseStudentSearchTerm, setLicenseStudentSearchTerm] = useState('');
+    const [licenseLoading, setLicenseLoading] = useState(false);
+    const [initialShowLicenseModal, setInitialShowLicenseModal] = useState(false);
+    const [onlyLicenseModal, setOnlyLicenseModal] = useState(false);
+    const [licensePhotoModal, setLicensePhotoModal] = useState<{isOpen: boolean, url: string, name: string}>({isOpen: false, url: '', name: ''});
     const [reportMonth, setReportMonth] = useState<number>(new Date().getMonth() + 1);
     const [reportYear, setReportYear] = useState<number>(new Date().getFullYear());
     const [reportType, setReportType] = useState<'monthly' | 'bimester' | 'daily'>('monthly');
@@ -2309,6 +2322,31 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     const [attLoading, setAttLoading] = useState(false);
     const [attSaving, setAttSaving] = useState(false);
     const [attLoadedRecord, setAttLoadedRecord] = useState<AttendanceRecord | null>(null);
+    const [attFilterBimester, setAttFilterBimester] = useState<number>(1);
+
+    // Sync Bimester Filter for Attendance Sheet
+    useEffect(() => {
+        if (attDate) {
+            setAttFilterBimester(getDynamicBimester(attDate, academicSettings));
+        }
+    }, [attDate, academicSettings]);
+
+    const attAbsenceData = useMemo(() => {
+        if (attStudents.length === 0) return {} as Record<string, { bimester: any, year: number }>;
+        const currentYear = academicSettings?.year || new Date().getFullYear();
+        const studentAbsences: Record<string, { bimester: any, year: number }> = {};
+
+        for (const student of attStudents) {
+            const breakdown = getAttendanceBreakdown(attendanceRecords, student.id, attSubject, currentYear);
+            const yearAbsences = Object.values(breakdown).reduce((acc, curr) => acc + curr.count, 0);
+
+            studentAbsences[student.id] = {
+                bimester: breakdown,
+                year: yearAbsences,
+            };
+        }
+        return studentAbsences;
+    }, [attStudents, attendanceRecords, attSubject, academicSettings]);
 
     // Sync Attendance Shift with Coordinator Shift
     useEffect(() => {
@@ -2744,6 +2782,52 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         }
     };
 
+    const handleLicensesFetchStudents = async () => {
+        if (!licenseFilters.level || !licenseFilters.grade || !licenseFilters.class || !licenseFilters.shift) {
+            alert("Por favor, selecione todos os filtros.");
+            return;
+        }
+
+        setLicenseLoading(true);
+        try {
+            const searchYear = academicSettings?.year || new Date().getFullYear();
+            const snap = await db.collection('students')
+                .where('unit', '==', currentUnit)
+                .where('enrolledYears', 'array-contains', String(searchYear))
+                .get();
+
+            let students = snap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+
+            // Refinar filtros em memória
+            students = students.filter((s: any) => {
+                if (s.status !== 'CURSANDO' && s.status !== 'ATIVO') return false;
+                if (s.shift !== licenseFilters.shift) return false;
+                if (normalizeClass(s.schoolClass) !== normalizeClass(licenseFilters.class)) return false;
+
+                const parsed = parseGradeLevel(s.gradeId || s.gradeLevel);
+                const studentGradeId = parsed.grade === s.gradeLevel ? s.gradeId : resolveGradeId(s.gradeLevel) || s.gradeId;
+
+                const currentResolvedId = resolveGradeId(s.gradeId || s.gradeLevel);
+                if (currentResolvedId === licenseFilters.grade) return true;
+                if (s.gradeId === licenseFilters.grade) return true;
+
+                return false;
+            });
+
+            students.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+            setLicenseStudents(students);
+            if (students.length === 0) {
+                alert("Nenhum aluno encontrado com esses filtros.");
+            }
+        } catch (error) {
+            console.error("Erro ao buscar alunos para licenças:", error);
+            alert("Erro ao buscar alunos.");
+        } finally {
+            setLicenseLoading(false);
+        }
+    };
+
     const handleSaveOccurrence = async () => {
         if (!occData.title || !occData.description || !selectedOccStudent) {
             alert("Por favor, preencha todos os campos obrigatórios.");
@@ -2935,6 +3019,15 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             const recordId = `${attDate}_${currentUnit}_${gradeName}_${attClass}_${attSubject}`;
             const recordSnap = await db.collection('attendance').doc(recordId).get();
 
+            // A2. Fetch ALL attendance records for this class & subject & unit to calculate absences
+            const allAttSnap = await db.collection('attendance')
+                .where('unit', '==', currentUnit)
+                .where('schoolClass', '==', attClass)
+                .where('discipline', '==', attSubject)
+                .get();
+            const relevantRecords = allAttSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
+            setAttendanceRecords(relevantRecords);
+
             // B. Fetch Students for this Class
             const studentsSnap = await db.collection('students')
                 .where('unit', '==', currentUnit)
@@ -3034,6 +3127,15 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             await db.collection('attendance').doc(recordId).set(record);
             alert("Frequência salva com sucesso!");
             setAttLoadedRecord(record);
+            setAttendanceRecords(prev => {
+                const idx = prev.findIndex(r => r.id === recordId);
+                if (idx > -1) {
+                    const next = [...prev];
+                    next[idx] = record;
+                    return next;
+                }
+                return [...prev, record];
+            });
         } catch (error) {
             console.error("Erro ao salvar frequência:", error);
             alert("Erro ao salvar.");
@@ -5428,7 +5530,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                             </div>
 
                             {/* Sub-tab Switcher */}
-                            <div className="flex gap-2 bg-white p-1.5 rounded-2xl border border-gray-200 shadow-sm max-w-md print:hidden">
+                            <div className="flex gap-2 bg-white p-1.5 rounded-2xl border border-gray-200 shadow-sm max-w-xl print:hidden">
                                 <button
                                     type="button"
                                     onClick={() => setAttendanceSubTab('record')}
@@ -5443,13 +5545,20 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                 >
                                     Relatório de Chamadas
                                 </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setAttendanceSubTab('licenses')}
+                                    className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all ${attendanceSubTab === 'licenses' ? 'bg-blue-950 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+                                >
+                                    Gerenciar Licenças
+                                </button>
                             </div>
 
-                            {attendanceSubTab === 'record' ? (
+                            {attendanceSubTab === 'record' && (
                                 <>
                                     {/* FILTERS CARD */}
                                     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 print:hidden">
-                                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                                        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
                                             <div>
                                                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Data</label>
                                                 <input
@@ -5510,6 +5619,19 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                     )}
                                                 </select>
                                             </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Bimestre</label>
+                                                <select
+                                                    value={attFilterBimester}
+                                                    onChange={e => setAttFilterBimester(Number(e.target.value))}
+                                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-950 transition-all hover:bg-white focus:bg-white"
+                                                >
+                                                    <option value={1}>1º Bimestre</option>
+                                                    <option value={2}>2º Bimestre</option>
+                                                    <option value={3}>3º Bimestre</option>
+                                                    <option value={4}>4º Bimestre</option>
+                                                </select>
+                                            </div>
                                         </div>
                                         <div className="mt-4 flex justify-end">
                                             <Button
@@ -5537,7 +5659,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                 <div>
                                                     <h3 className="font-bold text-gray-800 text-lg">Lista de Presença</h3>
                                                     <p className="text-xs text-gray-500 font-medium mt-1">
-                                                        {attStudents.length} alunos encontrados • {attDate.split('-').reverse().join('/')} • {attSubject}
+                                                        {attStudents.length} alunos encontrados • {attDate.split('-').reverse().join('/')} • {SUBJECT_LABELS[attSubject] || attSubject}
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center gap-3 bg-white px-3 py-2 rounded-xl border border-gray-200 shadow-sm">
@@ -5582,12 +5704,52 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                                 <tr key={student.id} className={`hover:bg-blue-50/30 transition-colors ${status === AttendanceStatus.ABSENT ? 'bg-red-50/30' : ''}`}>
                                                                     <td className="px-6 py-4">
                                                                         <div className="flex items-center gap-3">
-                                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${status === AttendanceStatus.ABSENT ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'}`}>
-                                                                                {student.name.substring(0, 2).toUpperCase()}
-                                                                            </div>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => student.photoUrl && setAttPhotoModal({ isOpen: true, url: student.photoUrl, name: student.name })}
+                                                                                className={`w-8 h-[42.6px] rounded border flex items-center justify-center flex-shrink-0 bg-gray-50 shadow-sm overflow-hidden ${student.photoUrl ? 'border-orange-200 hover:scale-105 transition-transform cursor-pointer' : 'border-gray-200 cursor-default'}`}
+                                                                                title={student.photoUrl ? 'Ampliar foto' : student.name}
+                                                                            >
+                                                                                {student.photoUrl ? (
+                                                                                    <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover" />
+                                                                                ) : (
+                                                                                    <span className={`text-[10px] font-bold ${status === AttendanceStatus.ABSENT ? 'text-red-600' : 'text-gray-500'}`}>{student.name.substring(0, 2).toUpperCase()}</span>
+                                                                                )}
+                                                                            </button>
                                                                             <div>
-                                                                                <p className={`font-bold ${status === AttendanceStatus.ABSENT ? 'text-red-900' : 'text-gray-900'}`}>{student.name}</p>
-                                                                                <p className="text-[10px] text-gray-400 font-medium">RM: {student.code}</p>
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <p className={`font-bold ${status === AttendanceStatus.ABSENT ? 'text-red-900' : 'text-gray-900'}`}>{student.name}</p>
+                                                                                    <span className="text-[10px] text-gray-400 font-medium">COD: {student.code}</span>
+                                                                                </div>
+                                                                                {/* Visualização de faltas (estilo Professor) */}
+                                                                                {(() => {
+                                                                                    const absences = attAbsenceData[student.id] || {
+                                                                                        bimester: { 1: { count: 0, details: {} }, 2: { count: 0, details: {} }, 3: { count: 0, details: {} }, 4: { count: 0, details: {} } },
+                                                                                        year: 0
+                                                                                    };
+                                                                                    const bimesterBreakdown = absences.bimester;
+                                                                                    return (
+                                                                                        <div className="text-[11px] text-gray-500 mt-1 font-normal flex items-center gap-x-3 gap-y-1 flex-wrap">
+                                                                                            <div className="flex gap-2 text-[11px] border-r pr-3 border-gray-300 items-start">
+                                                                                                <div className="flex flex-col">
+                                                                                                    <span>
+                                                                                                        {attFilterBimester}º Bimestre: <strong className="text-red-600 font-bold">{bimesterBreakdown[attFilterBimester]?.count || 0} falta(s)</strong>
+                                                                                                    </span>
+                                                                                                    {bimesterBreakdown[attFilterBimester]?.count > 0 && (
+                                                                                                        <div className="mt-0.5 flex flex-wrap gap-1">
+                                                                                                            {Object.entries(bimesterBreakdown[attFilterBimester].details).map(([month, days]) => (
+                                                                                                                <span key={month} className="text-[10px] text-gray-500">
+                                                                                                                    <strong className="text-gray-700">{month}:</strong> {(days as any).map((d: any) => `[${d.day}${d.count > 1 ? ` (${d.count})` : ''}]`).join(' ')} <span className="text-gray-300">|</span>
+                                                                                                                </span>
+                                                                                                            ))}
+                                                                                                        </div>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            <span>Total no Ano: <strong className="text-gray-700 font-bold">{absences.year} falta(s)</strong></span>
+                                                                                        </div>
+                                                                                    );
+                                                                                })()}
                                                                             </div>
                                                                         </div>
                                                                     </td>
@@ -5716,7 +5878,9 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                         </div>
                                     )}
                                 </>
-                            ) : (
+                            )}
+
+                            {attendanceSubTab === 'report' && (
                                 <div className="space-y-6">
                                     {/* Print-only Header */}
                                     <div className="hidden print:block text-center border-b pb-4 mb-6">
@@ -5863,6 +6027,180 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                             bimester={reportBimester}
                                             dailyDate={reportDailyDate}
                                         />
+                                    )}
+                                </div>
+                            )}
+
+                            {attendanceSubTab === 'licenses' && (
+                                <div className="space-y-6">
+                                    {/* FILTERS CARD - Layout 2 colunas (padrão Nova Ocorrência) */}
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 print:hidden">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                            {/* Nível de Ensino */}
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Nível de Ensino</label>
+                                                <select
+                                                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none appearance-none cursor-pointer hover:border-blue-950 transition-colors"
+                                                    value={licenseFilters.level}
+                                                    onChange={(e) => setLicenseFilters({ ...licenseFilters, level: e.target.value, grade: '' })}
+                                                >
+                                                    <option value="">Selecione o nível</option>
+                                                    {filteredSegments.map(s => (
+                                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            {/* Série/Ano */}
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Série/Ano</label>
+                                                <select
+                                                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none appearance-none cursor-pointer hover:border-blue-950 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                                    value={licenseFilters.grade}
+                                                    disabled={!licenseFilters.level}
+                                                    onChange={(e) => setLicenseFilters({ ...licenseFilters, grade: e.target.value })}
+                                                >
+                                                    <option value="">Selecione a série</option>
+                                                    {licenseFilters.level && academicGrades.filter(g => {
+                                                        return g.segmentId === licenseFilters.level && g.isActive;
+                                                    }).map(grade => (
+                                                        <option key={grade.id} value={grade.id}>{grade.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            {/* Turma */}
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Turma</label>
+                                                <select
+                                                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none appearance-none cursor-pointer hover:border-blue-950 transition-colors"
+                                                    value={licenseFilters.class}
+                                                    onChange={(e) => setLicenseFilters({ ...licenseFilters, class: e.target.value })}
+                                                >
+                                                    <option value="">Selecione a turma</option>
+                                                    {SCHOOL_CLASSES_OPTIONS.map(opt => (
+                                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            {/* Turno */}
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Turno</label>
+                                                <select
+                                                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none appearance-none cursor-pointer hover:border-blue-950 transition-colors"
+                                                    value={licenseFilters.shift}
+                                                    onChange={(e) => setLicenseFilters({ ...licenseFilters, shift: e.target.value })}
+                                                >
+                                                    <option value="">Selecione o turno</option>
+                                                    {SCHOOL_SHIFTS_LIST.map(shift => (
+                                                        <option key={shift} value={shift}>{SHIFT_LABELS[shift as SchoolShift] || shift}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        {/* Botão Buscar - largura total */}
+                                        <div className="mt-5">
+                                            <button
+                                                type="button"
+                                                onClick={handleLicensesFetchStudents}
+                                                disabled={licenseLoading}
+                                                className="w-full flex items-center justify-center gap-2 px-8 py-3.5 bg-blue-950 hover:bg-black text-white font-bold rounded-xl transition-all active:scale-[0.99] shadow-sm disabled:opacity-50 text-sm uppercase tracking-wider"
+                                            >
+                                                {licenseLoading
+                                                    ? <><svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg> Buscando...</>
+                                                    : <>🔍 Buscar Alunos</>
+                                                }
+                                            </button>
+                                        </div>
+
+                                    </div>
+
+                                    {/* LOADING STATE */}
+                                    {licenseLoading && (
+                                        <div className="text-center py-12">
+                                            <svg className="w-10 h-10 animate-spin text-blue-950 mx-auto mb-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                            <p className="text-gray-500 font-medium">Carregando lista de alunos...</p>
+                                        </div>
+                                    )}
+
+                                    {/* LISTA DE ALUNOS */}
+                                    {!licenseLoading && licenseStudents.length > 0 && (
+                                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                                            <div className="p-4 bg-gray-50 border-b border-gray-200 flex flex-col md:flex-row justify-between md:items-center gap-4">
+                                                <div>
+                                                    <h3 className="font-bold text-gray-800 text-lg">Alunos Encontrados</h3>
+                                                    <p className="text-xs text-gray-500 font-medium mt-1">
+                                                        {licenseStudents.filter(s =>
+                                                            s.name.toLowerCase().includes(licenseStudentSearchTerm.toLowerCase()) ||
+                                                            (s.code && s.code.toLowerCase().includes(licenseStudentSearchTerm.toLowerCase()))
+                                                        ).length} de {licenseStudents.length} alunos exibidos
+                                                    </p>
+                                                </div>
+                                                <div className="w-full md:max-w-xs relative">
+                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Buscar por nome ou código..."
+                                                        className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-950 outline-none transition-all"
+                                                        value={licenseStudentSearchTerm}
+                                                        onChange={(e) => setLicenseStudentSearchTerm(e.target.value)}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto">
+                                                {licenseStudents.filter(s =>
+                                                    s.name.toLowerCase().includes(licenseStudentSearchTerm.toLowerCase()) ||
+                                                    (s.code && s.code.toLowerCase().includes(licenseStudentSearchTerm.toLowerCase()))
+                                                ).map(student => (
+                                                    <div
+                                                        key={student.id}
+                                                        className="flex items-center justify-between p-4 rounded-xl border border-gray-100 hover:border-orange-200 hover:bg-orange-50/20 transition-all"
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            {/* Foto 3x4 do aluno */}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => student.photoUrl && setLicensePhotoModal({ isOpen: true, url: student.photoUrl, name: student.name })}
+                                                                className={`w-10 h-[53px] rounded-lg overflow-hidden border-2 border-orange-200 bg-orange-50 flex items-center justify-center flex-shrink-0 shadow-sm ${student.photoUrl ? 'hover:scale-105 transition-transform cursor-pointer' : 'cursor-default'}`}
+                                                                title={student.photoUrl ? 'Ampliar foto' : student.name}
+                                                            >
+                                                                {student.photoUrl ? (
+                                                                    <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <span className="text-orange-600 font-black text-xs">{student.name.substring(0, 2).toUpperCase()}</span>
+                                                                )}
+                                                            </button>
+                                                            <div>
+                                                                <p className="font-bold text-gray-900 text-sm">{student.name}</p>
+                                                                <p className="text-[10px] text-gray-400 font-medium">COD: {student.code || '—'}</p>
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setSelectedReportStudent(student);
+                                                                setOnlyLicenseModal(true);
+                                                                setInitialShowLicenseModal(true);
+                                                                setReportModalOpen(true);
+                                                            }}
+                                                            className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg text-xs transition-all active:scale-95 flex items-center gap-1 shadow-sm flex-shrink-0 ml-2"
+                                                        >
+                                                            <CalendarIcon className="w-3.5 h-3.5" />
+                                                            Gerenciar
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* ESTADO VAZIO */}
+                                    {!licenseLoading && licenseStudents.length === 0 && licenseFilters.level && (
+                                        <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
+                                            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-100">
+                                                <ClipboardList className="w-10 h-10 text-gray-300" />
+                                            </div>
+                                            <h3 className="text-gray-900 font-bold text-lg mb-1">Nenhum aluno encontrado</h3>
+                                            <p className="text-gray-500 max-w-sm mx-auto text-sm">Verifique os filtros selecionados e tente buscar novamente.</p>
+                                        </div>
                                     )}
                                 </div>
                             )}
@@ -6924,6 +7262,60 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 </main>
             </div >
 
+            {/* Modal de Ampliação de Foto do Aluno (Aba Gerenciar Licenças) */}
+            {licensePhotoModal.isOpen && (
+                <div
+                    className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[120] flex items-center justify-center p-4 animate-in fade-in duration-200"
+                    onClick={() => setLicensePhotoModal({ isOpen: false, url: '', name: '' })}
+                >
+                    <div
+                        className="relative max-w-[220px] w-full animate-in zoom-in-95 duration-200"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <button
+                            onClick={() => setLicensePhotoModal({ isOpen: false, url: '', name: '' })}
+                            className="absolute -top-3 -right-3 z-10 bg-white text-gray-700 rounded-full p-1.5 shadow-lg hover:bg-gray-100 transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                        <img
+                            src={licensePhotoModal.url}
+                            alt={licensePhotoModal.name}
+                            className="w-full h-auto rounded-xl border-4 border-white shadow-2xl"
+                            style={{ aspectRatio: '3/4', objectFit: 'cover' }}
+                        />
+                        <p className="text-white text-center text-sm font-bold mt-3 drop-shadow">{licensePhotoModal.name}</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Ampliação de Foto do Aluno (Lista de Chamada) */}
+            {attPhotoModal.isOpen && (
+                <div
+                    className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[120] flex items-center justify-center p-4 animate-in fade-in duration-200"
+                    onClick={() => setAttPhotoModal({ isOpen: false, url: '', name: '' })}
+                >
+                    <div
+                        className="relative max-w-[220px] w-full animate-in zoom-in-95 duration-200"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <button
+                            onClick={() => setAttPhotoModal({ isOpen: false, url: '', name: '' })}
+                            className="absolute -top-3 -right-3 z-10 bg-white text-gray-700 rounded-full p-1.5 shadow-lg hover:bg-gray-100 transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                        <img
+                            src={attPhotoModal.url}
+                            alt={attPhotoModal.name}
+                            className="w-full h-auto rounded-xl border-4 border-white shadow-2xl"
+                            style={{ aspectRatio: '3/4', objectFit: 'cover' }}
+                        />
+                        <p className="text-white text-center text-sm font-bold mt-3 drop-shadow">{attPhotoModal.name}</p>
+                    </div>
+                </div>
+            )}
+
             {/* Modal de Boletim do Coordenador */}
             {reportModalOpen && selectedReportStudent && (
                 <CoordinatorStudentReportModal
@@ -6931,11 +7323,15 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                     onClose={() => {
                         setReportModalOpen(false);
                         setSelectedReportStudent(null);
+                        setInitialShowLicenseModal(false);
+                        setOnlyLicenseModal(false);
                     }}
                     student={selectedReportStudent}
                     academicSettings={academicSettings}
                     calendarEvents={calendarEvents}
                     earlyChildhoodReports={earlyChildhoodReports}
+                    initialOpenLicenseModal={initialShowLicenseModal}
+                    onlyLicense={onlyLicenseModal}
                 />
             )}
         </div >

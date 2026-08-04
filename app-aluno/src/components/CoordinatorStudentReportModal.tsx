@@ -53,6 +53,8 @@ interface CoordinatorStudentReportModalProps {
     academicSettings: any;
     calendarEvents: CalendarEvent[];
     earlyChildhoodReports?: EarlyChildhoodReport[];
+    initialOpenLicenseModal?: boolean;
+    onlyLicense?: boolean;
 }
 
 export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportModalProps> = ({
@@ -61,7 +63,9 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
     student,
     academicSettings,
     calendarEvents,
-    earlyChildhoodReports = []
+    earlyChildhoodReports = [],
+    initialOpenLicenseModal = false,
+    onlyLicense = false
 }) => {
     const { subjects: academicSubjects, matrices, grades: allGrades, schedules: classSchedules } = useAcademicData();
 
@@ -74,6 +78,14 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
     // NOVO: Estado das Licenças por Período (Abordagem A)
     const [studentLicenses, setStudentLicenses] = useState<StudentLicense[]>([]);
     const [showLicenseModal, setShowLicenseModal] = useState(false);
+
+    useEffect(() => {
+        if (isOpen && initialOpenLicenseModal) {
+            setShowLicenseModal(true);
+        } else if (!isOpen) {
+            setShowLicenseModal(false);
+        }
+    }, [isOpen, initialOpenLicenseModal]);
 
     const LICENSE_REASONS = [
         'Atestado Médico',
@@ -420,23 +432,99 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
 
     if (!isOpen || !student) return null;
 
+    if (onlyLicense) {
+        return (
+            <>
+            {showLicenseModal && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 print:hidden">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col animate-fade-in-up max-h-[90vh] overflow-y-auto">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-5 border-b border-orange-100 bg-white rounded-t-2xl">
+                            <div>
+                                <h3 className="text-lg font-extrabold text-slate-800 flex items-center gap-2">
+                                    <Calendar className="w-5 h-5 text-orange-500" />
+                                    Licenças / Afastamentos
+                                </h3>
+                                <p className="text-xs text-slate-500 mt-0.5">{student.name}</p>
+                            </div>
+                            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                                <X className="w-5 h-5 text-gray-500" />
+                            </button>
+                        </div>
+
+                        <div className="p-5 space-y-6">
+                            <LicenseRegisterForm 
+                                student={student} 
+                                reasons={LICENSE_REASONS}
+                            />
+
+                            {/* Lista de Licenças Cadastradas */}
+                            <div>
+                                <h4 className="text-sm font-extrabold text-blue-950 mb-3 flex items-center gap-2">
+                                    <FileText className="w-4 h-4 text-orange-500" />
+                                    Licenças Cadastradas
+                                </h4>
+                                {studentLicenses.length === 0 ? (
+                                    <div className="text-center py-8 text-blue-950/40">
+                                        <Calendar className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                                        <p className="text-sm">Nenhuma licença cadastrada para este aluno.</p>
+                                        <p className="text-xs mt-1 opacity-70">Cadastre acima para abonar faltas automaticamente.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {studentLicenses.map(lic => (
+                                            <div key={lic.id} className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="text-xs font-extrabold text-orange-700 bg-orange-100 px-2 py-0.5 rounded-full">{lic.reason}</span>
+                                                        <span className="text-xs text-slate-500 font-mono">
+                                                            {new Date(lic.startDate + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                                            {lic.endDate !== lic.startDate && ` → ${new Date(lic.endDate + 'T12:00:00').toLocaleDateString('pt-BR')}`}
+                                                        </span>
+                                                    </div>
+                                                    {lic.description && (
+                                                        <p className="text-xs text-slate-500 mt-1 italic">{lic.description}</p>
+                                                    )}
+                                                    {lic.attachmentUrl && (
+                                                        <a
+                                                            href={lic.attachmentUrl}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="inline-flex items-center gap-1 mt-1.5 text-xs text-orange-600 hover:text-orange-800 font-medium hover:underline"
+                                                            title={lic.attachmentName || 'Ver comprovante'}
+                                                        >
+                                                            <Paperclip className="w-3 h-3" />
+                                                            {lic.attachmentName || 'Ver comprovante'}
+                                                        </a>
+                                                    )}
+                                                </div>
+                                                <button
+                                                    onClick={() => handleDeleteLicense(lic.id)}
+                                                    className="p-1.5 hover:bg-red-100 text-slate-400 hover:text-red-600 rounded-lg transition-colors flex-shrink-0"
+                                                    title="Excluir licença"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            </>
+        );
+    }
+
     return (
         <>
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 print:p-0 print:bg-white print:static print:block backdrop-blur-sm overflow-y-auto coordinator-report-modal-backdrop">
             <div className="bg-white rounded-xl shadow-2xl w-[90%] max-w-7xl max-h-[90vh] flex flex-col relative print:w-full print:max-w-none print:shadow-none print:max-h-none print:overflow-visible my-auto animate-fade-in-up coordinator-report-modal-content">
                 
                 {/* Actions Bar */}
-                <div className="flex justify-between items-center p-4 border-b border-gray-100 print:hidden sticky top-0 bg-white z-50 rounded-t-xl shadow-sm">
-                    <button
-                        onClick={() => setShowLicenseModal(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold rounded-lg border border-orange-300 transition-all active:scale-95 text-sm"
-                    >
-                        <Calendar className="w-4 h-4" />
-                        Gerenciar Licenças
-                        {studentLicenses.length > 0 && (
-                            <span className="bg-orange-600 text-white text-xs font-black rounded-full px-1.5 py-0.5 leading-none">{studentLicenses.length}</span>
-                        )}
-                    </button>
+                <div className="flex justify-end items-center p-4 border-b border-gray-100 print:hidden sticky top-0 bg-white z-50 rounded-t-xl shadow-sm">
                     <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
                         <X className="w-6 h-6 text-gray-500" />
                     </button>

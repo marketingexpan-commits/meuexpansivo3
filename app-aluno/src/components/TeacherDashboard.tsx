@@ -5,7 +5,7 @@ import { TeacherMediaGallery } from './TeacherMediaGallery';
 import { AttachmentViewer } from './AttachmentViewer';
 import { TextExpander } from './TextExpander';
 import { useAcademicData } from '../hooks/useAcademicData';
-import { MessageCircle, HelpCircle, ClipboardCheck, Calendar, User, Bell, Download } from 'lucide-react';
+import { MessageCircle, HelpCircle, ClipboardCheck, Calendar, User, Bell, Download, X } from 'lucide-react';
 import {
     Teacher, Student, GradeEntry, BimesterData, SchoolUnit, Subject, SchoolClass, AttendanceRecord, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, Ticket,
     TicketStatus,
@@ -138,6 +138,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     const [filterShift, setFilterShift] = useState<string>('');
     const [filterClass, setFilterClass] = useState<string>('');
     const [searchTerm, setSearchTerm] = useState<string>('');
+    const [attPhotoModal, setAttPhotoModal] = useState<{isOpen: boolean, url: string, name: string}>({isOpen: false, url: '', name: ''});
 
     const isYearFinished = useMemo(() => {
         if (!academicSettings?.bimesters) return false;
@@ -3596,8 +3597,20 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
                                                 return (
                                                     <div key={student.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col gap-3">
-                                                        <div className="flex justify-between items-start">
-                                                            <div>
+                                                        <div className="flex justify-between items-start gap-3">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => student.photoUrl && setAttPhotoModal({ isOpen: true, url: student.photoUrl, name: student.name })}
+                                                                className={`w-9 h-[48px] rounded-lg overflow-hidden border flex items-center justify-center flex-shrink-0 bg-gray-50 shadow-sm ${student.photoUrl ? 'border-orange-200 hover:scale-105 transition-transform cursor-pointer' : 'border-gray-200 cursor-default'}`}
+                                                                title={student.photoUrl ? 'Ampliar foto' : student.name}
+                                                            >
+                                                                {student.photoUrl ? (
+                                                                    <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <span className="text-gray-500 font-bold text-xs">{student.name.substring(0, 2).toUpperCase()}</span>
+                                                                )}
+                                                            </button>
+                                                            <div className="flex-1">
                                                                 <h4 className="font-bold text-gray-800">{student.name}</h4>
                                                                 <div className="flex items-center gap-2 mt-1">
                                                                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${normalizeShift(student.shift) === SchoolShift.MORNING ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-950'}`}>
@@ -3685,11 +3698,27 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                         return (
                                                             <tr key={student.id} className="hover:bg-gray-50">
                                                                 <td className="px-6 py-4">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <p className="font-medium text-gray-900">{student.name}</p>
-                                                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${normalizeShift(student.shift) === SchoolShift.MORNING ? 'bg-orange-50 text-orange-800 border-orange-200' : 'bg-blue-50 text-blue-950 border-blue-200'}`}>
-                                                                            {SHIFT_LABELS[student.shift as SchoolShift] || student.shift}
-                                                                        </span>
+                                                                    <div className="flex items-center gap-3">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => student.photoUrl && setAttPhotoModal({ isOpen: true, url: student.photoUrl, name: student.name })}
+                                                                            className={`w-8 h-[42.6px] rounded border flex items-center justify-center flex-shrink-0 bg-gray-50 shadow-sm overflow-hidden ${student.photoUrl ? 'border-orange-200 hover:scale-105 transition-transform cursor-pointer' : 'border-gray-200 cursor-default'}`}
+                                                                            title={student.photoUrl ? 'Ampliar foto' : student.name}
+                                                                        >
+                                                                            {student.photoUrl ? (
+                                                                                <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover" />
+                                                                            ) : (
+                                                                                <span className="text-gray-500 font-bold text-[10px]">{student.name.substring(0, 2).toUpperCase()}</span>
+                                                                            )}
+                                                                        </button>
+                                                                        <div>
+                                                                            <div className="flex items-center gap-2">
+                                                                                <p className="font-medium text-gray-900">{student.name}</p>
+                                                                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${normalizeShift(student.shift) === SchoolShift.MORNING ? 'bg-orange-50 text-orange-800 border-orange-200' : 'bg-blue-50 text-blue-950 border-blue-200'}`}>
+                                                                                    {SHIFT_LABELS[student.shift as SchoolShift] || student.shift}
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
                                                                     </div>
                                                                     <div className="text-xs text-gray-500 mt-1 font-normal flex items-center gap-x-4 gap-y-1 flex-wrap">
                                                                         <div className="flex gap-2 text-xs border-r pr-3 border-gray-300 items-start">
@@ -4102,6 +4131,32 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                 Não mostrar este aviso novamente
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+            {/* Modal de Ampliação de Foto do Aluno (Lista de Chamada do Professor) */}
+            {attPhotoModal.isOpen && (
+                <div
+                    className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[120] flex items-center justify-center p-4 animate-in fade-in duration-200"
+                    onClick={() => setAttPhotoModal({ isOpen: false, url: '', name: '' })}
+                >
+                    <div
+                        className="relative max-w-[220px] w-full animate-in zoom-in-95 duration-200"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <button
+                            onClick={() => setAttPhotoModal({ isOpen: false, url: '', name: '' })}
+                            className="absolute -top-3 -right-3 z-10 bg-white text-gray-700 rounded-full p-1.5 shadow-lg hover:bg-gray-100 transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                        <img
+                            src={attPhotoModal.url}
+                            alt={attPhotoModal.name}
+                            className="w-full h-auto rounded-xl border-4 border-white shadow-2xl"
+                            style={{ aspectRatio: '3/4', objectFit: 'cover' }}
+                        />
+                        <p className="text-white text-center text-sm font-bold mt-3 drop-shadow">{attPhotoModal.name}</p>
                     </div>
                 </div>
             )}
