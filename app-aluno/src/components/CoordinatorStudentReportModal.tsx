@@ -117,8 +117,11 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                 const gradesData = gradesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as GradeEntry));
                 setRawGrades(gradesData);
 
+                const historyUnits = (student.enrollmentHistory || []).map((h: any) => h.unit).filter(Boolean);
+                const queryUnits = Array.from(new Set([student.unit, ...historyUnits]));
+
                 const attSnap = await db.collection('attendance')
-                    .where('unit', '==', student.unit)
+                    .where('unit', 'in', queryUnits)
                     .get();
                 
                 const attData = attSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
@@ -663,17 +666,16 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                                             if (att.studentStatus[student.id] !== AttendanceStatus.ABSENT) return acc;
                                                             if (getDynamicBimester(att.date, effectiveSettings) !== bimNum) return acc;
                                                             
-                                                            // Robust validation: Only count if class was actually scheduled for this student
                                                             const subjectObj = academicSubjects?.find(s => s.id === grade.subject);
-                                                            if (classSchedules && classSchedules.length > 0) {
-                                                                if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass, student.shift, subjectObj?.id)) return acc;
-                                                            }
-
+                                                            const isSameUnit = att.unit === student.unit;
                                                             const individualCount = att.studentAbsenceCount?.[student.id];
                                                             const lessonCount = individualCount !== undefined ? individualCount : (att.lessonCount || 1);
-                                                            
-                                                            if (classSchedules && classSchedules.length > 0) {
-                                                                return acc + getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass, calendarEvents, student.unit, student.shift, subjectObj?.id);
+
+                                                            if (isSameUnit) {
+                                                                if (classSchedules && classSchedules.length > 0) {
+                                                                    if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass, student.shift, subjectObj?.id)) return acc;
+                                                                    return acc + getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass, calendarEvents, student.unit, student.shift, subjectObj?.id);
+                                                                }
                                                             }
                                                             return acc + lessonCount;
                                                         }, 0);
