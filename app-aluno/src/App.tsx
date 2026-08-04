@@ -327,10 +327,24 @@ const AppContent: React.FC = () => {
         setInitialLoad(prev => ({ ...prev, teachers: true }));
       }));
 
-      // Fetch Attendance for the specific student based on their ID
+      // Fetch Attendance for the specific student based on their ID across all their units
       const studentUser = session.user as Student;
+      const studentUnits = new Set<string>();
+      if (studentUser.unit) {
+        studentUnits.add(normalizeUnit(studentUser.unit));
+      }
+      if (studentUser.enrollmentHistory && Array.isArray(studentUser.enrollmentHistory)) {
+        studentUser.enrollmentHistory.forEach(h => {
+          if (h.unit) {
+            studentUnits.add(normalizeUnit(h.unit));
+          }
+        });
+      }
+      const unitsList = Array.from(studentUnits);
+      const queryUnits = unitsList.length > 0 ? unitsList : [userUnit];
+
       unsubs.push(db.collection('attendance')
-        .where('unit', '==', userUnit)
+        .where('unit', 'in', queryUnits)
         .onSnapshot(snap => {
           const allAttendance = snap.docs.map(doc => doc.data() as AttendanceRecord);
           // Filter records where this specific student has a recorded status
