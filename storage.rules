@@ -87,6 +87,15 @@ service firebase.storage {
       allow write: if isValidSize() && request.resource.contentType.matches('application/pdf');
     }
 
+    // Licenças / Atestados - Permitir leitura pública e escrita com limite de tamanho (1MB) e tipo de arquivo
+    match /licencas/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.resource.size < 1 * 1024 * 1024 
+                   && (request.resource.contentType.matches('application/pdf') 
+                       || request.resource.contentType.matches('image/jpeg') 
+                       || request.resource.contentType.matches('image/png'));
+    }
+
     // Default rule - deny all other access
     match /{allPaths=**} {
       allow read, write: if false;

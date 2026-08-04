@@ -1,8 +1,8 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { db } from '../firebaseConfig';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { db, storage } from '../firebaseConfig';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
-import { X, Download, AlertCircle, Calendar, FileText, Plus, Trash2 } from 'lucide-react';
+import { X, Download, AlertCircle, Calendar, FileText, Plus, Trash2, Paperclip, CheckCircle } from 'lucide-react';
 import { useAcademicData } from '../hooks/useAcademicData';
 
 import { 
@@ -173,10 +173,23 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
         return () => unsubscribe();
     }, [isOpen, student]);
 
-    // NOVO: Excluir licença
+    // NOVO: Excluir licença e seu comprovante
     const handleDeleteLicense = async (licenseId: string) => {
         if (!window.confirm('Excluir esta licença? O abono será removido retroativamente dos cálculos de frequência.')) return;
         try {
+            // Busca o documento para verificar se há comprovante associado
+            const docSnap = await db.collection('studentLicenses').doc(licenseId).get();
+            if (docSnap.exists) {
+                const licenseData = docSnap.data() as StudentLicense;
+                if (licenseData.attachmentUrl) {
+                    try {
+                        const fileRef = storage.refFromURL(licenseData.attachmentUrl);
+                        await fileRef.delete();
+                    } catch (storageErr) {
+                        console.error('Erro ao remover arquivo do Firebase Storage:', storageErr);
+                    }
+                }
+            }
             await db.collection('studentLicenses').doc(licenseId).delete();
         } catch (err) {
             console.error('Erro ao excluir licença:', err);
@@ -1048,6 +1061,18 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                                 {lic.description && (
                                                     <p className="text-xs text-slate-500 mt-1 italic">{lic.description}</p>
                                                 )}
+                                                {lic.attachmentUrl && (
+                                                    <a
+                                                        href={lic.attachmentUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1 mt-1.5 text-xs text-orange-600 hover:text-orange-800 font-medium hover:underline"
+                                                        title={lic.attachmentName || 'Ver comprovante'}
+                                                    >
+                                                        <Paperclip className="w-3 h-3" />
+                                                        {lic.attachmentName || 'Ver comprovante'}
+                                                    </a>
+                                                )}
                                             </div>
                                             <button
                                                 onClick={() => handleDeleteLicense(lic.id)}
@@ -1082,6 +1107,37 @@ const LicenseRegisterForm: React.FC<LicenseRegisterFormProps> = ({ student, reas
     const [description, setDescription] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const MAX_SIZE_BYTES = 1 * 1024 * 1024; // 1 MB
+    const ACCEPTED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!ACCEPTED_TYPES.includes(file.type)) {
+            setError('Formato inválido. Aceito apenas: PDF, JPG ou PNG.');
+            e.target.value = '';
+            return;
+        }
+
+        if (file.size > MAX_SIZE_BYTES) {
+            const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            setError(`Arquivo muito grande (${fileSizeMB} MB). O limite é 1 MB. Reduza o tamanho ou use outro arquivo.`);
+            e.target.value = '';
+            return;
+        }
+
+        setError('');
+        setSelectedFile(file);
+    };
+
+    const handleRemoveFile = () => {
+        setSelectedFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
 
     const handleSave = async () => {
         if (!startDate || !endDate) {
@@ -1095,6 +1151,20 @@ const LicenseRegisterForm: React.FC<LicenseRegisterFormProps> = ({ student, reas
         setError('');
         setLoading(true);
         try {
+            let attachmentUrl: string | undefined;
+            let attachmentName: string | undefined;
+
+            // Upload do comprovante, se houver arquivo selecionado
+            if (selectedFile) {
+                const timestamp = Date.now();
+                const safeFileName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                const storagePath = `licencas/${student.id}/${timestamp}_${safeFileName}`;
+                const fileRef = storage.ref(storagePath);
+                await fileRef.put(selectedFile);
+                attachmentUrl = await fileRef.getDownloadURL();
+                attachmentName = selectedFile.name;
+            }
+
             const newLicense: Omit<StudentLicense, 'id'> = {
                 studentId: student.id,
                 studentName: student.name,
@@ -1103,6 +1173,7 @@ const LicenseRegisterForm: React.FC<LicenseRegisterFormProps> = ({ student, reas
                 endDate,
                 reason,
                 description,
+                ...(attachmentUrl && { attachmentUrl, attachmentName }),
                 createdAt: new Date().toISOString(),
                 createdBy: 'coordinator',
             };
@@ -1111,6 +1182,8 @@ const LicenseRegisterForm: React.FC<LicenseRegisterFormProps> = ({ student, reas
             setEndDate('');
             setReason('Atestado Médico');
             setDescription('');
+            setSelectedFile(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
         } catch (err) {
             setError('Erro ao salvar licença. Tente novamente.');
         } finally {
@@ -1163,8 +1236,51 @@ const LicenseRegisterForm: React.FC<LicenseRegisterFormProps> = ({ student, reas
                     className="w-full border border-orange-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none"
                 />
             </div>
+
+            {/* Campo de Upload do Comprovante */}
+            <div>
+                <label className="block text-xs font-bold text-blue-950 mb-1">
+                    Comprovante / Atestado <span className="text-gray-400 font-normal">(opcional · máx. 1 MB · PDF, JPG ou PNG)</span>
+                </label>
+                {selectedFile ? (
+                    <div className="flex items-center gap-2 p-2.5 bg-green-50 border border-green-200 rounded-lg">
+                        <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+                        <span className="text-xs text-green-800 font-medium flex-1 truncate" title={selectedFile.name}>
+                            {selectedFile.name}
+                        </span>
+                        <span className="text-[10px] text-green-600 flex-shrink-0">
+                            {(selectedFile.size / 1024).toFixed(0)} KB
+                        </span>
+                        <button
+                            type="button"
+                            onClick={handleRemoveFile}
+                            className="p-1 hover:bg-green-100 rounded-full transition-colors flex-shrink-0"
+                            title="Remover arquivo"
+                        >
+                            <X className="w-3.5 h-3.5 text-green-700" />
+                        </button>
+                    </div>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all bg-blue-950 hover:bg-blue-900 text-white shadow-md active:scale-95 flex items-center justify-center gap-2"
+                    >
+                        <Paperclip className="w-4 h-4 text-white" />
+                        Anexar comprovante
+                    </button>
+                )}
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleFileChange}
+                    className="hidden"
+                />
+            </div>
+
             {error && (
-                <p className="text-xs text-red-600 font-medium">{error}</p>
+                <p className="text-xs text-red-600 font-medium bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
             )}
             <button
                 onClick={handleSave}
@@ -1176,7 +1292,7 @@ const LicenseRegisterForm: React.FC<LicenseRegisterFormProps> = ({ student, reas
                 ) : (
                     <Plus className="w-4 h-4" />
                 )}
-                Salvar Licença
+                {loading ? 'Salvando...' : 'Salvar Licença'}
             </button>
         </div>
     );

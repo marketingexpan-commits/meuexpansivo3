@@ -532,6 +532,8 @@ export interface StudentLicense {
   endDate: string;   // Formato YYYY-MM-DD
   reason: string;    // Motivo principal (ex: Atestado Médico)
   description?: string; // Observação adicional opcional
+  attachmentUrl?: string; // URL do comprovante/atestado no Firebase Storage
+  attachmentName?: string; // Nome original do arquivo anexado
   createdAt: string;
   createdBy: string; // userId do coordenador que cadastrou
 }
