@@ -3047,6 +3047,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                     s.shift === attShift;
             });
 
+            studentsInClass.sort((a, b) => a.name.localeCompare(b.name));
             setAttStudents(studentsInClass);
 
             // Calculate expected lessons from schedule
