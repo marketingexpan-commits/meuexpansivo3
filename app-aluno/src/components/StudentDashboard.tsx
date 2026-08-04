@@ -2679,15 +2679,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                         if (getDynamicBimester(att.date, academicSettings) === bimesterNum) {
                                                                             const academicSubject = academicSubjects?.find(s => s.id === grade.subject);
                                                                             const subjectId = academicSubject?.id;
-
-                                                                            if (classSchedules && classSchedules.length > 0) {
-                                                                                if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, att.unit || student.unit, att.gradeLevel || student.gradeLevel, att.schoolClass || student.schoolClass, att.shift || student.shift, subjectId)) return acc;
-                                                                            }
+                                                                            const isSameUnit = att.unit === student.unit;
                                                                             const individualCount = att.studentAbsenceCount?.[student.id];
                                                                             const lessonCount = individualCount !== undefined ? individualCount : (att.lessonCount || 1);
 
-                                                                            if (classSchedules && classSchedules.length > 0) {
-                                                                                return acc + getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, att.gradeLevel || student.gradeLevel, att.schoolClass || student.schoolClass, calendarEvents, att.unit || student.unit, att.shift || student.shift, subjectId);
+                                                                            if (isSameUnit) {
+                                                                                if (classSchedules && classSchedules.length > 0) {
+                                                                                    if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass, student.shift, subjectId)) return acc;
+                                                                                    return acc + getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass, calendarEvents, student.unit, student.shift, subjectId);
+                                                                                }
                                                                             }
                                                                             return acc + lessonCount;
                                                                         }
@@ -2816,14 +2816,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                         if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
                                                                             if (getDynamicBimester(att.date, academicSettings) === bNum) {
                                                                                 const subjectId = grade.subject;
-                                                                                if (classSchedules && classSchedules.length > 0) {
-                                                                                    if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, att.unit || student.unit, att.gradeLevel || student.gradeLevel, att.schoolClass || student.schoolClass, att.shift || student.shift, subjectId)) return acc;
-                                                                                }
+                                                                                const isSameUnit = att.unit === student.unit;
                                                                                 const individualCount = att.studentAbsenceCount?.[student.id];
                                                                                 const lessonCount = individualCount !== undefined ? individualCount : (att.lessonCount || 1);
 
-                                                                                if (classSchedules && classSchedules.length > 0) {
-                                                                                    return acc + getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, att.gradeLevel || student.gradeLevel, att.schoolClass || student.schoolClass, calendarEvents, att.unit || student.unit, att.shift || student.shift, subjectId);
+                                                                                if (isSameUnit) {
+                                                                                    if (classSchedules && classSchedules.length > 0) {
+                                                                                        if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass, student.shift, subjectId)) return acc;
+                                                                                        return acc + getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass, calendarEvents, student.unit, student.shift, subjectId);
+                                                                                    }
                                                                                 }
                                                                                 return acc + lessonCount;
                                                                             }

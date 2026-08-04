@@ -303,17 +303,17 @@ export const calculateGeneralFrequency = (
             // Verify if the day is a valid school day for this subject
             const subjectId = academicSubjects?.find(s => s.id === record.discipline || s.name === record.discipline)?.id || (record.discipline.startsWith('sub_') ? record.discipline : undefined);
 
-            if (classSchedules && classSchedules.length > 0) {
-                if (!isClassScheduled(record.date, record.discipline, classSchedules, calendarEvents || [], record.unit || unit, record.gradeLevel || gradeLevel, record.schoolClass || schoolClass, record.shift || shift, subjectId)) {
-                    return acc;
-                }
-            }
-
+            const isSameUnit = record.unit === unit;
             const individualCount = record.studentAbsenceCount?.[studentId];
             const weight = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
 
-            if (classSchedules && classSchedules.length > 0) {
-                return acc + getSubjectDurationForDay(record.date, record.discipline, classSchedules, weight, record.gradeLevel || gradeLevel, record.schoolClass || schoolClass, calendarEvents, record.unit || unit, record.shift || shift, subjectId);
+            if (isSameUnit) {
+                if (classSchedules && classSchedules.length > 0) {
+                    if (!isClassScheduled(record.date, record.discipline, classSchedules, calendarEvents || [], unit, gradeLevel, schoolClass, shift, subjectId)) {
+                        return acc;
+                    }
+                    return acc + getSubjectDurationForDay(record.date, record.discipline, classSchedules, weight, gradeLevel, schoolClass, calendarEvents, unit, shift, subjectId);
+                }
             }
             return acc + weight;
         }
@@ -419,17 +419,17 @@ export const calculateBimesterGeneralFrequency = (
             // Verify if the day is a valid school day for this subject
             const subjectId = academicSubjects?.find(s => s.id === record.discipline || s.name === record.discipline)?.id;
 
-            if (classSchedules && classSchedules.length > 0) {
-                if (!isClassScheduled(record.date, record.discipline, classSchedules, calendarEvents || [], record.unit || unit, record.gradeLevel || gradeLevel, record.schoolClass || schoolClass, record.shift || shift, subjectId)) {
-                    return acc;
-                }
-            }
-
+            const isSameUnit = record.unit === unit;
             const individualCount = record.studentAbsenceCount?.[studentId];
             const weight = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
 
-            if (classSchedules && classSchedules.length > 0) {
-                return acc + getSubjectDurationForDay(record.date, record.discipline, classSchedules, weight, record.gradeLevel || gradeLevel, record.schoolClass || schoolClass, calendarEvents, record.unit || unit, record.shift || shift, subjectId);
+            if (isSameUnit) {
+                if (classSchedules && classSchedules.length > 0) {
+                    if (!isClassScheduled(record.date, record.discipline, classSchedules, calendarEvents || [], unit, gradeLevel, schoolClass, shift, subjectId)) {
+                        return acc;
+                    }
+                    return acc + getSubjectDurationForDay(record.date, record.discipline, classSchedules, weight, gradeLevel, schoolClass, calendarEvents, unit, shift, subjectId);
+                }
             }
             return acc + weight;
         }
