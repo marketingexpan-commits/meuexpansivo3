@@ -518,6 +518,22 @@ export interface AttendanceRecord {
   lessonCount?: number; // Quantidade de aulas (ex: 2 para aula geminada)
   shift?: string; // NOVO: Turno da chamada
   studentAbsenceCount?: Record<string, number>; // studentId -> número de faltas (sobrescreve padrão se houver)
+  studentExcusedAbsences?: Record<string, boolean>; // studentId -> true se a falta está abonada/justificada
+  studentExcusedReasons?: Record<string, string>; // studentId -> motivo do abono
+}
+
+// NOVO: Licença/Afastamento de Aluno por Período (Abono em Bloco - Abordagem A)
+export interface StudentLicense {
+  id: string;
+  studentId: string;
+  studentName: string;
+  unit: SchoolUnit;
+  startDate: string; // Formato YYYY-MM-DD
+  endDate: string;   // Formato YYYY-MM-DD
+  reason: string;    // Motivo principal (ex: Atestado Médico)
+  description?: string; // Observação adicional opcional
+  createdAt: string;
+  createdBy: string; // userId do coordenador que cadastrou
 }
 
 // NOVO: Tipos para o sistema de Tickets (Dúvidas)

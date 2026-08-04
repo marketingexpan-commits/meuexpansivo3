@@ -1212,6 +1212,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
         // 1. Save the Attendance Record
         const recordId = `${attendanceDate}_${activeUnit}_${attendanceGrade}_${attendanceClass}_${attendanceSubject}`;
+        const existingRecord = attendanceRecords.find(r => r.id === recordId);
+        const excusedStatuses: Record<string, boolean> = { ...(existingRecord?.studentExcusedAbsences || {}) };
+        const excusedReasons: Record<string, string> = { ...(existingRecord?.studentExcusedReasons || {}) };
+        
+        Object.keys(studentStatuses).forEach(sId => {
+            if (studentStatuses[sId] === AttendanceStatus.PRESENT) {
+                delete excusedStatuses[sId];
+                delete excusedReasons[sId];
+            }
+        });
+
         const record: AttendanceRecord = {
             id: recordId,
             date: attendanceDate,
@@ -1223,7 +1234,9 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             discipline: attendanceSubject,
             studentStatus: studentStatuses,
             lessonCount: attendanceLessonCount,
-            studentAbsenceCount: studentAbsenceOverrides
+            studentAbsenceCount: studentAbsenceOverrides,
+            studentExcusedAbsences: excusedStatuses,
+            studentExcusedReasons: excusedReasons
         };
 
         try {

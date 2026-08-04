@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { db } from '../firebaseConfig';
 import { Button } from './Button';
 import { SchoolLogo } from './SchoolLogo';
-import { X, Download, AlertCircle } from 'lucide-react';
+import { X, Download, AlertCircle, Calendar, FileText, Plus, Trash2 } from 'lucide-react';
 import { useAcademicData } from '../hooks/useAcademicData';
 
 import { 
@@ -17,7 +17,8 @@ import {
     UNIT_LABELS,
     SHIFT_LABELS,
     EarlyChildhoodReport,
-    CompetencyStatus
+    CompetencyStatus,
+    StudentLicense
 } from '../types';
 
 import { 
@@ -69,6 +70,19 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
     const [loading, setLoading] = useState(false);
     const [localAcademicSettings, setLocalAcademicSettings] = useState<AcademicSettings | null>(null);
     const [selectedSemesterModal, setSelectedSemesterModal] = useState<1 | 2>(1);
+
+    // NOVO: Estado das Licenças por Período (Abordagem A)
+    const [studentLicenses, setStudentLicenses] = useState<StudentLicense[]>([]);
+    const [showLicenseModal, setShowLicenseModal] = useState(false);
+
+    const LICENSE_REASONS = [
+        'Atestado Médico',
+        'Acompanhamento Médico / Consulta',
+        'Representação Escolar / Olimpíada / Esporte',
+        'Motivos Familiares / Luto',
+        'Casos Fortuitos (Chuva / Trânsito / Força Maior)',
+        'Outros'
+    ];
 
     // Use prop if valid (has bimesters), otherwise fall back to locally fetched settings
     const effectiveSettings = (academicSettings?.bimesters?.length > 0) ? academicSettings : localAcademicSettings;
@@ -146,6 +160,28 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
 
         fetchData();
     }, [isOpen, student]);
+
+    // NOVO: Carregar e escutar licenças do aluno em tempo real (Abordagem A)
+    useEffect(() => {
+        if (!isOpen || !student) { setStudentLicenses([]); return; }
+        const unsubscribe = db.collection('studentLicenses')
+            .where('studentId', '==', student.id)
+            .onSnapshot(snap => {
+                const licenses = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentLicense));
+                setStudentLicenses(licenses.sort((a, b) => b.startDate.localeCompare(a.startDate)));
+            }, err => console.error('Erro ao carregar licenças:', err));
+        return () => unsubscribe();
+    }, [isOpen, student]);
+
+    // NOVO: Excluir licença
+    const handleDeleteLicense = async (licenseId: string) => {
+        if (!window.confirm('Excluir esta licença? O abono será removido retroativamente dos cálculos de frequência.')) return;
+        try {
+            await db.collection('studentLicenses').doc(licenseId).delete();
+        } catch (err) {
+            console.error('Erro ao excluir licença:', err);
+        }
+    };
 
     const handleDownloadPDF = () => {
         window.print();
@@ -372,11 +408,22 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
     if (!isOpen || !student) return null;
 
     return (
+        <>
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 print:p-0 print:bg-white print:static print:block backdrop-blur-sm overflow-y-auto coordinator-report-modal-backdrop">
             <div className="bg-white rounded-xl shadow-2xl w-[90%] max-w-7xl max-h-[90vh] flex flex-col relative print:w-full print:max-w-none print:shadow-none print:max-h-none print:overflow-visible my-auto animate-fade-in-up coordinator-report-modal-content">
                 
                 {/* Actions Bar */}
-                <div className="flex justify-end items-center p-4 border-b border-gray-100 print:hidden sticky top-0 bg-white z-50 rounded-t-xl shadow-sm">
+                <div className="flex justify-between items-center p-4 border-b border-gray-100 print:hidden sticky top-0 bg-white z-50 rounded-t-xl shadow-sm">
+                    <button
+                        onClick={() => setShowLicenseModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold rounded-lg border border-orange-300 transition-all active:scale-95 text-sm"
+                    >
+                        <Calendar className="w-4 h-4" />
+                        Gerenciar Licenças
+                        {studentLicenses.length > 0 && (
+                            <span className="bg-orange-600 text-white text-xs font-black rounded-full px-1.5 py-0.5 leading-none">{studentLicenses.length}</span>
+                        )}
+                    </button>
                     <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
                         <X className="w-6 h-6 text-gray-500" />
                     </button>
@@ -659,33 +706,44 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                                         matrices
                                                     ).taught;
                                                     
-                                                    // Real-time absences from attendance records
+                                                    // Real-time absences (with Abordagem A: dynamic cross-check with license periods)
                                                     const getRealtimeAbsences = (bimNum: 1|2|3|4) => {
-                                                        return studentAttendance.reduce((acc, att) => {
-                                                            if (att.discipline !== grade.subject) return acc;
-                                                            if (att.studentStatus[student.id] !== AttendanceStatus.ABSENT) return acc;
-                                                            if (getDynamicBimester(att.date, effectiveSettings) !== bimNum) return acc;
-                                                            
+                                                        let raw = 0;
+                                                        let unexcused = 0;
+                                                        studentAttendance.forEach(att => {
+                                                            if (att.discipline !== grade.subject) return;
+                                                            if (att.studentStatus[student.id] !== AttendanceStatus.ABSENT) return;
+                                                            if (getDynamicBimester(att.date, effectiveSettings) !== bimNum) return;
+
                                                             const subjectObj = academicSubjects?.find(s => s.id === grade.subject);
                                                             const isSameUnit = att.unit === student.unit;
                                                             const individualCount = att.studentAbsenceCount?.[student.id];
                                                             const lessonCount = individualCount !== undefined ? individualCount : (att.lessonCount || 1);
+                                                            // Cruzamento dinâmico: verifica se a data está coberta por alguma licença
+                                                            const isCoveredByLicense = studentLicenses.some(lic => lic.studentId === student.id && att.date >= lic.startDate && att.date <= lic.endDate);
+                                                            const isExcused = isCoveredByLicense || att.studentExcusedAbsences?.[student.id] === true;
 
+                                                            let duration = lessonCount;
                                                             if (isSameUnit) {
                                                                 if (classSchedules && classSchedules.length > 0) {
-                                                                    if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass, student.shift, subjectObj?.id)) return acc;
-                                                                    return acc + getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass, calendarEvents, student.unit, student.shift, subjectObj?.id);
+                                                                    if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass, student.shift, subjectObj?.id)) {
+                                                                        return;
+                                                                    }
+                                                                    duration = getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass, calendarEvents, student.unit, student.shift, subjectObj?.id);
                                                                 }
                                                             }
-                                                            return acc + lessonCount;
-                                                        }, 0);
+                                                            raw += duration;
+                                                            if (!isExcused) unexcused += duration;
+                                                        });
+                                                        return { raw, unexcused };
                                                     };
 
                                                     const absencesBim1 = getRealtimeAbsences(1);
                                                     const absencesBim2 = getRealtimeAbsences(2);
                                                     const absencesBim3 = getRealtimeAbsences(3);
                                                     const absencesBim4 = getRealtimeAbsences(4);
-                                                    const totalAbsences = absencesBim1 + absencesBim2 + absencesBim3 + absencesBim4;
+                                                    const totalAbsencesRaw = absencesBim1.raw + absencesBim2.raw + absencesBim3.raw + absencesBim4.raw;
+                                                    const totalAbsencesUnexcused = absencesBim1.unexcused + absencesBim2.unexcused + absencesBim3.unexcused + absencesBim4.unexcused;
 
                                                     // Per-bimester taught classes (Min.) - same logic as CoordinatorDashboard
                                                     const getBimMin = (bimNum: 1|2|3|4): number => {
@@ -703,7 +761,7 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
 
                                                     const annualFreqResult = calculateAnnualAttendancePercentage(
                                                         grade.subject, 
-                                                        totalAbsences, 
+                                                        totalAbsencesUnexcused, 
                                                         student.gradeLevel, 
                                                         elapsedBimesters, 
                                                         academicSubjects, 
@@ -727,9 +785,12 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                                             <td className="border border-slate-300 p-1 text-center">{formatGrade(grade.bimesters.bimester1.nota)}</td>
                                                             <td className="border border-slate-300 p-1 text-center text-orange-600">{formatGrade(grade.bimesters.bimester1.recuperacao)}</td>
                                                             <td className="border border-slate-300 p-1 text-center font-black bg-blue-50/30 text-blue-900">{formatGrade(grade.bimesters.bimester1.media)}</td>
-                                                            <td className="border border-slate-300 p-1 text-center text-slate-400">{Math.round(absencesBim1)}</td>
+                                                            <td className="border border-slate-300 p-1 text-center text-slate-400 relative" title={absencesBim1.raw > absencesBim1.unexcused ? `${Math.round(absencesBim1.raw)} falta(s) (${Math.round(absencesBim1.raw - absencesBim1.unexcused)} abonada(s))` : undefined}>
+                                                                {Math.round(absencesBim1.raw)}
+                                                                {absencesBim1.raw > absencesBim1.unexcused && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-green-500 rounded-full" title="Faltas Abonadas"></span>}
+                                                            </td>
                                                             <td className="border border-slate-300 p-1 text-center text-[9px] text-slate-500">
-                                                                {isBimStarted(1) ? `${Math.round(calculateAttendancePercentage(grade.subject, absencesBim1, student.gradeLevel, 1, academicSubjects, effectiveSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices)?.percent || 100)}%` : '-'}
+                                                                {isBimStarted(1) ? `${Math.round(calculateAttendancePercentage(grade.subject, absencesBim1.unexcused, student.gradeLevel, 1, academicSubjects, effectiveSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices)?.percent || 100)}%` : '-'}
                                                             </td>
                                                             <td className="border border-slate-300 p-1 text-center text-[9px] text-slate-400">{bMin1 > 0 ? formatWorkload(Math.round(bMin1 * 10) / 10) : '-'}</td>
 
@@ -737,9 +798,12 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                                             <td className="border border-slate-300 p-1 text-center">{formatGrade(grade.bimesters.bimester2.nota)}</td>
                                                             <td className="border border-slate-300 p-1 text-center text-orange-600">{formatGrade(grade.bimesters.bimester2.recuperacao)}</td>
                                                             <td className="border border-slate-300 p-1 text-center font-black bg-slate-50 text-slate-900">{formatGrade(grade.bimesters.bimester2.media)}</td>
-                                                            <td className="border border-slate-300 p-1 text-center text-slate-400">{Math.round(absencesBim2)}</td>
+                                                            <td className="border border-slate-300 p-1 text-center text-slate-400 relative" title={absencesBim2.raw > absencesBim2.unexcused ? `${Math.round(absencesBim2.raw)} falta(s) (${Math.round(absencesBim2.raw - absencesBim2.unexcused)} abonada(s))` : undefined}>
+                                                                {Math.round(absencesBim2.raw)}
+                                                                {absencesBim2.raw > absencesBim2.unexcused && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-green-500 rounded-full" title="Faltas Abonadas"></span>}
+                                                            </td>
                                                             <td className="border border-slate-300 p-1 text-center text-[9px] text-slate-500">
-                                                                {isBimStarted(2) ? `${Math.round(calculateAttendancePercentage(grade.subject, absencesBim2, student.gradeLevel, 2, academicSubjects, effectiveSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices)?.percent || 100)}%` : '-'}
+                                                                {isBimStarted(2) ? `${Math.round(calculateAttendancePercentage(grade.subject, absencesBim2.unexcused, student.gradeLevel, 2, academicSubjects, effectiveSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices)?.percent || 100)}%` : '-'}
                                                             </td>
                                                             <td className="border border-slate-300 p-1 text-center text-[9px] text-slate-400">{bMin2 > 0 ? formatWorkload(Math.round(bMin2 * 10) / 10) : '-'}</td>
 
@@ -747,9 +811,12 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                                             <td className="border border-slate-300 p-1 text-center">{formatGrade(grade.bimesters.bimester3.nota)}</td>
                                                             <td className="border border-slate-300 p-1 text-center text-orange-600">{formatGrade(grade.bimesters.bimester3.recuperacao)}</td>
                                                             <td className="border border-slate-300 p-1 text-center font-black bg-blue-50/30 text-blue-900">{formatGrade(grade.bimesters.bimester3.media)}</td>
-                                                            <td className="border border-slate-300 p-1 text-center text-slate-400">{Math.round(absencesBim3)}</td>
+                                                            <td className="border border-slate-300 p-1 text-center text-slate-400 relative" title={absencesBim3.raw > absencesBim3.unexcused ? `${Math.round(absencesBim3.raw)} falta(s) (${Math.round(absencesBim3.raw - absencesBim3.unexcused)} abonada(s))` : undefined}>
+                                                                {Math.round(absencesBim3.raw)}
+                                                                {absencesBim3.raw > absencesBim3.unexcused && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-green-500 rounded-full" title="Faltas Abonadas"></span>}
+                                                            </td>
                                                             <td className="border border-slate-300 p-1 text-center text-[9px] text-slate-500">
-                                                                {isBimStarted(3) ? `${Math.round(calculateAttendancePercentage(grade.subject, absencesBim3, student.gradeLevel, 3, academicSubjects, effectiveSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices)?.percent || 100)}%` : '-'}
+                                                                {isBimStarted(3) ? `${Math.round(calculateAttendancePercentage(grade.subject, absencesBim3.unexcused, student.gradeLevel, 3, academicSubjects, effectiveSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices)?.percent || 100)}%` : '-'}
                                                             </td>
                                                             <td className="border border-slate-300 p-1 text-center text-[9px] text-slate-400">{bMin3 > 0 ? formatWorkload(Math.round(bMin3 * 10) / 10) : '-'}</td>
 
@@ -757,9 +824,12 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                                             <td className="border border-slate-300 p-1 text-center">{formatGrade(grade.bimesters.bimester4.nota)}</td>
                                                             <td className="border border-slate-300 p-1 text-center text-orange-600">{formatGrade(grade.bimesters.bimester4.recuperacao)}</td>
                                                             <td className="border border-slate-300 p-1 text-center font-black bg-slate-50 text-slate-900">{formatGrade(grade.bimesters.bimester4.media)}</td>
-                                                            <td className="border border-slate-300 p-1 text-center text-slate-400">{Math.round(absencesBim4)}</td>
+                                                            <td className="border border-slate-300 p-1 text-center text-slate-400 relative" title={absencesBim4.raw > absencesBim4.unexcused ? `${Math.round(absencesBim4.raw)} falta(s) (${Math.round(absencesBim4.raw - absencesBim4.unexcused)} abonada(s))` : undefined}>
+                                                                {Math.round(absencesBim4.raw)}
+                                                                {absencesBim4.raw > absencesBim4.unexcused && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-green-500 rounded-full" title="Faltas Abonadas"></span>}
+                                                            </td>
                                                             <td className="border border-slate-300 p-1 text-center text-[9px] text-slate-500">
-                                                                {isBimStarted(4) ? `${Math.round(calculateAttendancePercentage(grade.subject, absencesBim4, student.gradeLevel, 4, academicSubjects, effectiveSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices)?.percent || 100)}%` : '-'}
+                                                                {isBimStarted(4) ? `${Math.round(calculateAttendancePercentage(grade.subject, absencesBim4.unexcused, student.gradeLevel, 4, academicSubjects, effectiveSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices)?.percent || 100)}%` : '-'}
                                                             </td>
                                                             <td className="border border-slate-300 p-1 text-center text-[9px] text-slate-400">{bMin4 > 0 ? formatWorkload(Math.round(bMin4 * 10) / 10) : '-'}</td>
 
@@ -767,7 +837,10 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                                             <td className="border border-slate-300 p-1 text-center font-black bg-yellow-50/50">{formatGrade(grade.mediaAnual)}</td>
                                                             <td className="border border-slate-300 p-1 text-center font-black bg-orange-50/50 text-orange-700">{formatGrade(grade.recuperacaoFinal)}</td>
                                                             <td className="border border-slate-300 p-1 text-center font-black bg-blue-100/50 text-blue-900">{formatGrade(grade.mediaFinal)}</td>
-                                                            <td className="border border-slate-300 p-1 text-center font-bold">{Math.round(totalAbsences)}</td>
+                                                            <td className="border border-slate-300 p-1 text-center font-bold relative" title={totalAbsencesRaw > totalAbsencesUnexcused ? `${Math.round(totalAbsencesRaw)} falta(s) (${Math.round(totalAbsencesRaw - totalAbsencesUnexcused)} abonada(s))` : undefined}>
+                                                                {Math.round(totalAbsencesRaw)}
+                                                                {totalAbsencesRaw > totalAbsencesUnexcused && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-green-500 rounded-full" title="Faltas Abonadas no Ano"></span>}
+                                                            </td>
                                                             <td className={`border border-slate-300 p-1 text-center font-bold ${annualFrequency < 75 ? 'text-red-600' : 'text-slate-700'}`}>{Math.round(annualFrequency)}%</td>
                                                             <td className="border border-slate-300 p-1 text-center">
                                                                 <span className={`px-2 py-1 rounded-full text-[9px] font-black tracking-tight ${
@@ -922,5 +995,190 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                 </div>
             </div>
         </div>
+
+        {/* Sub-Modal: Gerenciamento de Licenças/Afastamentos por Período (Abordagem A) */}
+        {showLicenseModal && student && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 print:hidden">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col animate-fade-in-up max-h-[90vh] overflow-y-auto">
+                    {/* Header */}
+                    <div className="flex items-center justify-between p-5 border-b border-orange-100 bg-white rounded-t-2xl">
+                        <div>
+                            <h3 className="text-lg font-extrabold text-slate-800 flex items-center gap-2">
+                                <Calendar className="w-5 h-5 text-orange-500" />
+                                Licenças / Afastamentos
+                            </h3>
+                            <p className="text-xs text-slate-500 mt-0.5">{student.name}</p>
+                        </div>
+                        <button onClick={() => setShowLicenseModal(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                            <X className="w-5 h-5 text-gray-400" />
+                        </button>
+                    </div>
+
+                    <div className="p-5 space-y-6">
+                        {/* Formulário de Nova Licença (Isolado em sub-componente para evitar lag ao digitar) */}
+                        <LicenseRegisterForm 
+                            student={student} 
+                            reasons={LICENSE_REASONS}
+                        />
+
+                        {/* Lista de Licenças Cadastradas */}
+                        <div>
+                            <h4 className="text-sm font-extrabold text-blue-950 mb-3 flex items-center gap-2">
+                                <FileText className="w-4 h-4 text-orange-500" />
+                                Licenças Cadastradas
+                            </h4>
+                            {studentLicenses.length === 0 ? (
+                                <div className="text-center py-8 text-blue-950/40">
+                                    <Calendar className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                                    <p className="text-sm">Nenhuma licença cadastrada para este aluno.</p>
+                                    <p className="text-xs mt-1 opacity-70">Cadastre acima para abonar faltas automaticamente.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {studentLicenses.map(lic => (
+                                        <div key={lic.id} className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="text-xs font-extrabold text-orange-700 bg-orange-100 px-2 py-0.5 rounded-full">{lic.reason}</span>
+                                                    <span className="text-xs text-slate-500 font-mono">
+                                                        {new Date(lic.startDate + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                                        {lic.endDate !== lic.startDate && ` → ${new Date(lic.endDate + 'T12:00:00').toLocaleDateString('pt-BR')}`}
+                                                    </span>
+                                                </div>
+                                                {lic.description && (
+                                                    <p className="text-xs text-slate-500 mt-1 italic">{lic.description}</p>
+                                                )}
+                                            </div>
+                                            <button
+                                                onClick={() => handleDeleteLicense(lic.id)}
+                                                className="p-1.5 hover:bg-red-100 text-slate-400 hover:text-red-600 rounded-lg transition-colors flex-shrink-0"
+                                                title="Excluir licença"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+        </>
     );
 };
+
+// Componente Isolado para o Formulário de Licenças (Evita lag de digitação no modal pai)
+interface LicenseRegisterFormProps {
+    student: Student;
+    reasons: string[];
+}
+
+const LicenseRegisterForm: React.FC<LicenseRegisterFormProps> = ({ student, reasons }) => {
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [reason, setReason] = useState('Atestado Médico');
+    const [description, setDescription] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleSave = async () => {
+        if (!startDate || !endDate) {
+            setError('Preencha as datas de início e fim.');
+            return;
+        }
+        if (endDate < startDate) {
+            setError('A data de fim não pode ser anterior à data de início.');
+            return;
+        }
+        setError('');
+        setLoading(true);
+        try {
+            const newLicense: Omit<StudentLicense, 'id'> = {
+                studentId: student.id,
+                studentName: student.name,
+                unit: student.unit,
+                startDate,
+                endDate,
+                reason,
+                description,
+                createdAt: new Date().toISOString(),
+                createdBy: 'coordinator',
+            };
+            await db.collection('studentLicenses').add(newLicense);
+            setStartDate('');
+            setEndDate('');
+            setReason('Atestado Médico');
+            setDescription('');
+        } catch (err) {
+            setError('Erro ao salvar licença. Tente novamente.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-3">
+            <h4 className="text-sm font-extrabold text-blue-950 flex items-center gap-2">
+                <Plus className="w-4 h-4 text-orange-500" /> Nova Licença / Afastamento
+            </h4>
+            <div className="grid grid-cols-2 gap-3">
+                <div>
+                    <label className="block text-xs font-bold text-blue-950 mb-1">Data de Início</label>
+                    <input
+                        type="date"
+                        value={startDate}
+                        onChange={e => setStartDate(e.target.value)}
+                        className="w-full border border-orange-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-bold text-blue-950 mb-1">Data de Fim</label>
+                    <input
+                        type="date"
+                        value={endDate}
+                        onChange={e => setEndDate(e.target.value)}
+                        className="w-full border border-orange-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                    />
+                </div>
+            </div>
+            <div>
+                <label className="block text-xs font-bold text-blue-950 mb-1">Motivo</label>
+                <select
+                    value={reason}
+                    onChange={e => setReason(e.target.value)}
+                    className="w-full border border-orange-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+                >
+                    {reasons.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+            </div>
+            <div>
+                <label className="block text-xs font-bold text-blue-950 mb-1">Observações (opcional)</label>
+                <textarea
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                    rows={2}
+                    placeholder="Ex: Atestado de 3 dias entregue na secretaria..."
+                    className="w-full border border-orange-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none"
+                />
+            </div>
+            {error && (
+                <p className="text-xs text-red-600 font-medium">{error}</p>
+            )}
+            <button
+                onClick={handleSave}
+                disabled={loading}
+                className="w-full py-2 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg transition-all active:scale-95 text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+                {loading ? (
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                    <Plus className="w-4 h-4" />
+                )}
+                Salvar Licença
+            </button>
+        </div>
+    );
+};
+

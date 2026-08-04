@@ -2302,6 +2302,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     const [attSubject, setAttSubject] = useState<string>('');
     const [attStudents, setAttStudents] = useState<Student[]>([]);
     const [attStatuses, setAttStatuses] = useState<Record<string, AttendanceStatus>>({});
+    const [attExcusedStatuses, setAttExcusedStatuses] = useState<Record<string, boolean>>({});
+    const [attExcusedReasons, setAttExcusedReasons] = useState<Record<string, string>>({});
     const [attLessonCount, setAttLessonCount] = useState<number>(1);
     const [attAbsenceOverrides, setAttAbsenceOverrides] = useState<Record<string, number>>({});
     const [attLoading, setAttLoading] = useState(false);
@@ -2978,6 +2980,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 const record = { id: recordSnap.id, ...recordSnap.data() } as AttendanceRecord;
                 setAttLoadedRecord(record);
                 setAttStatuses(record.studentStatus || {});
+                setAttExcusedStatuses(record.studentExcusedAbsences || {});
+                setAttExcusedReasons(record.studentExcusedReasons || {});
                 setAttLessonCount(record.lessonCount || scheduledLessons);
                 setAttAbsenceOverrides(record.studentAbsenceCount || {});
             } else {
@@ -2987,6 +2991,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
                 setAttLoadedRecord(null);
                 setAttStatuses(defaultStatuses);
+                setAttExcusedStatuses({});
+                setAttExcusedReasons({});
                 setAttLessonCount(scheduledLessons);
                 setAttAbsenceOverrides({});
             }
@@ -3019,7 +3025,9 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             discipline: attSubject,
             studentStatus: attStatuses,
             lessonCount: attLessonCount,
-            studentAbsenceCount: attAbsenceOverrides
+            studentAbsenceCount: attAbsenceOverrides,
+            studentExcusedAbsences: attExcusedStatuses,
+            studentExcusedReasons: attExcusedReasons
         };
 
         try {
@@ -4854,8 +4862,11 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                                                     const cellClass = (pending: boolean) =>
                                                                                         `px-1 py-2 text-center border-r border-gray-300 relative ${pending ? 'bg-yellow-100 font-bold text-yellow-900 ring-1 ring-inset ring-yellow-300' : ''}`;
 
-                                                                                    const currentAbsences = studentAttendance.reduce((acc, att) => {
-                                                                                        if (att.discipline !== grade.subject) return acc;
+                                                                                    let currentAbsencesRaw = 0;
+                                                                                    let currentAbsencesUnexcused = 0;
+
+                                                                                    studentAttendance.forEach((att) => {
+                                                                                        if (att.discipline !== grade.subject) return;
                                                                                         if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
                                                                                             if (getDynamicBimester(att.date, academicSettings) === bNum) {
                                                                                                 const academicSubject = academicSubjects?.find(s => s.id === grade.subject);
@@ -4863,18 +4874,25 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                                                                 const isSameUnit = att.unit === student.unit;
                                                                                                 const individualCount = att.studentAbsenceCount?.[student.id];
                                                                                                 const lessonCount = individualCount !== undefined ? individualCount : (att.lessonCount || 1);
+                                                                                                const isExcused = att.studentExcusedAbsences?.[student.id] === true;
 
+                                                                                                let duration = lessonCount;
                                                                                                 if (isSameUnit) {
                                                                                                     if (classSchedules && classSchedules.length > 0) {
-                                                                                                        if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass, student.shift, subjectId)) return acc;
-                                                                                                        return acc + getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass, calendarEvents, student.unit, student.shift, subjectId);
+                                                                                                        if (isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass, student.shift, subjectId)) {
+                                                                                                            duration = getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass, calendarEvents, student.unit, student.shift, subjectId);
+                                                                                                        } else {
+                                                                                                            duration = 0;
+                                                                                                        }
                                                                                                     }
                                                                                                 }
-                                                                                                return acc + lessonCount;
+                                                                                                currentAbsencesRaw += duration;
+                                                                                                if (!isExcused) {
+                                                                                                    currentAbsencesUnexcused += duration;
+                                                                                                }
                                                                                             }
                                                                                         }
-                                                                                        return acc;
-                                                                                    }, 0);
+                                                                                    });
 
                                                                                     // Calculate Taught Classes for this bimester (Min)
                                                                                     let bMin = 0;
@@ -4892,7 +4910,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                                                         }
                                                                                     }
 
-                                                                                    const freqResult = calculateAttendancePercentage(grade.subject, currentAbsences, student.gradeLevel || "", bNum, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices);
+                                                                                    const freqResult = calculateAttendancePercentage(grade.subject, currentAbsencesUnexcused, student.gradeLevel || "", bNum, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices);
                                                                                     const freqPercent = freqResult ? freqResult.percent : null;
                                                                                     const isLowFreq = freqPercent !== null && freqPercent < 75;
 
@@ -4909,8 +4927,9 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                                                             <td className="px-0.5 py-2 text-center font-bold bg-gray-50 border-r border-gray-300 w-7">
                                                                                                 {formatGrade(bData.media)}
                                                                                             </td>
-                                                                                            <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-8 md:w-10">
-                                                                                                {Math.round(currentAbsences)}
+                                                                                            <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-8 md:w-10 relative" title={currentAbsencesRaw > currentAbsencesUnexcused ? `${Math.round(currentAbsencesRaw)} falta(s) registrada(s) (${Math.round(currentAbsencesRaw - currentAbsencesUnexcused)} abonada(s))` : undefined}>
+                                                                                                {Math.round(currentAbsencesRaw)}
+                                                                                                {currentAbsencesRaw > currentAbsencesUnexcused && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-green-500 rounded-full" title="Faltas Abonadas no Bimestre"></span>}
                                                                                             </td>
                                                                                             <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs w-10 md:w-12 ${isLowFreq ? 'text-orange-800 bg-orange-100' : 'text-gray-500'}`} title="Frequência">
                                                                                                 {isBimesterStarted ? (<span>{freqPercent !== null ? `${Math.round(freqPercent)}%` : '100%'}</span>) : '-'}
@@ -4935,38 +4954,49 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                                                     {grade.mediaFinal >= 0 ? formatGrade(grade.mediaFinal) : '-'}
                                                                                 </td>
                                                                                 {(() => {
-                                                                                    const totalAbsences = [1, 2, 3, 4].reduce((sum, bNum) => {
-                                                                                        if (bNum > elapsedBimesters) return sum;
-                                                                                        return sum + studentAttendance.reduce((acc, att) => {
-                                                                                            if (att.discipline !== grade.subject) return acc;
+                                                                                    let totalAbsencesRaw = 0;
+                                                                                    let totalAbsencesUnexcused = 0;
+
+                                                                                    [1, 2, 3, 4].forEach((bNum) => {
+                                                                                        if (bNum > elapsedBimesters) return;
+                                                                                        studentAttendance.forEach((att) => {
+                                                                                            if (att.discipline !== grade.subject) return;
                                                                                             if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
                                                                                                 if (getDynamicBimester(att.date, academicSettings) === bNum) {
                                                                                                     const subjectId = grade.subject;
                                                                                                     const isSameUnit = att.unit === student.unit;
                                                                                                     const individualCount = att.studentAbsenceCount?.[student.id];
                                                                                                     const lessonCount = individualCount !== undefined ? individualCount : (att.lessonCount || 1);
+                                                                                                    const isExcused = att.studentExcusedAbsences?.[student.id] === true;
 
+                                                                                                    let duration = lessonCount;
                                                                                                     if (isSameUnit) {
                                                                                                         if (classSchedules && classSchedules.length > 0) {
-                                                                                                            if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass, student.shift, subjectId)) return acc;
-                                                                                                            return acc + getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass, calendarEvents, student.unit, student.shift, subjectId);
+                                                                                                            if (isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass, student.shift, subjectId)) {
+                                                                                                                duration = getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass, calendarEvents, student.unit, student.shift, subjectId);
+                                                                                                            } else {
+                                                                                                                duration = 0;
+                                                                                                            }
                                                                                                         }
                                                                                                     }
-                                                                                                    return acc + lessonCount;
+                                                                                                    totalAbsencesRaw += duration;
+                                                                                                    if (!isExcused) {
+                                                                                                        totalAbsencesUnexcused += duration;
+                                                                                                    }
                                                                                                 }
                                                                                             }
-                                                                                            return acc;
-                                                                                        }, 0);
-                                                                                    }, 0);
+                                                                                        });
+                                                                                    });
 
-                                                                                    const annualFreqResult = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel || "", elapsedBimesters, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices);
+                                                                                    const annualFreqResult = calculateAnnualAttendancePercentage(grade.subject, totalAbsencesUnexcused, student.gradeLevel || "", elapsedBimesters, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices);
                                                                                     const annualFreq = annualFreqResult ? annualFreqResult.percent : null;
                                                                                     const isCritical = annualFreq !== null && annualFreq < 75;
 
                                                                                     return (
                                                                                         <>
-                                                                                            <td className="px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs text-gray-500">
-                                                                                                {Math.round(totalAbsences)}
+                                                                                            <td className="px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs text-gray-500 relative" title={totalAbsencesRaw > totalAbsencesUnexcused ? `${Math.round(totalAbsencesRaw)} falta(s) registrada(s) (${Math.round(totalAbsencesRaw - totalAbsencesUnexcused)} abonada(s))` : undefined}>
+                                                                                                {Math.round(totalAbsencesRaw)}
+                                                                                                {totalAbsencesRaw > totalAbsencesUnexcused && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-green-500 rounded-full" title="Faltas Abonadas no Ano"></span>}
                                                                                             </td>
                                                                                             <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs ${isCritical ? 'text-orange-800 bg-orange-100' : 'text-gray-600'}`}>
                                                                                                 <div className="flex flex-col items-center"><span>{annualFreq !== null ? `${Math.round(annualFreq)}%` : '100%'}</span></div>
@@ -5562,28 +5592,84 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                                         </div>
                                                                     </td>
                                                                     <td className="px-6 py-4 text-center">
-                                                                        <div className="flex justify-center bg-gray-100 p-1 rounded-lg inline-flex">
-                                                                            <button
-                                                                                onClick={() => {
-                                                                                    setAttStatuses(prev => ({ ...prev, [student.id]: AttendanceStatus.PRESENT }));
-                                                                                    setAttAbsenceOverrides(prev => {
-                                                                                        const copy = { ...prev };
-                                                                                        delete copy[student.id]; // Remove override on Present
-                                                                                        return copy;
-                                                                                    });
-                                                                                }}
-                                                                                className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all shadow-sm ${status === AttendanceStatus.PRESENT ? 'bg-white text-green-700 shadow ring-1 ring-black/5' : 'text-gray-400 hover:text-gray-600'}`}
-                                                                            >
-                                                                                Presente
-                                                                            </button>
-                                                                            <button
-                                                                                onClick={() => {
-                                                                                    setAttStatuses(prev => ({ ...prev, [student.id]: AttendanceStatus.ABSENT }));
-                                                                                }}
-                                                                                className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all shadow-sm ${status === AttendanceStatus.ABSENT ? 'bg-white text-red-700 shadow ring-1 ring-black/5' : 'text-gray-400 hover:text-gray-600'}`}
-                                                                            >
-                                                                                Faltou
-                                                                            </button>
+                                                                        <div className="flex flex-col items-center">
+                                                                            <div className="flex justify-center bg-gray-100 p-1 rounded-lg inline-flex">
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => {
+                                                                                        setAttStatuses(prev => ({ ...prev, [student.id]: AttendanceStatus.PRESENT }));
+                                                                                        setAttAbsenceOverrides(prev => {
+                                                                                            const copy = { ...prev };
+                                                                                            delete copy[student.id]; // Remove override on Present
+                                                                                            return copy;
+                                                                                        });
+                                                                                        setAttExcusedStatuses(prev => {
+                                                                                            const copy = { ...prev };
+                                                                                            delete copy[student.id];
+                                                                                            return copy;
+                                                                                        });
+                                                                                        setAttExcusedReasons(prev => {
+                                                                                            const copy = { ...prev };
+                                                                                            delete copy[student.id];
+                                                                                            return copy;
+                                                                                        });
+                                                                                    }}
+                                                                                    className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all shadow-sm ${status === AttendanceStatus.PRESENT ? 'bg-white text-green-700 shadow ring-1 ring-black/5' : 'text-gray-400 hover:text-gray-600'}`}
+                                                                                >
+                                                                                    Presente
+                                                                                </button>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => {
+                                                                                        setAttStatuses(prev => ({ ...prev, [student.id]: AttendanceStatus.ABSENT }));
+                                                                                    }}
+                                                                                    className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all shadow-sm ${status === AttendanceStatus.ABSENT ? 'bg-white text-red-700 shadow ring-1 ring-black/5' : 'text-gray-400 hover:text-gray-600'}`}
+                                                                                >
+                                                                                    Faltou
+                                                                                </button>
+                                                                            </div>
+
+                                                                            {status === AttendanceStatus.ABSENT && (
+                                                                                <div className="mt-2 flex flex-col items-center gap-1.5 animate-fade-in-up">
+                                                                                    <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs font-bold text-gray-600">
+                                                                                        <input
+                                                                                            type="checkbox"
+                                                                                            checked={!!attExcusedStatuses[student.id]}
+                                                                                            onChange={(e) => {
+                                                                                                const checked = e.target.checked;
+                                                                                                setAttExcusedStatuses(prev => ({ ...prev, [student.id]: checked }));
+                                                                                                if (!checked) {
+                                                                                                    setAttExcusedReasons(prev => {
+                                                                                                        const copy = { ...prev };
+                                                                                                        delete copy[student.id];
+                                                                                                        return copy;
+                                                                                                    });
+                                                                                                } else {
+                                                                                                    setAttExcusedReasons(prev => ({ ...prev, [student.id]: 'Atestado Médico' }));
+                                                                                                }
+                                                                                            }}
+                                                                                            className="rounded border-gray-300 text-blue-900 focus:ring-blue-900"
+                                                                                        />
+                                                                                        Abonar Falta
+                                                                                    </label>
+                                                                                    {attExcusedStatuses[student.id] && (
+                                                                                        <select
+                                                                                            value={attExcusedReasons[student.id] || 'Atestado Médico'}
+                                                                                            onChange={(e) => {
+                                                                                                setAttExcusedReasons(prev => ({ ...prev, [student.id]: e.target.value }));
+                                                                                            }}
+                                                                                            className="mt-1 text-[10px] font-bold p-1 bg-white border border-gray-200 rounded outline-none text-gray-700"
+                                                                                        >
+                                                                                            <option value="Atestado Médico">Atestado Médico</option>
+                                                                                            <option value="Acompanhamento Médico / Consulta">Acompanhamento Médico / Consulta</option>
+                                                                                            <option value="Representação Escolar / Olimpíada / Esporte">Representação Escolar / Olimpíada / Esporte</option>
+                                                                                            <option value="Motivos Familiares / Luto">Motivos Familiares / Luto</option>
+                                                                                            <option value="Casos Fortuitos (Chuva / Trânsito / Força Maior)">Casos Fortuitos (Chuva / Trânsito / Força Maior)</option>
+                                                                                            <option value="Outros">Outros</option>
+                                                                                        </select>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                     </td>
                                                                     <td className="px-6 py-4 text-center">

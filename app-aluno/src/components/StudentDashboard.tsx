@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAcademicData } from '../hooks/useAcademicData';
 // FIX: Add BimesterData to imports to allow for explicit typing and fix property access errors.
-import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial, Occurrence, DailyAgenda, ExamGuide, CalendarEvent, AcademicSubject, SUBJECT_LABELS, SUBJECT_SHORT_LABELS, SHIFT_LABELS, UNIT_LABELS, Announcement, AnnouncementRecipient } from '../types';
+import { AttendanceRecord, Student, GradeEntry, BimesterData, SchoolUnit, SchoolShift, SchoolClass, Subject, AttendanceStatus, EarlyChildhoodReport, CompetencyStatus, AppNotification, SchoolMessage, MessageRecipient, MessageType, UnitContact, Teacher, Mensalidade, EventoFinanceiro, Ticket, TicketStatus, ClassMaterial, Occurrence, DailyAgenda, ExamGuide, CalendarEvent, AcademicSubject, SUBJECT_LABELS, SUBJECT_SHORT_LABELS, SHIFT_LABELS, UNIT_LABELS, Announcement, AnnouncementRecipient, StudentLicense } from '../types';
 import { getAttendanceBreakdown } from '../utils/attendanceUtils'; // Import helper
 import { getDynamicBimester, normalizeClass, normalizeShift, normalizeUnit, parseGradeLevel, calculateSchoolDays, isClassScheduled, calculateEffectiveTaughtClasses, getSubjectDurationForDay, doesEventApplyToStudent, formatDateWithTimeBr, safeParseDate } from '../utils/academicUtils';
 import { ACADEMIC_GRADES } from '../utils/academicDefaults';
@@ -156,6 +156,7 @@ interface StudentDashboardProps {
     classSchedules?: any[]; // ClassSchedule[]
     schoolMessages?: SchoolMessage[];
     announcements?: Announcement[];
+    studentLicenses?: StudentLicense[];
     onCreateNotification?: (title: string, message: string, studentId?: string, teacherId?: string) => Promise<void>;
     [key: string]: any;
 }
@@ -189,7 +190,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     calendarEvents = [],
     classSchedules = [],
     schoolMessages = [],
-    announcements = []
+    announcements = [],
+    studentLicenses = []
 }) => {
     const hasMusicTeacher = useMemo(() => {
         return (teachers || []).some(t => t.subjects?.includes('disc_musica' as any));
@@ -902,16 +904,23 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     }, [attendanceRecords, student.id, student.code, student.name]);
 
     const absencesThisYear = useMemo(() => {
-        return studentAttendance.reduce((acc, record) => {
-            if (!record?.date) return acc;
+        let raw = 0;
+        let excused = 0;
+        studentAttendance.forEach((record) => {
+            if (!record?.date) return;
             const recordDate = new Date(record.date + 'T00:00:00');
             if (recordDate.getFullYear() === currentYear && record.studentStatus?.[student.id] === AttendanceStatus.ABSENT) {
                 const individualCount = record.studentAbsenceCount?.[student.id];
-                return acc + (individualCount !== undefined ? individualCount : (record.lessonCount || 1));
+                const weight = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
+                raw += weight;
+                const isCoveredByLicense = studentLicenses?.some(lic => lic.studentId === student.id && record.date >= lic.startDate && record.date <= lic.endDate);
+                if (isCoveredByLicense || record.studentExcusedAbsences?.[student.id] === true) {
+                    excused += weight;
+                }
             }
-            return acc;
-        }, 0);
-    }, [studentAttendance, currentYear, student.id]);
+        });
+        return { raw, excused };
+    }, [studentAttendance, currentYear, student.id, studentLicenses]);
 
     const upcomingReplacements = useMemo(() => {
         const todayStr = new Date().toLocaleDateString('en-CA');
@@ -1958,7 +1967,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider mb-1">Frequência Geral Anual</span>
                                         <div className="flex items-baseline gap-2">
                                             {(() => {
-                                                const freqStr = calculateGeneralFrequency(filteredStudentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices);
+                                                const freqStr = calculateGeneralFrequency(filteredStudentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices, studentLicenses);
                                                 const freqNum = parseFloat(freqStr.replace('%', ''));
                                                 const isLow = !isNaN(freqNum) && freqNum < 75;
                                                 return (
@@ -1992,7 +2001,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                     classSchedules,
                                                     student.schoolClass,
                                                     student.shift,
-                                                    matrices
+                                                    matrices,
+                                                    studentLicenses
                                                 );
                                                 const freqNum = parseFloat(freqStr.replace('%', ''));
                                                 const isLow = !isNaN(freqNum) && freqNum < 75;
@@ -2013,9 +2023,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                     <div className="bg-orange-100 p-4 rounded-xl border border-orange-200 flex flex-col justify-center shadow-sm">
                                         <span className="text-[10px] text-orange-800 font-bold uppercase tracking-wider mb-1">Total de Faltas</span>
-                                        <div className="flex items-baseline gap-2">
-                                            <span className="text-2xl font-black text-orange-900">{absencesThisYear}</span>
+                                        <div className="flex items-baseline gap-2 flex-wrap">
+                                            <span className="text-2xl font-black text-orange-900">{absencesThisYear.raw}</span>
                                             <span className="text-xs text-orange-800 font-medium whitespace-nowrap">falta(s) registrada(s)</span>
+                                            {absencesThisYear.excused > 0 && (
+                                                <span className="text-[10px] text-green-700 font-bold block w-full">({absencesThisYear.excused} abonada(s))</span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -2083,7 +2096,6 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         Object.keys(groupedByMonth).forEach(m => {
                                             groupedByMonth[m].sort((a, b) => a.date.localeCompare(b.date));
                                         });
-
                                         return Object.entries(groupedByMonth).map(([monthName, records]) => (
                                             <div key={monthName} className="border-l-4 border-orange-400 pl-4 py-1">
                                                 <h4 className="font-bold text-gray-800 text-lg mb-2 capitalize">{monthName}</h4>
@@ -2092,13 +2104,35 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                         const day = record.date.split('-')[2];
                                                         const individualCount = record.studentAbsenceCount?.[student.id];
                                                         const countValue = individualCount !== undefined ? individualCount : (record.lessonCount || 1);
+                                                        const isCoveredByLicense = studentLicenses?.some(lic => lic.studentId === student.id && record.date >= lic.startDate && record.date <= lic.endDate);
+                                                        const isExcused = isCoveredByLicense || record.studentExcusedAbsences?.[student.id] === true;
+                                                        const reason = isCoveredByLicense 
+                                                            ? (studentLicenses.find(lic => lic.studentId === student.id && record.date >= lic.startDate && record.date <= lic.endDate)?.reason || 'Licença/Afastamento')
+                                                            : (record.studentExcusedReasons?.[student.id] || 'Falta Justificada');
                                                         return (
-                                                            <span key={record.id} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200 shadow-sm">
-                                                                Dia {day} <span className="mx-1 text-orange-300">|</span> {getSubjectShortLabel(record.discipline || '', academicSubjects)}
+                                                            <span 
+                                                                key={record.id} 
+                                                                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border shadow-sm ${
+                                                                    isExcused 
+                                                                        ? 'bg-green-50 text-green-700 border-green-200' 
+                                                                        : 'bg-orange-100 text-orange-800 border-orange-200'
+                                                                }`}
+                                                                title={isExcused ? `Falta Abonada: ${reason}` : undefined}
+                                                            >
+                                                                Dia {day} <span className={`mx-1 ${isExcused ? 'text-green-300' : 'text-orange-300'}`}>|</span> {getSubjectShortLabel(record.discipline || '', academicSubjects)}
                                                                 {countValue > 1 && <span className="ml-1 opacity-75">({countValue} faltas)</span>}
+                                                                {isExcused && (
+                                                                    <span className="ml-1.5 px-1 py-0.2 text-[8px] font-extrabold uppercase bg-green-200 text-green-950 rounded" title={`Justificativa: ${reason}`}>
+                                                                        Abonada
+                                                                    </span>
+                                                                )}
                                                                 {record.unit && record.unit !== student.unit && (
                                                                     <span 
-                                                                        className="ml-2 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-orange-200 text-orange-900 rounded border border-orange-300 cursor-help"
+                                                                        className={`ml-2 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded border cursor-help ${
+                                                                            isExcused 
+                                                                                ? 'bg-green-100 text-green-900 border-green-300' 
+                                                                                : 'bg-orange-200 text-orange-900 border-orange-300'
+                                                                        }`}
                                                                         title={`Registrado na unidade: ${UNIT_LABELS[record.unit as SchoolUnit] || record.unit}`}
                                                                     >
                                                                         {record.unit === 'unit_zn' ? 'ZN' : record.unit === 'unit_bs' ? 'BS' : record.unit === 'unit_ext' ? 'EXT' : record.unit === 'unit_qui' ? 'QUI' : record.unit}
@@ -2671,9 +2705,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                 const bData = grade.bimesters[key as keyof typeof grade.bimesters];
                                                                 const bimesterNum = Number(key.replace('bimester', '')) as 1 | 2 | 3 | 4;
 
-                                                                // RULE: Count absences strictly from logs
-                                                                const currentAbsences = studentAttendance.reduce((acc, att) => {
-                                                                    if (att.discipline !== grade.subject) return acc;
+                                                                let currentAbsencesRaw = 0;
+                                                                let currentAbsencesUnexcused = 0;
+
+                                                                studentAttendance.forEach((att) => {
+                                                                    if (att.discipline !== grade.subject) return;
 
                                                                     if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
                                                                         if (getDynamicBimester(att.date, academicSettings) === bimesterNum) {
@@ -2682,22 +2718,29 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                             const isSameUnit = att.unit === student.unit;
                                                                             const individualCount = att.studentAbsenceCount?.[student.id];
                                                                             const lessonCount = individualCount !== undefined ? individualCount : (att.lessonCount || 1);
+                                                                            const isCoveredByLicense = studentLicenses?.some(lic => lic.studentId === student.id && att.date >= lic.startDate && att.date <= lic.endDate);
+                                                                            const isExcused = isCoveredByLicense || att.studentExcusedAbsences?.[student.id] === true;
 
+                                                                            let duration = lessonCount;
                                                                             if (isSameUnit) {
                                                                                 if (classSchedules && classSchedules.length > 0) {
-                                                                                    if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass, student.shift, subjectId)) return acc;
-                                                                                    return acc + getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass, calendarEvents, student.unit, student.shift, subjectId);
+                                                                                    if (isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass, student.shift, subjectId)) {
+                                                                                        duration = getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass, calendarEvents, student.unit, student.shift, subjectId);
+                                                                                    } else {
+                                                                                        duration = 0;
+                                                                                    }
                                                                                 }
                                                                             }
-                                                                            return acc + lessonCount;
+                                                                            currentAbsencesRaw += duration;
+                                                                            if (!isExcused) {
+                                                                                currentAbsencesUnexcused += duration;
+                                                                            }
                                                                         }
                                                                     }
-                                                                    return acc;
-                                                                }, 0);
-
+                                                                });
 
                                                                 // RULE: Only active if there are assinaladas absences
-                                                                const isActive = currentAbsences > 0;
+                                                                const isActive = currentAbsencesRaw > 0;
 
                                                                 return (
                                                                     <React.Fragment key={key}>
@@ -2713,9 +2756,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                                 <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-400 rounded-full cursor-help" title="Esta nota está em processo de atualização pela coordenação pedagógica."></div>
                                                                             )}
                                                                         </td>
-                                                                        <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs w-8 md:w-10">{(bData.isNotaApproved !== false && bData.isRecuperacaoApproved !== false) ? formatGrade(bData.media) : '-'}</td>
-                                                                        <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-8 md:w-10">
-                                                                            {Math.round(currentAbsences)}
+                                                                        <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs w-8 md:w-10">
+                                                                            {(bData.isNotaApproved !== false && bData.isRecuperacaoApproved !== false) ? formatGrade(bData.media) : '-'}
+                                                                        </td>
+                                                                        <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-8 md:w-10 relative" title={currentAbsencesRaw > currentAbsencesUnexcused ? `${Math.round(currentAbsencesRaw)} falta(s) registrada(s) (${Math.round(currentAbsencesRaw - currentAbsencesUnexcused)} abonada(s))` : undefined}>
+                                                                            {Math.round(currentAbsencesRaw)}
+                                                                            {currentAbsencesRaw > currentAbsencesUnexcused && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-green-500 rounded-full" title="Faltas Abonadas no Bimestre"></span>}
                                                                         </td>
                                                                         {(() => {
                                                                             // Calculate F(h) per bimester
@@ -2728,13 +2774,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                                                             if (weeklyClasses === 0) {
                                                                                 let lk = student.gradeLevel.includes('Fundamental II') ? 'Fundamental II' : (student.gradeLevel.includes('Ensino Médio') || student.gradeLevel.includes('Série')) ? 'Ensino Médio' : 'Fundamental I';
-
-
                                                                                 weeklyClasses = (CURRICULUM_MATRIX[lk] || {})[grade.subject] || 0;
                                                                             }
-                                                                            const bimesterFaltasH = currentAbsences * (weeklyClasses > 0 ? 1 : 0); // Assuming 1h per absence locally or direct weight if available. Using 1 for simplicity consistent with previous logic.
+                                                                            const bimesterFaltasH = currentAbsencesRaw * (weeklyClasses > 0 ? 1 : 0);
 
-                                                                            const freqResult = calculateAttendancePercentage(grade.subject, currentAbsences, student.gradeLevel, bimesterNum, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices);
+                                                                            const freqResult = calculateAttendancePercentage(grade.subject, currentAbsencesUnexcused, student.gradeLevel, bimesterNum, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices);
                                                                             const freqPercent = freqResult?.percent ?? null;
                                                                             const isFreqEstimated = freqResult?.isEstimated ?? false;
                                                                             const isLowFreq = freqPercent !== null && freqPercent < 75;
@@ -2798,19 +2842,22 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                     const hasPending = Object.values(grade.bimesters).some((b: any) =>
                                                                         b.isNotaApproved === false || b.isRecuperacaoApproved === false
                                                                     ) || grade.recuperacaoFinalApproved === false;
-                                                                    return (!hasPending && grade.mediaFinal !== null && grade.mediaFinal >= 0) ? formatGrade(grade.mediaFinal) : '-';
+                                                                    return (!hasPending && grade.mediaFinal !== null && grade.mediaFinal !== undefined && grade.mediaFinal >= 0) ? formatGrade(grade.mediaFinal) : '-';
                                                                 })()}
                                                             </td>
                                                             {(() => {
-                                                                const totalAbsences = [1, 2, 3, 4].reduce((sum, bNum) => {
-                                                                    if (bNum > elapsedBimesters) return sum;
-                                                                    return sum + studentAttendance.reduce((acc, att) => {
+                                                                let totalAbsencesRaw = 0;
+                                                                let totalAbsencesUnexcused = 0;
+
+                                                                [1, 2, 3, 4].forEach((bNum) => {
+                                                                    if (bNum > elapsedBimesters) return;
+                                                                    studentAttendance.forEach((att) => {
                                                                         if (att.discipline !== grade.subject) {
                                                                             // Explicit trace for non-canonical IDs
                                                                             if (att.discipline && !att.discipline.startsWith('disc_') && process.env.NODE_ENV === 'development') {
                                                                                 console.warn(`[ARCH-LOCK] Non-canonical subject in attendance: "${att.discipline}"`);
                                                                             }
-                                                                            return acc;
+                                                                            return;
                                                                         }
 
                                                                         if (att.studentStatus[student.id] === AttendanceStatus.ABSENT) {
@@ -2819,19 +2866,27 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                                 const isSameUnit = att.unit === student.unit;
                                                                                 const individualCount = att.studentAbsenceCount?.[student.id];
                                                                                 const lessonCount = individualCount !== undefined ? individualCount : (att.lessonCount || 1);
+                                                                                const isCoveredByLicense = studentLicenses?.some(lic => lic.studentId === student.id && att.date >= lic.startDate && att.date <= lic.endDate);
+                                                                             const isExcused = isCoveredByLicense || att.studentExcusedAbsences?.[student.id] === true;
 
+                                                                                let duration = lessonCount;
                                                                                 if (isSameUnit) {
                                                                                     if (classSchedules && classSchedules.length > 0) {
-                                                                                        if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass, student.shift, subjectId)) return acc;
-                                                                                        return acc + getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass, calendarEvents, student.unit, student.shift, subjectId);
+                                                                                        if (isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass, student.shift, subjectId)) {
+                                                                                            duration = getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass, calendarEvents, student.unit, student.shift, subjectId);
+                                                                                        } else {
+                                                                                            duration = 0;
+                                                                                        }
                                                                                     }
                                                                                 }
-                                                                                return acc + lessonCount;
+                                                                                totalAbsencesRaw += duration;
+                                                                                if (!isExcused) {
+                                                                                    totalAbsencesUnexcused += duration;
+                                                                                }
                                                                             }
                                                                         }
-                                                                        return acc;
-                                                                    }, 0);
-                                                                }, 0);
+                                                                    });
+                                                                });
 
                                                                 // Get weeklyClasses again
                                                                 let weeklyClasses = 0;
@@ -2847,7 +2902,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                     weeklyClasses = (CURRICULUM_MATRIX[lk] || {})[grade.subject] || 0;
                                                                 }
 
-                                                                const annualResult = calculateAnnualAttendancePercentage(grade.subject, totalAbsences, student.gradeLevel, elapsedBimesters, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices);
+                                                                const annualResult = calculateAnnualAttendancePercentage(grade.subject, totalAbsencesUnexcused, student.gradeLevel, elapsedBimesters, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices);
                                                                 const annualFreq = annualResult?.percent ?? null;
                                                                 const isAnnualEstimated = annualResult?.isEstimated ?? false;
                                                                 const isCritical = annualFreq !== null && annualFreq < 75;
@@ -2861,8 +2916,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                                                 return (
                                                                     <>
-                                                                        <td className="px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs text-gray-500">
-                                                                            {Math.round(totalAbsences)}
+                                                                        <td className="px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs text-gray-500 relative" title={totalAbsencesRaw > totalAbsencesUnexcused ? `${Math.round(totalAbsencesRaw)} falta(s) registrada(s) (${Math.round(totalAbsencesRaw - totalAbsencesUnexcused)} abonada(s))` : undefined}>
+                                                                            {Math.round(totalAbsencesRaw)}
+                                                                            {totalAbsencesRaw > totalAbsencesUnexcused && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-green-500 rounded-full" title="Faltas Abonadas no Ano"></span>}
                                                                         </td>
                                                                         <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs ${isCritical ? 'text-orange-800 bg-orange-100' : 'text-gray-600'}`}>
                                                                             <div className="flex flex-col items-center"><span>{annualFreq !== null ? `${Math.round(annualFreq)}%` : '100%'}</span>{isAnnualEstimated && <span className="text-[8px] text-amber-600">⚠ Est.</span>}</div>
@@ -2882,7 +2938,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                         </tr>
                                                     ))}
                                                     {filteredStudentGrades.length > 0 && (() => {
-                                                        const generalFreq = calculateGeneralFrequency(filteredStudentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices);
+                                                        const generalFreq = calculateGeneralFrequency(filteredStudentGrades, attendanceRecords, student.id, student.gradeLevel, academicSubjects, academicSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices, studentLicenses);
                                                         return (
                                                             <tr className="bg-gray-100/80 font-bold border-t-2 border-gray-400">
                                                                 <td colSpan={31} className="px-4 py-1 text-right uppercase tracking-wider text-blue-950 font-extrabold text-[11px]">

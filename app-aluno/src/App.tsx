@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import firebase from 'firebase/compat/app';
-import { UserRole, UserSession, Student, Teacher, GradeEntry, SchoolMessage, AttendanceRecord, EarlyChildhoodReport, UnitContact, AppNotification, Mensalidade, EventoFinanceiro, AcademicSettings, Ticket, ClassMaterial, DailyAgenda, ExamGuide, CalendarEvent, ClassSchedule, SchoolUnit, UNIT_LABELS, Announcement } from './types';
+import { UserRole, UserSession, Student, Teacher, GradeEntry, SchoolMessage, AttendanceRecord, EarlyChildhoodReport, UnitContact, AppNotification, Mensalidade, EventoFinanceiro, AcademicSettings, Ticket, ClassMaterial, DailyAgenda, ExamGuide, CalendarEvent, ClassSchedule, SchoolUnit, UNIT_LABELS, Announcement, StudentLicense } from './types';
 import { MOCK_STUDENTS, MOCK_TEACHERS, FINAL_GRADES_CALCULATED, ALLOW_MOCK_LOGIN } from './constants';
 import { Login } from './components/Login';
 import { StudentDashboard } from './components/StudentDashboard';
@@ -62,6 +62,7 @@ const AppContent: React.FC = () => {
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]); // New State
   const [classSchedules, setClassSchedules] = useState<ClassSchedule[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [studentLicenses, setStudentLicenses] = useState<StudentLicense[]>([]);
 
 
 
@@ -430,6 +431,12 @@ const AppContent: React.FC = () => {
       }, (err) => {
         console.error("Announcements listen error:", err);
         setInitialLoad(prev => ({ ...prev, announcements: true }));
+      }));
+
+      unsubs.push(db.collection('studentLicenses').where('studentId', '==', userId).onSnapshot(snap => {
+        setStudentLicenses(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentLicense)));
+      }, (err) => {
+        console.error("StudentLicenses listen error:", err);
       }));
 
       // Set others to ready for students
@@ -1579,6 +1586,7 @@ const AppContent: React.FC = () => {
           classSchedules={classSchedules}
           schoolMessages={schoolMessages}
           announcements={announcements}
+          studentLicenses={studentLicenses}
         />
         <BackToTopButton />
       </>

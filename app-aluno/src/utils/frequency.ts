@@ -7,8 +7,16 @@
 
 import { CURRICULUM_MATRIX } from "../constants";
 import { AttendanceStatus } from "../types";
-import type { GradeEntry, AttendanceRecord, AcademicSubject, AcademicSettings, CurriculumMatrix } from "../types";
+import type { GradeEntry, AttendanceRecord, AcademicSubject, AcademicSettings, CurriculumMatrix, StudentLicense } from "../types";
 import { getCurrentSchoolYear, getDynamicBimester, calculateSchoolDays, calculateEffectiveTaughtClasses, getSubjectDurationForDay, isClassScheduled } from "../utils/academicUtils";
+
+/**
+ * Helper: verifica se uma data está coberta por alguma licença do aluno.
+ */
+const isDateCoveredByLicense = (date: string, studentId: string, licenses?: StudentLicense[]): boolean => {
+    if (!licenses || licenses.length === 0) return false;
+    return licenses.some(lic => lic.studentId === studentId && date >= lic.startDate && date <= lic.endDate);
+};
 
 /**
  * Calculates the number of taught classes for a given period and subject.
@@ -234,7 +242,8 @@ export const calculateGeneralFrequency = (
     classSchedules?: any[],
     schoolClass?: string,
     shift?: string,
-    matrices?: CurriculumMatrix[]
+    matrices?: CurriculumMatrix[],
+    studentLicenses?: StudentLicense[] // NOVO: Abono em Bloco (Abordagem A)
 ): string => {
     const currentYear = getCurrentSchoolYear();
     const startDate = settings?.bimesters?.[0]?.startDate || `${currentYear}-01-01`;
@@ -300,6 +309,9 @@ export const calculateGeneralFrequency = (
     const totalAbsences = (attendanceRecords || []).reduce((acc, record) => {
         if (record.date < startDate || record.date > endDate) return acc;
         if (record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT) {
+            // Abordagem A: Cruzamento dinâmico com licenças por período de datas
+            if (isDateCoveredByLicense(record.date, studentId, studentLicenses)) return acc;
+            if (record.studentExcusedAbsences?.[studentId] === true) return acc;
             // Verify if the day is a valid school day for this subject
             const subjectId = academicSubjects?.find(s => s.id === record.discipline || s.name === record.discipline)?.id || (record.discipline.startsWith('sub_') ? record.discipline : undefined);
 
@@ -340,7 +352,8 @@ export const calculateBimesterGeneralFrequency = (
     classSchedules?: any[],
     schoolClass?: string,
     shift?: string,
-    matrices?: CurriculumMatrix[]
+    matrices?: CurriculumMatrix[],
+    studentLicenses?: StudentLicense[] // NOVO: Abono em Bloco (Abordagem A)
 ): string => {
     const currentYear = getCurrentSchoolYear();
 
@@ -416,6 +429,9 @@ export const calculateBimesterGeneralFrequency = (
         const rYear = parseInt(record.date.split('-')[0], 10);
         const rBim = getDynamicBimester(record.date, settings);
         if (rYear === currentYear && rBim === bimester && record.studentStatus && record.studentStatus[studentId] === AttendanceStatus.ABSENT) {
+            // Abordagem A: Cruzamento dinâmico com licenças por período de datas
+            if (isDateCoveredByLicense(record.date, studentId, studentLicenses)) return acc;
+            if (record.studentExcusedAbsences?.[studentId] === true) return acc;
             // Verify if the day is a valid school day for this subject
             const subjectId = academicSubjects?.find(s => s.id === record.discipline || s.name === record.discipline)?.id;
 
