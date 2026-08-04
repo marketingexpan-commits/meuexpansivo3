@@ -1196,7 +1196,7 @@ const LicenseRegisterForm: React.FC<LicenseRegisterFormProps> = ({ student, reas
             <h4 className="text-sm font-extrabold text-blue-950 flex items-center gap-2">
                 <Plus className="w-4 h-4 text-orange-500" /> Nova Licença / Afastamento
             </h4>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                     <label className="block text-xs font-bold text-blue-950 mb-1">Data de Início</label>
                     <input
