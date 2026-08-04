@@ -472,7 +472,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
             }
 
             // Sync with history if academic field
-            if (['shift', 'status', 'gradeLevel', 'schoolClass'].includes(name)) {
+            if (['shift', 'status', 'gradeLevel', 'schoolClass', 'unit'].includes(name)) {
                 newData = syncHistoryRow(newData, selectedYear, {});
             }
 
@@ -900,6 +900,36 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                 return alert("Atenção: Para liberar o acesso ao aplicativo (gerar senha), o aluno deve estar matriculado no ano letivo de 2026. Atualize o ano letivo do aluno antes de salvar.");
             }
 
+            // TRANSFERÊNCIA INTRA-ANO: Preservar a unidade anterior no enrollmentHistory
+            // Se o aluno mudou de unidade dentro do mesmo ano letivo, mantemos a entrada antiga
+            // com status TRANSFERIDO para que o app do aluno continue buscando chamadas daquela unidade.
+            const currentYear = new Date().getFullYear().toString();
+            let finalHistory = [...(formData.enrollmentHistory || [])];
+            if (student && student.enrollmentHistory) {
+                const oldCurrentYearEntry = student.enrollmentHistory.find(
+                    (h: any) => String(h.year) === currentYear && h.status !== 'TRANSFERIDO'
+                );
+                const newCurrentYearEntry = finalHistory.find(
+                    (h: any) => String(h.year) === currentYear && h.status !== 'TRANSFERIDO'
+                );
+                const unitChanged = oldCurrentYearEntry && newCurrentYearEntry &&
+                    oldCurrentYearEntry.unit && newCurrentYearEntry.unit &&
+                    oldCurrentYearEntry.unit !== newCurrentYearEntry.unit;
+
+                if (unitChanged) {
+                    // Verificar se a entrada antiga já foi preservada para evitar duplicatas
+                    const alreadyPreserved = finalHistory.some(
+                        (h: any) => String(h.year) === currentYear &&
+                            h.unit === oldCurrentYearEntry.unit &&
+                            h.status === 'TRANSFERIDO'
+                    );
+                    if (!alreadyPreserved) {
+                        finalHistory.push({ ...oldCurrentYearEntry, status: 'TRANSFERIDO' });
+                        finalHistory.sort((a: any, b: any) => String(b.year).localeCompare(String(a.year)));
+                    }
+                }
+            }
+
             // Determinar o status final efetivo (vem do histórico mais recente ou do formulário)
             const effectiveStatus = latestEnrollment ? latestEnrollment.status : formData.status;
 
@@ -911,6 +941,7 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
 
             const finalData = cleanObject({
                 ...formData,
+                enrollmentHistory: finalHistory, // Usa o histórico com a unidade anterior preservada
                 gradeLevel: latestEnrollment ? latestEnrollment.gradeLevel : finalGradeLevel,
                 gradeId: officialGrade ? officialGrade.id : null, // NEW: Save ID for robust matching
                 schoolClass: latestEnrollment ? latestEnrollment.schoolClass : formData.schoolClass,
@@ -957,10 +988,11 @@ export function StudentForm({ onClose, onSaveSuccess, student }: StudentFormProp
                 alert("Novo aluno cadastrado com sucesso!");
             }
 
-            // CRITICAL: Update formData with the complete ficha_saude structure
-            // This ensures prints will show the saved health data
+            // CRITICAL: Update formData with the complete ficha_saude structure and finalHistory
+            // This ensures prints and UI will show the saved data immediately
             setFormData((prev: any) => ({
                 ...prev,
+                enrollmentHistory: finalHistory,
                 ficha_saude: fichaSaude
             }));
 
