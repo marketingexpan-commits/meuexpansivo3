@@ -3222,27 +3222,31 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                                         const bData = grade.bimesters[key as keyof typeof grade.bimesters];
                                                                                         const bimesterNum = Number(key.replace('bimester', '')) as 1 | 2 | 3 | 4;
 
-                                                                                        const currentAbsences = attendanceRecords.reduce((acc, att) => {
-                                                                                            if (att.discipline !== grade.subject) return acc;
+                                                                                        let currentAbsences = 0;
+                                                                                        let currentAbsencesCount = 0;
+
+                                                                                        attendanceRecords.forEach((att) => {
+                                                                                            if (att.discipline !== grade.subject) return;
                                                                                             if (att.studentStatus[selectedStudent.id] === AttendanceStatus.ABSENT) {
                                                                                                 if (getDynamicBimester(att.date, academicSettings) === bimesterNum) {
                                                                                                     const yNum = Number(att.date.split('-')[0]);
                                                                                                     if (yNum === getCurrentSchoolYear()) {
                                                                                                         if (classSchedules && classSchedules.length > 0) {
-                                                                                                            if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, selectedStudent.unit, selectedStudent.gradeLevel, selectedStudent.schoolClass)) return acc;
+                                                                                                            if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, selectedStudent.unit, selectedStudent.gradeLevel, selectedStudent.schoolClass)) return;
                                                                                                         }
                                                                                                         const individualCount = att.studentAbsenceCount?.[selectedStudent.id];
                                                                                                         const lessonCount = individualCount !== undefined ? individualCount : (att.lessonCount || 1);
 
+                                                                                                        let duration = lessonCount;
                                                                                                         if (classSchedules && classSchedules.length > 0) {
-                                                                                                            return acc + getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, selectedStudent.gradeLevel, selectedStudent.schoolClass);
+                                                                                                            duration = getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, selectedStudent.gradeLevel, selectedStudent.schoolClass);
                                                                                                         }
-                                                                                                        return acc + lessonCount;
+                                                                                                        currentAbsences += duration;
+                                                                                                        currentAbsencesCount += lessonCount;
                                                                                                     }
                                                                                                 }
                                                                                             }
-                                                                                            return acc;
-                                                                                        }, 0);
+                                                                                        });
 
                                                                                         return (
                                                                                             <React.Fragment key={key}>
@@ -3262,7 +3266,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                                                 </td>
                                                                                                 <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs w-8 md:w-10">{formatGrade(bData.media)}</td>
                                                                                                 <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-8 md:w-10">
-                                                                                                    {Math.round(currentAbsences)}
+                                                                                                    {currentAbsencesCount}
                                                                                                 </td>
                                                                                                 {(() => {
                                                                                                     let weeklyClasses = 0;
@@ -3391,27 +3395,31 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                                         {grade.mediaFinal >= 0 ? formatGrade(grade.mediaFinal) : '-'}
                                                                                     </td>
                                                                                     {(() => {
-                                                                                        const totalAbsences = [1, 2, 3, 4].reduce((sum, bNum) => {
-                                                                                            if (bNum > elapsedBimesters) return sum;
-                                                                                            return sum + attendanceRecords.reduce((acc, att) => {
-                                                                                                if (att.discipline !== grade.subject) return acc;
+                                                                                        let totalAbsences = 0;
+                                                                                        let totalAbsencesCount = 0;
+
+                                                                                        [1, 2, 3, 4].forEach((bNum) => {
+                                                                                            if (bNum > elapsedBimesters) return;
+                                                                                            attendanceRecords.forEach((att) => {
+                                                                                                if (att.discipline !== grade.subject) return;
                                                                                                 if (att.studentStatus[selectedStudent.id] === AttendanceStatus.ABSENT) {
                                                                                                     if (getDynamicBimester(att.date, academicSettings) === bNum) {
                                                                                                         if (classSchedules && classSchedules.length > 0) {
-                                                                                                            if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, selectedStudent.unit, selectedStudent.gradeLevel, selectedStudent.schoolClass)) return acc;
+                                                                                                            if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, selectedStudent.unit, selectedStudent.gradeLevel, selectedStudent.schoolClass)) return;
                                                                                                         }
                                                                                                         const individualCount = att.studentAbsenceCount?.[selectedStudent.id];
                                                                                                         const lessonCount = individualCount !== undefined ? individualCount : (att.lessonCount || 1);
 
+                                                                                                        let duration = lessonCount;
                                                                                                         if (classSchedules && classSchedules.length > 0) {
-                                                                                                            return acc + getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, selectedStudent.gradeLevel, selectedStudent.schoolClass);
+                                                                                                            duration = getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, selectedStudent.gradeLevel, selectedStudent.schoolClass);
                                                                                                         }
-                                                                                                        return acc + lessonCount;
+                                                                                                        totalAbsences += duration;
+                                                                                                        totalAbsencesCount += lessonCount;
                                                                                                     }
                                                                                                 }
-                                                                                                return acc;
-                                                                                            }, 0);
-                                                                                        }, 0);
+                                                                                            });
+                                                                                        });
 
                                                                                         let weeklyClasses = 0;
                                                                                         if (academicSubjects) {
@@ -3435,7 +3443,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                                                                                         return (
                                                                                             <>
                                                                                                 <td className="px-1 py-1 text-center font-bold text-gray-500 border-r border-gray-300 text-xs w-8 md:w-10">
-                                                                                                    {Math.round(totalAbsences)}
+                                                                                                    {totalAbsencesCount}
                                                                                                 </td>
                                                                                                 <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs w-12 md:w-16 ${isCritical ? 'text-red-600 bg-red-50' : 'text-gray-500'}`} title="Frequência Anual">
                                                                                                     {annualFreq !== null ? (

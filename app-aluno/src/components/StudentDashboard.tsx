@@ -2707,6 +2707,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                                                 let currentAbsencesRaw = 0;
                                                                 let currentAbsencesUnexcused = 0;
+                                                                let currentAbsencesCount = 0;
+                                                                let currentAbsencesCountUnexcused = 0;
 
                                                                 studentAttendance.forEach((att) => {
                                                                     if (att.discipline !== grade.subject) return;
@@ -2735,12 +2737,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                             if (!isExcused) {
                                                                                 currentAbsencesUnexcused += duration;
                                                                             }
+                                                                            if (duration > 0) {
+                                                                                currentAbsencesCount += lessonCount;
+                                                                                if (!isExcused) {
+                                                                                    currentAbsencesCountUnexcused += lessonCount;
+                                                                                }
+                                                                            }
                                                                         }
                                                                     }
                                                                 });
 
                                                                 // RULE: Only active if there are assinaladas absences
-                                                                const isActive = currentAbsencesRaw > 0;
+                                                                const isActive = currentAbsencesCount > 0;
 
                                                                 return (
                                                                     <React.Fragment key={key}>
@@ -2759,9 +2767,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                         <td className="px-1 py-2 text-center text-black font-bold bg-gray-50 border-r border-gray-300 text-xs w-8 md:w-10">
                                                                             {(bData.isNotaApproved !== false && bData.isRecuperacaoApproved !== false) ? formatGrade(bData.media) : '-'}
                                                                         </td>
-                                                                        <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-8 md:w-10 relative" title={currentAbsencesRaw > currentAbsencesUnexcused ? `${Math.round(currentAbsencesRaw)} falta(s) registrada(s) (${Math.round(currentAbsencesRaw - currentAbsencesUnexcused)} abonada(s))` : undefined}>
-                                                                            {Math.round(currentAbsencesRaw)}
-                                                                            {currentAbsencesRaw > currentAbsencesUnexcused && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-green-500 rounded-full" title="Faltas Abonadas no Bimestre"></span>}
+                                                                        <td className="px-1 py-1 text-center text-gray-400 text-[10px] md:text-xs border-r border-gray-300 w-8 md:w-10 relative" title={currentAbsencesCount > currentAbsencesCountUnexcused ? `${currentAbsencesCount} falta(s) registrada(s) (${currentAbsencesCount - currentAbsencesCountUnexcused} abonada(s))` : undefined}>
+                                                                            {currentAbsencesCount}
+                                                                            {currentAbsencesCount > currentAbsencesCountUnexcused && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-green-500 rounded-full" title="Faltas Abonadas no Bimestre"></span>}
                                                                         </td>
                                                                         {(() => {
                                                                             // Calculate F(h) per bimester
@@ -2848,6 +2856,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                             {(() => {
                                                                 let totalAbsencesRaw = 0;
                                                                 let totalAbsencesUnexcused = 0;
+                                                                let totalAbsencesCount = 0;
+                                                                let totalAbsencesCountUnexcused = 0;
 
                                                                 [1, 2, 3, 4].forEach((bNum) => {
                                                                     if (bNum > elapsedBimesters) return;
@@ -2867,7 +2877,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                                 const individualCount = att.studentAbsenceCount?.[student.id];
                                                                                 const lessonCount = individualCount !== undefined ? individualCount : (att.lessonCount || 1);
                                                                                 const isCoveredByLicense = studentLicenses?.some(lic => lic.studentId === student.id && att.date >= lic.startDate && att.date <= lic.endDate);
-                                                                             const isExcused = isCoveredByLicense || att.studentExcusedAbsences?.[student.id] === true;
+                                                                                const isExcused = isCoveredByLicense || att.studentExcusedAbsences?.[student.id] === true;
 
                                                                                 let duration = lessonCount;
                                                                                 if (isSameUnit) {
@@ -2882,6 +2892,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                                 totalAbsencesRaw += duration;
                                                                                 if (!isExcused) {
                                                                                     totalAbsencesUnexcused += duration;
+                                                                                }
+                                                                                if (duration > 0) {
+                                                                                    totalAbsencesCount += lessonCount;
+                                                                                    if (!isExcused) {
+                                                                                        totalAbsencesCountUnexcused += lessonCount;
+                                                                                    }
                                                                                 }
                                                                             }
                                                                         }
@@ -2916,9 +2932,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
                                                                 return (
                                                                     <>
-                                                                        <td className="px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs text-gray-500 relative" title={totalAbsencesRaw > totalAbsencesUnexcused ? `${Math.round(totalAbsencesRaw)} falta(s) registrada(s) (${Math.round(totalAbsencesRaw - totalAbsencesUnexcused)} abonada(s))` : undefined}>
-                                                                            {Math.round(totalAbsencesRaw)}
-                                                                            {totalAbsencesRaw > totalAbsencesUnexcused && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-green-500 rounded-full" title="Faltas Abonadas no Ano"></span>}
+                                                                        <td className="px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs text-gray-500 relative" title={totalAbsencesCount > totalAbsencesCountUnexcused ? `${totalAbsencesCount} falta(s) registrada(s) (${totalAbsencesCount - totalAbsencesCountUnexcused} abonada(s))` : undefined}>
+                                                                            {totalAbsencesCount}
+                                                                            {totalAbsencesCount > totalAbsencesCountUnexcused && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-green-500 rounded-full" title="Faltas Abonadas no Ano"></span>}
                                                                         </td>
                                                                         <td className={`px-1 py-1 text-center font-bold border-r border-gray-300 text-[10px] md:text-xs ${isCritical ? 'text-orange-800 bg-orange-100' : 'text-gray-600'}`}>
                                                                             <div className="flex flex-col items-center"><span>{annualFreq !== null ? `${Math.round(annualFreq)}%` : '100%'}</span>{isAnnualEstimated && <span className="text-[8px] text-amber-600">⚠ Est.</span>}</div>

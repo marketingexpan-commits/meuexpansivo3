@@ -618,6 +618,11 @@ export const getSubjectDurationForDay = (
     const actualDayOfWeek = date.getDay();
     let effectiveDay = actualDayOfWeek;
 
+    // Resolve Target IDs
+    let targetGradeId = gradeLevel ? resolveGradeId(gradeLevel) : null;
+    let targetUnitId = unit ? resolveUnitId(unit) : null;
+    let targetShiftId = shift ? resolveShiftId(shift) : null;
+
     // Check for substitution in calendar events
     const dayEvent = (calendarEvents || []).find(e => {
         if (!doesEventApplyToStudent(e, unit, gradeLevel, schoolClass, shift, subjectId)) return false;
@@ -634,8 +639,15 @@ export const getSubjectDurationForDay = (
 
     const daySchedule = classSchedules.find((s: any) => {
         if (s.dayOfWeek !== effectiveDay) return false;
-        if (gradeLevel && parseGradeLevel(s.grade).grade !== parseGradeLevel(gradeLevel).grade) return false;
-        if (schoolClass && normalizeClass(s.class) !== normalizeClass(schoolClass)) return false;
+
+        // Strict Filters
+        if (targetGradeId && resolveGradeId(s.grade) !== targetGradeId) return false;
+        if (targetUnitId && resolveUnitId(s.schoolId) !== targetUnitId) return false;
+        if (targetShiftId && resolveShiftId(s.shift) !== targetShiftId) return false;
+
+        if (schoolClass) {
+            if (normalizeClass(s.class) !== normalizeClass(schoolClass)) return false;
+        }
         return true;
     });
 

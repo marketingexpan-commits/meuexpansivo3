@@ -811,6 +811,8 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                                     const getRealtimeAbsences = (bimNum: 1|2|3|4) => {
                                                         let raw = 0;
                                                         let unexcused = 0;
+                                                        let rawCount = 0;
+                                                        let unexcusedCount = 0;
                                                         studentAttendance.forEach(att => {
                                                             if (att.discipline !== grade.subject) return;
                                                             if (att.studentStatus[student.id] !== AttendanceStatus.ABSENT) return;
@@ -835,8 +837,12 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                                             }
                                                             raw += duration;
                                                             if (!isExcused) unexcused += duration;
+                                                            if (duration > 0) {
+                                                                rawCount += lessonCount;
+                                                                if (!isExcused) unexcusedCount += lessonCount;
+                                                            }
                                                         });
-                                                        return { raw, unexcused };
+                                                        return { raw, unexcused, rawCount, unexcusedCount };
                                                     };
 
                                                     const absencesBim1 = getRealtimeAbsences(1);
@@ -845,6 +851,8 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                                     const absencesBim4 = getRealtimeAbsences(4);
                                                     const totalAbsencesRaw = absencesBim1.raw + absencesBim2.raw + absencesBim3.raw + absencesBim4.raw;
                                                     const totalAbsencesUnexcused = absencesBim1.unexcused + absencesBim2.unexcused + absencesBim3.unexcused + absencesBim4.unexcused;
+                                                    const totalAbsencesRawCount = absencesBim1.rawCount + absencesBim2.rawCount + absencesBim3.rawCount + absencesBim4.rawCount;
+                                                    const totalAbsencesUnexcusedCount = absencesBim1.unexcusedCount + absencesBim2.unexcusedCount + absencesBim3.unexcusedCount + absencesBim4.unexcusedCount;
 
                                                     // Per-bimester taught classes (Min.) - same logic as CoordinatorDashboard
                                                     const getBimMin = (bimNum: 1|2|3|4): number => {
@@ -886,9 +894,9 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                                             <td className="border border-slate-300 p-1 text-center">{formatGrade(grade.bimesters.bimester1.nota)}</td>
                                                             <td className="border border-slate-300 p-1 text-center text-orange-600">{formatGrade(grade.bimesters.bimester1.recuperacao)}</td>
                                                             <td className="border border-slate-300 p-1 text-center font-black bg-blue-50/30 text-blue-900">{formatGrade(grade.bimesters.bimester1.media)}</td>
-                                                            <td className="border border-slate-300 p-1 text-center text-slate-400 relative" title={absencesBim1.raw > absencesBim1.unexcused ? `${Math.round(absencesBim1.raw)} falta(s) (${Math.round(absencesBim1.raw - absencesBim1.unexcused)} abonada(s))` : undefined}>
-                                                                {Math.round(absencesBim1.raw)}
-                                                                {absencesBim1.raw > absencesBim1.unexcused && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-green-500 rounded-full" title="Faltas Abonadas"></span>}
+                                                            <td className="border border-slate-300 p-1 text-center text-slate-400 relative" title={absencesBim1.rawCount > absencesBim1.unexcusedCount ? `${absencesBim1.rawCount} falta(s) (${absencesBim1.rawCount - absencesBim1.unexcusedCount} abonada(s))` : undefined}>
+                                                                {absencesBim1.rawCount}
+                                                                {absencesBim1.rawCount > absencesBim1.unexcusedCount && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-green-500 rounded-full" title="Faltas Abonadas"></span>}
                                                             </td>
                                                             <td className="border border-slate-300 p-1 text-center text-[9px] text-slate-500">
                                                                 {isBimStarted(1) ? `${Math.round(calculateAttendancePercentage(grade.subject, absencesBim1.unexcused, student.gradeLevel, 1, academicSubjects, effectiveSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices)?.percent || 100)}%` : '-'}
@@ -899,9 +907,9 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                                             <td className="border border-slate-300 p-1 text-center">{formatGrade(grade.bimesters.bimester2.nota)}</td>
                                                             <td className="border border-slate-300 p-1 text-center text-orange-600">{formatGrade(grade.bimesters.bimester2.recuperacao)}</td>
                                                             <td className="border border-slate-300 p-1 text-center font-black bg-slate-50 text-slate-900">{formatGrade(grade.bimesters.bimester2.media)}</td>
-                                                            <td className="border border-slate-300 p-1 text-center text-slate-400 relative" title={absencesBim2.raw > absencesBim2.unexcused ? `${Math.round(absencesBim2.raw)} falta(s) (${Math.round(absencesBim2.raw - absencesBim2.unexcused)} abonada(s))` : undefined}>
-                                                                {Math.round(absencesBim2.raw)}
-                                                                {absencesBim2.raw > absencesBim2.unexcused && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-green-500 rounded-full" title="Faltas Abonadas"></span>}
+                                                            <td className="border border-slate-300 p-1 text-center text-slate-400 relative" title={absencesBim2.rawCount > absencesBim2.unexcusedCount ? `${absencesBim2.rawCount} falta(s) (${absencesBim2.rawCount - absencesBim2.unexcusedCount} abonada(s))` : undefined}>
+                                                                {absencesBim2.rawCount}
+                                                                {absencesBim2.rawCount > absencesBim2.unexcusedCount && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-green-500 rounded-full" title="Faltas Abonadas"></span>}
                                                             </td>
                                                             <td className="border border-slate-300 p-1 text-center text-[9px] text-slate-500">
                                                                 {isBimStarted(2) ? `${Math.round(calculateAttendancePercentage(grade.subject, absencesBim2.unexcused, student.gradeLevel, 2, academicSubjects, effectiveSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices)?.percent || 100)}%` : '-'}
@@ -912,9 +920,9 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                                             <td className="border border-slate-300 p-1 text-center">{formatGrade(grade.bimesters.bimester3.nota)}</td>
                                                             <td className="border border-slate-300 p-1 text-center text-orange-600">{formatGrade(grade.bimesters.bimester3.recuperacao)}</td>
                                                             <td className="border border-slate-300 p-1 text-center font-black bg-blue-50/30 text-blue-900">{formatGrade(grade.bimesters.bimester3.media)}</td>
-                                                            <td className="border border-slate-300 p-1 text-center text-slate-400 relative" title={absencesBim3.raw > absencesBim3.unexcused ? `${Math.round(absencesBim3.raw)} falta(s) (${Math.round(absencesBim3.raw - absencesBim3.unexcused)} abonada(s))` : undefined}>
-                                                                {Math.round(absencesBim3.raw)}
-                                                                {absencesBim3.raw > absencesBim3.unexcused && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-green-500 rounded-full" title="Faltas Abonadas"></span>}
+                                                            <td className="border border-slate-300 p-1 text-center text-slate-400 relative" title={absencesBim3.rawCount > absencesBim3.unexcusedCount ? `${absencesBim3.rawCount} falta(s) (${absencesBim3.rawCount - absencesBim3.unexcusedCount} abonada(s))` : undefined}>
+                                                                {absencesBim3.rawCount}
+                                                                {absencesBim3.rawCount > absencesBim3.unexcusedCount && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-green-500 rounded-full" title="Faltas Abonadas"></span>}
                                                             </td>
                                                             <td className="border border-slate-300 p-1 text-center text-[9px] text-slate-500">
                                                                 {isBimStarted(3) ? `${Math.round(calculateAttendancePercentage(grade.subject, absencesBim3.unexcused, student.gradeLevel, 3, academicSubjects, effectiveSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices)?.percent || 100)}%` : '-'}
@@ -925,9 +933,9 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                                             <td className="border border-slate-300 p-1 text-center">{formatGrade(grade.bimesters.bimester4.nota)}</td>
                                                             <td className="border border-slate-300 p-1 text-center text-orange-600">{formatGrade(grade.bimesters.bimester4.recuperacao)}</td>
                                                             <td className="border border-slate-300 p-1 text-center font-black bg-slate-50 text-slate-900">{formatGrade(grade.bimesters.bimester4.media)}</td>
-                                                            <td className="border border-slate-300 p-1 text-center text-slate-400 relative" title={absencesBim4.raw > absencesBim4.unexcused ? `${Math.round(absencesBim4.raw)} falta(s) (${Math.round(absencesBim4.raw - absencesBim4.unexcused)} abonada(s))` : undefined}>
-                                                                {Math.round(absencesBim4.raw)}
-                                                                {absencesBim4.raw > absencesBim4.unexcused && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-green-500 rounded-full" title="Faltas Abonadas"></span>}
+                                                            <td className="border border-slate-300 p-1 text-center text-slate-400 relative" title={absencesBim4.rawCount > absencesBim4.unexcusedCount ? `${absencesBim4.rawCount} falta(s) (${absencesBim4.rawCount - absencesBim4.unexcusedCount} abonada(s))` : undefined}>
+                                                                {absencesBim4.rawCount}
+                                                                {absencesBim4.rawCount > absencesBim4.unexcusedCount && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-green-500 rounded-full" title="Faltas Abonadas"></span>}
                                                             </td>
                                                             <td className="border border-slate-300 p-1 text-center text-[9px] text-slate-500">
                                                                 {isBimStarted(4) ? `${Math.round(calculateAttendancePercentage(grade.subject, absencesBim4.unexcused, student.gradeLevel, 4, academicSubjects, effectiveSettings, calendarEvents, student.unit, classSchedules, student.schoolClass, student.shift, matrices)?.percent || 100)}%` : '-'}
@@ -938,9 +946,9 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                                             <td className="border border-slate-300 p-1 text-center font-black bg-yellow-50/50">{formatGrade(grade.mediaAnual)}</td>
                                                             <td className="border border-slate-300 p-1 text-center font-black bg-orange-50/50 text-orange-700">{formatGrade(grade.recuperacaoFinal)}</td>
                                                             <td className="border border-slate-300 p-1 text-center font-black bg-blue-100/50 text-blue-900">{formatGrade(grade.mediaFinal)}</td>
-                                                            <td className="border border-slate-300 p-1 text-center font-bold relative" title={totalAbsencesRaw > totalAbsencesUnexcused ? `${Math.round(totalAbsencesRaw)} falta(s) (${Math.round(totalAbsencesRaw - totalAbsencesUnexcused)} abonada(s))` : undefined}>
-                                                                {Math.round(totalAbsencesRaw)}
-                                                                {totalAbsencesRaw > totalAbsencesUnexcused && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-green-500 rounded-full" title="Faltas Abonadas no Ano"></span>}
+                                                            <td className="border border-slate-300 p-1 text-center font-bold relative" title={totalAbsencesRawCount > totalAbsencesUnexcusedCount ? `${totalAbsencesRawCount} falta(s) (${totalAbsencesRawCount - totalAbsencesUnexcusedCount} abonada(s))` : undefined}>
+                                                                {totalAbsencesRawCount}
+                                                                {totalAbsencesRawCount > totalAbsencesUnexcusedCount && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-green-500 rounded-full" title="Faltas Abonadas no Ano"></span>}
                                                             </td>
                                                             <td className={`border border-slate-300 p-1 text-center font-bold ${annualFrequency < 75 ? 'text-red-600' : 'text-slate-700'}`}>{Math.round(annualFrequency)}%</td>
                                                             <td className="border border-slate-300 p-1 text-center">

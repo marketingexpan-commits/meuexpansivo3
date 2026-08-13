@@ -577,15 +577,22 @@ export const getSubjectDurationForDay = (
     gradeLevel?: string,
     schoolClass?: string,
     calendarEvents?: any[],
-    unit?: string
+    unit?: string,
+    shift?: string,
+    subjectId?: string
 ): number => {
     const date = new Date(dateStr + 'T00:00:00');
     const actualDayOfWeek = date.getDay();
     let effectiveDay = actualDayOfWeek;
 
+    // Resolve Target IDs
+    let targetGradeId = gradeLevel ? resolveGradeId(gradeLevel) : null;
+    let targetUnitId = unit ? resolveUnitId(unit) : null;
+    let targetShiftId = shift ? resolveShiftId(shift) : null;
+
     // Check for substitution in calendar events
     const dayEvent = (calendarEvents || []).find(e => {
-        if (!doesEventApplyToStudent(e, unit, gradeLevel, schoolClass)) return false;
+        if (!doesEventApplyToStudent(e, unit, gradeLevel, schoolClass, shift, subjectId)) return false;
         const s = new Date(e.startDate + 'T00:00:00');
         const f = e.endDate ? new Date(e.endDate + 'T00:00:00') : new Date(e.startDate + 'T00:00:00');
         return date >= s && date <= f;
@@ -599,8 +606,15 @@ export const getSubjectDurationForDay = (
 
     const daySchedule = classSchedules.find((s: any) => {
         if (s.dayOfWeek !== effectiveDay) return false;
-        if (gradeLevel && parseGradeLevel(s.grade).grade !== parseGradeLevel(gradeLevel).grade) return false;
-        if (schoolClass && normalizeClass(s.class) !== normalizeClass(schoolClass)) return false;
+
+        // Strict Filters
+        if (targetGradeId && resolveGradeId(s.grade) !== targetGradeId) return false;
+        if (targetUnitId && resolveUnitId(s.schoolId) !== targetUnitId) return false;
+        if (targetShiftId && resolveShiftId(s.shift) !== targetShiftId) return false;
+
+        if (schoolClass) {
+            if (normalizeClass(s.class) !== normalizeClass(schoolClass)) return false;
+        }
         return true;
     });
 
