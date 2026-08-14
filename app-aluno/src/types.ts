@@ -103,6 +103,7 @@ export const SUBJECT_LABELS: Record<string, string> = {
   'disc_filosofia': 'Filosofia',
   'disc_sociologia': 'Sociologia',
   'disc_musica': 'Música',
+  'v1SOKhir7MJcBss8yKzk': 'Música',
   'disc_frances': 'Francês',
   'general_early_childhood': 'Educação Infantil',
   'general_activity': 'Atividade Geral / Eventos'
@@ -130,6 +131,7 @@ export const SUBJECT_SHORT_LABELS: Record<string, string> = {
   'disc_filosofia': 'Fil',
   'disc_sociologia': 'Soc',
   'disc_musica': 'Mús',
+  'v1SOKhir7MJcBss8yKzk': 'Mús',
   'disc_frances': 'Fran',
   'general_early_childhood': 'Ed. Inf.'
 };

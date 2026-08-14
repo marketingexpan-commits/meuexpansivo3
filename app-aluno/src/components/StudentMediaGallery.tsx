@@ -5,6 +5,7 @@ import { Student, TeacherMedia } from '../types';
 import { Button } from './Button';
 import { resolveGradeId, normalizeShift, normalizeClass, normalizeUnit, parseGradeLevel } from '../utils/academicUtils';
 import { getFullSubjectLabel } from '../utils/subjectUtils';
+import { useAcademicData } from '../hooks/useAcademicData';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface StudentMediaGalleryProps {
@@ -12,6 +13,7 @@ interface StudentMediaGalleryProps {
 }
 
 const StudentMediaGallery: React.FC<StudentMediaGalleryProps> = ({ student }) => {
+    const { subjects: academicSubjects } = useAcademicData();
     const [mediaList, setMediaList] = useState<TeacherMedia[]>([]);
     const [loading, setLoading] = useState(true);
     const [viewingMedia, setViewingMedia] = useState<TeacherMedia | null>(null);
@@ -182,7 +184,7 @@ const StudentMediaGallery: React.FC<StudentMediaGalleryProps> = ({ student }) =>
                         >
                             <option value="">Todas as Disciplinas</option>
                             {availableSubjects.map(sub => (
-                                <option key={sub} value={sub}>{getFullSubjectLabel(sub)}</option>
+                                <option key={sub} value={sub}>{getFullSubjectLabel(sub, academicSubjects)}</option>
                             ))}
                         </select>
                     </div>
@@ -265,7 +267,7 @@ const StudentMediaGallery: React.FC<StudentMediaGalleryProps> = ({ student }) =>
                                         <div className="p-6 flex flex-col gap-3">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <span className="text-[10px] font-black text-blue-900 bg-blue-50 px-2 py-0.5 rounded-md uppercase tracking-widest whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]">
-                                                    {parseGradeLevel(item.gradeLevel).grade} - {getFullSubjectLabel(item.subjectId)}
+                                                    {parseGradeLevel(item.gradeLevel).grade} - {getFullSubjectLabel(item.subjectId, academicSubjects)}
                                                 </span>
                                             </div>
 
