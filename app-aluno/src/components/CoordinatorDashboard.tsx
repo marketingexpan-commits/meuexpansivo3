@@ -3519,7 +3519,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                     return rec.discipline?.toLowerCase() === subj.toLowerCase();
                                 });
                                 
-                                if (matchingRec) {
+                                // Guard: only count a record once across all assignment iterations.
+                                if (matchingRec && !matchedRecordIds.has(matchingRec.id)) {
                                     performedCount += subjExpectedCount; // Equals expected count on this day
                                     matchedRecordIds.add(matchingRec.id);
                                 }
@@ -3615,7 +3616,10 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                     return rec.discipline?.toLowerCase() === subj.toLowerCase();
                                                 });
                                                 
-                                                if (matchingRec) {
+                                                // Guard: only count a record once, even if multiple assignment
+                                                // iterations match the same attendance record (e.g. when a.class
+                                                // is empty and the same record is found for multiple turmas).
+                                                if (matchingRec && !matchedRecordIds.has(matchingRec.id)) {
                                                     performedCount += count; // Equals expected count on this day
                                                     matchedRecordIds.add(matchingRec.id);
                                                 }
