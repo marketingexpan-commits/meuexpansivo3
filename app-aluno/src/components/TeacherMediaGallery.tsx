@@ -13,13 +13,15 @@ interface TeacherMediaGalleryProps {
     academicGrades: any[];
     loadingAcademic: boolean;
     activeUnit: SchoolUnit;
+    academicSubjects?: any[];
 }
 
 export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
     teacher,
     academicGrades,
     loadingAcademic,
-    activeUnit
+    activeUnit,
+    academicSubjects = []
 }) => {
     const [filterGrade, setFilterGrade] = useState('');
     const [filterClass, setFilterClass] = useState<SchoolClass>(SchoolClass.A);
@@ -609,7 +611,7 @@ export const TeacherMediaGallery: React.FC<TeacherMediaGalleryProps> = ({
                             >
                                 <option value="">Opcional (Atividade Geral / Eventos)</option>
                                 {availableSubjects.map(sub => (
-                                    <option key={sub} value={sub}>{getFullSubjectLabel(sub)}</option>
+                                    <option key={sub} value={sub}>{getFullSubjectLabel(sub, academicSubjects)}</option>
                                 ))}
                             </select>
                         </div>

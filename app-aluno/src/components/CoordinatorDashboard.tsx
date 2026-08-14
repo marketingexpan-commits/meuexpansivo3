@@ -3320,16 +3320,41 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 });
             };
 
+            const isMusicSubject = (s: string): boolean => {
+                if (!s) return false;
+                const lower = s.toLowerCase().trim();
+                if (
+                    lower === 'música' || 
+                    lower === 'musica' || 
+                    lower === 'disc_musica' || 
+                    lower === 'v1sokhir7mjcbss8ykzk'
+                ) return true;
+                const dbSubj = academicSubjects?.find(subj => subj.id === s || subj.id.toLowerCase() === lower);
+                if (dbSubj) {
+                    const dbName = (dbSubj.name || dbSubj.label || '').trim().toLowerCase();
+                    if (dbName === 'música' || dbName === 'musica') return true;
+                }
+                return false;
+            };
+
             const isMusicOnly = (teacher: Teacher): boolean => {
                 const assignments = teacher.assignments || [];
-                if (assignments.length === 0) return false;
-                return assignments.every(a => {
-                    return a.subjects && a.subjects.length > 0 && a.subjects.every(s => 
-                        s.toLowerCase() === 'música' || 
-                        s.toLowerCase() === 'musica' || 
-                        s.toLowerCase() === 'disc_musica'
-                    );
-                });
+                if (assignments.length > 0) {
+                    const hasAnySubject = assignments.some(a => a.subjects && a.subjects.length > 0);
+                    if (hasAnySubject) {
+                        return assignments.every(a => 
+                            !a.subjects || a.subjects.length === 0 || a.subjects.every(s => isMusicSubject(s))
+                        );
+                    }
+                }
+                
+                // Fallback para teacher.subjects
+                const subjects = teacher.subjects || [];
+                if (subjects.length > 0) {
+                    return subjects.every(s => isMusicSubject(s as string));
+                }
+                
+                return false;
             };
 
             const getSubjectShortLabel = (subjectId: string) => {
@@ -3419,7 +3444,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                         const gradeName = gradeObj?.name || gradeId || '';
                         const finalGradeId = resolvedGradeId || gradeId;
 
-                        a.subjects?.forEach(subj => {
+                        a.subjects?.filter(subj => !isMusicSubject(subj)).forEach(subj => {
                             // Check if this subject is scheduled for this date
                             let subjExpectedCount = 0;
                             const hasAnySchedulesForClass = classSchedules?.some(s => 
@@ -3531,7 +3556,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                             normalizeShift(s.shift) === normalizeShift(a.shift)
                         );
 
-                        a.subjects?.forEach(subj => {
+                        a.subjects?.filter(subj => !isMusicSubject(subj)).forEach(subj => {
                             let subjExpectedCount = 0;
 
                             if (hasAnySchedulesForClass && classSchedules && classSchedules.length > 0) {
@@ -3681,7 +3706,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 }
 
                 // Add classes/subjects from actual performed attendance records in the period to cover unscheduled/extra classes
-                teacherRecords.forEach(rec => {
+                teacherRecords.filter(rec => !isMusicSubject(rec.discipline || '')).forEach(rec => {
                     // Try to map back to the teacher's original assignment key to prevent duplicates
                     const matchingAssignment = teacher.assignments?.find(a => {
                         const aGradeId = resolveGradeId(a.gradeId || a.gradeLevel);
@@ -3707,7 +3732,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 });
 
                 // Add performed count for any unmapped records that were not matched during schedule loops
-                teacherRecords.forEach(rec => {
+                teacherRecords.filter(rec => !isMusicSubject(rec.discipline || '')).forEach(rec => {
                     if (!matchedRecordIds.has(rec.id)) {
                         performedCount += Number(rec.lessonCount) || 1;
                     }

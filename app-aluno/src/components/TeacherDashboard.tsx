@@ -208,7 +208,20 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     const [showWelcomeReminder, setShowWelcomeReminder] = useState(false);
 
     // Check on mount if we need to show the educational pop-up
+    // Check on mount if we need to show the educational pop-up.
+    // Nunca exibe o aviso de chamada para professores de Música.
     useEffect(() => {
+        // Verifica se é professor de Música (síncrono com IDs conhecidos + fallback dinâmico)
+        const subjectIds = teacher.subjects as string[];
+        const knownMusicIds = ['disc_musica', 'v1SOKhir7MJcBss8yKzk'];
+        const isMusic = subjectIds.some(sid => knownMusicIds.includes(sid)) ||
+            (academicSubjects && academicSubjects.length > 0 && subjectIds.some(sid =>
+                academicSubjects.some(s => s.id === sid && (s.name?.toLowerCase().trim() === 'música' || s.name?.toLowerCase().trim() === 'musica'))
+            ));
+        if (isMusic) return; // Professor de Música não faz chamada
+
+        if (loadingAcademic) return; // Aguarda outros dados acadêmicos se necessário
+
         const hideReminder = localStorage.getItem('hideAttendanceReminder');
         if (hideReminder !== 'true' && attendanceReminderEnabled) {
             const timer = setTimeout(() => {
@@ -216,7 +229,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             }, 1000);
             return () => clearTimeout(timer);
         }
-    }, [attendanceReminderEnabled]);
+    }, [attendanceReminderEnabled, teacher.subjects, academicSubjects, loadingAcademic]);
 
     // Safety net: Alert when reloading or closing tab with unsaved attendance
     useEffect(() => {
@@ -710,9 +723,22 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     }, [teacher.gradeLevels]);
 
     const isMusicTeacher = useMemo(() => {
-        // IDs: disc_musica (from types.ts)
-        return teacher.subjects.includes('disc_musica' as any);
-    }, [teacher.subjects]);
+        // Verifica o ID canônico estático 'disc_musica' e também o ID dinâmico conhecido 'v1SOKhir7MJcBss8yKzk'
+        // de forma síncrona para evitar atrasos no carregamento da página.
+        const subjectIds = teacher.subjects as string[];
+        const knownMusicIds = ['disc_musica', 'v1SOKhir7MJcBss8yKzk'];
+        if (subjectIds.some(sid => knownMusicIds.includes(sid))) return true;
+
+        if (academicSubjects && academicSubjects.length > 0) {
+            const musicSubjectIds = new Set(
+                academicSubjects
+                    .filter(s => s.name?.toLowerCase().trim() === 'música' || s.name?.toLowerCase().trim() === 'musica')
+                    .map(s => s.id)
+            );
+            return subjectIds.some(sid => musicSubjectIds.has(sid));
+        }
+        return false;
+    }, [teacher.subjects, academicSubjects]);
 
     const availableShifts = useMemo(() => {
         const shifts = new Set<SchoolShift>();
@@ -2140,6 +2166,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                             academicGrades={academicGrades}
                             loadingAcademic={loadingAcademic}
                             activeUnit={activeUnit}
+                            academicSubjects={academicSubjects}
                         />
                     )}
 
