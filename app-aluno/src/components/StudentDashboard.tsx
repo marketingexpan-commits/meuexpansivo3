@@ -2729,7 +2729,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                                                     if (isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass, student.shift, subjectId)) {
                                                                                         duration = getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass, calendarEvents, student.unit, student.shift, subjectId);
                                                                                     } else {
-                                                                                        duration = 0;
+                                                                                        // Fallback to lessonCount stored in the database record instead of 0
+                                                                                        duration = lessonCount;
                                                                                     }
                                                                                 }
                                                                             }

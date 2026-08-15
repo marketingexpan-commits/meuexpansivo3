@@ -321,10 +321,12 @@ export const calculateGeneralFrequency = (
 
             if (isSameUnit) {
                 if (classSchedules && classSchedules.length > 0) {
-                    if (!isClassScheduled(record.date, record.discipline, classSchedules, calendarEvents || [], unit, gradeLevel, schoolClass, shift, subjectId)) {
-                        return acc;
+                    if (isClassScheduled(record.date, record.discipline, classSchedules, calendarEvents || [], unit, gradeLevel, schoolClass, shift, subjectId)) {
+                        return acc + getSubjectDurationForDay(record.date, record.discipline, classSchedules, weight, gradeLevel, schoolClass, calendarEvents, unit, shift, subjectId);
+                    } else {
+                        // Fallback to weight stored in the database record instead of skipping
+                        return acc + weight;
                     }
-                    return acc + getSubjectDurationForDay(record.date, record.discipline, classSchedules, weight, gradeLevel, schoolClass, calendarEvents, unit, shift, subjectId);
                 }
             }
             return acc + weight;
@@ -441,10 +443,12 @@ export const calculateBimesterGeneralFrequency = (
 
             if (isSameUnit) {
                 if (classSchedules && classSchedules.length > 0) {
-                    if (!isClassScheduled(record.date, record.discipline, classSchedules, calendarEvents || [], unit, gradeLevel, schoolClass, shift, subjectId)) {
-                        return acc;
+                    if (isClassScheduled(record.date, record.discipline, classSchedules, calendarEvents || [], unit, gradeLevel, schoolClass, shift, subjectId)) {
+                        return acc + getSubjectDurationForDay(record.date, record.discipline, classSchedules, weight, gradeLevel, schoolClass, calendarEvents, unit, shift, subjectId);
+                    } else {
+                        // Fallback to weight stored in the database record instead of skipping
+                        return acc + weight;
                     }
-                    return acc + getSubjectDurationForDay(record.date, record.discipline, classSchedules, weight, gradeLevel, schoolClass, calendarEvents, unit, shift, subjectId);
                 }
             }
             return acc + weight;

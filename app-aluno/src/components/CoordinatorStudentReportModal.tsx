@@ -829,10 +829,12 @@ export const CoordinatorStudentReportModal: React.FC<CoordinatorStudentReportMod
                                                             let duration = lessonCount;
                                                             if (isSameUnit) {
                                                                 if (classSchedules && classSchedules.length > 0) {
-                                                                    if (!isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass, student.shift, subjectObj?.id)) {
-                                                                        return;
+                                                                    if (isClassScheduled(att.date, grade.subject, classSchedules, calendarEvents, student.unit, student.gradeLevel, student.schoolClass, student.shift, subjectObj?.id)) {
+                                                                        duration = getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass, calendarEvents, student.unit, student.shift, subjectObj?.id);
+                                                                    } else {
+                                                                        // Fallback to lessonCount stored in the database record instead of skipping
+                                                                        duration = lessonCount;
                                                                     }
-                                                                    duration = getSubjectDurationForDay(att.date, grade.subject, classSchedules, lessonCount, student.gradeLevel, student.schoolClass, calendarEvents, student.unit, student.shift, subjectObj?.id);
                                                                 }
                                                             }
                                                             raw += duration;
