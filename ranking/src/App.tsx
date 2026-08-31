@@ -765,6 +765,16 @@ function App() {
           // mesmo se a gravação no Firebase falhar (ex: por falta de permissão)
           savedWeekKey = currentWeekKey;
           prevRanksObj = newRanks;
+          
+          // Reseta as setinhas visualmente para que a tela mostre imediatamente 
+          // que as posições foram mantidas em relação a nova foto base tirada agora.
+          const resetChanges: Record<string, { type: 'up' | 'down' | 'same', diff: number }> = {};
+          Object.keys(newRanks).forEach(grade => {
+            newRanks[grade].forEach(student => {
+              resetChanges[student.id] = { type: 'same', diff: 0 };
+            });
+          });
+          setRankChanges(resetChanges);
 
           // Cria uma versão leve (apenas IDs e posições) para não estourar o limite de 1MB do Firestore
           // (As fotos em base64 ocupam muito espaço e não são necessárias para calcular as setinhas)
