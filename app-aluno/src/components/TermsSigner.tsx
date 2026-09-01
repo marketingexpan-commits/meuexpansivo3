@@ -115,6 +115,16 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
         }
     };
 
+    const handleUndoSignature = () => {
+        if (!sigCanvas.current) return;
+        const data = sigCanvas.current.toData();
+        if (data.length > 0) {
+            data.pop(); // remove o último traço
+            sigCanvas.current.clear();
+            sigCanvas.current.fromData(data);
+        }
+    };
+
     const handleSaveSignature = async (isAuthorized: boolean) => {
         if (!selectedTerm || !sigCanvas.current || sigCanvas.current.isEmpty()) {
             alert("Por favor, assine no campo indicado antes de salvar.");
@@ -402,12 +412,22 @@ export const TermsSigner: React.FC<TermsSignerProps> = ({ student }) => {
                                                     }}
                                                     backgroundColor="white"
                                                 />
-                                                <button
-                                                    onClick={handleClearSignature}
-                                                    className="absolute top-2 right-2 text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-600 py-1 px-2 rounded-lg transition-colors border border-gray-200 shadow-sm"
-                                                >
-                                                    Limpar
-                                                </button>
+                                                <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                                                    <button
+                                                        onClick={handleUndoSignature}
+                                                        className="text-xs font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 py-1 px-2 rounded-lg transition-colors border border-blue-200 shadow-sm flex items-center gap-1"
+                                                        title="Desfazer último traço"
+                                                    >
+                                                        ↩ Desfazer
+                                                    </button>
+                                                    <button
+                                                        onClick={handleClearSignature}
+                                                        className="text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-600 py-1 px-2 rounded-lg transition-colors border border-gray-200 shadow-sm"
+                                                        title="Limpar tudo"
+                                                    >
+                                                        Limpar
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                         <div className="flex flex-col gap-3">
