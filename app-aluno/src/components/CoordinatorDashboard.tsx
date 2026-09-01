@@ -3306,6 +3306,12 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 .get();
             const attendanceRecords = attendanceSnap.docs.map(doc => doc.data() as AttendanceRecord);
 
+            // 3b. Fetch class schedules directly from Firestore for this unit (avoids stale state)
+            const schedulesSnap = await db.collection('class_schedules')
+                .where('schoolId', '==', currentUnit)
+                .get();
+            const fetchedSchedules: ClassSchedule[] = schedulesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ClassSchedule));
+
             // 4. Filter out Educação Infantil teachers (this segment has no daily roll call)
             const INFANTIL_GRADE_IDS = new Set([
                 'grade_bercario', 'grade_nivel_1', 'grade_nivel_2',
@@ -3447,13 +3453,13 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                         a.subjects?.filter(subj => !isMusicSubject(subj)).forEach(subj => {
                             // Check if this subject is scheduled for this date
                             let subjExpectedCount = 0;
-                            const hasAnySchedulesForClass = classSchedules?.some(s => 
+                            const hasAnySchedulesForClass = fetchedSchedules?.some(s => 
                                 resolveGradeId(s.grade) === finalGradeId && 
                                 (!a.class || normalizeClass(s.class) === normalizeClass(a.class)) && 
                                 normalizeShift(s.shift) === normalizeShift(a.shift)
                             );
 
-                            if (hasAnySchedulesForClass && classSchedules && classSchedules.length > 0) {
+                            if (hasAnySchedulesForClass && fetchedSchedules && fetchedSchedules.length > 0) {
                                 const curDate = new Date(reportDailyDate + 'T00:00:00');
                                 const dayOfWeek = curDate.getDay();
                                 
@@ -3474,7 +3480,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                 
                                 const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
                                 if (!isHoliday && (!isWeekend || isExtraSchoolDay)) {
-                                    const matchingSchedule = (classSchedules || []).find((s: any) => {
+                                    const matchingSchedule = (fetchedSchedules || []).find((s: any) => {
                                         if (s.dayOfWeek !== dayOfWeek) return false;
                                         const sGradeId = resolveGradeId(s.grade);
                                         if (sGradeId !== finalGradeId) return false;
@@ -3551,7 +3557,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
                         // Check if there is any schedule entry for this assignment
                         // If assignment has no class specified, match any class in schedule
-                        const hasAnySchedulesForClass = classSchedules?.some(s =>
+                        const hasAnySchedulesForClass = fetchedSchedules?.some(s =>
                             resolveGradeId(s.grade) === finalGradeId &&
                             (!a.class || normalizeClass(s.class) === normalizeClass(a.class)) &&
                             normalizeShift(s.shift) === normalizeShift(a.shift)
@@ -3560,7 +3566,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                         a.subjects?.filter(subj => !isMusicSubject(subj)).forEach(subj => {
                             let subjExpectedCount = 0;
 
-                            if (hasAnySchedulesForClass && classSchedules && classSchedules.length > 0) {
+                            if (hasAnySchedulesForClass && fetchedSchedules && fetchedSchedules.length > 0) {
                                 // PRIMARY: Iterate day-by-day using the real schedule (same logic as daily mode)
                                 const cur = new Date(startDateStr + 'T00:00:00');
                                 const end = new Date(endDateStr + 'T00:00:00');
@@ -3589,7 +3595,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                     
                                     if (!isHoliday && (!isWeekend || isExtraSchoolDay)) {
                                         // Count how many times this subject appears in the schedule for this day
-                                        const matchingSchedule = (classSchedules || []).find((s: any) => {
+                                        const matchingSchedule = (fetchedSchedules || []).find((s: any) => {
                                             if (s.dayOfWeek !== dayOfWeek) return false;
                                             const sGradeId = resolveGradeId(s.grade);
                                             if (sGradeId !== finalGradeId) return false;
@@ -4524,17 +4530,15 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                 <h3 className="font-bold text-gray-800 text-sm text-center">Comunicados</h3>
                             </button>
 
-                            {coordinator.unit !== 'all' && (
-                                <button
-                                    onClick={() => setActiveTab('attendance')}
-                                    className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
-                                >
-                                    <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
-                                        <Users className="w-6 h-6 text-blue-950" />
-                                    </div>
-                                    <h3 className="font-bold text-gray-800 text-sm text-center">Frequência</h3>
-                                </button>
-                            )}
+                            <button
+                                onClick={() => setActiveTab('attendance')}
+                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square"
+                            >
+                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                    <Users className="w-6 h-6 text-blue-950" />
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-sm text-center">Frequência</h3>
+                            </button>
 
 
 
