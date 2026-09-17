@@ -2127,6 +2127,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         generateSchoolCalendar(calendarEvents, academicSettings, currentUnit);
     };
     const [historyFilterTerm, setHistoryFilterTerm] = useState('');
+    const [historyFilterMonth, setHistoryFilterMonth] = useState((new Date().getMonth() + 1).toString());
+    const [historyFilterCategory, setHistoryFilterCategory] = useState('');
     const [studentSearchTerm, setStudentSearchTerm] = useState(''); // NEW: Search for students in occurrence modal
     const [expandedOccurrences, setExpandedOccurrences] = useState<Record<string, boolean>>({});
 
@@ -2935,15 +2937,27 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     };
 
     const filteredHistory = useMemo(() => {
-        if (!historyFilterTerm) return historyOccurrences;
-        const term = historyFilterTerm.toLowerCase();
-        return historyOccurrences.filter(occ =>
-            occ.studentName.toLowerCase().includes(term) ||
-            occ.schoolClass.toLowerCase().includes(term) ||
-            occ.title.toLowerCase().includes(term) ||
-            occ.gradeLevel.toLowerCase().includes(term)
-        );
-    }, [historyOccurrences, historyFilterTerm]);
+        let filtered = historyOccurrences;
+        if (historyFilterCategory) {
+            filtered = filtered.filter(occ => occ.category === historyFilterCategory);
+        }
+        if (historyFilterMonth) {
+            filtered = filtered.filter(occ => {
+                const occDate = new Date(occ.timestamp);
+                return (occDate.getMonth() + 1).toString() === historyFilterMonth;
+            });
+        }
+        if (historyFilterTerm) {
+            const term = historyFilterTerm.toLowerCase();
+            filtered = filtered.filter(occ =>
+                occ.studentName.toLowerCase().includes(term) ||
+                occ.schoolClass.toLowerCase().includes(term) ||
+                occ.title.toLowerCase().includes(term) ||
+                occ.gradeLevel.toLowerCase().includes(term)
+            );
+        }
+        return filtered;
+    }, [historyOccurrences, historyFilterTerm, historyFilterMonth, historyFilterCategory]);
 
     // --- ATTENDANCE MANAGEMENT LOGIC ---
 
@@ -5472,8 +5486,42 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                 onChange={(e) => setHistoryFilterTerm(e.target.value)}
                                             />
                                         </div>
+                                        <select
+                                            className="px-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm"
+                                            value={historyFilterMonth}
+                                            onChange={(e) => setHistoryFilterMonth(e.target.value)}
+                                        >
+                                            <option value="">Todos os meses</option>
+                                            <option value="1">Janeiro</option>
+                                            <option value="2">Fevereiro</option>
+                                            <option value="3">Março</option>
+                                            <option value="4">Abril</option>
+                                            <option value="5">Maio</option>
+                                            <option value="6">Junho</option>
+                                            <option value="7">Julho</option>
+                                            <option value="8">Agosto</option>
+                                            <option value="9">Setembro</option>
+                                            <option value="10">Outubro</option>
+                                            <option value="11">Novembro</option>
+                                            <option value="12">Dezembro</option>
+                                        </select>
+                                        <select
+                                            className="px-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm"
+                                            value={historyFilterCategory}
+                                            onChange={(e) => setHistoryFilterCategory(e.target.value)}
+                                        >
+                                            <option value="">Todos os tipos</option>
+                                            <option value={OccurrenceCategory.PEDAGOGICAL}>Pedagógica</option>
+                                            <option value={OccurrenceCategory.DISCIPLINARY}>Disciplinar</option>
+                                            <option value={OccurrenceCategory.POSITIVE}>Elogio/Positiva</option>
+                                            <option value={OccurrenceCategory.HEALTH}>Saúde</option>
+                                            <option value={OccurrenceCategory.OTHER}>Outra</option>
+                                        </select>
                                     </div>
-                                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                                    <div className="px-4 pt-3 text-xs font-bold text-gray-500">
+                                        {filteredHistory.length} {filteredHistory.length === 1 ? 'ocorrência encontrada' : 'ocorrências encontradas'}
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto p-4 pt-2 space-y-3">
                                         {historyLoading ? (
                                             <div className="text-center py-10 text-gray-400">Carregando histórico...</div>
                                         ) : filteredHistory.length === 0 ? (
