@@ -3977,6 +3977,12 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 // REGRA DE STATUS: Apenas alunos CURSANDO ou ATIVO aparecem na busca de acessos
                 if (s.status !== 'CURSANDO' && s.status !== 'ATIVO') return false;
 
+                // REGRA DO ANO LETIVO: Apenas alunos matriculados no ano letivo atual
+                const currentYear = String(academicSettings?.year || new Date().getFullYear());
+                if (!s.enrolledYears?.includes(currentYear)) {
+                    return false;
+                }
+
                 if (!coordinator.segment || coordinator.segment === CoordinationSegment.GERAL) return true;
                 if (s.gradeId) return allowedGradeIds.has(s.gradeId);
                 const { grade: sGradeName } = parseGradeLevel(s.gradeLevel);
