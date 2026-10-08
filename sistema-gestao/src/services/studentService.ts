@@ -64,10 +64,20 @@ export const studentService = {
                     // Legacy records without enrolledYears might still be relevant if they have an old creation date
                     if (s.createdAt) {
                         const createdYear = new Date(s.createdAt).getFullYear();
-                        return !isNaN(createdYear) && createdYear < 2024;
+                        if (!isNaN(createdYear) && createdYear < 2024) return true;
                     }
+                    
+                    // Exibir cadastros "órfãos" (sem ano letivo) para que possam ser encontrados e corrigidos pelo painel
+                    const hasEnrolledYears = s.enrolledYears && Array.isArray(s.enrolledYears) && s.enrolledYears.length > 0;
+                    const hasHistory = s.enrollmentHistory && Array.isArray(s.enrollmentHistory) && s.enrollmentHistory.length > 0;
+                    if (!hasEnrolledYears && !hasHistory) {
+                        return true;
+                    }
+
                     // Legacy fallback (registros antigos sem data de criação)
-                    return true;
+                    if (!s.createdAt) return true;
+                    
+                    return false;
                 }
 
                 // Priority 1: Check enrolledYears (if exists)
