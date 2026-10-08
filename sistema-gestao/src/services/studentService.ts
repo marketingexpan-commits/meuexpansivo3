@@ -42,23 +42,32 @@ export const studentService = {
                 ...doc.data()
             })) as Student[];
 
+            // Descartar apenas documentos internos do sistema (como --sys-counter--)
+            const realStudents = allStudents.filter(s => s && !s.id.startsWith('--') && (s.name || s.code || s.matricula || (s as any).role === 'STUDENT'));
+
             // Bypass filtering if requested (e.g. for History Search)
-            if (ignoreYearFilter) return allStudents;
+            if (ignoreYearFilter) return realStudents;
 
             // Client-side filtering for year 
-            return allStudents.filter(s => {
+            return realStudents.filter(s => {
                 const selectedYear = currentYear;
 
                 // SPECIAL CASE: Historical Data (Years before 2024)
                 if (selectedYear === 'HISTORICAL') {
-                    if (s.enrolledYears && Array.isArray(s.enrolledYears)) {
+                    if (s.enrolledYears && Array.isArray(s.enrolledYears) && s.enrolledYears.length > 0) {
                         // Any year strictly before 2024
                         return s.enrolledYears.some(y => parseInt(y) < 2024);
                     }
-                    // Legacy records without enrolledYears might still be relevant if they have an old creation date or no date
-                    if (!s.createdAt) return true;
-                    const createdYear = new Date(s.createdAt).getFullYear();
-                    return createdYear < 2024;
+                    if (s.enrollmentHistory && Array.isArray(s.enrollmentHistory) && s.enrollmentHistory.length > 0) {
+                        return s.enrollmentHistory.some(h => parseInt(h.year) < 2024);
+                    }
+                    // Legacy records without enrolledYears might still be relevant if they have an old creation date
+                    if (s.createdAt) {
+                        const createdYear = new Date(s.createdAt).getFullYear();
+                        return !isNaN(createdYear) && createdYear < 2024;
+                    }
+                    // Legacy fallback (registros antigos sem data de criação)
+                    return true;
                 }
 
                 // Priority 1: Check enrolledYears (if exists)

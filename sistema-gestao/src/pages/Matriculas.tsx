@@ -7,11 +7,11 @@ import { Select } from '../components/Select';
 import { StudentForm } from '../components/StudentForm';
 import { Search, Filter, Loader2, Printer, Barcode, ShieldAlert, ShieldCheck, User, X } from 'lucide-react';
 import { studentService } from '../services/studentService';
-import type { Student } from '../types';
 import { SCHOOL_SHIFTS, SCHOOL_CLASSES_OPTIONS } from '../utils/academicDefaults';
+import type { Student } from '../types';
 import { SHIFT_LABELS, SchoolShift } from '../types';
 import { useAcademicData } from '../hooks/useAcademicData';
-import { getCurrentSchoolYear, parseGradeLevel, normalizeClass } from '../utils/academicUtils';
+import { getCurrentSchoolYear, parseGradeLevel, normalizeClass, isHistoricalYear } from '../utils/academicUtils';
 
 import { financialService } from '../services/financialService';
 import { generateCarne } from '../utils/carneGenerator';
@@ -93,13 +93,25 @@ export function Matriculas() {
         loadStudents();
     }, []);
 
+    // Helper to resolve enrollment for selected year (handles historical mode)
+    const getStudentEnrollment = (student: Student, currentYear: string) => {
+        if (isHistoricalYear(currentYear)) {
+            return [...(student.enrollmentHistory || [])]
+                .filter(h => parseInt(h.year) < 2024 || h.year === 'HISTORICAL')
+                .sort((a, b) => (parseInt(b.year) || 0) - (parseInt(a.year) || 0))[0];
+        }
+        return student.enrollmentHistory?.find(h => h.year === currentYear);
+    };
+
     // Filter students based on search term AND advanced filters
     const filteredStudents = students.filter(student => {
+        if (!student) return false;
         const currentYear = getCurrentSchoolYear();
-        const searchLower = searchTerm.toLowerCase();
+        const isHistorical = isHistoricalYear(currentYear);
+        const searchLower = (searchTerm || '').toLowerCase();
 
         // 1. Get Enrollment for selected Year
-        const enrollment = student.enrollmentHistory?.find(h => h.year === currentYear);
+        const enrollment = getStudentEnrollment(student, currentYear);
 
         // Dynamic fields for display/filter
         const displayGrade = enrollment?.gradeLevel || student.gradeLevel;
@@ -108,15 +120,15 @@ export function Matriculas() {
         const displayStatus = enrollment?.status || student.status || 'CURSANDO';
 
         // SMART SEARCH LOGIC:
-        // If the search term is a number AND matches a student code exactly,
+        // If the search term is a number AND matches a student code or matricula exactly,
         // we show ONLY that student (ignoring CPFs that happen to contain those digits).
-        const isExactCodeMatch = /^\d+$/.test(searchTerm) && students.some(s => s.code === searchTerm);
+        const isExactCodeMatch = /^\d+$/.test(searchTerm) && students.some(s => s.code === searchTerm || s.matricula === searchTerm);
 
         // 2. Strict Year Filtering Logic
         // If the student has ANY enrollment history, they MUST have an entry for the current year to be shown.
         // Exception: Unless we are in "Historical" mode (handled by different component usually, but here we expect strictly current year context).
         // Exception 2: If the student has NO history (freshly created), we show them as "Pending".
-        if (currentYear !== 'HISTORICAL') {
+        if (!isHistorical) {
             const hasAnyHistory = student.enrollmentHistory && student.enrollmentHistory.length > 0;
             const isStudentActive = student.status === 'CURSANDO' || student.status === 'ATIVO';
 
@@ -126,11 +138,12 @@ export function Matriculas() {
         }
 
         const matchesSearch = isExactCodeMatch
-            ? student.code === searchTerm
+            ? (student.code === searchTerm || student.matricula === searchTerm)
             : (
-                student.name.toLowerCase().includes(searchLower) ||
-                (student.code && student.code.toLowerCase().includes(searchLower)) ||
-                (student.cpf_aluno && student.cpf_aluno.includes(searchLower))
+                Boolean(student.name?.toLowerCase().includes(searchLower)) ||
+                Boolean(student.code && student.code.toLowerCase().includes(searchLower)) ||
+                Boolean(student.matricula && student.matricula.includes(searchLower)) ||
+                Boolean(student.cpf_aluno && student.cpf_aluno.includes(searchLower))
             );
 
         const matchesGrade = !filterGrade || (() => {
@@ -618,7 +631,7 @@ export function Matriculas() {
                 hasActiveFilters && filteredStudents.length > 0 && (() => {
                     const currentYear = getCurrentSchoolYear();
                     const missingEnturmacao = filteredStudents.filter(s => {
-                        const enrollment = s.enrollmentHistory?.find(h => h.year === currentYear);
+                        const enrollment = getStudentEnrollment(s, currentYear);
                         const displayClass = enrollment?.schoolClass || s.schoolClass;
                         const displayShift = enrollment?.shift || s.shift;
                         return !displayClass || !displayShift;
@@ -671,7 +684,7 @@ export function Matriculas() {
                             filteredStudents.reduce((acc, student) => {
                                 // Obter dados do ano selecionado para agrupamento
                                 const currentYear = getCurrentSchoolYear();
-                                const enrollment = student.enrollmentHistory?.find(h => h.year === currentYear);
+                                const enrollment = getStudentEnrollment(student, currentYear);
 
                                 const studentGrade = enrollment?.gradeLevel || student.gradeLevel || '';
                                 const studentClass = enrollment?.schoolClass || student.schoolClass || '';
@@ -791,18 +804,18 @@ export function Matriculas() {
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-slate-50">
-                                                    {studentsInGroup.sort((a, b) => a.name.localeCompare(b.name)).map((student) => (
+                                                    {studentsInGroup.sort((a, b) => (a.name || a.code || '').localeCompare(b.name || b.code || '')).map((student) => (
                                                         <tr key={student.id} className="bg-white hover:bg-slate-50 transition-colors">
                                                             <td className="px-6 py-3 font-medium text-slate-900 whitespace-nowrap">
                                                                 <div className="flex items-center gap-3">
                                                                     <div 
                                                                         className="w-10 h-[50px] rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center cursor-pointer hover:border-blue-300 hover:shadow-sm transition-all group"
-                                                                        onClick={() => student.photoUrl && setZoomedPhoto({ url: student.photoUrl, name: student.name })}
+                                                                        onClick={() => student.photoUrl && setZoomedPhoto({ url: student.photoUrl, name: student.name || `Aluno (Cód. ${student.code})` })}
                                                                     >
                                                                         {student.photoUrl ? (
                                                                             <img 
                                                                                 src={student.photoUrl} 
-                                                                                alt={student.name} 
+                                                                                alt={student.name || 'Aluno'} 
                                                                                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" 
                                                                             />
                                                                         ) : (
@@ -810,8 +823,17 @@ export function Matriculas() {
                                                                         )}
                                                                     </div>
                                                                     <div className="flex flex-col">
-                                                                        <span className="text-sm font-semibold">{student.name}</span>
-                                                                        <span className="text-[11px] text-slate-400">{student.cpf_aluno || 'CPF não inf.'}</span>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-sm font-semibold">{student.name || `Aluno (Cód. ${student.code || student.id.slice(0, 6)})`}</span>
+                                                                            {!student.name && (
+                                                                                <span className="text-[9px] bg-amber-100 text-amber-800 border border-amber-200 px-1 py-0.2 rounded font-bold">
+                                                                                    Nome Pendente
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        <span className="text-[11px] text-slate-400">
+                                                                            {student.matricula ? `Matrícula: ${student.matricula}` : (student.cpf_aluno || 'CPF não inf.')}
+                                                                        </span>
                                                                     </div>
                                                                 </div>
                                                             </td>
@@ -826,8 +848,8 @@ export function Matriculas() {
                                                                         }`}>
                                                                         {(() => {
                                                                             const currentYear = getCurrentSchoolYear();
-                                                                            const enrollment = student.enrollmentHistory?.find(h => h.year === currentYear);
-                                                                            const displayStatus = enrollment?.status || (student.status === 'CURSANDO' || student.status === 'ATIVO' ? 'PENDENTE' : student.status) || 'CURSANDO';
+                                                                            const enrollment = getStudentEnrollment(student, currentYear);
+                                                                            const displayStatus = enrollment?.status || (student.status === 'CURSANDO' || student.status === 'ATIVO' ? (isHistoricalYear(currentYear) ? student.status : 'PENDENTE') : student.status) || 'CURSANDO';
 
                                                                             if (displayStatus === 'PENDENTE') return 'Pendente de Rematrícula';
                                                                             return displayStatus;
