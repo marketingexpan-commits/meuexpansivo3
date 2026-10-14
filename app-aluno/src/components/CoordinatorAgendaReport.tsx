@@ -26,9 +26,12 @@ export const CoordinatorAgendaReport: React.FC<CoordinatorAgendaReportProps> = (
     const [viewingAgenda, setViewingAgenda] = useState<DailyAgenda | null>(null);
 
     useEffect(() => {
+        let cancelled = false;
         const fetchData = async () => {
             if (!date) return;
             setLoading(true);
+            // Clear stale data from the previously selected unit
+            setAgendas([]);
             try {
                 // Fetch Agendas for the selected date and unit
                 const agendaSnap = await db.collection('daily_agenda')
@@ -37,25 +40,36 @@ export const CoordinatorAgendaReport: React.FC<CoordinatorAgendaReportProps> = (
                     .get();
 
                 const fetchedAgendas = agendaSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as DailyAgenda));
-                setAgendas(fetchedAgendas);
-
-                // Fetch Teachers for the unit
-                if (teachers.length === 0) {
-                    const teachersSnap = await db.collection('teachers').get();
-                    // Filter by unit to ensure strict mapping
-                    const fetchedTeachers = teachersSnap.docs
-                        .map(doc => ({ id: doc.id, ...doc.data() } as Teacher))
-                        .filter(t => t.unit === unit);
-                    setTeachers(fetchedTeachers);
-                }
+                if (!cancelled) setAgendas(fetchedAgendas);
             } catch (error) {
                 console.error("Error fetching agenda report data:", error);
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         };
         fetchData();
-    }, [date, unit, teachers.length]);
+        return () => { cancelled = true; };
+    }, [date, unit]);
+
+    // Teachers must be reloaded whenever the unit changes
+    useEffect(() => {
+        let cancelled = false;
+        setTeachers([]);
+        const fetchTeachers = async () => {
+            try {
+                const teachersSnap = await db.collection('teachers').get();
+                // Filter by unit to ensure strict mapping
+                const fetchedTeachers = teachersSnap.docs
+                    .map(doc => ({ id: doc.id, ...doc.data() } as Teacher))
+                    .filter(t => t.unit === unit);
+                if (!cancelled) setTeachers(fetchedTeachers);
+            } catch (error) {
+                console.error("Error fetching teachers for agenda report:", error);
+            }
+        };
+        fetchTeachers();
+        return () => { cancelled = true; };
+    }, [unit]);
 
     const expectedSchedules = useMemo(() => {
         if (!date || academicLoading) return [];
