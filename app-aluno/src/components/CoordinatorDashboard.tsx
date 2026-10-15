@@ -202,6 +202,7 @@ import { Dialog } from './Dialog';
 import { getAttendanceBreakdown } from '../utils/attendanceUtils'; // Import helper
 import { ScheduleTimeline } from './ScheduleTimeline';
 import { CoordinatorGradeReport } from './CoordinatorGradeReport';
+import { CoordinatorAbsenceReport } from './CoordinatorAbsenceReport';
 
 
 
@@ -1907,7 +1908,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     }, []);
 
     // NEW: Navigation State
-    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages' | 'attendance' | 'crm' | 'schedule' | 'access_control' | 'lost_found' | 'photographer_demands' | 'agenda_report' | 'announcements' | 'grade_report'>('menu');
+    const [activeTab, setActiveTab] = useState<'menu' | 'approvals' | 'occurrences' | 'calendar' | 'messages' | 'attendance' | 'crm' | 'schedule' | 'access_control' | 'lost_found' | 'photographer_demands' | 'agenda_report' | 'announcements' | 'grade_report' | 'absence_report'>('menu');
     const [zoomedPhoto, setZoomedPhoto] = useState<{ url: string, name: string, title: string } | null>(null);
 
     // --- GRADE REPORT STATE ---
@@ -1990,6 +1991,75 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             console.error("Error fetching grade report data:", error);
             alert("Erro ao buscar dados do relatório.");
             setReportLoading(false);
+        }
+    };
+
+    // --- ABSENCE REPORT STATE (reutiliza os filtros Série/Turma/Turno/Bimestre do relatório de notas) ---
+    const [absenceStudents, setAbsenceStudents] = useState<Student[]>([]);
+    const [absenceGrades, setAbsenceGrades] = useState<GradeEntry[]>([]);
+    const [absenceAttendance, setAbsenceAttendance] = useState<AttendanceRecord[]>([]);
+    const [absenceLoading, setAbsenceLoading] = useState(false);
+
+    const handleFetchAbsenceReport = async () => {
+        if (!reportGradeFilter || !reportClassFilter || !reportShiftFilter) {
+            alert("Por favor, selecione Série, Turma e Turno.");
+            return;
+        }
+
+        setAbsenceLoading(true);
+        try {
+            const searchUnit = coordinator.unit === 'all' || coordinator.role === 'admin_geral' ? currentUnit : coordinator.unit;
+            const searchYear = academicSettings?.year || new Date().getFullYear();
+
+            const studentsSnap = await db.collection('students')
+                .where('unit', '==', searchUnit)
+                .where('enrolledYears', 'array-contains', String(searchYear))
+                .get();
+
+            const studentsList = studentsSnap.docs
+                .map(doc => ({ id: doc.id, ...doc.data() } as Student))
+                .filter(s => {
+                    if (s.status !== 'CURSANDO' && s.status !== 'ATIVO') return false;
+                    if (s.situacao && s.situacao !== 'Ativo') return false;
+                    return parseGradeLevel(s.gradeLevel || '').grade === parseGradeLevel(reportGradeFilter).grade
+                        && normalizeClass(s.schoolClass) === normalizeClass(reportClassFilter)
+                        && normalizeShift(s.shift) === normalizeShift(reportShiftFilter);
+                });
+
+            if (studentsList.length === 0) {
+                setAbsenceStudents([]);
+                setAbsenceGrades([]);
+                setAbsenceAttendance([]);
+                return;
+            }
+
+            const studentIds = studentsList.map(s => s.id);
+            let allGrades: GradeEntry[] = [];
+            for (let i = 0; i < studentIds.length; i += 30) {
+                const gradesSnap = await db.collection('grades').where('studentId', 'in', studentIds.slice(i, i + 30)).get();
+                allGrades = [...allGrades, ...gradesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as GradeEntry))];
+            }
+
+            // Frequência: inclui unidades anteriores do histórico de matrícula (mesmo critério do boletim)
+            const targetUnits = new Set<string>([searchUnit]);
+            studentsList.forEach((s: any) => {
+                if (s.unit) targetUnits.add(s.unit);
+                if (Array.isArray(s.enrollmentHistory)) s.enrollmentHistory.forEach((h: any) => { if (h.unit) targetUnits.add(h.unit); });
+            });
+            const attSnap = await db.collection('attendance').where('unit', 'in', Array.from(targetUnits)).get();
+            const studentIdSet = new Set(studentIds);
+            const allAttendance = attSnap.docs
+                .map(d => ({ id: d.id, ...d.data() } as AttendanceRecord))
+                .filter(att => att.studentStatus && Object.keys(att.studentStatus).some(id => studentIdSet.has(id)));
+
+            setAbsenceStudents(studentsList);
+            setAbsenceGrades(allGrades);
+            setAbsenceAttendance(allAttendance);
+        } catch (error) {
+            console.error("Error fetching absence report data:", error);
+            alert("Erro ao buscar dados do relatório de faltas.");
+        } finally {
+            setAbsenceLoading(false);
         }
     };
     const TabTypes = ['classes', 'students', 'occurrences', 'attendance', 'lost_found', 'messages', 'releases', 'crm', 'calendar', 'photographer_demands', 'agenda_report'] as const;
@@ -2339,7 +2409,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         const studentAbsences: Record<string, { bimester: any, year: number }> = {};
 
         for (const student of attStudents) {
-            const breakdown = getAttendanceBreakdown(attendanceRecords, student.id, attSubject, currentYear);
+            const breakdown = getAttendanceBreakdown(attendanceRecords, student.id, attSubject, currentYear, academicSettings);
             const yearAbsences = Object.values(breakdown).reduce((acc, curr) => acc + curr.count, 0);
 
             studentAbsences[student.id] = {
@@ -4661,6 +4731,17 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                     <BookCheck className="w-6 h-6 text-blue-950" />
                                 </div>
                                 <h3 className="font-bold text-gray-800 text-sm text-center">Relatório de Agendas</h3>
+                            </button>
+
+                            {/* ABSENCE REPORT CARD */}
+                            <button
+                                onClick={() => setActiveTab('absence_report')}
+                                className="flex flex-col items-center justify-center p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-blue-950 hover:shadow-md transition-all group aspect-square relative"
+                            >
+                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
+                                    <ClipboardList className="w-6 h-6 text-blue-950" />
+                                </div>
+                                <h3 className="font-bold text-gray-800 text-sm text-center">Relatório de Faltas</h3>
                             </button>
                         </div>
                     )}
@@ -7293,6 +7374,115 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                 academicSubjects={academicSubjects}
                                 matrices={matrices}
                                 earlyChildhoodReports={earlyChildhoodReports}
+                                year={academicSettings?.year || new Date().getFullYear()}
+                            />
+                        </div>
+                    )}
+
+                    {/* ABSENCE REPORT VIEW */}
+                    {activeTab === 'absence_report' && (
+                        <div className="animate-fade-in-up">
+                            <h3 className="text-xl font-bold mb-4 text-gray-800 border-b border-gray-200 pb-2 flex items-center gap-2 print:hidden">
+                                <FileSpreadsheet className="w-6 h-6 text-orange-600" />
+                                Relatório de Faltas por Série
+                            </h3>
+
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8 print:hidden">
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Série</label>
+                                        <select
+                                            value={reportGradeFilter}
+                                            onChange={(e) => setReportGradeFilter(e.target.value)}
+                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
+                                        >
+                                            <option value="">-- Selecione --</option>
+                                            {academicGrades
+                                                .filter(g => g.isActive)
+                                                .filter(g => {
+                                                    if (['seg_infantil'].includes(g.segmentId)) return false; // Educação Infantil não possui faltas por disciplina
+                                                    if (coordinator.segment === CoordinationSegment.GERAL || !coordinator.segment) return true;
+                                                    const infantilFund1 = ['seg_infantil', 'seg_fund_1'];
+                                                    const fund2Medio = ['seg_fund_2', 'seg_medio'];
+                                                    if (coordinator.segment === CoordinationSegment.INFANTIL_FUND1) return infantilFund1.includes(g.segmentId);
+                                                    return fund2Medio.includes(g.segmentId);
+                                                })
+                                                .sort((a, b) => a.order - b.order)
+                                                .map(g => (
+                                                    <option key={g.id} value={g.name || (g as any).label}>{g.name || (g as any).label}</option>
+                                                ))
+                                            }
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turma</label>
+                                        <select
+                                            value={reportClassFilter}
+                                            onChange={(e) => setReportClassFilter(e.target.value)}
+                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
+                                        >
+                                            <option value="">-- Selecione --</option>
+                                            {SCHOOL_CLASSES_OPTIONS.map(c => (
+                                                <option key={c.value} value={c.value}>{c.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turno</label>
+                                        <select
+                                            value={reportShiftFilter}
+                                            onChange={(e) => setReportShiftFilter(e.target.value)}
+                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
+                                        >
+                                            <option value="">-- Selecione --</option>
+                                            {SCHOOL_SHIFTS_LIST.map(s => (
+                                                <option key={s} value={s}>{SHIFT_LABELS[s as SchoolShift] || s}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Bimestre</label>
+                                        <select
+                                            value={reportBimesterFilter}
+                                            onChange={(e) => setReportBimesterFilter(Number(e.target.value))}
+                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
+                                        >
+                                            {[1, 2, 3, 4].map(num => (
+                                                <option key={num} value={num}>{num}º Bimestre</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="md:col-span-4 mt-2">
+                                        <Button
+                                            onClick={handleFetchAbsenceReport}
+                                            disabled={absenceLoading}
+                                            className="w-full py-3 !bg-blue-950 hover:!bg-black text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+                                        >
+                                            {absenceLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+                                            {absenceLoading ? 'Gerando Relatório...' : 'Gerar Relatório'}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <CoordinatorAbsenceReport
+                                students={absenceStudents}
+                                grades={absenceGrades}
+                                attendanceRecords={absenceAttendance}
+                                selectedBimester={reportBimesterFilter}
+                                selectedGrade={reportGradeFilter}
+                                selectedClass={reportClassFilter}
+                                selectedShift={reportShiftFilter}
+                                unit={currentUnit}
+                                academicSubjects={academicSubjects}
+                                matrices={matrices}
+                                academicSettings={academicSettings}
+                                calendarEvents={calendarEvents}
+                                classSchedules={classSchedules}
                                 year={academicSettings?.year || new Date().getFullYear()}
                             />
                         </div>

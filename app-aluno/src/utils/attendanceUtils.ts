@@ -1,4 +1,5 @@
 import { AttendanceRecord, AttendanceStatus } from '../types';
+import { getDynamicBimester } from './academicUtils';
 
 // Helper for month names (to avoid circular dependency or external constant import issues if minimal)
 const MONTH_NAMES = [
@@ -28,13 +29,15 @@ export interface AttendanceBreakdown {
  * @param studentId ID do aluno para filtrar as faltas.
  * @param subject (Opcional) Disciplina para filtrar. Se omitido, considera todas (cuidado ao misturar disciplinas).
  * @param year (Opcional) Ano para filtrar. Se omitido, usa o ano atual.
+ * @param academicSettings (Opcional) Configurações acadêmicas para mapeamento real dos bimestres.
  * @returns Objeto com o total e detalhes de faltas por bimestre.
  */
 export const getAttendanceBreakdown = (
     attendanceRecords: AttendanceRecord[],
     studentId: string,
     subject?: string,
-    year: number = new Date().getFullYear()
+    year: number = new Date().getFullYear(),
+    academicSettings?: any
 ): AttendanceBreakdown => {
     // Initialize structure
     const breakdown: AttendanceBreakdown = {
@@ -53,8 +56,7 @@ export const getAttendanceBreakdown = (
             const [recordYear, recordMonth, recordDay] = record.date.split('-').map(Number); // YYYY-MM-DD
 
             if (recordYear === year) {
-                // Cálculo do Bimestre (Jan-Mar=1, Abr-Jun=2, Jul-Set=3, Out-Dez=4)
-                const bimester = Math.floor((recordMonth - 1) / 3) + 1;
+                const bimester = getDynamicBimester(record.date, academicSettings);
 
                 if (bimester >= 1 && bimester <= 4) {
                     // NEW: Calculate absence weight (default to lessonCount or 1)

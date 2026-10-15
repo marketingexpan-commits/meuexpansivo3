@@ -953,7 +953,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
         for (const student of attendanceStudents) {
             // Use Shared Helper
-            const breakdown = getAttendanceBreakdown(attendanceRecords, student.id, attendanceSubject, currentYear);
+            const breakdown = getAttendanceBreakdown(attendanceRecords, student.id, attendanceSubject, currentYear, academicSettings);
 
             // Calculate Total Year from breakdown
             const yearAbsences = Object.values(breakdown).reduce((acc, curr) => acc + curr.count, 0);
