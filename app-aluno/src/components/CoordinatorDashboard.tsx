@@ -203,6 +203,8 @@ import { getAttendanceBreakdown } from '../utils/attendanceUtils'; // Import hel
 import { ScheduleTimeline } from './ScheduleTimeline';
 import { CoordinatorGradeReport } from './CoordinatorGradeReport';
 import { CoordinatorAbsenceReport } from './CoordinatorAbsenceReport';
+import { CoordinatorDailyAbsenceReport, DailyAbsentStudent } from './CoordinatorDailyAbsenceReport';
+import { getSubjectShortLabel } from '../utils/subjectUtils';
 
 
 
@@ -1999,6 +2001,174 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
     const [absenceGrades, setAbsenceGrades] = useState<GradeEntry[]>([]);
     const [absenceAttendance, setAbsenceAttendance] = useState<AttendanceRecord[]>([]);
     const [absenceLoading, setAbsenceLoading] = useState(false);
+
+    // --- DAILY ABSENCE REPORT STATE ---
+    const [absenceReportSubTab, setAbsenceReportSubTab] = useState<'bimester' | 'daily'>('bimester');
+    const [dailyReportDate, setDailyReportDate] = useState<string>(new Date().toLocaleDateString('en-CA'));
+    const [dailyReportShift, setDailyReportShift] = useState<string>('all');
+    const [dailyAbsentStudents, setDailyAbsentStudents] = useState<DailyAbsentStudent[]>([]);
+    const [dailyReportLoading, setDailyReportLoading] = useState(false);
+    const [dailyReportGenerated, setDailyReportGenerated] = useState(false);
+
+    const handleFetchDailyAbsenceReport = async () => {
+        if (!dailyReportDate) {
+            alert("Por favor, selecione a data.");
+            return;
+        }
+
+        setDailyReportLoading(true);
+        try {
+            const searchUnit = coordinator.unit === 'all' || coordinator.role === 'admin_geral' ? currentUnit : coordinator.unit;
+            const searchYear = academicSettings?.year || new Date().getFullYear();
+
+            // 1. Busca os registros de frequência da data na unidade
+            const attSnap = await db.collection('attendance')
+                .where('unit', '==', searchUnit)
+                .where('date', '==', dailyReportDate)
+                .get();
+
+            const attendanceForDay = attSnap.docs.map(d => ({ id: d.id, ...d.data() } as AttendanceRecord));
+
+            // 2. Extrai faltas por aluno
+            const studentAbsenceMap = new Map<string, {
+                absences: Array<{
+                    discipline: string;
+                    disciplineLabel: string;
+                    count: number;
+                    isExcused?: boolean;
+                    reason?: string;
+                }>;
+                total: number;
+                hasExcused: boolean;
+            }>();
+
+            attendanceForDay.forEach(att => {
+                if (!att.studentStatus) return;
+                Object.entries(att.studentStatus).forEach(([studentId, status]) => {
+                    if (status === AttendanceStatus.ABSENT) {
+                        const count = att.studentAbsenceCount?.[studentId] !== undefined
+                            ? att.studentAbsenceCount[studentId]
+                            : (att.lessonCount || 1);
+                        const isExcused = att.studentExcusedAbsences?.[studentId] === true;
+                        const reason = att.studentExcusedReasons?.[studentId] || (isExcused ? 'Abonada' : undefined);
+                        const discLabel = getSubjectShortLabel(att.discipline || '', academicSubjects);
+
+                        const current = studentAbsenceMap.get(studentId) || { absences: [], total: 0, hasExcused: false };
+                        current.absences.push({
+                            discipline: att.discipline,
+                            disciplineLabel: discLabel,
+                            count,
+                            isExcused,
+                            reason
+                        });
+                        current.total += count;
+                        if (isExcused) current.hasExcused = true;
+                        studentAbsenceMap.set(studentId, current);
+                    }
+                });
+            });
+
+            const absentStudentIds = Array.from(studentAbsenceMap.keys());
+            if (absentStudentIds.length === 0) {
+                setDailyAbsentStudents([]);
+                setDailyReportGenerated(true);
+                return;
+            }
+
+            // 3. Busca dados cadastrais dos alunos da unidade
+            const studentsSnap = await db.collection('students')
+                .where('unit', '==', searchUnit)
+                .where('enrolledYears', 'array-contains', String(searchYear))
+                .get();
+
+            const allUnitStudents = studentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
+            const studentMap = new Map(allUnitStudents.map(s => [s.id, s]));
+
+            // Fallback para IDs ausentes que não foram encontrados (ex: transferência de unidade)
+            const missingIds = absentStudentIds.filter(id => !studentMap.has(id));
+            if (missingIds.length > 0) {
+                for (let i = 0; i < missingIds.length; i += 30) {
+                    const chunk = missingIds.slice(i, i + 30);
+                    const extraSnap = await db.collection('students').where('__name__', 'in', chunk).get();
+                    extraSnap.docs.forEach(doc => studentMap.set(doc.id, { id: doc.id, ...doc.data() } as Student));
+                }
+            }
+
+            // 4. Filtra por status, segmento do coordenador e turno
+            const validStudents: Student[] = [];
+            absentStudentIds.forEach(id => {
+                const s = studentMap.get(id);
+                if (!s) return;
+                if (s.status && s.status !== 'CURSANDO' && s.status !== 'ATIVO') return;
+                if (s.situacao && s.situacao !== 'Ativo') return;
+
+                if (dailyReportShift !== 'all') {
+                    if (normalizeShift(s.shift) !== normalizeShift(dailyReportShift)) return;
+                }
+
+                const isGeneralCoordinator = coordinator.role === 'admin_geral' || coordinator.role === 'GENERAL_COORDINATOR' || coordinator.unit === 'all';
+                if (!isGeneralCoordinator && coordinator.segment) {
+                    const studentSegment = parseGradeLevel(s.gradeLevel || '').level;
+                    if (coordinator.segment === CoordinationSegment.INFANTIL_FUND1) {
+                        if (studentSegment !== 'Educação Infantil' && studentSegment !== 'Fundamental I') return;
+                    } else if (coordinator.segment === CoordinationSegment.FUND2_MEDIO) {
+                        if (studentSegment !== 'Fundamental II' && studentSegment !== 'Ensino Médio') return;
+                    }
+                }
+                validStudents.push(s);
+            });
+
+            // 5. Mapeia a ordem das séries
+            const gradeOrderMap = new Map<string, number>();
+            academicGrades.forEach(g => {
+                const gName = (g.name || (g as any).label || '').toLowerCase().trim();
+                gradeOrderMap.set(gName, g.order);
+                gradeOrderMap.set(g.id.toLowerCase().trim(), g.order);
+            });
+
+            const dailyList: DailyAbsentStudent[] = validStudents.map(s => {
+                const absenceInfo = studentAbsenceMap.get(s.id)!;
+                const parsedGrade = parseGradeLevel(s.gradeLevel || '').grade.toLowerCase().trim();
+                const rawGrade = (s.gradeLevel || '').toLowerCase().trim();
+                const order = gradeOrderMap.get(rawGrade) ?? gradeOrderMap.get(parsedGrade) ?? 999;
+
+                return {
+                    studentId: s.id,
+                    code: s.code || '',
+                    name: s.name || '',
+                    gradeLevel: s.gradeLevel || '',
+                    schoolClass: s.schoolClass || '',
+                    shift: SHIFT_LABELS[s.shift as SchoolShift] || s.shift || '',
+                    orderIndex: order,
+                    absences: absenceInfo.absences,
+                    totalAbsences: absenceInfo.total,
+                    hasExcused: absenceInfo.hasExcused
+                };
+            });
+
+            // 6. Ordena estritamente pela Série (ordem curricular), Turma e Nome
+            dailyList.sort((a, b) => {
+                if ((a.orderIndex ?? 999) !== (b.orderIndex ?? 999)) {
+                    return (a.orderIndex ?? 999) - (b.orderIndex ?? 999);
+                }
+                const gradeCompare = a.gradeLevel.localeCompare(b.gradeLevel);
+                if (gradeCompare !== 0) return gradeCompare;
+
+                const classCompare = a.schoolClass.localeCompare(b.schoolClass);
+                if (classCompare !== 0) return classCompare;
+
+                return a.name.localeCompare(b.name);
+            });
+
+            setDailyAbsentStudents(dailyList);
+            setDailyReportGenerated(true);
+        } catch (error) {
+            console.error("Error fetching daily absence report:", error);
+            alert("Erro ao buscar dados do relatório diário de faltas.");
+        } finally {
+            setDailyReportLoading(false);
+        }
+    };
 
     const handleFetchAbsenceReport = async () => {
         if (!reportGradeFilter || !reportClassFilter || !reportShiftFilter) {
@@ -7384,107 +7554,192 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                         <div className="animate-fade-in-up">
                             <h3 className="text-xl font-bold mb-4 text-gray-800 border-b border-gray-200 pb-2 flex items-center gap-2 print:hidden">
                                 <FileSpreadsheet className="w-6 h-6 text-orange-600" />
-                                Relatório de Faltas por Série
+                                Relatório de Faltas
                             </h3>
 
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8 print:hidden">
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Série</label>
-                                        <select
-                                            value={reportGradeFilter}
-                                            onChange={(e) => setReportGradeFilter(e.target.value)}
-                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
-                                        >
-                                            <option value="">-- Selecione --</option>
-                                            {academicGrades
-                                                .filter(g => g.isActive)
-                                                .filter(g => {
-                                                    if (['seg_infantil'].includes(g.segmentId)) return false; // Educação Infantil não possui faltas por disciplina
-                                                    if (coordinator.segment === CoordinationSegment.GERAL || !coordinator.segment) return true;
-                                                    const infantilFund1 = ['seg_infantil', 'seg_fund_1'];
-                                                    const fund2Medio = ['seg_fund_2', 'seg_medio'];
-                                                    if (coordinator.segment === CoordinationSegment.INFANTIL_FUND1) return infantilFund1.includes(g.segmentId);
-                                                    return fund2Medio.includes(g.segmentId);
-                                                })
-                                                .sort((a, b) => a.order - b.order)
-                                                .map(g => (
-                                                    <option key={g.id} value={g.name || (g as any).label}>{g.name || (g as any).label}</option>
-                                                ))
-                                            }
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turma</label>
-                                        <select
-                                            value={reportClassFilter}
-                                            onChange={(e) => setReportClassFilter(e.target.value)}
-                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
-                                        >
-                                            <option value="">-- Selecione --</option>
-                                            {SCHOOL_CLASSES_OPTIONS.map(c => (
-                                                <option key={c.value} value={c.value}>{c.label}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turno</label>
-                                        <select
-                                            value={reportShiftFilter}
-                                            onChange={(e) => setReportShiftFilter(e.target.value)}
-                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
-                                        >
-                                            <option value="">-- Selecione --</option>
-                                            {SCHOOL_SHIFTS_LIST.map(s => (
-                                                <option key={s} value={s}>{SHIFT_LABELS[s as SchoolShift] || s}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Bimestre</label>
-                                        <select
-                                            value={reportBimesterFilter}
-                                            onChange={(e) => setReportBimesterFilter(Number(e.target.value))}
-                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
-                                        >
-                                            {[1, 2, 3, 4].map(num => (
-                                                <option key={num} value={num}>{num}º Bimestre</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div className="md:col-span-4 mt-2">
-                                        <Button
-                                            onClick={handleFetchAbsenceReport}
-                                            disabled={absenceLoading}
-                                            className="w-full py-3 !bg-blue-950 hover:!bg-black text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
-                                        >
-                                            {absenceLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
-                                            {absenceLoading ? 'Gerando Relatório...' : 'Gerar Relatório'}
-                                        </Button>
-                                    </div>
-                                </div>
+                            {/* TABS SELECTOR (BIMESTER vs DAILY) */}
+                            <div className="flex border-b border-gray-200 mb-6 gap-2 print:hidden">
+                                <button
+                                    onClick={() => setAbsenceReportSubTab('bimester')}
+                                    className={`pb-3 px-5 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
+                                        absenceReportSubTab === 'bimester'
+                                            ? 'border-orange-600 text-orange-600'
+                                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                                    }`}
+                                >
+                                    <FileSpreadsheet className="w-4 h-4" />
+                                    Por Série / Bimestre
+                                </button>
+                                <button
+                                    onClick={() => setAbsenceReportSubTab('daily')}
+                                    className={`pb-3 px-5 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
+                                        absenceReportSubTab === 'daily'
+                                            ? 'border-orange-600 text-orange-600'
+                                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                                    }`}
+                                >
+                                    <CalendarIcon className="w-4 h-4" />
+                                    Faltas do Dia (Diário)
+                                </button>
                             </div>
 
-                            <CoordinatorAbsenceReport
-                                students={absenceStudents}
-                                grades={absenceGrades}
-                                attendanceRecords={absenceAttendance}
-                                selectedBimester={reportBimesterFilter}
-                                selectedGrade={reportGradeFilter}
-                                selectedClass={reportClassFilter}
-                                selectedShift={reportShiftFilter}
-                                unit={currentUnit}
-                                academicSubjects={academicSubjects}
-                                matrices={matrices}
-                                academicSettings={academicSettings}
-                                calendarEvents={calendarEvents}
-                                classSchedules={classSchedules}
-                                year={academicSettings?.year || new Date().getFullYear()}
-                            />
+                            {/* SUB-TAB 1: BIMESTER REPORT */}
+                            {absenceReportSubTab === 'bimester' && (
+                                <>
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8 print:hidden">
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Série</label>
+                                                <select
+                                                    value={reportGradeFilter}
+                                                    onChange={(e) => setReportGradeFilter(e.target.value)}
+                                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
+                                                >
+                                                    <option value="">-- Selecione --</option>
+                                                    {academicGrades
+                                                        .filter(g => g.isActive)
+                                                        .filter(g => {
+                                                            if (['seg_infantil'].includes(g.segmentId)) return false;
+                                                            if (coordinator.segment === CoordinationSegment.GERAL || !coordinator.segment) return true;
+                                                            const infantilFund1 = ['seg_infantil', 'seg_fund_1'];
+                                                            const fund2Medio = ['seg_fund_2', 'seg_medio'];
+                                                            if (coordinator.segment === CoordinationSegment.INFANTIL_FUND1) return infantilFund1.includes(g.segmentId);
+                                                            return fund2Medio.includes(g.segmentId);
+                                                        })
+                                                        .sort((a, b) => a.order - b.order)
+                                                        .map(g => (
+                                                            <option key={g.id} value={g.name || (g as any).label}>{g.name || (g as any).label}</option>
+                                                        ))
+                                                    }
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turma</label>
+                                                <select
+                                                    value={reportClassFilter}
+                                                    onChange={(e) => setReportClassFilter(e.target.value)}
+                                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
+                                                >
+                                                    <option value="">-- Selecione --</option>
+                                                    {SCHOOL_CLASSES_OPTIONS.map(c => (
+                                                        <option key={c.value} value={c.value}>{c.label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turno</label>
+                                                <select
+                                                    value={reportShiftFilter}
+                                                    onChange={(e) => setReportShiftFilter(e.target.value)}
+                                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
+                                                >
+                                                    <option value="">-- Selecione --</option>
+                                                    {SCHOOL_SHIFTS_LIST.map(s => (
+                                                        <option key={s} value={s}>{SHIFT_LABELS[s as SchoolShift] || s}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Bimestre</label>
+                                                <select
+                                                    value={reportBimesterFilter}
+                                                    onChange={(e) => setReportBimesterFilter(Number(e.target.value))}
+                                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
+                                                >
+                                                    {[1, 2, 3, 4].map(num => (
+                                                        <option key={num} value={num}>{num}º Bimestre</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div className="md:col-span-4 mt-2">
+                                                <Button
+                                                    onClick={handleFetchAbsenceReport}
+                                                    disabled={absenceLoading}
+                                                    className="w-full py-3 !bg-blue-950 hover:!bg-black text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+                                                >
+                                                    {absenceLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+                                                    {absenceLoading ? 'Gerando Relatório...' : 'Gerar Relatório'}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <CoordinatorAbsenceReport
+                                        students={absenceStudents}
+                                        grades={absenceGrades}
+                                        attendanceRecords={absenceAttendance}
+                                        selectedBimester={reportBimesterFilter}
+                                        selectedGrade={reportGradeFilter}
+                                        selectedClass={reportClassFilter}
+                                        selectedShift={reportShiftFilter}
+                                        unit={currentUnit}
+                                        academicSubjects={academicSubjects}
+                                        matrices={matrices}
+                                        academicSettings={academicSettings}
+                                        calendarEvents={calendarEvents}
+                                        classSchedules={classSchedules}
+                                        year={academicSettings?.year || new Date().getFullYear()}
+                                    />
+                                </>
+                            )}
+
+                            {/* SUB-TAB 2: DAILY REPORT */}
+                            {absenceReportSubTab === 'daily' && (
+                                <>
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8 print:hidden">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Data do Relatório</label>
+                                                <input
+                                                    type="date"
+                                                    value={dailyReportDate}
+                                                    onChange={(e) => setDailyReportDate(e.target.value)}
+                                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Turno</label>
+                                                <select
+                                                    value={dailyReportShift}
+                                                    onChange={(e) => setDailyReportShift(e.target.value)}
+                                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-blue-950 focus:ring-2 focus:ring-blue-950 outline-none"
+                                                >
+                                                    <option value="all">Todos os Turnos</option>
+                                                    {SCHOOL_SHIFTS_LIST.map(s => (
+                                                        <option key={s} value={s}>{SHIFT_LABELS[s as SchoolShift] || s}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <Button
+                                                    onClick={handleFetchDailyAbsenceReport}
+                                                    disabled={dailyReportLoading}
+                                                    className="w-full py-2.5 !bg-blue-950 hover:!bg-black text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+                                                >
+                                                    {dailyReportLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+                                                    {dailyReportLoading ? 'Gerando Relatório Diário...' : 'Gerar Relatório Diário'}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {dailyReportGenerated && (
+                                        <CoordinatorDailyAbsenceReport
+                                            date={dailyReportDate}
+                                            unit={currentUnit}
+                                            shiftFilter={dailyReportShift}
+                                            absentStudents={dailyAbsentStudents}
+                                            academicGrades={academicGrades}
+                                        />
+                                    )}
+                                </>
+                            )}
                         </div>
                     )}
 
