@@ -603,12 +603,26 @@ const CoordinatorAnnouncementsView: React.FC<{
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider pl-1">Unidade</label>
-                                    <div className="w-full p-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm font-bold text-gray-500 cursor-not-allowed flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
-                                        <span className="text-slate-500">
-                                            {UNIT_LABELS[coordinator.unit as SchoolUnit] || coordinator.unit}
-                                        </span>
-                                    </div>
+                                    {isGeneral ? (
+                                        <select
+                                            value={targetUnit}
+                                            onChange={e => setTargetUnit(e.target.value as SchoolUnit | 'all')}
+                                            disabled={isViewingOnly}
+                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 outline-none disabled:opacity-75 disabled:cursor-not-allowed"
+                                        >
+                                            <option value="all">Todas as Unidades</option>
+                                            {(Object.keys(UNIT_LABELS) as SchoolUnit[]).map(u => (
+                                                <option key={u} value={u}>{UNIT_LABELS[u]}</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <div className="w-full p-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm font-bold text-gray-500 cursor-not-allowed flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                                            <span className="text-slate-500">
+                                                {UNIT_LABELS[coordinator.unit as SchoolUnit] || coordinator.unit}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
