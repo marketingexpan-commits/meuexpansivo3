@@ -1906,13 +1906,14 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         return () => clearTimeout(debounceTimer);
     }, [reportSearchTerm, coordinator.unit, coordinator.role, currentUnit]);
     const [quickSubjectFilter, setQuickSubjectFilter] = useState<string>('all');
-    const [quickBimesterFilter, setQuickBimesterFilter] = useState<string | number>('all');
+    // Default filter = bimester BEFORE the current one (per academic calendar), never below 1
+    const getTodayBimester = (): number =>
+        Math.max(1, getDynamicBimester(new Date().toLocaleDateString('en-CA'), academicSettings) - 1);
+    const [quickBimesterFilter, setQuickBimesterFilter] = useState<string | number>(() => getTodayBimester());
 
-    // NEW: Sync Bimester Filter with current bimester
+    // Sync Bimester Filter with the default (previous bimester)
     useEffect(() => {
-        if (academicSettings?.currentBimester) {
-            setQuickBimesterFilter(academicSettings.currentBimester);
-        }
+        setQuickBimesterFilter(getTodayBimester());
     }, [academicSettings]);
 
     // Informative message for Coordinator grade approvals
@@ -2516,6 +2517,29 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
 
 
+    // Index attendance by student once (avoids O(students x records) filtering on every render)
+    const attendanceByStudent = useMemo(() => {
+        const idx: Record<string, AttendanceRecord[]> = {};
+        (attendanceRecords || []).forEach(att => {
+            if (!att.studentStatus) return;
+            Object.keys(att.studentStatus).forEach(sid => {
+                if (!att.studentStatus[sid]) return;
+                (idx[sid] || (idx[sid] = [])).push(att);
+            });
+        });
+        return idx;
+    }, [attendanceRecords]);
+
+    const approvalsMaxDataBim = useMemo(() => {
+        const currentYear = new Date().getFullYear();
+        return (attendanceRecords || []).reduce((max, record) => {
+            const rYear = record?.date ? parseInt(record.date.split('-')[0], 10) : 0;
+            if (rYear !== currentYear) return max;
+            const b = getDynamicBimester(record.date, academicSettings);
+            return b > max ? b : max;
+        }, 1);
+    }, [attendanceRecords, academicSettings]);
+
     const filteredDisplayStudents = useMemo(() => {
         return pendingGradesStudents.filter(s => {
             const matchesClass = quickClassFilter === 'all' || s.schoolClass === quickClassFilter;
@@ -2539,6 +2563,13 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             return matchesClass && matchesGrade && matchesShift && matchesSubject && matchesBimester;
         });
     }, [pendingGradesStudents, quickClassFilter, quickGradeFilter, quickShiftFilter, quickSubjectFilter, quickBimesterFilter, pendingGradesMap]);
+
+    // Progressive rendering: only mount a few heavy student tables at a time
+    const STUDENTS_PAGE_SIZE = 8;
+    const [visibleStudentsCount, setVisibleStudentsCount] = useState(STUDENTS_PAGE_SIZE);
+    useEffect(() => {
+        setVisibleStudentsCount(STUDENTS_PAGE_SIZE);
+    }, [pendingGradesStudents, quickClassFilter, quickGradeFilter, quickShiftFilter, quickSubjectFilter, quickBimesterFilter]);
 
     const [teachersMap, setTeachersMap] = useState<Record<string, string>>({}); // ID -> Name
     const [subjectTeacherMap, setSubjectTeacherMap] = useState<Record<string, string>>({}); // "subjectId::gradeLevel" -> nome do professor atual
@@ -2705,6 +2736,20 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
             const allGrades: CoordinationGradeEntry[] = [];
 
+            // Attendance units (computed up-front so the fetch runs in parallel with grades)
+            const targetUnits = new Set<string>([currentUnit]);
+            filteredStudents.forEach((s: any) => {
+                if (s.unit) targetUnits.add(s.unit);
+                if (s.enrollmentHistory && Array.isArray(s.enrollmentHistory)) {
+                    s.enrollmentHistory.forEach((h: any) => {
+                        if (h.unit) targetUnits.add(h.unit);
+                    });
+                }
+            });
+            const attendancePromise = db.collection('attendance')
+                .where('unit', 'in', Array.from(targetUnits))
+                .get();
+
             // Optimized: Parallel Fetching
             await Promise.all(chunks.map(async (chunk) => {
                 try {
@@ -2735,7 +2780,6 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 const gradeYear = (grade as any).year || (grade.lastUpdated ? new Date(grade.lastUpdated).getFullYear() : null);
                 // If we have a year and it doesn't match, skip. (If unknown, we might include or exclude. Excluding to be safe for "current year" req)
                 if (gradeYear && gradeYear !== searchYear) {
-                    console.log(`[PendingGrades] Grade ${grade.id} for student ${grade.studentId} excluded: gradeYear (${gradeYear}) !== searchYear (${searchYear})`);
                     return;
                 }
 
@@ -2745,8 +2789,6 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                     (b.recuperacao !== null && b.recuperacao !== undefined && b.isRecuperacaoApproved !== true)
                 ) || (grade.recuperacaoFinal !== null && grade.recuperacaoFinal !== undefined && grade.recuperacaoFinalApproved !== true);
 
-                console.log(`[PendingGrades] Grade ${grade.id} for student ${grade.studentId} check - hasPending: ${hasPending}`, grade.bimesters);
-
                 if (hasPending) {
                     if (!pendingMap[grade.studentId]) pendingMap[grade.studentId] = [];
                     pendingMap[grade.studentId].push(grade);
@@ -2754,23 +2796,9 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 }
             });
 
-            // 4. Fetch Attendance for these students for frequency calculation
-            // Gather all units these students belong/have belonged to in their enrollmentHistory
-            const targetUnits = new Set<string>([currentUnit]);
-            filteredStudents.forEach((s: any) => {
-                if (s.unit) targetUnits.add(s.unit);
-                if (s.enrollmentHistory && Array.isArray(s.enrollmentHistory)) {
-                    s.enrollmentHistory.forEach((h: any) => {
-                        if (h.unit) targetUnits.add(h.unit);
-                    });
-                }
-            });
-            const queryUnits = Array.from(targetUnits);
-
+            // 4. Attendance (fetch started in parallel with grades above)
             const allAttendance: AttendanceRecord[] = [];
-            const attSnap = await db.collection('attendance')
-                .where('unit', 'in', queryUnits)
-                .get();
+            const attSnap = await attendancePromise;
             attSnap.docs.forEach(d => allAttendance.push({ id: d.id, ...d.data() } as AttendanceRecord));
             setAttendanceRecords(allAttendance);
 
@@ -5067,7 +5095,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                             setQuickGradeFilter('all');
                                             setQuickShiftFilter('all');
                                             setQuickSubjectFilter('all');
-                                            setQuickBimesterFilter(academicSettings?.currentBimester || 'all');
+                                            setQuickBimesterFilter(getTodayBimester());
                                         }}
                                         className="mb-1 text-blue-950 text-xs font-bold hover:text-blue-900 underline px-2 transition-colors"
                                     >
@@ -5088,7 +5116,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
                     {activeTab === 'approvals' && (
                         <div className="space-y-6">
-                            {filteredDisplayStudents.map((student: any) => {
+                            {filteredDisplayStudents.slice(0, visibleStudentsCount).map((student: any) => {
                                 let grades = pendingGradesMap[student.id] || [];
                                 if (quickSubjectFilter !== 'all') {
                                     grades = grades.filter(g => g.subject === quickSubjectFilter);
@@ -5163,17 +5191,12 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                                         {(() => {
                                                             const currentYear = new Date().getFullYear();
                                                             const calendarBim = getDynamicBimester(new Date().toLocaleDateString('en-CA'), academicSettings);
-                                                            const maxDataBim = (attendanceRecords || []).reduce((max, record) => {
-                                                                const rYear = record?.date ? parseInt(record.date.split('-')[0], 10) : 0;
-                                                                if (rYear !== currentYear) return max;
-                                                                const b = getDynamicBimester(record.date, academicSettings);
-                                                                return b > max ? b : max;
-                                                            }, 1);
+                                                            const maxDataBim = approvalsMaxDataBim;
                                                             const elapsedBimesters = Math.max(calendarBim, maxDataBim);
                                                             const isYearFinished = academicSettings?.bimesters?.find((b: any) => b.number === 4) ? (new Date().toLocaleDateString('en-CA') > academicSettings.bimesters.find((b: any) => b.number === 4).endDate) : false;
 
                                                             const subjectsInCurriculum = getCurriculumSubjects(student.gradeLevel || "");
-                                                            const studentAttendance = (attendanceRecords || []).filter(att => att.studentStatus && att.studentStatus[student.id]);
+                                                            const studentAttendance = attendanceByStudent[student.id] || [];
 
                                                             // 1. Matérias existentes
                                                             const existingGrades = (grades || [])
@@ -5479,6 +5502,17 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                                     </div>
                                 );
                             })}
+                            {filteredDisplayStudents.length > visibleStudentsCount && (
+                                <div className="flex flex-col items-center gap-2 py-6">
+                                    <p className="text-xs text-gray-500">Exibindo {visibleStudentsCount} de {filteredDisplayStudents.length} alunos</p>
+                                    <button
+                                        onClick={() => setVisibleStudentsCount(c => c + STUDENTS_PAGE_SIZE)}
+                                        className="cursor-pointer px-4 py-2 text-xs font-bold text-blue-950 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                                    >
+                                        Carregar mais alunos
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
                     {/* OCCURRENCES VIEW (activeTab === 'occurrences') */}
